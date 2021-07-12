@@ -10,19 +10,31 @@ import TokenInputWrapper from "../../../items/controls/tokenInputWrapper"
 import styles from "./Content.module.scss"
 
 const NetworkContent = props => {
-  const { network, onChangeNetworkItems } = props
+  const { network, isValidator, onChangeNetworkItems } = props
 
   return (
     <div className={styles.wrapNetworkContent}>
 
-      <SecondTitleBold>Network Options</SecondTitleBold>
+      <SecondTitleBold>Listening interface</SecondTitleBold>
+      <br/>
+
+      { isValidator && <p>Configue the listening interface your validator will be using.
+        A Validator requires at least one listening interface on which it is reachable by other validators.</p> }
+
+      { !isValidator && <p>Configure the listening interface your full node will be reachable at.
+        The listening interface is optional for full nodes, however disabling it may have unintended consequences,
+        such as delay in blockchain data. </p> }
+
+      <br/>
+      <p>By default, Agora nodes use the port 2826. Make sure that your network allows connections on that port.</p>
 
       <div className={styles.container_network}>
-        <InputPopoverWrapper content={<p>This is a list of nodes you want to initially connect to. This field is only required if you haven't provided any DNS seed nodes.</p>}>
+        <InputPopoverWrapper content={<p>This is a list of interfaces your node will be listening to. The default listens publicly on port 2826.
+          You might want to listen privately to a specific IP (e.g. if you're using a tunnel or Tor), or listen to more than one interface.</p>}>
           <TokenInputWrapper
             name="network"
-            label="Network"
-            defaultValue={[]}
+            label="Listening interfaces"
+            defaultValue={[{ value: "https://0.0.0.0:2826" }]}
             onChange={onChangeNetworkItems}
             valueStore={network.stepItems}
             validateAction={validateNetwork}

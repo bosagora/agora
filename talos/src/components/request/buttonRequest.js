@@ -1,6 +1,7 @@
 import React from 'react';
 import { get } from "lodash"
 
+import { parseBindAddress } from 'services/service.validate';
 import { durationItems, maxFailedItems } from "components/config/steps/banman/static"
 
 import { withValidator } from "components/config/steps/validator/Container"
@@ -41,7 +42,7 @@ const ButtonRequest = props => {
     const dns = get(props, ["network", "stepItems", "dns", "value"], [])
 
       if (isValidStep) {
-          const network = get(props, ["network", "stepItems", "network", "value"], []).map(item => item.value);
+          const interfaces = get(props, ["network", "stepItems", "network", "value"], []).map(item => parseBindAddress(item.value));
 
           let config = {
               validator: {
@@ -60,8 +61,8 @@ const ButtonRequest = props => {
               },
           };
 
-          if (network.length)
-              config.network = network;
+          if (interfaces.length)
+              config.interfaces = interfaces;
 
           if (config.validator.enabled)
           {
