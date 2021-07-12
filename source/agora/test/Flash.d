@@ -556,9 +556,9 @@ private class FlashListener : TestFlashListenerAPI
         assert(0);
     }
 
-    public Amount getEstimatedTxFee (uint size_bytes)
+    public Amount getEstimatedTxFee ()
     {
-        assert(0);
+        return Amount(1);
     }
 }
 
