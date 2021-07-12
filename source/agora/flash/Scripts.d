@@ -174,7 +174,7 @@ public Unlock createUnlockSettle (Signature sig, in ulong seq_id)
 
 *******************************************************************************/
 
-public Transaction createFundingTx (in UTXO utxo, in Hash utxo_hash, 
+public Transaction createFundingTx (in UTXO utxo, in Hash utxo_hash,
     in Amount capacity, in Point pair_pk, Amount fee) @safe nothrow
 {
     auto inputs = [Input(utxo_hash)];
