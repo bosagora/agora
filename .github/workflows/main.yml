@@ -90,6 +90,29 @@ jobs:
         ${DC} --version
         dub --version
 
+    # GeoIP is required for one of the integration test
+    # We cache it via the cache action, and otherwise download it,
+    # but this requires a license key (which is a secret in the repository).
+    - name: 'Load GeoIP from cache'
+      id: cache-geoip
+      if: runner.os != 'Windows'
+      uses: actions/cache@v1
+      with:
+        path: ${{ github.workspace }}/build/geoip/GeoLite2-City.mmdb
+        # Note: Cached data gets evicted after 7 days of being unused
+        # However, there is no way to mark data as stale or delete it,
+        # so this date might need to be bumped from time to time.
+        key: cache-geoip-2021-07-11
+
+    - name: 'Download GeoIP database'
+      if: runner.os != 'Windows' && steps.cache-geoip.outputs.cache-hit != 'true'
+      env:
+        GEOIP_OUTPUT_DIR: ${{ github.workspace }}/build/geoip/
+      run: |
+        mkdir ${GEOIP_OUTPUT_DIR}
+        wget --no-verbose -O  ${GEOIP_OUTPUT_DIR}/geoip.city.tar.gz 'https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=${{ secrets.GEOIP_SECRET }}&suffix=tar.gz'
+        tar -xzvf ${GEOIP_OUTPUT_DIR}/geoip.city.tar.gz --directory ${GEOIP_OUTPUT_DIR} --strip-components 1
+
     # Build and run the tests
     - name: '[POSIX] Build & test Agora'
       if: runner.os != 'Windows'
