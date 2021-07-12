@@ -550,6 +550,16 @@ private class FlashListener : TestFlashListenerAPI
     {
         return null;  // accept by default
     }
+
+    public FeeUTXOs getFeeUTXOs (PublicKey pk, Amount amount)
+    {
+        assert(0);
+    }
+
+    public Amount getEstimatedTxFee (uint size_bytes)
+    {
+        assert(0);
+    }
 }
 
 /// Test unilateral non-collaborative close (funding + update* + settle)
