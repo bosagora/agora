@@ -29,11 +29,11 @@ jobs:
         dc: [ ldc-master, ldc-1.26.0 ]
         # Define job-specific parameters
         include:
-          # By default, don't generate artifacts nor run vtable checks for push
-          - { artifacts: false, run_vtable_checks: false }
+          # By default, don't generate artifacts nor run extra checks for push
+          - { artifacts: false, run_extra_checks: false }
           # Only generate when the latest ldc is used
           # IMPORTANT: Update this when the compiler support is changed!
-          - { dc: ldc-1.26.0, artifacts: true, run_vtable_checks: true }
+          - { dc: ldc-1.26.0, artifacts: true, run_extra_checks: true }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -136,8 +136,12 @@ jobs:
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         call ci\run.bat
 
+    - name: Test example configuration file
+      if: matrix.run_extra_checks && runner.os != 'Windows'
+      run: ./build/agora -c doc/config.example.yaml --config-check
+
     - name: Check vtable offset
-      if: matrix.run_vtable_checks && runner.os != 'Windows'
+      if: matrix.run_extra_checks && runner.os != 'Windows'
       env:
         AGORA_VERSION: HEAD
       run: ci/check_vtable_test.d
