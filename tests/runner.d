@@ -51,6 +51,7 @@ private int main (string[] args)
             writeln("Test ", test, " failed!");
             return 1;
         }
+        pp.stderr.byLine.each!(a => writeln("[stderr]\t", a));
 
         count++;
     }
