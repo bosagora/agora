@@ -117,6 +117,9 @@ flash:
   # Public address:  boa1xpvald2ydpxzl9aat978kv78y5g24jxy46mcnl7munf4jyhd0zjrc5x62kn
   seed: SAUHVPR7O7F2QGLDVXG3DQTVHXESE3ZAWHIIGKT35LCHIPLZBZTAFXJA
 
+  # Flash name registry address (required)
+  registry_address: https://flash-registry.bosagora.io
+
   # Address to the listener which will receive payment / update notifications
   listener_address: http://127.0.0.1:4004
 
