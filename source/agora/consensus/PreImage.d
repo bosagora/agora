@@ -334,18 +334,6 @@ public struct PreImageCycle
 
     /***************************************************************************
 
-        The number of the current cycle
-
-        This is the data used as a nonce in generating the cycle seed.
-        Named `nonce` to avoid any ambiguity. It is incremented once every
-        `EnrollPerCycle` period, currently 700 days.
-
-    ***************************************************************************/
-
-    public uint nonce;
-
-    /***************************************************************************
-
         The index of the enrollment within the current cycle
 
         This number is incremented every time a new Enrollment is accepted
@@ -397,15 +385,13 @@ public struct PreImageCycle
     private void seek (in Height height) @nogc
     {
         uint seek_index = cast (uint) (height / this.preimages.length());
-        uint seek_nonce = seek_index / this.cycles;
         seek_index %= this.cycles;
 
-        if (this.seeds[0] == Hash.init || seek_nonce != this.nonce)
+        if (this.seeds[0] == Hash.init)
         {
-            this.nonce = seek_nonce;
             this.index = seek_index;
             const cycle_seed = hashMulti(
-                this.secret, "consensus.preimages", this.nonce);
+                this.secret, "consensus.preimages", 0);
             this.seeds.reset(cycle_seed);
             this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
         }
@@ -419,7 +405,7 @@ public struct PreImageCycle
 
 version (unittest)
 {
-    // Test all heights of multiple cycles with multiple batch nonces
+    // Test all heights of multiple cycles
     private void testPreImageCycle (uint cycle_length, ulong number_of_cycles)
     {
         import std.algorithm;
@@ -431,18 +417,14 @@ version (unittest)
         auto cycle = PreImageCycle(secret, cycle_length,
             number_of_cycles * cycle_length);
         ulong total_images = cycle_length * number_of_cycles;
-        void testBatch (uint nonce)
-        {
-            scope(failure) writefln("\nBatch failed with nonce %s and cycle %s", nonce, cycle);
-            Hash[] batch;
-            iota(total_images).each!( i =>
-                batch ~= i == 0 ?
-                    hashMulti(secret, "consensus.preimages", nonce)
-                    : hashFull(batch[i - 1]));
-            batch.enumerate.each!( (idx, image) =>
-                assert(cycle[Height((total_images * nonce) + total_images - idx - 1)] == image));
-        }
-        iota(3).each!( i => testBatch(i));
+        scope(failure) writefln("\nBatch failed with cycle %s", cycle);
+        Hash[] batch;
+        iota(total_images).each!( i =>
+            batch ~= i == 0 ?
+                hashMulti(secret, "consensus.preimages", 0)
+                : hashFull(batch[i - 1]));
+        batch.enumerate.each!( (idx, image) =>
+            assert(cycle[Height(total_images - idx - 1)] == image));
     }
 }
 
