@@ -295,10 +295,13 @@ public struct PreImageCycle
     public this (in Scalar secret, in uint cycle_length, in ulong cycles = PreImageCycle.NumberOfCycles,
         Height initial_seek = Height(0))
     {
-        this.secret = secret;
         this.cycles = cycles;
         this.seeds = PreImageCache(cycles, cycle_length);
         this.preimages = PreImageCache(cycle_length, 1);
+
+        this.index = uint.max; // Invalid value to force reset
+        const cycle_seed = hashMulti(secret, "consensus.preimages", 0);
+        this.seeds.reset(cycle_seed);
         this.seek(initial_seek);
     }
 
@@ -324,9 +327,6 @@ public struct PreImageCycle
         auto offset = height % this.preimages.length();
         return this.preimages[$ - offset - 1];
     }
-
-    ///
-    private Scalar secret;
 
     /// The number of cycles for a bulk of pre-images
     public ulong cycles;
@@ -386,15 +386,7 @@ public struct PreImageCycle
         uint seek_index = cast (uint) (height / this.preimages.length());
         seek_index %= this.cycles;
 
-        if (this.seeds[0] == Hash.init)
-        {
-            this.index = seek_index;
-            const cycle_seed = hashMulti(
-                this.secret, "consensus.preimages", 0);
-            this.seeds.reset(cycle_seed);
-            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
-        }
-        else if (seek_index != this.index)
+        if (seek_index != this.index)
         {
             this.index = seek_index;
             this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
