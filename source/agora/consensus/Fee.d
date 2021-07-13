@@ -244,6 +244,12 @@ public class FeeManager
 
     public string check (in Transaction tx, Amount tx_fee) nothrow @safe
     {
+        Amount minimumFee = params.MinFee;
+        if (!minimumFee.mul(tx.sizeInBytes()))
+            return "Fee: Transaction size overflows fee cap";
+        if (tx_fee < minimumFee)
+            return "Transaction: Fee is less than adjusted minimum fee";
+
         if (tx.payload.length == 0)
             return null;
 
@@ -254,12 +260,6 @@ public class FeeManager
             this.params.TxPayloadFeeFactor);
         if (tx_fee < required_fee)
             return "Transaction: There is not enough data fee";
-
-        Amount minimumFee = params.MinFee;
-        if (!minimumFee.mul(tx.sizeInBytes()))
-            return "Fee: Transaction size overflows fee cap";
-        if (tx_fee < minimumFee)
-            return "Transaction: Fee is less than adjusted minimum fee";
 
         return null;
     }
