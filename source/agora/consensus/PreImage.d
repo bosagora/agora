@@ -384,6 +384,8 @@ public struct PreImageCycle
 
     private void seek (in Height height) @nogc
     {
+        import agora.utils.WellKnownPreImages;
+
         uint seek_index = cast (uint) (height / this.preimages.length());
         seek_index %= this.cycles;
 
@@ -392,13 +394,30 @@ public struct PreImageCycle
             this.index = seek_index;
             const cycle_seed = hashMulti(
                 this.secret, "consensus.preimages", 0);
-            this.seeds.reset(cycle_seed);
-            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+
+            auto seed = getWellKnownPreImageSeed(this.secret, PreImageCycle.PreImageCount,
+               this.cycles, this.index, this.seeds.interval);
+            if (seed == Hash.init)
+            {
+                this.seeds.reset(cycle_seed);
+                this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+            }
+            else
+            {
+                this.preimages.reset(seed);
+            }
+
         }
         else if (seek_index != this.index)
         {
             this.index = seek_index;
-            this.preimages.reset(this.seeds.byStride[$ - 1 - this.index]);
+            Hash seed = getWellKnownPreImageSeed(this.secret, PreImageCycle.PreImageCount,
+                this.cycles, this.index, this.seeds.interval);
+
+            if (seed == Hash.init)
+               seed = this.seeds.byStride[$ - 1 - this.index];
+            this.preimages.reset(seed);
+
         }
     }
 }
@@ -442,4 +461,40 @@ unittest
     const cycle_length = 3;
     const number_of_cycles = 12;
     testPreImageCycle(cycle_length, number_of_cycles);
+}
+
+version (none)
+unittest
+{
+    import std.stdio;
+    import std.format;
+    import agora.utils.WellKnownKeys;
+
+    Scalar[string] secret_map = [
+        "NODE2": NODE2.secret,
+        "NODE3": NODE3.secret,
+        "NODE4": NODE4.secret,
+        "NODE5": NODE5.secret,
+        "NODE6": NODE6.secret,
+        "NODE7": NODE7.secret,
+    ];
+
+    const CycleLength = 10000;
+    foreach (ref const(string) name, ref Scalar secret; secret_map)
+    {
+        debug auto seeds_cache = PreImageCache(PreImageCycle.PreImageCount / CycleLength,
+            CycleLength);
+        const cycle_seed = hashMulti(secret, "consensus.preimages", 0);
+        seeds_cache.reset(cycle_seed);
+        // auto first_preimage = cycle[Height(0)];
+        // debug writeln("first_preimage: ", first_preimage);
+        // debug writeln("seeds.data.length: ", cycle2.seeds.data.length);
+
+        writeln(format!"static immutable Hash[] %s_PreImage_Seeds = ["(name));
+        foreach (ref Hash seed; seeds_cache.data)
+        {
+            writeln("\tHash(`", seed, "`),");
+        }
+        writeln("];\n");
+    }
 }
