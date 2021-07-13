@@ -243,25 +243,6 @@ public interface API
 
     /***************************************************************************
 
-        Get validator's pre-image information
-
-        API:
-            GET /preimage
-
-        Params:
-            enroll_key = The key for the enrollment in which the pre-image is
-                contained.
-
-        Returns:
-            preimage information of the validator if exists, otherwise
-                PreImageInfo.init
-
-    ***************************************************************************/
-
-    public PreImageInfo getPreimage (Hash enroll_key);
-
-    /***************************************************************************
-
         Returns the preimages for the specified enroll keys.
 
         Params:

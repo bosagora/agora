@@ -728,12 +728,14 @@ public class TestAPIManager
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
+        import std.algorithm.searching : any;
 
         clients_idxs.each!(idx =>
             enrolls.enumerate.each!((idx_enroll, enroll) {
                 if (clients_idxs.canFind(idx_enroll))
-                    retryFor(this.clients[idx].getPreimage(enroll.utxo_key).height >= height,
-                        timeout, format!"Client #%s has no preimage for client #%s at distance %s"
+                    retryFor(this.clients[idx].getPreimagesForEnrollKeys(Set!Hash.from(enroll.utxo_key.only))
+                        .any!(preimage => preimage.height >= height),
+                            timeout, format!"Client #%s has no preimage for client #%s at distance %s"
                             (idx, idx_enroll, height));
             }));
     }
@@ -2249,16 +2251,6 @@ public class NoPreImageVN : TestValidatorNode
     {
         if (atomicLoad(*this.reveal_preimage))
             super.onPreImageRevealTimer();
-    }
-
-    public override PreImageInfo getPreimage (Hash enroll_key)
-    {
-        if (enroll_key != this.enroll_man.getEnrollmentKey())
-            return super.getPreimage(enroll_key);
-        else if (atomicLoad(*this.reveal_preimage))
-            return super.getPreimage(enroll_key);
-        else
-            throw new Exception("No such PreImage");
     }
 
     /// GET: /preimages

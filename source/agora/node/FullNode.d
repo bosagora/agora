@@ -1008,13 +1008,6 @@ public class FullNode : API
         }
     }
 
-    /// GET: /preimage
-    public override PreImageInfo getPreimage (Hash enroll_key)
-    {
-        this.recordReq("preimage");
-        return this.enroll_man.getValidatorPreimage(enroll_key);
-    }
-
     /// GET: /preimages_for_enroll_keys
     public override PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
     {
