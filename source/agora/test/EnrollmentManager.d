@@ -16,11 +16,15 @@ module agora.test.EnrollmentManager;
 
 version (unittest):
 
+import agora.common.Set;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.validation.PreImage;
 import agora.test.Base;
+
+import std.algorithm.searching : any;
+import std.range : only;
 
 import core.thread;
 import core.time;
@@ -114,9 +118,9 @@ unittest
 
     PreImageInfo b20_preimage = PreImageInfo(node0_utxo, b20.header.enrollments[0].commitment, Height(20));
 
-    // Wait for the revelation of new pre-image after block 20 to complete
-    retryFor(nodes[0].getPreimage(node0_utxo).height > 20, 5.seconds);
-    PreImageInfo preimage_26 = nodes[0].getPreimage(node0_utxo);
+    retryFor(nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(node0_utxo.only))
+        .any!(preimage => preimage.height > 20), 5.seconds);
+    PreImageInfo preimage_26 = nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(node0_utxo.only))[0];
 
     // Check if the new pre-image is valid from the restarted node
     assert(preimage_26.isInvalidReason(b20_preimage) is null);
@@ -261,8 +265,9 @@ unittest
 
     // Wait for the revelation of new pre-image to complete
     const org_preimage = PreImageInfo(e0.utxo_key, e0.commitment, Height(0));
-    PreImageInfo preimage_2;
-    retryFor(org_preimage != (preimage_2 = nodes[0].getPreimage(e0.utxo_key)),
+
+    retryFor(nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(e0.utxo_key.only))
+        .any!(preimage => org_preimage != preimage),
         15.seconds);
-    assert(preimage_2 != PreImageInfo.init);
+    assert(nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(e0.utxo_key.only))[0] != PreImageInfo.init);
 }
