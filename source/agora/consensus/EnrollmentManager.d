@@ -436,7 +436,7 @@ public class EnrollmentManager
     {
         // Generate the random seed to use
         auto cycle = PreImageCycle(key.secret, cycle_length);
-        return makeEnrollment(utxo, key, cycle[height], cycle_length, cycle.nonce);
+        return makeEnrollment(utxo, key, cycle[height], cycle_length);
     }
 
     /***************************************************************************
