@@ -107,24 +107,10 @@ unittest
         }
     }
 
-    static class BadAPIManager : TestAPIManager
-    {
-        mixin ForwardCtor!();
-
-        public override void createNewNode (Config conf, string file = __FILE__,
-            int line = __LINE__)
-        {
-            if (conf.validator.enabled)
-                this.addNewNode!BadValidator(conf, file, line);
-            else
-                this.addNewNode!TestFullNode(conf, file, line);
-        }
-    }
-
     TestConf conf = {
         quorum_threshold : 100
     };
-    auto network = makeTestNetwork!BadAPIManager(conf);
+    auto network = makeTestNetwork!(TestNetwork!BadValidator)(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -199,25 +185,11 @@ unittest
 
     }
 
-    static class SocialDistancingAPIManager : TestAPIManager
-    {
-        mixin ForwardCtor!();
-
-        public override void createNewNode (Config conf, string file = __FILE__,
-            int line = __LINE__)
-        {
-            if (conf.validator.enabled)
-                this.addNewNode!SocialDistancingValidator(conf, file, line);
-            else
-                this.addNewNode!TestFullNode(conf, file, line);
-        }
-    }
-
     TestConf conf = {
         quorum_threshold : 100
     };
 
-    auto network = makeTestNetwork!SocialDistancingAPIManager(conf);
+    auto network = makeTestNetwork!(TestNetwork!SocialDistancingValidator)(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -314,26 +286,12 @@ unittest
         }
     }
 
-    static class GothamAPIManager : TestAPIManager
-    {
-        mixin ForwardCtor!();
-
-        public override void createNewNode (Config conf, string file = __FILE__,
-            int line = __LINE__)
-        {
-            if (conf.validator.enabled)
-                this.addNewNode!BatValidator(conf, file, line);
-            else
-                this.addNewNode!TestFullNode(conf, file, line);
-        }
-    }
-
     TestConf conf = {
         quorum_threshold : 100,
         recurring_enrollment : false,
     };
 
-    auto network = makeTestNetwork!GothamAPIManager(conf);
+    auto network = makeTestNetwork!(TestNetwork!BatValidator)(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

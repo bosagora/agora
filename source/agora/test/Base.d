@@ -536,11 +536,33 @@ public struct NodePair
 
 /*******************************************************************************
 
-    Used by unittests to send messages to individual nodes.
-    This class is instantiated once per unittest.
+    Instantiate and manages an in-memory test network.
+
+    Allows unittests to spawn, communicate, and control the full network.
+    Each unittest block should instantiate this class at most once.
+    Multiple configuration points exists, such as `createNewNode` (to inject
+    different node types), `createNameRegistry`, etc...
 
 *******************************************************************************/
 
+public class TestNetwork (TValidator = TestValidator, TFullNode = TestFullNode)
+    : TestAPIManager
+{
+    ///
+    mixin ForwardCtor!();
+
+    ///
+    public override void createNewNode (
+        Config conf, string file = __FILE__, int line = __LINE__)
+    {
+        if (conf.validator.enabled)
+            this.addNewNode!TValidator(conf, file, line);
+        else
+            this.addNewNode!TFullNode(conf, file, line);
+    }
+}
+
+/// Ditto
 public class TestAPIManager
 {
     /// Test configuration
