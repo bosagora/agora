@@ -1167,7 +1167,7 @@ public class FullNode : API
         BlockHeader[] headers;
         if (!heights.empty)
         {
-            foreach (block; this.ledger.getBlocksFrom(Height(heights[].front)))
+            foreach (block; this.ledger.getBlocksFrom(Height(heights[].minElement)))
             {
                 if (block.header.height in heights)
                     headers ~= block.header;
