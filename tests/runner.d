@@ -88,12 +88,12 @@ private string[] getLflags ()
     }
     else version (Posix)
     {
-        return [ "-lsodium" ];
+        return [ "-lsodium", "-lmaxminddb" ];
     }
     else version (Windows)
     {
         // Note: Only works with LDC, see https://github.com/dlang/dub/issues/1914
-        return [ "-llibsodium" ];
+        return [ "-llibsodium", "-lmaxminddb"];
     }
     else
         static assert(0, "Unhandled platform");

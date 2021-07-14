@@ -23,6 +23,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Key;
+import agora.network.CrawlerTypes;
 
 import vibe.data.serialization;
 import vibe.http.common;
@@ -43,6 +44,21 @@ public struct NodeInfo
 
     /// Partial or full view of the addresses of the node's quorum (based on is_complete)
     public Set!string addresses;
+
+    /// String representation of the OS the node is running on
+    public string os;
+
+    /// true, if this node should be included in network statistics
+    public bool include_in_network_statistics;
+
+    /// Name of the client
+    public string client_name = "Agora";
+
+    /// Version of the client
+    public string client_ver;
+
+    /// Blockchain height known to the client
+    public Height height;
 }
 
 /// Identity of a Validator node
@@ -259,6 +275,23 @@ public interface API
     ***************************************************************************/
 
     public PreImageInfo getPreimage (Hash enroll_key);
+
+    /***************************************************************************
+
+        Get the information about the network and it's reachable nodes.
+
+        The information includes the network address and the geograpical location
+        of the nodes including the continent/country/city/latitude/longitude.
+
+        API:
+            GET /network_info
+
+        Returns: information about the network and about it's nodes
+
+
+    ***************************************************************************/
+
+    public CrawlResultHolder getNetworkInfo ();
 
     /***************************************************************************
 

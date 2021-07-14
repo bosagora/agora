@@ -45,6 +45,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Client;
 import agora.network.Clock;
+import agora.network.Crawler;
 import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Ledger;
@@ -141,6 +142,9 @@ public class FullNode : API
 
     /// Transaction relayer
     protected TransactionRelayer transaction_relayer;
+
+    /// Crawler
+    protected Crawler crawler;
 
     /***************************************************************************
 
@@ -262,6 +266,8 @@ public class FullNode : API
         this.pool = this.makeTransactionPool();
         this.enroll_man = this.makeEnrollmentManager();
         this.transaction_relayer = this.makeTransactionRelayer();
+        if (config.node.collect_network_statistics)
+            this.crawler = this.makeCrawler();
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
         this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
@@ -416,6 +422,9 @@ public class FullNode : API
 
         // Immediately run discovery to avoid delays at startup
         this.taskman.runTask(&this.discoveryTask);
+
+        if (crawler !is null)
+            this.crawler.start();
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -589,6 +598,8 @@ public class FullNode : API
         this.utxo_set = null;
         this.enroll_man = null;
         this.timers = null;
+        if (crawler !is null)
+            this.crawler.stop();
     }
 
     /// Make a new instance of the consensus parameters based on the config
@@ -630,6 +641,12 @@ public class FullNode : API
     protected StatsServer makeStatsServer ()
     {
         return new StatsServer(this.config.node.stats_listening_port);
+    }
+
+    /// Returns a newly constructed Crawler
+    protected Crawler makeCrawler ()
+    {
+        return new Crawler(this.taskman, this.clock, this.config, this.network);
     }
 
     /// Returns: The Logger to use for this class
@@ -884,7 +901,12 @@ public class FullNode : API
     public override NodeInfo getNodeInfo () nothrow @safe
     {
         this.recordReq("node_info");
-        return this.network.getNetworkInfo();
+        
+        auto node_info = this.network.getNetworkInfo();
+        node_info.client_ver = import(VersionFileName);
+        node_info.height = this.ledger.getBlockHeight();
+
+        return node_info;
     }
 
     /***************************************************************************
@@ -932,6 +954,14 @@ public class FullNode : API
     {
         this.recordReq("block_heigth");
         return this.ledger.getBlockHeight();
+    }
+
+    /// GET: /network_info
+    public override CrawlResultHolder getNetworkInfo () @safe
+    {
+        this.endpoint_request_stats
+            .increaseMetricBy!"agora_endpoint_calls_total"(1, "network_info", "http");
+        return (crawler !is null) ? this.crawler.getNetworkInfo() : CrawlResultHolder.init;
     }
 
     /// GET: /blocks_from

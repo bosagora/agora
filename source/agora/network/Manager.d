@@ -52,11 +52,13 @@ import vibe.inet.url;
 import std.algorithm;
 import std.array;
 import std.container : DList;
+import std.conv : to;
 import std.datetime.stopwatch;
 import std.exception;
 import std.format;
 import std.random;
 import std.range : walkLength;
+import std.system : os;
 
 import core.stdc.time;
 import core.time;
@@ -380,6 +382,9 @@ public class NetworkManager
     /// All connected nodes (Validators & FullNodes)
     public DList!NodeConnInfo peers;
 
+    /// Adressess that were used to seed this node
+    public Set!Address seed_addresses;
+
     /// Easy lookup of currently connected peers
     protected Set!Address connected_peers;
 
@@ -415,6 +420,9 @@ public class NetworkManager
     /// Proxy to be used for outgoing Agora connections
     protected URL proxy_url;
 
+    /// The string representation of the OS this node runs on
+    public static immutable Os = os.to!string();
+
     /// Ctor
     public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
     {
@@ -436,18 +444,16 @@ public class NetworkManager
 
         // if we have peers in the metadata, use them
         if (this.metadata.peers.length > 0)
-        {
-            this.addAddresses(this.metadata.peers);
-        }
+            this.seed_addresses = this.metadata.peers;
         else
         {
-            // add the IP seeds
-            this.addAddresses(Set!Address.from(config.network));
+            this.seed_addresses = Set!Address.from(config.network);
 
             // add the DNS seeds
             if (config.dns_seeds.length > 0)
-                this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
+                resolveDNSSeeds(config.dns_seeds, this.log).each!(seed_address => this.seed_addresses.put(seed_address));
         }
+        this.addAddresses(this.seed_addresses);
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -1096,7 +1102,7 @@ public class NetworkManager
         return NodeInfo(
             this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
-            this.known_addresses);
+            this.known_addresses, Os, this.node_config.include_in_network_statistics);
     }
 
     /***************************************************************************
@@ -1116,7 +1122,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected API getClient (Address address, Duration timeout)
+    public API getClient (Address address, Duration timeout)
     {
         import vibe.http.client;
 

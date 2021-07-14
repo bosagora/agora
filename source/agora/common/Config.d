@@ -233,6 +233,24 @@ public struct NodeConfig
     /// Transaction put into the relay queue will expire, and will be removed
     /// after `relay_tx_cache_exp`.
     public Duration relay_tx_cache_exp;
+
+    /// true, if this node should collect statistics about other
+    /// nodes in the network, including their geographical location and OS
+    public bool collect_network_statistics;
+
+    /// true, if this node should be included in network statistics
+    public bool include_in_network_statistics;
+
+    /// The number of network crawlers that will be instantiated to collect
+    /// statistics about other nodes in the network
+    public ubyte num_of_crawlers;
+
+    /// The number of seconds one crawler should wait after successfully contacted
+    /// a node
+    public Duration crawling_interval;
+
+    /// The path to a file containing IP address -> geographical location mapping
+    public string ipdb_path;
 }
 
 /// Validator config
@@ -538,6 +556,11 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     Duration relay_tx_interval = opt!(ulong, "node", "relay_tx_interval_secs")(cmdln, node, 15).seconds;
     const relay_tx_min_fee = Amount(opt!(ulong, "node", "relay_tx_min_fee")(cmdln, node, 0));
     Duration relay_tx_cache_exp = opt!(ulong, "node", "relay_tx_cache_exp_secs")(cmdln, node, 1200).seconds;
+    const collect_network_statistics = opt!(bool, "node", "collect_network_statistics")(cmdln, node, false);
+    const include_in_network_statistics = opt!(bool, "node", "include_in_network_statistics")(cmdln, node, true);
+    const num_of_crawlers = opt!(ubyte, "node", "num_of_crawlers")(cmdln, node, 1);
+    Duration crawling_interval = opt!(ulong, "node", "crawling_interval_secs")(cmdln, node, 3).seconds;
+    const ipdb_path = opt!(string, "node", "ipdb_path")(cmdln, node, "infrastructure/bigfiles/ipdb.mmdb");
 
     NodeConfig result = {
             min_listeners : min_listeners,
@@ -559,6 +582,11 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             relay_tx_interval : relay_tx_interval,
             relay_tx_min_fee : relay_tx_min_fee,
             relay_tx_cache_exp : relay_tx_cache_exp,
+            collect_network_statistics : collect_network_statistics,
+            include_in_network_statistics : include_in_network_statistics,
+            num_of_crawlers : num_of_crawlers,
+            crawling_interval : crawling_interval,
+            ipdb_path : ipdb_path,
     };
     return result;
 }
