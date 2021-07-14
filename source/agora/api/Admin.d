@@ -14,6 +14,7 @@
 module agora.api.Admin;
 
 import vibe.data.serialization;
+import vibe.http.common;
 import vibe.web.rest;
 
 import ocean.util.log.ILogger;
@@ -59,6 +60,7 @@ public interface NodeControlAPI
 
     ***************************************************************************/
 
+    @method(HTTPMethod.GET)
     public string loginQR (@viaHeader("Content-Type") out string contentType,
                            @viaHeader("Vary") out string vary);
 
@@ -71,6 +73,7 @@ public interface NodeControlAPI
 
     ***************************************************************************/
 
+    @method(HTTPMethod.GET)
     public string encryptionKeyQR (string app, ulong height,
                                    @viaHeader("Content-Type") out string contentType,
                                    @viaHeader("Vary") out string vary);
