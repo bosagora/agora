@@ -94,9 +94,9 @@ unittest
     }
 
     TestConf conf = {
-        timeout : 5.seconds,
-        quorum_threshold : 51
+        quorum_threshold : 51,
     };
+    conf.node.timeout = 5.seconds;
 
     auto network = makeTestNetwork!CustomAPIManager(conf);
     network.start();
@@ -107,13 +107,13 @@ unittest
     auto validator = network.clients[0];
 
     // Make four of six validators stop responding for a while
-    nodes.drop(1).take(4).each!(node => node.ctrl.sleep(conf.timeout, true));
+    nodes.drop(1).take(4).each!(node => node.ctrl.sleep(conf.node.timeout, true));
 
     // Block 1 with multiple consensus rounds
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => validator.putTransaction(tx));
 
-    network.expectHeightAndPreImg(Height(1), network.blocks[0].header, conf.timeout + 5.seconds);
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header, conf.node.timeout + 5.seconds);
     assert(CustomNominator.round_number >= 2,
         format("The validator's round number is %s. Expected: above %s",
             CustomNominator.round_number, 2));

@@ -22,10 +22,13 @@ import agora.test.Base;
 ///
 unittest
 {
-    TestConf conf = { retry_delay : 1.msecs,
-        max_retries : 2,
-        timeout : 500.msecs,
-        max_failed_requests : 1000 };  // never ban
+    TestConf conf = {
+        max_failed_requests : 1000, // never ban
+    };
+    conf.node.max_retries = 2;
+    conf.node.retry_delay = 1.msecs;
+    conf.node.timeout = 500.msecs;
+
     auto network = makeTestNetwork!TestAPIManager(conf);
     auto nodes = network.clients;
 

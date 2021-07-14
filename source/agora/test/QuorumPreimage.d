@@ -52,7 +52,8 @@ unittest
     TestConf conf = {
         recurring_enrollment : false,
         outsider_validators : 2,
-        max_listeners : 7 };
+    };
+    conf.node.max_listeners = 7;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
