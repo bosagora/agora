@@ -1002,7 +1002,6 @@ public class NetworkManager
         try
         {
             auto start_height = ledger.getLastPaymentBlock();
-            log.trace("Catchup signatures since block height {}", start_height);
             auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
             size_t[Height] enrolled_validators = headers.map!(header =>
                 tuple(header.height, header.validators.count)).assocArray;
@@ -1025,6 +1024,7 @@ public class NetworkManager
                 auto missing_heights = heightsMissingSigs();
                 if (!missing_heights.empty)
                 {
+                    log.trace("getMissingBlockSigs: detected missing signatures at heights {}", missing_heights);
                     foreach (peer; this.peers[])
                     {
                         foreach (header; peer.client.getBlockHeaders(missing_heights))
