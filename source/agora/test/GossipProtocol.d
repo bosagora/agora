@@ -58,7 +58,8 @@ unittest
 unittest
 {
     // node #7 is the outsider, so total foreign nodes may be 6
-    TestConf conf = { max_listeners : 6, full_nodes : 1 };
+    TestConf conf = { full_nodes : 1 };
+    conf.node.max_listeners = 6;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

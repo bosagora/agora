@@ -24,10 +24,8 @@ import agora.crypto.Key;
 ///
 unittest
 {
-    TestConf conf =
-    {
-        retry_delay : 100.msecs,
-    };
+    TestConf conf;
+    conf.node.retry_delay = 100.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -49,8 +47,8 @@ unittest
     {
         topology : NetworkTopology.MinimallyConnected,
         full_nodes : 4,
-        min_listeners : 9,
     };
+    conf.node.min_listeners = 9;
     auto network = makeTestNetwork!TestAPIManager(conf);
 
     network.start();
@@ -72,8 +70,8 @@ unittest
     TestConf conf =
     {
         topology : NetworkTopology.MinimallyConnected,
-        min_listeners : 1
     };
+    conf.node.min_listeners = 1;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

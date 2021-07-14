@@ -795,7 +795,7 @@ public class TestAPIManager
 
     public TimePoint getBlockTimeOffset (Height height)
     {
-        return height * this.test_conf.block_interval_sec;
+        return height * this.test_conf.node.block_interval_sec;
     }
 
     /***************************************************************************
@@ -1867,7 +1867,34 @@ public enum NetworkTopology
     MinimallyConnected,
 }
 
-/// Node / Network / Quorum configuration for use with makeTestNetwork
+/*******************************************************************************
+
+    Network-wide configuration
+
+    This struct is provided as an argument to `makeTestNetwork` and holds
+    configuration members that affect the whole network.
+
+    Those members are either used as input to `makeTestNetwork` (e.g. the number
+    of nodes is specified by `full_nodes` / `outsider_validators`) or as a base
+    value for each node's configuration.
+
+    Note that configuration of base value should *not* be done using
+    struct literals, but with default initialization then assignment.
+    ---
+    unittest
+    {
+        // This is wrong, as it will use `NodeConfig`'s defaults,
+        // which are different from `TestConf`'s defaults
+        version (Wrong)
+            TestConf conf = { node: { min_listeners: 0 } };
+        // This is correct:
+        TestConf conf;
+        conf.node.max_listeners = 0;
+    }
+    ---
+
+*******************************************************************************/
+
 public struct TestConf
 {
     /// Network topology to use
@@ -1894,33 +1921,32 @@ public struct TestConf
     /// whether to set up the peers in the config
     bool configure_network = true;
 
-    /// the delay between request retries
-    Duration retry_delay = 500.msecs;
+    /// Base values to use for the node configuration
+    NodeConfig node = {
+        /// Minimum number of clients to connect to
+        /// Setting this to `size_t.max` makes it default to `nodes.length - 1`
+        min_listeners: size_t.max,
+        /// Maximum listener nodes
+        /// Setting this to `size_t.max` makes it default to the number of nodes
+        /// present in the network.
+        max_listeners: size_t.max,
 
-    /// minimum clients to connect to (defaults to nodes.length - 1)
-    size_t min_listeners;
+        // Catchup needs to happens much more frequently than in production
+        block_catchup_interval: 2.seconds,
 
-    /// max retries before a request is considered failed
-    size_t max_retries = 10;
+        // The default is much longer, but in unittests latency is negligible
+        retry_delay: 500.msecs,
+        max_retries: 10,
 
-    /// request timeout for each node
-    Duration timeout = 5.seconds;
+        // Always set to true, cannot be overriden, but also set here for clarity
+        testing: true,
+    };
 
     /// max failed requests before a node is banned
     size_t max_failed_requests = 100;
 
-    /// max listener nodes. If set to 0, set to this.nodes - 1
-    size_t max_listeners;
-
-    /// How often blocks should be created - in seconds
-    uint block_interval_sec = 600; // unit tests can set clock forward
-
     /// If the enrollments will be renewed or not at the end of the cycle
     bool recurring_enrollment = true;
-
-    /// The duration between requests for retrieving the latest blocks
-    /// from all other nodes
-    Duration block_catchup_interval = 2.seconds;
 
     /// The share that Validators would get out of the transction fees
     /// Out of 100
@@ -1932,23 +1958,6 @@ public struct TestConf
     /// The minimum (transaction size adjusted) fee.
     /// Transaction size adjusted fee = tx fee / tx size in bytes.
     public Amount min_fee = Amount(0);
-
-    /// The maximum number of transactions relayed in every batch.
-    /// Value 0 means no limit.
-    uint relay_tx_max_num = 0;
-
-    /// Transaction relay batch is triggered in every `relay_tx_interval`.
-    /// Value 0 means, the transaction will be relayed immediately.
-    Duration relay_tx_interval = 0.seconds;
-
-    /// The minimum amount of fee a transaction has to have to be relayed.
-    /// The fee is adjusted by the transaction size:
-    /// adjusted fee = fee / transaction size in bytes.
-    Amount relay_tx_min_fee = 0;
-
-    /// Transaction put into the relay queue will expire, and will be removed
-    /// after `relay_tx_cache_exp`.
-    Duration relay_tx_cache_exp = 60.minutes;
 }
 
 /*******************************************************************************
@@ -2013,24 +2022,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     NodeConfig makeNodeConfig ()
     {
-        NodeConfig conf =
-        {
-            retry_delay : test_conf.retry_delay,
-            max_retries : test_conf.max_retries,
-            timeout : test_conf.timeout,
-            block_interval_sec : test_conf.block_interval_sec,
-            min_listeners : test_conf.min_listeners == 0
-                ? (GenesisValidators + test_conf.full_nodes) - 1
-                : test_conf.min_listeners,
-            max_listeners : (test_conf.max_listeners == 0)
-                ? TotalNodes - 1 : test_conf.max_listeners,
-            block_catchup_interval : test_conf.block_catchup_interval,
-            relay_tx_max_num : test_conf.relay_tx_max_num,
-            relay_tx_interval : test_conf.relay_tx_interval,
-            relay_tx_min_fee : test_conf.relay_tx_min_fee,
-            relay_tx_cache_exp : test_conf.relay_tx_cache_exp,
-        };
-
+        NodeConfig conf = test_conf.node;
+        conf.testing = true;
+        if (conf.min_listeners == size_t.max)
+            conf.min_listeners = (GenesisValidators + test_conf.full_nodes) - 1;
+        if (conf.max_listeners == size_t.max)
+            conf.max_listeners = TotalNodes - 1;
         return conf;
     }
 
@@ -2145,9 +2142,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 addr => addr != full_node_addresses[index]).array));
 
     auto all_configs = validator_configs.chain(full_node_configs).array;
-
-    foreach (ref conf; all_configs)
-        conf.node.testing = true;
 
     immutable(Block)[] blocks = generateExtraBlocks(GenesisBlock,
         test_conf.extra_blocks);

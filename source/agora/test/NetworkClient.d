@@ -25,7 +25,7 @@ import core.thread;
 /// test retrying requests after failure
 unittest
 {
-    TestConf conf = TestConf.init;
+    TestConf conf;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -79,6 +79,6 @@ unittest
 
     // node 1 will keep trying to send transactions up to
     // max_retries * (retry_delay + timeout) seconds (see Base.d),
-    const delay = conf.max_retries * (conf.retry_delay + conf.timeout);
+    const delay = conf.node.max_retries * (conf.node.retry_delay + conf.node.timeout);
     network.expectHeight(Height(1), delay);
 }

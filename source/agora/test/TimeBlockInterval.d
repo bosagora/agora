@@ -26,7 +26,8 @@ import std.algorithm;
 ///
 unittest
 {
-    TestConf conf = { block_interval_sec : 10 };
+    TestConf conf;
+    conf.node.block_interval_sec = 10;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -43,5 +44,5 @@ unittest
             en.value.each!(tx => node_1.putTransaction(tx));
             network.expectHeightAndPreImg(Height(en.index + 1));
         });
-    assert(node_1.getNetworkTime() >= startTime + (4 * conf.block_interval_sec));
+    assert(node_1.getNetworkTime() >= startTime + (4 * conf.node.block_interval_sec));
 }

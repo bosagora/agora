@@ -31,10 +31,10 @@ import agora.utils.PrettyPrinter;
 unittest
 {
     TestConf conf = {
-        timeout : 10.seconds,
         outsider_validators : 3,
         recurring_enrollment : false
     };
+    conf.node.timeout = 10.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

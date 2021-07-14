@@ -28,10 +28,10 @@ unittest
     TestConf conf =
     {
         full_nodes : 1,
-        retry_delay : 10.msecs,
-        max_retries : 10,
-        max_failed_requests : 32
+        max_failed_requests : 32,
     };
+    conf.node.retry_delay = 10.msecs;
+    conf.node.max_retries = 10;
 
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
