@@ -291,17 +291,71 @@ public struct PreImageCycle
 
     public static immutable ulong NumberOfCycles = 100;
 
-    /// Construct an instance with the provided cycle length and number of cycles
+    /***************************************************************************
+
+        Construct an instance based on a secret
+
+        The secret will be hashed in a predictable manner, and this will give
+        the 'seed' hash, which will correspond to the last pre-image the node
+        will be able to reveal (at height `cycles * cycle_length`).
+
+        This overload is provided for convenience. To have more control over
+        the pre-image, see the overload accepting a Hash.
+
+        Params:
+          secret = The secret to use to generate the pre-image
+          cycle_length = The length of a cycle
+          cycles = Number of cycles to generate (defaults to 100)
+          initial_seek = The value to seek at after generating the seeds
+
+    ***************************************************************************/
+
     public this (in Scalar secret, in uint cycle_length, in ulong cycles = PreImageCycle.NumberOfCycles,
-        Height initial_seek = Height(0))
+        in Height initial_seek = Height(0))
+    {
+        // Using this predictable scheme ensures that the pre-image can
+        // be recovered in case of a crash or if another node takes over
+        // (e.g. disk failure from a server leads to a backup server starting
+        // with no state or way to recover it).
+        const cycle_seed = hashMulti(secret, "consensus.preimages", 0);
+        this(cycle_seed, cycles, cycle_length, initial_seek);
+    }
+
+    /***************************************************************************
+
+        Construct an instance based on a pre-image at a given height
+
+        Assumes that the hash `from` is the hash to be used at height `at`,
+        and populate this `PreImageCycle` accordingly.
+
+        Params:
+          from = The seed used for the pre-images, which is the last value
+                 the node can reveal
+          at = The height matching `from`
+          cycle_length = The length of a cycle
+          initial_seek = The value to seek at after generating the seeds
+
+    ***************************************************************************/
+
+    public this (in Hash from, in Height at, in uint cycle_length,
+                 in Height initial_seek = Height(0))
+    {
+        // Make sure that what we got falls on the boundary of a seed
+        assert((at % cycle_length) == 0,
+               "Cannot create a `PreImageCycle` at this height");
+        const cycles = at / cycle_length;
+        this(from, cycles, cycle_length, initial_seek);
+    }
+
+    /// Common implementation for public overloads
+    private this (in Hash seed, in ulong cycles, in uint cycle_length,
+                  in Height initial_seek)
     {
         this.cycles = cycles;
         this.seeds = PreImageCache(cycles, cycle_length);
         this.preimages = PreImageCache(cycle_length, 1);
-
+        this.seeds.reset(seed);
         this.index = uint.max; // Invalid value to force reset
-        const cycle_seed = hashMulti(secret, "consensus.preimages", 0);
-        this.seeds.reset(cycle_seed);
         this.seek(initial_seek);
     }
 
