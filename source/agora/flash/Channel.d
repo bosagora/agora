@@ -1627,29 +1627,29 @@ LOuter: while (1)
         {
             if (tx.hashFull() == this.conf.funding_tx_hash)
             {
-                log.info("{}: Funding tx externalized({})",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify);
+                log.info("{}: Funding tx externalized({}) on height {}",
+                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onFundingTxExternalized(tx);
             }
             else
             if (this.isClosingTx(tx))
             {
-                log.info("{}: Close tx externalized({})",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify);
+                log.info("{}: Close tx externalized({}) on height {}",
+                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onCloseTxExternalized(tx);
             }
             else
             if (this.isUpdateTx(tx))
             {
-                log.info("{}: Update tx externalized({})",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify);
+                log.info("{}: Update tx externalized({}) on height {}",
+                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onUpdateTxExternalized(tx);
             }
             else
             if (this.isSettleTx(tx))
             {
-                log.info("{}: Settle tx externalized({})",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify);
+                log.info("{}: Settle tx externalized({}) on height {}",
+                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onSettleTxExternalized(tx);
             }
         }
