@@ -1166,8 +1166,9 @@ public class TestAPIManager
                 this.clients[idx].getBlocksFrom(h, 1)).uniq().count() == 1, 5.seconds,
                 format!"[%s:%s] Clients %s blocks are not all the same for block %s: %s"
                 (file, line, client_idxs, h, client_idxs.fold!((s, i) =>
-                    s ~ format!"\n\n========== Client #%s ==========%s"
-                        (i, prettify(this.clients[i].getBlocksFrom(h, 1))))(""))));
+                    s ~ format!"\n\n========== Client #%s (%s) ==========%s"
+                        (i, this.nodes[i].address,
+                        prettify(this.clients[i].getBlocksFrom(h, 1))))(""))));
     }
 }
 
