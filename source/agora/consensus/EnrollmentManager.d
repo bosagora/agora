@@ -179,10 +179,15 @@ public class EnrollmentManager
         this.params = params;
         this.key_pair = key_pair;
 
-        if (cycle == PreImageCycle.init)
-            this.cycle = PreImageCycle(key_pair.secret, params.ValidatorCycle);
+        if (key_pair != KeyPair.init)
+        {
+            if (cycle == PreImageCycle.init)
+                this.cycle = PreImageCycle(key_pair.secret, params.ValidatorCycle);
+            else
+                this.cycle = cycle;
+        }
         else
-            this.cycle = cycle;
+            this.cycle = PreImageCycle.init;
 
         this.db = stateDB;
         this.validator_set = new ValidatorSet(stateDB, params);

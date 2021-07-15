@@ -42,6 +42,7 @@ import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
+import agora.consensus.PreImage;
 import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
@@ -1586,8 +1587,7 @@ private mixin template TestNodeMixin ()
     /// Return an enrollment manager backed by an in-memory SQLite db
     protected override EnrollmentManager makeEnrollmentManager ()
     {
-        return new EnrollmentManager(this.stateDB, this.cacheDB,
-            this.config.validator.key_pair, this.params);
+        return super.makeEnrollmentManager();
     }
 
     /// Get the active validator count for the current block height
@@ -2068,6 +2068,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     Config makeValidatorConfig (size_t idx, KeyPair key_pair,
         Address self_address, Address[] addresses)
     {
+        Hash cycle_seed;
+        Height cycle_seed_height;
+        getCycleSeed(key_pair, GenesisValidatorCycle, cycle_seed, cycle_seed_height);
+        assert(cycle_seed != Hash.init);
+        assert(cycle_seed_height != Height(0));
         const ValidatorConfig validator = {
             enabled : true,
             key_pair : key_pair,
@@ -2077,6 +2082,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
             nomination_interval: 100.msecs,
             preimage_catchup_interval: test_conf.preimage_catchup_interval,
+            cycle_seed : cycle_seed,
+            cycle_seed_height : cycle_seed_height,
         };
 
         Config conf =
