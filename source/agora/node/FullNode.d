@@ -845,8 +845,18 @@ public class FullNode : API
 
     protected EnrollmentManager makeEnrollmentManager ()
     {
-        return new EnrollmentManager(this.stateDB, this.cacheDB,
-            this.config.validator.key_pair, this.params);
+        import agora.consensus.PreImage;
+        if (this.config.validator.cycle_seed != Hash.init)
+        {
+            auto cycle = PreImageCycle(this.config.validator.cycle_seed,
+                this.config.validator.cycle_seed_height,
+                this.params.ValidatorCycle);
+            return new EnrollmentManager(this.stateDB, this.cacheDB,
+                this.config.validator.key_pair, this.params, cycle);
+        }
+        else
+            return new EnrollmentManager(this.stateDB, this.cacheDB,
+                this.config.validator.key_pair, this.params);
     }
 
     /*+*************************************************************************

@@ -244,6 +244,12 @@ public struct ValidatorConfig
     /// The seed to use for the keypair of this node
     public immutable KeyPair key_pair;
 
+    /// The seed of PreImageCycle which is not parsed from the configuraton file
+    public Hash cycle_seed;
+
+    /// The height of the seed of PreImageCycle which is not parsed from the configuraton file
+    public Height cycle_seed_height;
+
     // Network addresses that will be registered with the public key (Validator only)
     public immutable string[] addresses_to_register;
 
