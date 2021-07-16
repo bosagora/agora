@@ -539,8 +539,7 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Function that is overriden in Validator to enable block signing during
-            periodic catchup.
+        Add block to ledger and remove expired validators from network whitelist
 
         Params:
             block = block to be added to the Ledger
