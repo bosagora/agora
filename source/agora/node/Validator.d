@@ -304,7 +304,7 @@ public class Validator : FullNode, API
             return false;
 
         auto signed_validators = BitMask(block.header.validators.count);
-        signed_validators |= block.header.validators;
+        signed_validators.copyFrom(block.header.validators);
 
         auto node_validator_index = this.nominator.enroll_man
             .getIndexOfValidator(block.header.height, this.config.validator.key_pair.address);

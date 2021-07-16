@@ -77,12 +77,11 @@ public struct BitMask
         this.bytes[] = bytes;
     }
 
-    // set the bits that are set in given BitMask
-    public auto opOpAssign (string op : "|") (in BitMask add)
+    // copy bits set from given BitMask bytes
+    public void copyFrom (in BitMask rhs)
     {
-        assert(this.length == add.length, "BitMask assignment must be for same bit length");
-        this.bytes[] |= add.bytes[];
-        return this;
+        assert(this.length == rhs.length);
+        this.bytes[] = rhs.bytes;
     }
 
     /// return the indices of bits set
@@ -156,6 +155,16 @@ unittest
     assert(bitmask[1]);
 }
 
+unittest
+{
+    auto bitmask = BitMask.fromString("01011");
+    const bitmask2 = bitmask;
+    assert(bitmask2 == bitmask);
+    // Now update to new BitMask value
+    bitmask = BitMask.fromString("10001");
+    assert(bitmask == BitMask.fromString("10001"));
+}
+
 /// More set than unset
 unittest
 {
@@ -171,8 +180,8 @@ unittest
     auto bitmask = BitMask.fromString("111011111");
     assert(bitmask.length == 9);
     assert(bitmask.toString == "111011111");
-    auto bitmask_copy = BitMask(9);
-    bitmask_copy |= bitmask;
+    auto bitmask_copy = BitMask.fromString("001011101");
+    bitmask_copy = bitmask;
     assert(!bitmask_copy[3]);
     only(0,1,2,4,5).each!(i => assert(bitmask_copy[i]));
 }

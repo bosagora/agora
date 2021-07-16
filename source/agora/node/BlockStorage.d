@@ -971,7 +971,7 @@ public class MemBlockStorage : IBlockStorage
             throw new Exception("Number of validators doesn't match while updating signatures");
 
         block.header.signature = sig;
-        block.header.validators |= validators;
+        block.header.validators.copyFrom(validators);
 
         this.blocks[height.value] = serializeFull(block);
     }
