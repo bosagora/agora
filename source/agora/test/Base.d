@@ -848,7 +848,7 @@ public class TestAPIManager
 
         foreach (ref interf; conf.interfaces)
         {
-            this.reg.register(interf.address, api.listener());
+            assert(this.reg.register(interf.address, api.listener()));
             this.nodes ~= NodePair(interf.address, api, time, api);
         }
         return api;
@@ -899,9 +899,6 @@ public class TestAPIManager
 
     public void shutdown (bool printLogs = false)
     {
-        foreach (node; this.nodes)
-            enforce(this.reg.unregister(node.address));
-
         /// Private functions used for `shutdown`
         static void shutdownWithLogs (Object node)
         {
@@ -920,6 +917,8 @@ public class TestAPIManager
             node.client = null;
         }
 
+        foreach (node; this.nodes)
+            enforce(this.reg.unregister(node.address));
         this.nodes = null;
 
         scope name_registry = new RemoteAPI!NameRegistryAPI(
