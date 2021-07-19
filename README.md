@@ -79,7 +79,7 @@ At the moment, the three main ways to run the test are:
 
 The code is divided into multiple parts:
 - The "main" source code lives in [source/agora](source/agora/). Consensus rules and node implementation lives there;
-- The extracted SCP code lives in [source/scpp](source/scpp/). See the [README](source/scpp/README.md) for mode information;
+- The extracted SCP code lives in [source/scpp](source/scpp/). See the [README](source/scpp/README.md) for more information;
 - Our Dlang binding for SCP's C++ implementation lives in [source/scpd](source/scpd/), along with some C++ helpers;
 - The setup interface, Talos, is a React app living in [the talos directory](talos);
 
@@ -90,7 +90,7 @@ The directory `source/agora/` is the root package. Sub-packages include:
 - `agora.consensus`: Implements Agora's consensus protocol, can be used as a standalone library;
 - `agora.crypto`: Contains cryptographic utilities, such as the key type;
 - `agora.flash`: Implementation of the Flash layer;
-- `agora.network`: Manage a node's view of the network;
+- `agora.network`: Manages a node's view of the network;
 - `agora.node`: Implementation of the two main types of nodes (Full node and Validator) and related modules;
 - `agora.script`: Implementation of the script engine;
 - `agora.stats`: Holds helper modules for statistics exported by Agora and other tools;
@@ -98,7 +98,7 @@ The directory `source/agora/` is the root package. Sub-packages include:
 - `agora.utils`: Contains utilities that don't fit in other packages, such as a custom tracing GC, Tracy integration, `TxBuilder`...
 
 Additionally, Agora's dependencies live in [`submodules`](submodules/) and are managed via `git submodule`.
-Of those submodules, are few are internally managed libraries (`crypto`, `serialization`, ...), and some may be forks
+Of those submodules, few are internally managed libraries (`crypto`, `serialization`, ...), and some may be forks
 of externally managed libraries (either because the library is unmaintained or because specific tweaks were needed).
 A [README](submodules/README.md) provides more details.
 
