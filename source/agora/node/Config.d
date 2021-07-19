@@ -19,18 +19,19 @@ import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.Config;
 import agora.common.ConfigAttributes;
+import agora.common.Ensure;
 import agora.common.Types;
 import agora.consensus.data.Params;
 import agora.crypto.Key;
 import agora.flash.Config;
 import agora.utils.Log;
-import agora.registry.Config;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
 
 import vibe.inet.url;
 
+import std.algorithm.iteration : splitter;
 import std.exception;
 import std.getopt;
 import std.traits : hasUnsharedAliasing;
@@ -389,7 +390,79 @@ public GetoptResult parseCommandLine (ref AgoraCLIArgs cmdline, string[] args)
         );
 }
 
+/// Configuration for the name registry
+public struct RegistryConfig
+{
+    /// If this node should also act as a registry
+    public bool enabled;
+
+    /// DNS server configuration
+    public DNSConfig dns;
+
+    /// Validate the semantic of the user-provided configuration
+    public void validate () const
+    {
+        if (this.dns.enabled)
+        {
+            ensure(this.dns.address.length > 0, "DNS is enabled but no `address` is provided");
+            ensure(this.dns.port > 0, "dns.port: 0 is not a valid value");
+            ensure(this.dns.authoritative.length > 0, "No authoritative zones provided");
+
+            foreach (idx, domain; this.dns.authoritative)
+            {
+                auto rng = domain.splitter('.');
+                ensure(!rng.empty, "dns.authoritative: Empty array entry at index {}", idx);
+                ensure(rng.front.length > 0,
+                       "dns.authoritative: Value '{}' at index '{}' starts with a dot ('.')," ~
+                       " which is not allowed. Remove it.", domain, idx);
+
+                do {
+                    // It might be the empty label, in which case it needs to be last
+                    if (rng.front.length == 0)
+                    {
+                        rng.popFront();
+                        ensure(rng.empty,
+                               "dns.authoritative: Value '{}' at index '{}' contains" ~
+                               " an empty label, which is not allowed. Remove the double dot.",
+                               domain, idx);
+                        break;
+                    }
+                    ensure(rng.front.length <= 63,
+                           "dns.authoritative: Value '{}' at index '{}' contains a label ('{}') " ~
+                           "which is longer than 63 characters ({} characters), which is not allowed.",
+                           domain, idx, rng.front, rng.front.length);
+                    rng.popFront();
+                } while (!rng.empty);
+            }
+        }
+    }
+}
+
 ///
+public struct DNSConfig
+{
+    /// Whether the DNS server is enabled at all
+    public bool enabled = true;
+
+    /***************************************************************************
+
+        The address to bind to - All interfaces by default
+
+        You might want to set this to your public IP address so it doesn't bind
+        to the local interface, which might be already used by systemd-resolvd.
+
+    ***************************************************************************/
+
+    public string address = "0.0.0.0";
+
+    /// The port to bind to - Default to the standard DNS port (53)
+    public ushort port = 53;
+
+    /// Which zones this server is authoritative for
+    public immutable(string[]) authoritative;
+}
+
+//
 unittest
 {
     assertThrown!Exception(parseConfigString!Config("", "/dev/null"));

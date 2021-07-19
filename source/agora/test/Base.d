@@ -23,6 +23,7 @@ module agora.test.Base;
 version (unittest):
 
 import agora.api.FullNode : NodeInfo, NetworkState;
+import agora.api.Registry;
 import agora.api.Validator : ValidatorAPI = API, Identity;
 import agora.common.Amount;
 import agora.common.BanManager;
@@ -41,6 +42,7 @@ import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
+import agora.consensus.Ledger;
 import agora.consensus.pool.Transaction;
 import agora.consensus.PreImage;
 import agora.consensus.protocol.Data;
@@ -55,11 +57,9 @@ import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Config;
 import agora.node.FullNode;
-import agora.consensus.Ledger;
+import agora.node.Registry;
 import agora.node.TransactionRelayer;
 import agora.node.Validator;
-import agora.registry.API;
-import agora.registry.Server;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
@@ -851,8 +851,6 @@ public class TestAPIManager
 
     private static class TestNameRegistry : NameRegistry
     {
-        import agora.registry.Config;
-
         public this (RegistryConfig config, string agora_addr, Duration timeout, Registry!TestAPI* reg)
         {
             auto listener = reg.locate(agora_addr);
@@ -869,9 +867,8 @@ public class TestAPIManager
 
     public void createNameRegistry ()
     {
-        static import agora.registry.Config;
         auto registry = RemoteAPI!NameRegistryAPI.spawn!TestNameRegistry(
-            agora.registry.Config.RegistryConfig.init, this.nodes[0].address, 5.seconds, &this.reg);
+            RegistryConfig.init, this.nodes[0].address, 5.seconds, &this.reg);
         this.nreg.register("name.registry", registry.ctrl.listener());
     }
 

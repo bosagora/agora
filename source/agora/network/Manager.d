@@ -22,8 +22,9 @@
 
 module agora.network.Manager;
 
-import agora.api.Validator;
 import agora.api.Handlers;
+import agora.api.Registry;
+import agora.api.Validator;
 import agora.common.BanManager;
 import agora.common.Types;
 import agora.common.Metadata;
@@ -40,7 +41,6 @@ import agora.network.Clock;
 import agora.network.Client;
 import agora.node.Config;
 import agora.consensus.Ledger;
-import agora.registry.API;
 import agora.utils.InetUtils;
 import agora.utils.Log;
 import agora.utils.Utility;

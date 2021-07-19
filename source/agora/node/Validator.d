@@ -38,7 +38,6 @@ import agora.node.BlockStorage;
 import agora.node.Config;
 import agora.node.FullNode;
 import agora.consensus.Ledger;
-import agora.registry.API;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 

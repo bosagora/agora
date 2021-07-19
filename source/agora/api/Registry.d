@@ -11,7 +11,7 @@
 
 *******************************************************************************/
 
-module agora.registry.API;
+module agora.api.Registry;
 
 import agora.common.Types;
 import agora.crypto.Hash;
