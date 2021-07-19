@@ -21,7 +21,6 @@
 module agora.node.Ledger;
 
 import agora.common.Amount;
-import agora.common.BitMask;
 import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
