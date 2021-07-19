@@ -14,6 +14,7 @@
 module agora.node.Runner;
 
 import agora.api.FullNode;
+import agora.api.Registry;
 import agora.api.Validator;
 import agora.common.DNS;
 import agora.common.Task : Periodic;
@@ -22,12 +23,10 @@ import agora.flash.Node;
 import agora.node.admin.AdminInterface;
 import agora.node.Config;
 import agora.node.FullNode;
+import agora.node.Registry;
 import agora.node.Validator;
 import agora.serialization.Serializer;
 import agora.utils.Log;
-
-import agora.registry.Config;
-import agora.registry.Server;
 
 import ocean.util.log.ILogger;
 
@@ -129,7 +128,6 @@ public Listeners runNode (Config config)
 
     if (config.registry.enabled)
     {
-        import agora.registry.API;
         result.registry = new NameRegistry(config.registry, result.node);
         router.registerRestInterface!(NameRegistryAPI)(result.registry);
         if (config.registry.dns.enabled)

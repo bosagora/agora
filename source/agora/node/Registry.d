@@ -11,17 +11,17 @@
 
 *******************************************************************************/
 
-module agora.registry.Server;
+module agora.node.Registry;
 
 import agora.api.FullNode : FullNodeAPI = API;
+import agora.api.Registry;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.Types;
 import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Hash;
 import agora.crypto.Key;
-import agora.registry.API;
-import agora.registry.Config;
+import agora.node.Config;
 import agora.serialization.Serializer;
 import agora.stats.Registry;
 import agora.stats.Utils;

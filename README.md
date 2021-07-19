@@ -92,7 +92,6 @@ The directory `source/agora/` is the root package. Sub-packages include:
 - `agora.flash`: Implementation of the Flash layer;
 - `agora.network`: Manage a node's view of the network;
 - `agora.node`: Implementation of the two main types of nodes (Full node and Validator) and related modules;
-- `agora.registry`: The name registry used by Agora nodes to associate an UTXO with an IP address;
 - `agora.script`: Implementation of the script engine;
 - `agora.stats`: Holds helper modules for statistics exported by Agora and other tools;
 - `agora.test`: Contains network tests for the consensus protocol. See [the README](source/agora/README.md) for more details;

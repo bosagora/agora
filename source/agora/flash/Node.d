@@ -14,6 +14,7 @@
 module agora.flash.Node;
 
 import agora.api.FullNode : FullNodeAPI = API;
+import agora.api.Registry;
 import agora.common.Amount;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
@@ -42,7 +43,6 @@ import agora.flash.Types;
 import agora.network.Manager;
 import agora.script.Engine;
 import agora.script.Signature;
-import agora.registry.API;
 import agora.serialization.Serializer;
 import agora.utils.InetUtils;
 import agora.utils.Log;
