@@ -75,6 +75,34 @@ At the moment, the three main ways to run the test are:
 - `rdmd tests/runner.d`: Run a serie of simple integrations tests
 - `ci/system_integration_test.d`: Run a full-fledged system integration test, including building the docker image.
 
+## Source code organization
+
+The code is divided into multiple parts:
+- The "main" source code lives in [source/agora](source/agora/). Consensus rules and node implementation lives there;
+- The extracted SCP code lives in [source/scpp](source/scpp/). See the [README](source/scpp/README.md) for mode information;
+- Our Dlang binding for SCP's C++ implementation lives in [source/scpd](source/scpd/), along with some C++ helpers;
+- The setup interface, Talos, is a React app living in [the talos directory](talos);
+
+The directory `source/agora/` is the root package. Sub-packages include:
+- `agora.api`: Defines interfaces that describe the APIs exposed by different types of nodes (FullNode, Validator, Flash...);
+- `agora.cli`: Contains various CLI tools used by Agora (see the [`dub.json`](dub.json) sub-configuration to build them);
+- `agora.common`: A leaf package that contains various general-purpose utilities which aren't Agora specific;
+- `agora.consensus`: Implements Agora's consensus protocol, can be used as a standalone library;
+- `agora.crypto`: Contains cryptographic utilities, such as the key type;
+- `agora.flash`: Implementation of the Flash layer;
+- `agora.network`: Manage a node's view of the network;
+- `agora.node`: Implementation of the two main types of nodes (Full node and Validator) and related modules;
+- `agora.registry`: The name registry used by Agora nodes to associate an UTXO with an IP address;
+- `agora.script`: Implementation of the script engine;
+- `agora.stats`: Holds helper modules for statistics exported by Agora and other tools;
+- `agora.test`: Contains network tests for the consensus protocol. See [the README](source/agora/README.md) for more details;
+- `agora.utils`: Contains utilities that don't fit in other packages, such as a custom tracing GC, Tracy integration, `TxBuilder`...
+
+Additionally, Agora's dependencies live in [`submodules`](submodules/) and are managed via `git submodule`.
+Of those submodules, are few are internally managed libraries (`crypto`, `serialization`, ...), and some may be forks
+of externally managed libraries (either because the library is unmaintained or because specific tweaks were needed).
+A [README](submodules/README.md) provides more details.
+
 ## Running single test node using TESTNET GenesisBlock
 - `rm -rfv .single && dub run -- -c devel/config-single.yaml` : Run a single node for testing purposes
 
