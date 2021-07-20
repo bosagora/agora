@@ -137,7 +137,7 @@ public extern (C++) class Nominator : SCPDriver
         @safe onInvalidNomination;
 
     /// Delegate called when a block is to be externalized
-    public extern (D) bool delegate (const ref Block) @safe acceptBlock;
+    public extern (D) string delegate (const ref Block) @safe acceptBlock;
 
     /// Nomination start time
     protected TimePoint nomination_start_time;
@@ -175,7 +175,7 @@ extern(D):
         Clock clock, NetworkManager network, ValidatingLedger ledger,
         EnrollmentManager enroll_man, ITaskManager taskman, ManagedDatabase cacheDB,
         Duration nomination_interval,
-        bool delegate (const ref Block) @safe externalize)
+        string delegate (const ref Block) @safe externalize)
     {
         assert(externalize !is null);
 
@@ -1014,11 +1014,10 @@ extern(D):
         // which applies when a block is externalize (for example if the quorum
         // config changes or the list of validators change,
         // new network connections might need to be established).
-        if (!this.acceptBlock(signed_block))
+        if (auto fail_msg = this.acceptBlock(signed_block))
         {
-            auto msg = this.ledger.validateBlock(signed_block);
-            log.error("Block was not accepted by node {}: {}", this.kp.address, msg);
-            assert(0, "Block was not accepted: " ~ msg);
+            log.error("Block was not accepted by node {}: {}", this.kp.address, fail_msg);
+            assert(0, "Block was not accepted: " ~ fail_msg);
         }
     }
 
