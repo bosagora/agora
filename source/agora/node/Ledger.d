@@ -240,10 +240,9 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptBlock (in Block block,
-        string file = __FILE__, size_t line = __LINE__) @safe
+    public bool acceptBlock (in Block block) @safe
     {
-        if (auto fail_reason = this.validateBlock(block, file, line))
+        if (auto fail_reason = this.validateBlock(block))
         {
             log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
             return false;
@@ -749,8 +748,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string validateBlock (in Block block,
-        string file = __FILE__, size_t line = __LINE__) nothrow @safe
+    public string validateBlock (in Block block) nothrow @safe
     {
         // If it's the genesis block, we only need to validate it for syntactic
         // correctness, no need to check signatures.
@@ -1549,9 +1547,7 @@ public class ValidatingLedger : Ledger
 
     version (unittest):
 
-    private bool externalize (ConsensusData data,
-        string file = __FILE__, size_t line = __LINE__)
-        @trusted
+    private bool externalize (ConsensusData data) @trusted
     {
         import agora.utils.Test : WK;
 
@@ -1570,12 +1566,11 @@ public class ValidatingLedger : Ledger
         const block = makeNewTestBlock(this.last_block,
             externalized_tx_set, key_pairs,
             data.enrolls, data.missing_validators, data.time_offset);
-        return this.acceptBlock(block, file, line);
+        return this.acceptBlock(block);
     }
 
     /// simulate block creation as if a nomination and externalize round completed
-    private void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock,
-        string file = __FILE__, size_t line = __LINE__)
+    private void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock)
     {
         const next_block = this.getBlockHeight() + 1;
         this.simulatePreimages(next_block);
@@ -1609,7 +1604,7 @@ public class ValidatingLedger : Ledger
             else
                 assert(0, "Need a MockClock or time handled correctly to call forceCreateBlock");
         }
-        if (!this.externalize(data, file, line))
+        if (!this.externalize(data))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized!"(
                        this.getBlockHeight() + 1));
@@ -1618,8 +1613,7 @@ public class ValidatingLedger : Ledger
 
     /// Generate a new block by creating transactions, then calling `forceCreateBlock`
     private Transaction[] makeTestBlock (
-        Transaction[] last_txs, ulong txs = Block.TxsInTestBlock,
-        string file = __FILE__, size_t line = __LINE__)
+        Transaction[] last_txs, ulong txs = Block.TxsInTestBlock)
     {
         assert(txs > 0);
 
@@ -1632,13 +1626,13 @@ public class ValidatingLedger : Ledger
                 .map!(en => en.value.refund(WK.Keys.A.address).sign())
                 .array();
             last_txs.each!(tx => this.acceptTransaction(tx));
-            this.forceCreateBlock(txs, file, line);
+            this.forceCreateBlock(txs);
             return last_txs;
         }
 
         last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
         last_txs.each!(tx => assert(this.acceptTransaction(tx)));
-        this.forceCreateBlock(txs, file, line);
+        this.forceCreateBlock(txs);
         return last_txs;
     }
 }
@@ -2127,12 +2121,11 @@ unittest
             .array;
     }
 
-    Transaction[] genGeneralBlock (Transaction[] txs,
-        string file = __FILE__, size_t line = __LINE__)
+    Transaction[] genGeneralBlock (Transaction[] txs)
     {
         auto new_txs = genTransactions(txs);
         new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
-        ledger.forceCreateBlock(Block.TxsInTestBlock, file, line);
+        ledger.forceCreateBlock(Block.TxsInTestBlock);
         return new_txs;
     }
 
