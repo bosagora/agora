@@ -265,11 +265,7 @@ public class FullNode : API
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
         this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
-        if (!config.validator.enabled)
-            this.ledger = new Ledger(params, this.engine, this.utxo_set,
-                this.storage, this.enroll_man, this.pool, this.fee_man, this.clock,
-                config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
-
+        this.ledger = this.makeLedger();
         // If we have handlers defined in the config
         if (config.event_handlers.length > 0)
         {
@@ -854,6 +850,25 @@ public class FullNode : API
     {
         return new EnrollmentManager(this.stateDB, this.cacheDB,
             this.config.validator.key_pair, this.params);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a Ledger to be used for a `Fullnode`.
+
+        It is overridden in `Validator` and also Test-suites can inject
+        different behaviour to enable testing.
+
+        Returns:
+            An instance of a `Ledger`
+
+    ***************************************************************************/
+
+    protected Ledger makeLedger ()
+    {
+        return new Ledger(params, this.engine, this.utxo_set, this.storage,
+            this.enroll_man, this.pool, this.fee_man, this.clock,
+            config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
     }
 
     /*+*************************************************************************
