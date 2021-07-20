@@ -714,18 +714,15 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void waitForPreimages (const(Enrollment)[] enrolls, Height height,
-        Duration timeout = 10.seconds,
-        string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds)
     {
-        this.waitForPreimages(iota(GenesisValidators), enrolls, height,
-            timeout, file, line);
+        this.waitForPreimages(iota(GenesisValidators), enrolls, height, timeout);
     }
 
     /// Ditto
     public void waitForPreimages (Idxs)(Idxs clients_idxs,
         const(Enrollment)[] enrolls, Height height,
-        Duration timeout = 10.seconds,
-        string file = __FILE__, int line = __LINE__)
+        Duration timeout = 10.seconds)
     {
         static assert (isInputRange!Idxs);
         import std.algorithm.searching : any;
