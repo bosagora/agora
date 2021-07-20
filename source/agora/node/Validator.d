@@ -293,7 +293,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override bool acceptBlock (const ref Block block) @trusted
+    protected override string acceptBlock (const ref Block block) @trusted
     {
         import agora.common.BitMask;
         import agora.crypto.Schnorr;
@@ -301,8 +301,8 @@ public class Validator : FullNode, API
         import std.range;
         import std.format;
 
-        if (!super.acceptBlock(block))
-            return false;
+        if (auto fail_msg = super.acceptBlock(block))
+            return fail_msg;
 
         auto signed_validators = BitMask(block.header.validators.count);
         signed_validators.copyFrom(block.header.validators);
@@ -315,7 +315,8 @@ public class Validator : FullNode, API
         {
             log.trace("This validator {} was not active at height {}",
                 this.config.validator.key_pair.address, block.header.height);
-            return true;
+            return format!"Validator %s was not active at height %s"
+                (this.config.validator.key_pair.address, block.header.height);
         }
 
         auto sig = this.nominator.createBlockSignature(block);
@@ -339,7 +340,7 @@ public class Validator : FullNode, API
                 multiSigCombine([ block.header.signature, sig ]), signed_validators);
             this.ledger.updateBlockMultiSig(signed_block.header);
         }
-        return true;
+        return null;
     }
 
     /***************************************************************************

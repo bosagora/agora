@@ -531,8 +531,11 @@ public class FullNode : API
             // so just skip older heights
             if (block.header.height <= this.ledger.getBlockHeight())
                 continue;
-            else if (!this.ledger.acceptBlock(block))
+            else if (auto fail_msg = this.ledger.acceptBlock(block))
+            {
+                log.trace("addBlocks failed during periodic catchup: {}", fail_msg);
                 break;
+            }
             this.recordBlockStats(block);
         }
         return this.ledger.getBlockHeight();
@@ -548,20 +551,24 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected bool acceptBlock (const ref Block block) @trusted
+    protected string acceptBlock (const ref Block block) @trusted
     {
         ExpiringValidator[] ex_validators;
         this.enroll_man.getExpiringValidators(block.header.height, ex_validators);
         // Attempt to add block to the ledger (it may be there by other means)
-        if (this.ledger.acceptBlock(block))
+        auto fail_msg = this.ledger.acceptBlock(block);
+        if (!fail_msg)
         {
             this.recordBlockStats(block);
             ex_validators.each!(ex => this.network.unwhitelist(ex.utxo));
             this.ledger.getValidators(block.header.height)
                 .each!(validator => this.network.whitelist(validator.utxo));
+            // We return if height in ledger is reached for this block to prevent fetching again
+            return this.ledger.getBlockHeight() >= block.header.height ? null
+                : format!"Ledger is already at height %s"(block.header.height);
         }
-        // We return if height in ledger is reached for this block to prevent fetching again
-        return this.ledger.getBlockHeight() >= block.header.height;
+        else
+            return fail_msg;
     }
 
     /***************************************************************************

@@ -240,12 +240,12 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptBlock (in Block block) @safe
+    public string acceptBlock (in Block block) @safe
     {
         if (auto fail_reason = this.validateBlock(block))
         {
             log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
-            return false;
+            return fail_reason;
         }
 
         const old_count = this.enroll_man.validator_set.countActive(block.header.height);
@@ -260,7 +260,7 @@ public class Ledger
         if (this.onAcceptedBlock !is null)
             this.onAcceptedBlock(block, validators_changed);
 
-        return true;
+        return null;
     }
 
     /***************************************************************************
@@ -1566,7 +1566,8 @@ public class ValidatingLedger : Ledger
         const block = makeNewTestBlock(this.last_block,
             externalized_tx_set, key_pairs,
             data.enrolls, data.missing_validators, data.time_offset);
-        return this.acceptBlock(block);
+        auto fail_reason = this.acceptBlock(block);
+        return !fail_reason;
     }
 
     /// simulate block creation as if a nomination and externalize round completed
@@ -1767,12 +1768,12 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0]);
 
     Block invalid_block;  // default-initialized should be invalid
-    assert(!ledger.acceptBlock(invalid_block));
+    assert(ledger.acceptBlock(invalid_block));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     const block = makeNewTestBlock(ledger.params.Genesis, txs);
     ledger.simulatePreimages(ledger.getBlockHeight() + 1);
-    assert(ledger.acceptBlock(block));
+    assert(!ledger.acceptBlock(block));
 }
 
 /// Situation: Ledger is constructed with blocks present in storage
