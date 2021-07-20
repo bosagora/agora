@@ -617,7 +617,7 @@ extern(D):
             return;
         }
 
-        log.trace("Received signed envelope: {}", scpPrettify(&envelope));
+        log.trace("Received signed envelope: {}", scpPrettify(&envelope, &this.getQSet));
         // we check confirmed statements before validating with
         // 'scp.receiveEnvelope()'
         // There are two reasons why:
@@ -645,7 +645,7 @@ extern(D):
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set))
             {
                 log.info("Missing TXs while checking envelope signature : {}",
-                    scpPrettify(&envelope));
+                    scpPrettify(&envelope, &this.getQSet));
                 return; // We dont have all the TXs for this block. Try to catchup
             }
         }
@@ -664,7 +664,7 @@ extern(D):
 
         auto shared_env = this.wrapEnvelope(envelope);
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
-            log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope));
+            log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope, &this.getQSet));
     }
 
     /***************************************************************************
@@ -772,7 +772,7 @@ extern(D):
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         envelope.signature = this.kp.sign(challenge).toBlob();
         log.trace("SIGN Envelope signature {}: {}", envelope.signature,
-                  scpPrettify(&envelope));
+                  scpPrettify(&envelope, &this.getQSet));
     }
 
     /***************************************************************************
@@ -811,7 +811,7 @@ extern(D):
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
             {
                 log.info("Missing TXs while signing confirm ballot {}",
-                    scpPrettify(&envelope));
+                    scpPrettify(&envelope, &this.getQSet));
                 return;
             }
         }
@@ -1081,7 +1081,7 @@ extern(D):
     public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
         SCPEnvelope env = cast()envelope;
-        log.trace("Emitting envelope: {}", scpPrettify(&envelope));
+        log.trace("Emitting envelope: {}", scpPrettify(&envelope, &this.getQSet));
 
         try
         {

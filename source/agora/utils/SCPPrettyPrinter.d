@@ -92,7 +92,7 @@ public struct SCPBallotFmt
 }
 
 /// SCP Quorum set getter delegate
-private alias GetQSetDg = SCPQuorumSetPtr delegate (ref const(NodeID));
+private alias GetQSetDg = extern(C++) SCPQuorumSetPtr delegate (ref const(NodeID));
 
 /// Formatting struct for a quorum Hash => QuorumConfig through the use
 /// of a quorum getter delegate
@@ -476,15 +476,20 @@ unittest
     auto scp_quorum = toSCPQuorumSet(qc);
     auto qset = makeSharedSCPQuorumSet(scp_quorum);
     auto quorum_hash = hashFull(*qset);
-    SCPQuorumSetPtr[NodeID] qmap;
 
-    SCPQuorumSetPtr getQSet (ref const(NodeID) hash)
+    static struct QSetHandler
     {
-        if (auto qset = hash in qmap)
-            return *qset;
+        SCPQuorumSetPtr[NodeID] map;
 
-        return SCPQuorumSetPtr.init;
+        extern(C++) SCPQuorumSetPtr getQSet (ref const(NodeID) hash)
+        {
+            if (auto qset = hash in this.map)
+                return *qset;
+
+            return SCPQuorumSetPtr.init;
+        }
     }
+    QSetHandler qset_handler;
 
     SCPEnvelope env;
     env.statement.nodeID = NodeID(0);
@@ -520,19 +525,19 @@ unittest
 
     testAssert(PrepareRes1, scpPrettify(&env));
     testAssert(PrepareRes1, scpPrettify(&env, null));
-    testAssert(PrepareRes1, scpPrettify(&env, &getQSet));
+    testAssert(PrepareRes1, scpPrettify(&env, &qset_handler.getQSet));
 
     // add the quorum hash mapping, it should change the output
-    qmap[env.statement.nodeID] = qset;
-    testAssert(PrepareRes2, scpPrettify(&env, &getQSet));
+    qset_handler.map[env.statement.nodeID] = qset;
+    testAssert(PrepareRes2, scpPrettify(&env, &qset_handler.getQSet));
 
     // set 'prepared' pointer
     env.statement.pledges.prepare_.prepared = &env.statement.pledges.prepare_.ballot;
-    testAssert(PrepareRes3, scpPrettify(&env, &getQSet));
+    testAssert(PrepareRes3, scpPrettify(&env, &qset_handler.getQSet));
 
     // set 'preparedPrime' pointer
     env.statement.pledges.prepare_.preparedPrime = &env.statement.pledges.prepare_.ballot;
-    testAssert(PrepareRes4, scpPrettify(&env, &getQSet));
+    testAssert(PrepareRes4, scpPrettify(&env, &qset_handler.getQSet));
 
     /** SCP CONFIRM */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
@@ -552,15 +557,15 @@ unittest
     static immutable ConfirmRes3 = `{ statement: { node: 0, slotIndex: 0, pledge: Confirm { qset: { id: 0, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
     // unknown id
     env.statement.nodeID = ulong.max;
-    testAssert(ConfirmRes1, scpPrettify(&env, &getQSet));
+    testAssert(ConfirmRes1, scpPrettify(&env, &qset_handler.getQSet));
 
     // known id
     env.statement.nodeID = NodeID(0);
-    testAssert(ConfirmRes2, scpPrettify(&env, &getQSet));
+    testAssert(ConfirmRes2, scpPrettify(&env, &qset_handler.getQSet));
 
     // un-deserializable value
     env.statement.pledges.confirm_.ballot = SCPBallot.init;
-    testAssert(ConfirmRes3, scpPrettify(&env, &getQSet));
+    testAssert(ConfirmRes3, scpPrettify(&env, &qset_handler.getQSet));
 
     // unknown id
     static immutable ExtRes1 = `{ statement: { node: <unknown>, slotIndex: 0, pledge: Externalize { commitQset: { id: <unknown>, quorum: <unknown> }, commit: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nh: 100 } }, sig: 0x0000...be78 }`;
@@ -577,15 +582,15 @@ unittest
 
     // unknown id
     env.statement.nodeID = ulong.max;
-    testAssert(ExtRes1, scpPrettify(&env, &getQSet));
+    testAssert(ExtRes1, scpPrettify(&env, &qset_handler.getQSet));
 
     // known id
     env.statement.nodeID = NodeID(0);
-    testAssert(ExtRes2, scpPrettify(&env, &getQSet));
+    testAssert(ExtRes2, scpPrettify(&env, &qset_handler.getQSet));
 
     // un-deserializable value
     env.statement.pledges.externalize_.commit = SCPBallot.init;
-    testAssert(ExtRes3, scpPrettify(&env, &getQSet));
+    testAssert(ExtRes3, scpPrettify(&env, &qset_handler.getQSet));
 
     // unknown id
     static immutable NomRes1 = `{ statement: { node: <unknown>, slotIndex: 0, pledge: Nominate { qset: { id: <unknown>, quorum: <unknown> }, votes: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }], accepted: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }] } }, sig: 0x0000...be78 }`;
@@ -605,9 +610,9 @@ unittest
 
     // unknown id
     env.statement.nodeID = ulong.max;
-    testAssert(NomRes1, scpPrettify(&env, &getQSet));
+    testAssert(NomRes1, scpPrettify(&env, &qset_handler.getQSet));
 
     // known id
     env.statement.nodeID = NodeID(0);
-    testAssert(NomRes2, scpPrettify(&env, &getQSet));
+    testAssert(NomRes2, scpPrettify(&env, &qset_handler.getQSet));
 }
