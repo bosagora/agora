@@ -884,7 +884,7 @@ public class Ledger
                           block.header.height, K, idx);
                 return "Block: Couldn't find pre-image for validator";
             }
-            Point R = CR + Scalar(preimage_info.hash).toPoint();
+            Point R = CR * Scalar(preimage_info.hash);
             sum_K = sum_K + K;
             sum_R = sum_R + R;
         }
