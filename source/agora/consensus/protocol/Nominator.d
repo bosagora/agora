@@ -878,7 +878,7 @@ extern(D):
         // Fetch the R from enrollment commitment for signing validator
         const CR = this.enroll_man.getCommitmentNonce(validator.address, block_sig.height);
         // Determine the R of signature (R, s)
-        Point R = CR + Scalar(validator.preimage[block_sig.height]).toPoint();
+        Point R = CR * Scalar(validator.preimage[block_sig.height]);
         // Compose the signature (R, s)
         const sig = Signature(R, block_sig.signature);
         // Check this signature is valid for this block and signing validator

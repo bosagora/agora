@@ -946,7 +946,7 @@ public class Ledger
             }
             assert(validator.preimage.height >= block.header.height);
             const hash = validator.preimage[block.header.height];
-            Point R = CR + Scalar(hash).toPoint();
+            Point R = CR * Scalar(hash);
             sum_K = sum_K + K;
             sum_R = sum_R + R;
         }
