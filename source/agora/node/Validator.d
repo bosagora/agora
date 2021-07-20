@@ -88,12 +88,8 @@ public class Validator : FullNode, API
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
-        auto vledger = new ValidatingLedger(this.params, this.engine,
-            this.utxo_set, this.storage, this.enroll_man, this.pool,
-            this.fee_man, this.clock, config.node.block_time_offset_tolerance,
-            &this.onAcceptedBlock);
+        auto vledger = this.makeLedger();
         this.ledger = vledger;
-
         this.nominator = this.makeNominator(
             this.clock, this.network, vledger, this.enroll_man, this.taskman);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
@@ -411,6 +407,25 @@ public class Validator : FullNode, API
             this.params, this.config.validator.key_pair, clock, network, ledger,
             enroll_man, taskman, this.cacheDB,
             this.config.validator.nomination_interval, &this.acceptBlock);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a `ValidatingLedger`.
+
+        Test-suites can inject different behaviour to enable testing.
+
+        Returns:
+            An instance of a `ValidatingLedger`
+
+    ***************************************************************************/
+
+    protected override ValidatingLedger makeLedger ()
+    {
+        return new ValidatingLedger(this.params, this.engine,
+            this.utxo_set, this.storage, this.enroll_man, this.pool,
+            this.fee_man, this.clock, config.node.block_time_offset_tolerance,
+            &this.onAcceptedBlock);
     }
 
     /***************************************************************************

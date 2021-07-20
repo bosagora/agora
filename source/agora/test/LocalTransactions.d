@@ -99,7 +99,7 @@ unittest
 // catch up to the network.
 unittest
 {
-    static class PickyLedger : Ledger
+    static class PickyLedger : ValidatingLedger
     {
         mixin ForwardCtor!();
 
@@ -113,12 +113,14 @@ unittest
 
     static class PickyValidator : TestValidatorNode
     {
-        public this (Parameters!(typeof(super).__ctor) args)
+        mixin ForwardCtor!();
+
+        protected override ValidatingLedger makeLedger ()
         {
-            super(args);
-            this.ledger = new PickyLedger(params, this.engine, this.utxo_set, this.storage,
-                this.enroll_man, this.pool, this.fee_man, this.clock,
-                this.config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
+            return new PickyLedger(this.params, this.engine,
+                this.utxo_set, this.storage, this.enroll_man, this.pool,
+                this.fee_man, this.clock, config.node.block_time_offset_tolerance,
+                &this.onAcceptedBlock);
         }
 
         public override void putTransaction (Transaction tx) @safe
