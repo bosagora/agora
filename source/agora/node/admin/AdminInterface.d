@@ -159,7 +159,7 @@ public class AdminInterface : NodeControlAPI
         );
 
         login_info.voter_card.signature =
-            this.key_pair.sign(hashFull(login_info.voter_card)[]);
+            this.key_pair.sign(login_info.voter_card);
 
         contentType = "image/svg+xml";
         vary = "Accept-Encoding";
