@@ -361,7 +361,7 @@ public class FullNode : API
         auto validators = this.ledger.getValidators(this.ledger.getBlockHeight() + 1);
 
         foreach (const ref val; validators)
-            this.validator_preimages_stats.setMetricTo!"agora_preimages_gauge"(
+            this.validator_preimages_stats.setMetricTo!"agora_preimages_counter"(
                 val.preimage.height, val.address.toString());
 
         foreach (stat; this.validator_preimages_stats.getStats())

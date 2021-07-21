@@ -16,7 +16,6 @@ module agora.stats.Validator;
 import agora.stats.Stats;
 
 ///
-///
 public struct ValidatorCountStatsValue
 {
     public ulong agora_validators_gauge;
@@ -31,7 +30,7 @@ public struct ValidatorPreimagesStatsLabel
 ///
 public struct ValidatorPreimagesStatsValue
 {
-    public ulong agora_preimages_gauge;
+    public ulong agora_preimages_counter;
 }
 
 ///
