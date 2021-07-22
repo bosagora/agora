@@ -73,4 +73,10 @@ private final class VibedTimer : ITimer
     {
         this.timer.stop();
     }
+
+    /// Ditto
+    public override void rearm (Duration timeout, bool periodic) nothrow
+    {
+        this.timer.rearm(timeout, periodic);
+    }
 }

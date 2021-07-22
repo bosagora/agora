@@ -466,6 +466,12 @@ private final class LocalRestTimer : ITimer
     {
         this.timer.stop();
     }
+
+    /// Ditto
+    public override void rearm (Duration timeout, bool periodic) nothrow
+    {
+        this.timer.rearm(timeout, periodic);
+    }
 }
 
 /// A ban manager not loading and dumping
