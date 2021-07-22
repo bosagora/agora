@@ -459,7 +459,7 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) deduct (Amount amount)
+    public ref typeof(this) deduct (Amount amount) @safe nothrow
         return
     {
         if (!this.leftover.value.sub(amount))
