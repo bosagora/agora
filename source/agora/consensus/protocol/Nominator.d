@@ -151,6 +151,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Timer used for processing queued incoming SCP Envelope messages
     private ITimer envelope_timer;
 
+    /// Envelope process task delay
+    private enum EnvTaskDelay = 10.msecs;
+
 extern(D):
 
     /***************************************************************************
@@ -189,12 +192,14 @@ extern(D):
         this.ledger = ledger;
         this.enroll_man = enroll_man;
         this.scp_envelope_store = new SCPEnvelopeStore(cacheDB);
+        // Create and stop timer immediately
+        this.envelope_timer = this.taskman.setTimer(EnvTaskDelay,
+            &this.envelopeProcessTask, Periodic.No);
+        this.envelope_timer.stop();
         this.createSCPObject();
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
-        this.envelope_timer = this.taskman.setTimer(10.msecs,
-            &this.envelopeProcessTask, Periodic.Yes);
     }
 
     /// Shut down the envelope processing timer
@@ -521,6 +526,7 @@ extern(D):
             if (!proc)
             {
                 this.queued_envelopes.insertBack(cast()envelope);
+                this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
                 continue;
             }
             auto shared_env = this.wrapEnvelope(envelope);
@@ -545,6 +551,7 @@ extern(D):
     {
         auto copied = envelope.serializeFull.deserializeFull!SCPEnvelope;
         this.queued_envelopes.insertBack(copied);
+        this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
     }
 
     /***************************************************************************
