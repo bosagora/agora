@@ -13,6 +13,8 @@
 
 module agora.api.Admin;
 
+import agora.utils.Utility;
+
 import vibe.data.serialization;
 import vibe.http.common;
 import vibe.web.rest;
@@ -61,6 +63,9 @@ public interface NodeControlAPI
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
+    @resultSerializer!(RawStringSerializer.serialize,
+                       RawStringSerializer.deserialize,
+                       "image/svg+xml")()
     public string loginQR (@viaHeader("Content-Type") out string contentType,
                            @viaHeader("Vary") out string vary);
 
@@ -74,6 +79,9 @@ public interface NodeControlAPI
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
+    @resultSerializer!(RawStringSerializer.serialize,
+                       RawStringSerializer.deserialize,
+                       "image/svg+xml")()
     public string encryptionKeyQR (string app, ulong height,
                                    @viaHeader("Content-Type") out string contentType,
                                    @viaHeader("Vary") out string vary);
