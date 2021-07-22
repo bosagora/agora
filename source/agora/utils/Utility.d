@@ -227,3 +227,47 @@ public struct UbyteHexString
         });
     }
 }
+
+/// Utility class to implement vibe.d ResultSerializer.serialize and
+/// ResultSerializer.deserialize templates
+public class RawStringSerializer
+{
+    /***************************************************************************
+
+        Serialize the string as it is without any modifications
+        like JSON escaping
+
+        Params:
+            Policy = serialization policy type
+            InputT = input data type (string)
+            OutputRangeT = output range type
+            output_range = output range to serialize the string into
+            input_string = string to serialize
+
+    ***************************************************************************/
+
+    public static void serialize (alias Policy, InputT, OutputRangeT)(OutputRangeT output_range, InputT input_string)
+    {
+        import std.string;
+        output_range.put(input_string.representation);
+    }
+
+    /***************************************************************************
+
+        Deserialize the string that was previouly serialized by
+        raw_string_serialize
+
+        Params:
+            Policy = serialization policy type
+            ReturnT = return type (string)
+            InputRangeT = input range type
+            input_range = input range
+
+    ***************************************************************************/
+
+    public static ReturnT deserialize (alias Policy, ReturnT, InputRangeT)(InputRangeT input_range)
+    {
+        import std.string;
+        return std.string.toUTF8(input_range);
+    }
+}
