@@ -139,6 +139,9 @@ public class NetworkClient
     /// Logger uniquely identifying this client
     private Logger log;
 
+    /// Gossip delay
+    private enum GossipDelay = 10.msecs;
+
     /***************************************************************************
 
         Constructor.
@@ -168,7 +171,9 @@ public class NetworkClient
         this.exception = new Exception(
             format("Request failure to %s after %s attempts", address,
                 max_retries));
-        this.gossip_timer = this.taskman.setTimer(10.msecs, &this.gossipTask, Periodic.Yes);
+        // Create and stop timer immediately
+        this.gossip_timer = this.taskman.setTimer(GossipDelay, &this.gossipTask, Periodic.No);
+        this.gossip_timer.stop();
     }
 
     /// Shut down the gossiping timer
@@ -361,6 +366,7 @@ public class NetworkClient
     public void sendTransaction (Transaction tx) @trusted nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(tx));
+        this.gossip_timer.rearm(GossipDelay, Periodic.No);
     }
 
 
@@ -376,6 +382,7 @@ public class NetworkClient
     public void sendEnvelope (SCPEnvelope envelope) nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(envelope));
+        this.gossip_timer.rearm(GossipDelay, Periodic.No);
     }
 
     /***************************************************************************
@@ -390,6 +397,7 @@ public class NetworkClient
     public void sendBlockSignature (ValidatorBlockSig block_sig) nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(block_sig));
+        this.gossip_timer.rearm(GossipDelay, Periodic.No);
     }
 
     /***************************************************************************
@@ -448,6 +456,7 @@ public class NetworkClient
     public void sendEnrollment (Enrollment enroll) @trusted nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(enroll));
+        this.gossip_timer.rearm(GossipDelay, Periodic.No);
     }
 
     /***************************************************************************
@@ -466,6 +475,7 @@ public class NetworkClient
     public void sendPreimage (PreImageInfo preimage) @trusted nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(preimage));
+        this.gossip_timer.rearm(GossipDelay, Periodic.No);
     }
 
     /***************************************************************************
