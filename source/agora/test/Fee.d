@@ -22,7 +22,8 @@ import agora.common.Amount;
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100
+        quorum_threshold : 100,
+        payout_period : 5
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -80,7 +81,8 @@ unittest
     import core.thread;
 
     TestConf conf = {
-        quorum_threshold : 100
+        quorum_threshold : 100,
+        payout_period : 5
     };
 
     static class LocalAPIManager : TestAPIManager
@@ -142,7 +144,8 @@ unittest
     import core.thread;
 
     TestConf conf = {
-        quorum_threshold : 80
+        quorum_threshold : 80,
+        payout_period : 5
     };
 
     static class LocalAPIManager : TestAPIManager
