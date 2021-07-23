@@ -1991,8 +1991,10 @@ public struct TestConf
     /// Out of 100
     public ubyte validator_tx_fee_cut = 70;
 
-    /// How frequent the payments to Validators will be
-    public uint payout_period = 5;
+    /// How frequent the payments to Validators will be. If too low then tests
+    /// which assert all blocks are the same will sometimes fail if the catchup
+    /// is after height goes beyond a payment block.
+    public uint payout_period = ConsensusConfig.init.payout_period;
 
     /// The minimum (transaction size adjusted) fee.
     /// Transaction size adjusted fee = tx fee / tx size in bytes.

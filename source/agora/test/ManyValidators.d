@@ -28,10 +28,7 @@ void manyValidators (size_t validators)
     import core.time : seconds;
     import agora.crypto.Key;
 
-    TestConf conf = {
-        outsider_validators : validators - GenesisValidators,
-        // Prevent missing signatures due to only catching up from last payment block
-        payout_period : 200  };
+    TestConf conf = { outsider_validators : validators - GenesisValidators };
 
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();

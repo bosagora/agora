@@ -567,8 +567,7 @@ private class FlashListener : TestFlashListenerAPI
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -671,8 +670,7 @@ unittest
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -801,8 +799,7 @@ unittest
     }
 
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -911,8 +908,7 @@ unittest
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1063,8 +1059,7 @@ unittest
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1237,8 +1232,7 @@ unittest
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1468,8 +1462,7 @@ unittest
     }
 
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1553,8 +1546,7 @@ unittest
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1646,8 +1638,7 @@ unittest
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1859,8 +1850,7 @@ unittest
     }
 
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1975,8 +1965,7 @@ unittest
     }
 
     TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 100
+        quorum_threshold : 100
     };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
