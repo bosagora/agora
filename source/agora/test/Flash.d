@@ -566,7 +566,10 @@ private class FlashListener : TestFlashListenerAPI
 //version (none)
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -673,7 +676,10 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -806,7 +812,10 @@ unittest
         }
     }
 
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -915,7 +924,10 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1070,7 +1082,10 @@ unittest
 /// Test path probing
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1247,7 +1262,10 @@ unittest
 /// Test path probing
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1483,7 +1501,10 @@ unittest
         }
     }
 
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1568,7 +1589,10 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1660,7 +1684,10 @@ unittest
 /// test various error cases
 unittest
 {
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1872,7 +1899,10 @@ unittest
         }
     }
 
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1987,7 +2017,10 @@ unittest
         }
     }
 
-    TestConf conf = { payout_period : 100 };
+    TestConf conf = {
+        quorum_threshold : 100,
+        payout_period : 100
+    };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
