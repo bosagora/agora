@@ -616,9 +616,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+    network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(alice_pk, chan_id);
@@ -651,9 +649,7 @@ unittest
 
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-    auto tx_10 = node_1.getBlocksFrom(10, 1)[0].txs[0];
-    assert(tx_10 == update_tx);
+    network.expectTxExternalization(update_tx);
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
@@ -662,10 +658,8 @@ unittest
 
     // and then a settlement will be published (but only after time lock expires)
     auto settle_tx = bob.getLastSettleTx(bob_pk, chan_id);
-    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
-    auto tx_12 = node_1.getBlocksFrom(12, 1)[0].txs[0];
+    network.expectTxExternalization(settle_tx);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
-    //assert(tx_12 == settle_tx);
 }
 
 /// Test the settlement timeout branch for the
@@ -722,9 +716,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
-    network.expectHeightAndPreImg(Height(5), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(5, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+    network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(alice_pk, chan_id);
@@ -760,9 +752,7 @@ unittest
 
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
-    network.expectHeightAndPreImg(Height(6), network.blocks[0].header);
-    auto tx_10 = node_1.getBlocksFrom(6, 1)[0].txs[0];
-    assert(tx_10 == update_tx);
+    network.expectTxExternalization(update_tx);
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
@@ -782,10 +772,8 @@ unittest
 
     // and then a settlement will be automatically published
     auto settle_tx = bob.getLastSettleTx(bob_pk, chan_id);
-    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
-    auto tx_12 = node_1.getBlocksFrom(12, 1)[0].txs[0];
+    network.expectTxExternalization(settle_tx);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
-    assert(tx_12 == settle_tx);
 }
 
 /// Test attempted collaborative close with a non-collaborative counter-party,
@@ -856,9 +844,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+    network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(alice_pk, chan_id);
@@ -978,9 +964,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await alice & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+    network.expectTxExternalization(alice_bob_chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
@@ -1004,9 +988,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await bob & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-    const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
-    assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
+    network.expectTxExternalization(bob_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
     bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id);
@@ -1041,11 +1023,10 @@ unittest
         == ErrorCode.None);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
-    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
-    auto block11 = node_1.getBlocksFrom(11, 1)[0];
-    log.info("bob closing tx: {}", bob.getClosingTx(bob_pubkey,
-        bob_charlie_chan_id));
-    assert(block11.txs[0] == bob.getClosingTx(bob_pubkey, bob_charlie_chan_id));
+    auto close_tx = bob.getClosingTx(bob_pubkey,
+        bob_charlie_chan_id);
+    network.expectTxExternalization(close_tx);
+    log.info("bob closing tx: {}", close_tx);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id,
         ChannelState.Closed);
 
@@ -1058,11 +1039,10 @@ unittest
         alice_bob_chan_id).error == ErrorCode.None);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.StartedCollaborativeClose);
-    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
-    auto block12 = node_1.getBlocksFrom(12, 1)[0];
-    log.info("alice closing tx: {}", alice.getClosingTx(alice_pubkey,
-        alice_bob_chan_id));
-    assert(block12.txs[0] == alice.getClosingTx(alice_pubkey, alice_bob_chan_id));
+    close_tx = alice.getClosingTx(alice_pubkey,
+        alice_bob_chan_id);
+    network.expectTxExternalization(close_tx);
+    log.info("alice closing tx: {}", close_tx);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.Closed);
 }
@@ -1144,9 +1124,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await alice & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+    network.expectTxExternalization(alice_bob_chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
@@ -1169,9 +1147,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await bob & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-    const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
-    assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
+    network.expectTxExternalization(bob_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
     bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id);
@@ -1194,9 +1170,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await bob & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
-    const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
-    assert(block_11.txs.any!(tx => tx.hashFull() == charlie_alice_chan_id));
+    network.expectTxExternalization(charlie_alice_chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, charlie_alice_chan_id);
@@ -1310,9 +1284,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await alice & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+    network.expectTxExternalization(alice_bob_chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
@@ -1335,9 +1307,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await bob & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-    const block_10 = node_1.getBlocksFrom(10, 1)[$ - 1];
-    assert(block_10.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id));
+    network.expectTxExternalization(bob_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
     bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id);
@@ -1386,9 +1356,7 @@ unittest
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
     // await bob & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
-    const block_11 = node_1.getBlocksFrom(11, 1)[$ - 1];
-    assert(block_11.txs.any!(tx => tx.hashFull() == bob_charlie_chan_id_2));
+    network.expectTxExternalization(bob_charlie_chan_id_2);
 
     // wait for the parties to detect the funding tx
     bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id_2);
@@ -1431,38 +1399,36 @@ unittest
         == ErrorCode.None);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
         ChannelState.StartedCollaborativeClose);
-    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
+    auto close_tx = bob.getClosingTx(bob_pubkey, bob_charlie_chan_id_2);
+    assert(close_tx.outputs.length == 2);
+    assert(close_tx.outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
+    assert(close_tx.outputs.count!(o => o.value == Amount(2000)) == 1);
+    network.expectTxExternalization(close_tx);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
         ChannelState.Closed);
-    auto block12 = node_1.getBlocksFrom(12, 1)[0];
-    assert(block12.txs[0] == bob.getClosingTx(bob_pubkey, bob_charlie_chan_id_2));
-    assert(block12.txs[0].outputs.length == 2);
-    assert(block12.txs[0].outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
-    assert(block12.txs[0].outputs.count!(o => o.value == Amount(2000)) == 1);
 
     assert(alice.beginCollaborativeClose(alice_pubkey, alice_bob_chan_id).error
         == ErrorCode.None);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.StartedCollaborativeClose);
-    network.expectHeightAndPreImg(Height(13), network.blocks[0].header);
+    close_tx = alice.getClosingTx(alice_pubkey, alice_bob_chan_id);
+    assert(close_tx.outputs.length == 2);
+    assert(close_tx.outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
+    assert(close_tx.outputs.count!(o => o.value == Amount(2010)) == 1);
+    network.expectTxExternalization(close_tx);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.Closed);
-    auto block13 = node_1.getBlocksFrom(13, 1)[0];
-    assert(block13.txs[0] == alice.getClosingTx(alice_pubkey, alice_bob_chan_id));
-    assert(block13.txs[0].outputs.length == 2);
-    assert(block13.txs[0].outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
-    assert(block13.txs[0].outputs.count!(o => o.value == Amount(2010)) == 1);
 
     assert(bob.beginCollaborativeClose(bob_pubkey, bob_charlie_chan_id).error
         == ErrorCode.None);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
-    network.expectHeightAndPreImg(Height(14), network.blocks[0].header);
+    close_tx = bob.getClosingTx(bob_pubkey, bob_charlie_chan_id);
+    assert(close_tx.outputs.length == 1); // No updates
+    network.expectTxExternalization(close_tx);
     factory.listener.waitUntilChannelState(bob_charlie_chan_id,
         ChannelState.Closed);
     auto block14 = node_1.getBlocksFrom(14, 1)[0];
-    assert(block14.txs[0] == bob.getClosingTx(bob_pubkey, bob_charlie_chan_id));
-    assert(block14.txs[0].outputs.length == 1); // No updates
 }
 
 unittest
@@ -1535,9 +1501,7 @@ unittest
         ChannelState.WaitingForFunding);
 
     // await alice & bob channel funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == alice_bob_chan_id));
+    network.expectTxExternalization(alice_bob_chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
@@ -1556,12 +1520,11 @@ unittest
         == ErrorCode.None);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.StartedCollaborativeClose);
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
+    auto close_tx = bob.getClosingTx(bob_pubkey, alice_bob_chan_id);
+    assert(close_tx.outputs.length == 1); // No updates
+    network.expectTxExternalization(close_tx);
     factory.listener.waitUntilChannelState(alice_bob_chan_id,
         ChannelState.Closed);
-    auto block10 = node_1.getBlocksFrom(10, 1)[0];
-    assert(block10.txs[0] == bob.getClosingTx(bob_pubkey, alice_bob_chan_id));
-    assert(block10.txs[0].outputs.length == 1); // No updates
 }
 
 /// Test node serialization & loading
@@ -1619,9 +1582,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+    network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, chan_id);
@@ -1776,9 +1737,7 @@ unittest
     const chan_id = chan_id_res.value;
 
     // await funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+    network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, chan_id);
@@ -1935,9 +1894,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    const block_9 = node_1.getBlocksFrom(9, 1)[$ - 1];
-    assert(block_9.txs.any!(tx => tx.hashFull() == chan_id));
+    network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(alice_pubkey, chan_id);
