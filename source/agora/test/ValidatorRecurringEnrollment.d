@@ -102,8 +102,16 @@ unittest
 
         protected override EnrollmentManager makeEnrollmentManager ()
         {
+            Hash cycle_seed;
+            Height cycle_seed_height;
+            getCycleSeed(this.config.validator.key_pair, params.ValidatorCycle,
+                cycle_seed, cycle_seed_height);
+            assert(cycle_seed != Hash.init);
+            assert(cycle_seed_height != Height(0));
+            auto cycle = PreImageCycle(cycle_seed, cycle_seed_height,
+                this.params.ValidatorCycle);
             return new BadEnrollmentManager(this.stateDB, this.cacheDB,
-                this.config.validator.key_pair, this.params, PreImageCycle.init);
+                this.config.validator.key_pair, this.params, cycle);
         }
     }
 

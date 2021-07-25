@@ -2242,15 +2242,17 @@ unittest
 
     // add four new enrollments
     Enrollment[] enrollments;
-    PreImageCycle[] cycles;
     auto pairs = iota(4).map!(idx => WK.Keys[idx]).array;
     foreach (idx, kp; pairs)
     {
-        auto cycle = PreImageCycle(kp.secret, params.ValidatorCycle);
-        const seed = cycle[Height(params.ValidatorCycle)];
-        cycles ~= cycle;
+        Hash cycle_seed;
+        Height cycle_seed_height;
+        getCycleSeed(kp, params.ValidatorCycle, cycle_seed, cycle_seed_height);
+        assert(cycle_seed != Hash.init);
+        assert(cycle_seed_height != Height(0));
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, seed, params.ValidatorCycle);
+            utxos[idx], kp, Height(params.ValidatorCycle), params.ValidatorCycle,
+            cycle_seed, cycle_seed_height);
         assert(ledger.enroll_man.addEnrollment(enroll, kp.address,
             Height(params.ValidatorCycle), &ledger.utxo_set.peekUTXO));
         enrollments ~= enroll;
