@@ -93,9 +93,8 @@ unittest
         }
     }
 
-    TestConf conf = {
-        quorum_threshold : 51,
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 51;
     conf.node.timeout = 5.seconds;
 
     auto network = makeTestNetwork!CustomAPIManager(conf);

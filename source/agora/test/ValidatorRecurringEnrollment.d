@@ -31,9 +31,8 @@ import geod24.Registry;
 
 unittest
 {
-    TestConf conf = {
-        quorum_threshold : 100
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -108,9 +107,8 @@ unittest
         }
     }
 
-    TestConf conf = {
-        quorum_threshold : 100
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!(TestNetwork!BadValidator)(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -186,9 +184,8 @@ unittest
 
     }
 
-    TestConf conf = {
-        quorum_threshold : 100
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
 
     auto network = makeTestNetwork!(TestNetwork!SocialDistancingValidator)(conf);
     network.start();
@@ -214,9 +211,8 @@ unittest
 // still manage to enroll when they are back online
 unittest
 {
-    TestConf conf = {
-        quorum_threshold : 66
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 66;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -288,9 +284,9 @@ unittest
     }
 
     TestConf conf = {
-        quorum_threshold : 100,
         recurring_enrollment : false,
     };
+    conf.consensus.quorum_threshold = 100;
 
     auto network = makeTestNetwork!(TestNetwork!BatValidator)(conf);
     network.start();

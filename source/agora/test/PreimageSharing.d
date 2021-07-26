@@ -40,9 +40,9 @@ public class NoPreImageExceptNominationVN : NoPreImageVN
 unittest
 {
     TestConf conf = {
-        quorum_threshold : 100,
         preimage_catchup_interval : 1.seconds,
     };
+    conf.consensus.quorum_threshold = 100;
 
     // set up nodes
     auto network = makeTestNetwork!(LazyAPIManager!NoPreImageExceptNominationVN)(conf);

@@ -140,7 +140,8 @@ private class ByzantineManager (ByzantineReason reason) : TestAPIManager
 /// The block should only have 5 / 6 block signatures added
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSignature))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -162,7 +163,8 @@ unittest
 /// The block should only have 5 / 6 block signatures added
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadCommitmentR))(conf);
     network.start();
     scope(exit) network.shutdown();

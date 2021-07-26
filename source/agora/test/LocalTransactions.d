@@ -72,9 +72,8 @@ unittest
         }
     }
 
-    TestConf conf = {
-        quorum_threshold : 100,
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!NoGossipAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -150,9 +149,8 @@ unittest
         }
     }
 
-    TestConf conf = {
-        quorum_threshold : 80,
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 80;
     auto network = makeTestNetwork!PickyAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

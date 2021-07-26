@@ -12,7 +12,6 @@
 node:
   testing: true
   limit_test_validators: 1
-  block_interval_sec: 5
   data_dir: .single/data/
   # Can be used with curl or just a browser
   stats_listening_port: 9111
@@ -23,6 +22,7 @@ interfaces:
     port:    2826
 
 consensus:
+  block_interval_sec: 5
   validator_cycle: 20
 
 validator:

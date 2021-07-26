@@ -21,10 +21,9 @@ import agora.common.Amount;
 // include coinbase outputs to validators
 unittest
 {
-    TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 5
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
+    conf.consensus.payout_period = 5;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -59,7 +58,7 @@ unittest
         auto cb_outs = cb_txs[0].outputs;
 
         // Regular block
-        if (blocks[$-1].header.height % conf.payout_period)
+        if (blocks[$-1].header.height % conf.consensus.payout_period)
             assert(cb_outs.length == 1);
         else // Payout block
             assert(cb_outs.length == 1 + blocks[0].header.enrollments.length);
@@ -80,10 +79,9 @@ unittest
     import agora.common.Config;
     import core.thread;
 
-    TestConf conf = {
-        quorum_threshold : 100,
-        payout_period : 5
-    };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
+    conf.consensus.payout_period = 5;
 
     static class LocalAPIManager : TestAPIManager
     {
@@ -144,10 +142,8 @@ unittest
     import agora.common.Config;
     import core.thread;
 
-    TestConf conf = {
-        quorum_threshold : 80,
-        payout_period : 5
-    };
+    TestConf conf;
+    conf.consensus.payout_period = 5;
 
     static class LocalAPIManager : TestAPIManager
     {
@@ -205,14 +201,14 @@ unittest
         auto cb_outs = cb_txs[0].outputs;
 
         // Regular block
-        if (blocks[$-1].header.height % conf.payout_period)
+        if (blocks[$-1].header.height % conf.consensus.payout_period)
             assert(cb_outs.length == 1);
         else // Payout block
             assert(cb_outs.length == 1 + blocks[0].header.enrollments.length);
     }
 
     // create GenesisValidatorCycle - 1 blocks
-    foreach (block_idx; 1 .. conf.payout_period + 1)
+    foreach (block_idx; 1 .. conf.consensus.payout_period + 1)
     {
         createAndExpectNewBlock(Height(block_idx));
     }
@@ -228,10 +224,9 @@ unittest
 {
     import core.thread;
 
-    TestConf conf = {
-        payout_period : 1,
-        quorum_threshold : 100
-    };
+    TestConf conf;
+    conf.consensus.payout_period = 1;
+    conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

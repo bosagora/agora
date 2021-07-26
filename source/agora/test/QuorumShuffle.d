@@ -31,10 +31,10 @@ mixin AddLogger!();
 /// 6, 12, 18, 20 (enrollment change), 26 (next shuffle cycle)
 unittest
 {
-    TestConf conf = {
-        max_quorum_nodes : 4,  // makes it easier to test shuffle cycling
-        quorum_shuffle_interval : 6,
-    };
+    TestConf conf;
+    // makes it easier to test shuffle cycling
+    conf.consensus.max_quorum_nodes = 4;
+    conf.consensus.quorum_shuffle_interval = 6;
     conf.node.max_listeners = 7;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();

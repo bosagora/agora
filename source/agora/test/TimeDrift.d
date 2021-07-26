@@ -27,7 +27,9 @@ import std.range;
 ///
 unittest
 {
-    TestConf conf = { max_quorum_nodes : 5, quorum_threshold : 100 };
+    TestConf conf;
+    conf.consensus.max_quorum_nodes = 5;
+    conf.consensus.quorum_threshold = 100;
     conf.node.block_interval_sec = 1;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -42,8 +44,8 @@ unittest
 
     // sanity check for the generated quorum config
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig().threshold == conf.max_quorum_nodes &&
-                node.getQuorumConfig().nodes.length == conf.max_quorum_nodes,
+        retryFor(node.getQuorumConfig().threshold == conf.consensus.max_quorum_nodes &&
+                node.getQuorumConfig().nodes.length == conf.consensus.max_quorum_nodes,
             5.seconds,
             format("Node #%s has invalid quorum config for test: %s",
                 idx, node.getQuorumConfig())));

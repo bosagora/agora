@@ -202,7 +202,8 @@ private class ByzantineManager (bool addSpyValidator = false,
 /// Block should be added if we have 6 of 6 validators signing
 unittest
 {
-    TestConf conf = { quorum_threshold : 100 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -220,7 +221,8 @@ unittest
 /// Block should be added if we have 5 of 6 valid signatures (1 not signing the envelope)
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -238,7 +240,8 @@ unittest
 /// Block should be added if we have 5 of 6 valid signatures (1 signs envelope with invalid signature)
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -270,7 +273,8 @@ private void waitForCount(size_t target_count, shared(size_t)* counter, string n
 /// 4 out of 6 nodes signing correctly WILL NOT prevent block from being externalized if we require 4 out of 6
 unittest
 {
-    TestConf conf = { quorum_threshold : 66 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 66;
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -292,7 +296,8 @@ unittest
 /// 4 out of 6 nodes signing correctly WILL prevent block from being externalized if we require 5 out of 6
 unittest
 {
-    TestConf conf = { quorum_threshold : 83 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
