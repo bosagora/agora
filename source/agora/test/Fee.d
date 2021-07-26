@@ -46,8 +46,8 @@ unittest
         txs = blocks[new_height - 1].spendable().map!(txb => txb
             .deduct(Amount.UnitPerCoin).sign()).array();
 
-        // send it to one node
-        txs.each!(tx => node_1.putTransaction(tx));
+        // send them to all nodes
+        txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 
@@ -113,10 +113,11 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto valid_node = nodes[$-1];
+    auto valid_nodes = nodes.drop(1);
 
     // Get the genesis block, make sure it's the only block externalized
-    auto blocks = valid_node.getBlocksFrom(0, 2);
+    auto blocks = valid_nodes.front.getBlocksFrom(0, 2);
+    assert(valid_nodes.count == nodes.count - 1);
     assert(blocks.length == 1);
 
     Transaction[] txs;
@@ -125,8 +126,8 @@ unittest
     txs = blocks[0].spendable().takeExactly(1).map!(txb => txb
         .deduct(Amount.UnitPerCoin).sign()).array();
 
-    // send it to one node
-    txs.each!(tx => valid_node.putTransaction(tx));
+    // send them to all valid nodes
+    txs.each!(tx => valid_nodes.each!(node => node.putTransaction(tx)));
 
     network.setTimeFor(Height(1));
     Thread.sleep(1.seconds);
@@ -176,10 +177,10 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto valid_node = nodes[$-1];
+    auto valid_nodes = nodes.drop(1);
 
     // Get the genesis block, make sure it's the only block externalized
-    auto blocks = valid_node.getBlocksFrom(0, 2);
+    auto blocks = valid_nodes.front.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
     Transaction[] txs;
@@ -190,14 +191,14 @@ unittest
         txs = blocks[new_height - 1].spendable().takeExactly(1).map!(txb => txb
             .deduct(Amount.UnitPerCoin).sign()).array();
 
-        // send it to one node
-        txs.each!(tx => valid_node.putTransaction(tx));
+        // send them to all valid nodes
+        txs.each!(tx => valid_nodes.each!(node => node.putTransaction(tx)));
 
         network.expectHeightAndPreImg(iota(1, GenesisValidators),
             new_height, blocks[0].header);
 
         // add next block
-        blocks ~= valid_node.getBlocksFrom(new_height, 1);
+        blocks ~= valid_nodes.front.getBlocksFrom(new_height, 1);
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
         assert(cb_txs.length == 1);
