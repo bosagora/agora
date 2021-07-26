@@ -30,7 +30,7 @@ unittest
     TestConf conf;
     conf.consensus.max_quorum_nodes = 5;
     conf.consensus.quorum_threshold = 100;
-    conf.node.block_interval_sec = 1;
+    conf.consensus.block_interval_sec = 1;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -74,7 +74,7 @@ unittest
     // calculated clock offset:  [+0, +0, +0, +0, +0, +1]
 
     // set the time to `height` * `block_interval_sec` for 5/6 nodes
-    assert(conf.node.block_interval_sec == 1);
+    assert(conf.consensus.block_interval_sec == 1);
     network.setTimeFor(network.nodes.take(5), Height(1));
     [ 1,  1,  1,  1,  1, 0].enumerate.each!((idx, height) =>
         checkNodeLocalTime(idx, height));

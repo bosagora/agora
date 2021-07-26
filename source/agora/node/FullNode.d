@@ -624,8 +624,7 @@ public class FullNode : API
         return new immutable(ConsensusParams)(
                 Genesis,
                 commons_budget,
-                config.consensus,
-                config.node.block_interval_sec.seconds);
+                config.consensus);
     }
 
     /// Returns a newly constructed StatsServer

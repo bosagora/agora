@@ -87,12 +87,11 @@ public immutable class ConsensusParams
 
     public this (immutable(Block) genesis,
                  in PublicKey commons_budget_address,
-                 ConsensusConfig config = ConsensusConfig.init,
-                 Duration block_interval = 1.seconds)
+                 ConsensusConfig config = ConsensusConfig.init)
     {
         this.Genesis = genesis;
         this.CommonsBudgetAddress = commons_budget_address;
-        this.BlockInterval = block_interval;
+        this.BlockInterval = config.block_interval_sec.seconds;
         this.data = config;
     }
 
@@ -148,6 +147,9 @@ public struct ConsensusConfig
     /// The minimum (transaction size adjusted) fee.
     /// Transaction size adjusted fee = tx fee / tx size in bytes.
     public Amount min_fee = Amount(700);
+
+    /// How often a block should be created
+    public uint block_interval_sec = 600;
 }
 
 /// Inserts properties functions aliasing `ConsensusConfig`
