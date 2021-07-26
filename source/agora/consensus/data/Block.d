@@ -877,3 +877,64 @@ unittest
         format!"Key %s is not matching key %s"
         (secret.toString(PrintMode.Clear), v.toString(PrintMode.Clear)));
 }
+
+/// demonstrate extracting private node key from two signatures
+unittest
+{
+    import agora.consensus.data.genesis.Test: GenesisBlock;
+    import agora.crypto.ECC: Scalar, Point;
+    import agora.crypto.Schnorr;
+    import agora.utils.Test;
+    import std.format;
+
+    Hash random_seed1 = "seed1".hashFull();
+    Hash random_seed2 = "seed2".hashFull();
+    Hash preimage_1 = "preimage_1".hashFull();
+    Scalar p1 = Scalar(preimage_1);
+    Hash preimage_2 = "preimage_2".hashFull();
+    Scalar p2 = Scalar(preimage_2);
+
+    const TimeOffset = 1;
+    const Validators = genesis_validator_keys.length;
+
+    // Generate two blocks
+    auto block1 = GenesisBlock.makeNewBlock(
+        genesisSpendable().take(1).map!(txb => txb.sign()), TimeOffset, random_seed1, Validators);
+    auto block2 = GenesisBlock.makeNewBlock(
+        genesisSpendable().take(1).map!(txb => txb.sign()), TimeOffset, random_seed2, Validators);
+
+    Scalar v = genesis_validator_keys[0].secret;
+    assert(v.isValid(), "v is not a valid Scalar!");
+    Point V = v.toPoint();
+    const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
+
+    // Two messages
+    Scalar c1 = block1.hashFull();
+    Scalar c2 = block2.hashFull();
+    assert(c1 != c2);
+
+    // Sign the two blocks
+    Signature s1 = block1.header.createBlockSignature(v, preimage_1);
+    Signature s2 = block2.header.createBlockSignature(v, preimage_2);
+
+    // Verify signatures
+    assert(verify(s1, c1, V));
+    assert(verify(s2, c2, V));
+
+    // Calculate the private key
+    // `s1 = rc * p1 + (v * c1)`
+    // `s2 = rc * p2 + (v * c2)`
+    // `rc = (s1 - v * c1) / p1`
+    // `s2 = ((s1 - v * c1) / p1) * p2 + (v * c2)`
+    // `s2 * p1 = s1 * p2 - v * p2 * c1 + v * p1 * c2`
+    // `s2 * p1 = s1 * p2 + (v * p1 * c2) - (v * p2 * c1)`
+    // `s2 * p1 = s1 * p2 + v * ((p1 * c2) - (p2 * c1))`
+    // `v = (s2 * p1 - s1 * p2) / (c1 * p2) - (c2 * p1))`
+    Scalar r = (s2.s * p1) - (s1.s * p2);
+    Scalar d = (p1 * c2) - (p2 * c1);
+    Scalar secret = r * d.invert;
+    assert(secret == v,
+        format!"Key %s is not matching key %s"
+        (secret.toString(PrintMode.Clear), v.toString(PrintMode.Clear)));
+    assert(0, "key should not be possible to extract!");
+}
