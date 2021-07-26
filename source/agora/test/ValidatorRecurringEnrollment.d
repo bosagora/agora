@@ -317,14 +317,15 @@ unittest
 
     // generate 19 blocks
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
-    network.expectHeightAndPreImg(Height(GenesisValidatorCycle - 1),
-        network.blocks[0].header, 10.seconds);
 
-    // set the recurring enrollment option to true and make a new block
-    network.clients.enumerate.each!((_, node) => node.setRecurringEnrollment(true));
+    // set the recurring enrollment option to true and check in enrollment pools
+    network.clients.each!((node)
+    {
+        Enrollment enroll = node.setRecurringEnrollment(true);
+        network.clients.each!(n =>
+            retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
+    });
     network.generateBlocks(Height(GenesisValidatorCycle));
-    network.expectHeightAndPreImg(Height(GenesisValidatorCycle),
-        network.blocks[0].header, 10.seconds);
     const b20 = network.clients[0].getBlocksFrom(GenesisValidatorCycle, 1)[0];
     assert(b20.header.enrollments.length == 6);
 }
