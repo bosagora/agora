@@ -91,7 +91,7 @@ public immutable class ConsensusParams
                  Duration block_interval = 1.seconds)
     {
         this.Genesis = genesis;
-        this.CommonsBudgetAddress = commons_budget_address,
+        this.CommonsBudgetAddress = commons_budget_address;
         this.BlockInterval = block_interval;
         this.data = config;
     }
