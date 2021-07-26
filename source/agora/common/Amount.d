@@ -6,13 +6,15 @@
    as there is an absolute maximum supply of 500M and each coin can be divided
    in up to 10^7 units.
 
-   This struct does not expose operation overloading on purpose.
-   Having operator overloading would mean that any error should be reported
-   as either an `assert` being triggered or an `Exception` being thrown.
-   The convenience of using `a + b` would likely mean some places wouldn't
-   be properly bound checked, which would in turn open a DoS.
-   Instead, we provide two kind of functions for operations:
-   `bool OPNAME(ref Amount res, Type)` and `Amount mustOPNAME(Type)`
+   This type exposes two ways to do binary operation:
+   - The ideal way is to use `a.{add,sub,div,...}(b)`;
+     Those methods return a `bool` which indicates if the operation was
+     successful, and will mutate `a`. If the operation is unsuccessful,
+     an invalid value is set on `a`, so subsequent operations will fail too;
+   - When convenience is prefered, such as in test code, operator overloads
+     are available. However, those operator overloads will `throw` an
+     `Exception` if an overflow / underflow happens, which means they are
+     less performant and aren't `pure nothrow @nogc`;
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -24,6 +26,8 @@
 *******************************************************************************/
 
 module agora.common.Amount;
+
+import std.format;
 
 /// Defines a monetary type used in the blockchain
 public struct Amount
@@ -73,7 +77,6 @@ public struct Amount
     /// Pretty-print this value
     public void toString (scope SinkT dg) const @safe
     {
-        import std.format;
         formattedWrite(dg, "%d", this.value);
     }
 
@@ -94,6 +97,46 @@ public struct Amount
         if (!Amount.isInRange(ul))
             throw new Exception("Invalid input value to Amount");
         return Amount(ul, true);
+    }
+
+    /// Convenience version of `add` which throws in case of overflow
+    /// Prefer using this only in `unittest`s
+    public ref Amount opOpAssign (string op : "+") (in Amount other) return
+        @safe
+    {
+        if (!this.add(other))
+            throw new Exception(format("Amount %d cannot be added to %d", other, this));
+        return this;
+    }
+
+    /// Convenience version of `sub` which asserts in case of underflow
+    /// Prefer using this only in `unittest`s
+    public ref Amount opOpAssign (string op : "-") (in Amount other) return
+        @safe
+    {
+        if (!this.sub(other))
+            throw new Exception(format("Amount %d cannot be subtracted to %d", other, this));
+        return this;
+    }
+
+    /// Operator overloads that will throw in case of over or underflow.
+    public Amount opBinary (string op : "+") (in Amount other) const scope
+        @safe
+    {
+        Amount copy = this;
+        if (!copy.add(other))
+            throw new Exception(format("Amount %d cannot be added to %d", other, this));
+        return copy;
+    }
+
+    /// Ditto
+    public Amount opBinary (string op : "-") (in Amount other) const scope
+        @safe
+    {
+        Amount copy = this;
+        if (!copy.sub(other))
+            throw new Exception(format("Amount %d cannot be subtracted to %d", other, this));
+        return copy;
     }
 
     nothrow pure @nogc @safe:
@@ -337,22 +380,6 @@ public struct Amount
         return this.value % UnitPerCoin.value;
     }
 
-    /// Convenience version of `add` which asserts in case of overflow
-    /// Prefer using this only in `unittest`s
-    public ref Amount mustAdd (in Amount other) return
-    {
-        this.add(other) || assert(0);
-        return this;
-    }
-
-    /// Convenience version of `sub` which asserts in case of underflow
-    /// Prefer using this only in `unittest`s
-    public ref Amount mustSub (in Amount other) return
-    {
-        this.sub(other) || assert(0);
-        return this;
-    }
-
     /// Support for comparison
     pragma(inline, true)
     public int opCmp (in Amount other) const pure nothrow @nogc
@@ -414,12 +441,6 @@ nothrow pure @nogc @safe unittest
     // But can be reset to a sane value if needed
     two = Amount(1);
     assert(two.sub(Amount(1)));
-
-    // mustAdd / mustSub coverage
-    two.mustAdd(Amount(1));
-    assert(two == Amount(1));
-    two.mustSub(Amount(1));
-    assert(two == Amount(0));
 
     // Tests for division with remainder
     Amount val = Amount.MinFreezeAmount;
@@ -549,4 +570,21 @@ unittest
     coin.div(2);
     assert(coin.proportionalFee(Amount(44)) == Amount(22));
     assert(!coin.proportionalFee(Amount.MaxUnitSupply).isValid());
+}
+
+unittest
+{
+    import std.exception;
+
+    assert(Amount(6) + Amount(5) == Amount(11));
+    assert(Amount(6) - Amount(5) == Amount( 1));
+    assertThrown(Amount.MaxUnitSupply + Amount(1));
+    assertThrown(Amount(1) - Amount(2));
+
+    // mustAdd / mustSub coverage
+    Amount amount;
+    amount += Amount(1);
+    assert(amount == Amount(1));
+    amount -= Amount(1);
+    assert(amount == Amount(0));
 }

@@ -1196,7 +1196,7 @@ extern(D):
                         continue; // most likely a CoinBase Transaction
                     else if (errormsg)
                         assert(0);
-                    total_adjusted_fee.mustAdd(adjusted_fee);
+                    total_adjusted_fee += adjusted_fee;
                 }
 
                 CandidateHolder candidate_holder =

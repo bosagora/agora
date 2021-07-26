@@ -248,7 +248,7 @@ unittest
     // 2) A very large frozen amount (60.999k)
     Amount freezeAmount = network.blocks[0].frozens.front.outputs[0].value;
     // Must be under Amount.MinFreezeAmount so that the refund isn't frozen
-    freezeAmount.mustSub(1_000.coins);
+    freezeAmount -= 1_000.coins;
     auto tx = network.blocks[0].spendable
         .map!(txb => txb
               .draw(freezeAmount, WK.Keys.AA.address.only).sign(OutputType.Freeze)

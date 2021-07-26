@@ -45,12 +45,7 @@ unittest
 
     // create double spend transactions with fees 10000, 10100 .. 13000
     auto txs = [Amount(10000), Amount(10100), Amount(10200), Amount(11000), Amount(13000)]
-        .map!((amount)
-            {
-                auto output_amount = Amount(input_tx_amount);
-                output_amount.mustSub(amount);
-                return output_amount;
-            })
+        .map!((amount) => input_tx_amount - amount)
         .map!(output_amount => TxBuilder(input_tx, 0).draw(output_amount, [output_addr])
         .deductRemaining().sign()).array();
 

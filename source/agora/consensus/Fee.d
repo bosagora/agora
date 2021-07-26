@@ -283,12 +283,13 @@ public class FeeManager
 
         // tx_fees = (tot_fee - tot_data_fee) * (ValidatorTXFeeCut / 100)
         Amount tx_fees = tot_fee;
-        tx_fees.mustSub(tot_data_fee);
+        scope (failure) assert(0);
+        tx_fees -= tot_data_fee;
         tx_fees.percentage(this.params.ValidatorTXFeeCut);
 
         Amount sum_stake;
         Amount[] stake_amounts = stakes.map!(utxo => utxo.output.value).array;
-        stake_amounts.each!(stake => sum_stake.mustAdd(stake));
+        stake_amounts.each!(stake => sum_stake += stake);
 
         // Stake amount for a single "share"
         Amount share_stake = Amount.gcd(stake_amounts);
@@ -332,9 +333,10 @@ public class FeeManager
         const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee,
             stakes);
 
+        scope (failure) assert(0);
         Amount total_val_fee;
-        validator_fees.each!(fee => total_val_fee.mustAdd(fee));
-        tot_fee.mustSub(total_val_fee);
+        validator_fees.each!(fee => total_val_fee += fee);
+        tot_fee -= total_val_fee;
         return tot_fee;
     }
 
@@ -370,7 +372,7 @@ public class FeeManager
             this.accumulated_fees.update(stake.output.address,
                 { return validator_fees[idx]; },
                 (ref Amount so_far) {
-                    so_far.mustAdd(validator_fees[idx]);
+                    so_far += validator_fees[idx];
                     return so_far;
                 }
             );
@@ -454,6 +456,7 @@ public class FeeManager
         scope UTXOFinder peekUTXO, ref Amount tot_fee, ref Amount tot_data_fee)
         nothrow @safe
     {
+        scope (failure) assert(0);
         foreach (const ref tx; tx_set)
         {
             // Coinbase TXs are not subject to fees
@@ -466,15 +469,15 @@ public class FeeManager
                 UTXO utxo;
                 if (!peekUTXO(input.utxo, utxo))
                     return "Unable to find input for utxo";
-                tot_in.mustAdd(utxo.output.value);
+                tot_in += utxo.output.value;
             }
 
             if (!tx.getSumOutput(tot_out))
                 return "Transaction output value is invalid";
             // sum(inputs) - sum(outputs)
-            tot_in.mustSub(tot_out);
-            tot_fee.mustAdd(tot_in);
-            tot_data_fee.mustAdd(this.getDataFee(tx.payload.length));
+            tot_in -= tot_out;
+            tot_fee += tot_in;
+            tot_data_fee += this.getDataFee(tx.payload.length);
         }
         return null;
     }
@@ -542,9 +545,9 @@ public class FeeManager
         auto commons_fee = man.getCommonsBudgetFee(tot_fee,
             Amount.UnitPerCoin, stakes);
 
-        tot_fee.mustSub(commons_fee);
+        tot_fee -= commons_fee;
         foreach (fee; w_data_fees)
-            tot_fee.mustSub(fee);
+            tot_fee -= fee;
         // None wasted, none created
         assert(tot_fee == Amount(0));
     }

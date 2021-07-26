@@ -98,7 +98,7 @@ unittest
     auto penalty = nodes[0].getUTXOs(WK.Keys.CommonsBudget.address);
     assert(penalty.length == 1);
     auto total = refund[0].utxo.output.value;
-    total.mustAdd(penalty[0].utxo.output.value);
+    total += penalty[0].utxo.output.value;
     // Check that the two amounts add up to the original stake
     // TODO: Check for 40k, not just the total.
     assert(total == original_stake);

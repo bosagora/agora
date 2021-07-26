@@ -1677,7 +1677,7 @@ private mixin template TestNodeMixin ()
         foreach (const ref Hash key, const ref UTXO value; this.utxo_set)
         {
             result ~= UTXOPair(key, value);
-            accumulated.mustAdd(value.output.value);
+            accumulated += value.output.value;
             if (accumulated >= minimum)
                 return result;
         }
