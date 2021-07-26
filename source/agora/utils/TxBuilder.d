@@ -158,7 +158,8 @@ public struct TxBuilder
         this.inputs ~= iota(tx.outputs.length)
             .map!(index => OutputRef(tx.outputs[index], Input(tx, index).utxo))
             .array;
-        tx.outputs.each!(outp => this.leftover.value.mustAdd(outp.value));
+        if (tx.outputs.any!(outp => !this.leftover.value.add(outp.value)))
+            assert(0, "Adding a transaction led to overflow");
         return this;
     }
 
@@ -186,7 +187,8 @@ public struct TxBuilder
         @safe pure nothrow return
     {
         this.inputs ~= OutputRef(utxo, hash);
-        this.leftover.value.mustAdd(utxo.value);
+        if (!this.leftover.value.add(utxo.value))
+            assert(0, "Adding utxo/hash led to overflow");
         return this;
     }
 
@@ -362,7 +364,8 @@ public struct TxBuilder
         assert(this.inputs.length > 0);
 
         this.leftover = Output(Amount(0), toward, OutputType.Payment);
-        this.inputs.each!(val => this.leftover.value.mustAdd(val.output.value));
+        if (this.inputs.any!(val => !this.leftover.value.add(val.output.value)))
+            assert(0, "Resetting the refund address led to an overflow");
         this.data.outputs = null;
 
         return this;
@@ -626,12 +629,12 @@ unittest
 }
 
 ///
-@safe nothrow unittest
+@safe unittest
 {
     auto spendable = genesisSpendable();
     assert(!genesisSpendable.empty);
     Amount total;
-    genesisSpendable.each!(txb => total.mustAdd(txb.leftover.value));
+    genesisSpendable.each!(txb => total += txb.leftover.value);
     // Arbitrarily low value
     assert(total > Amount.MinFreezeAmount);
 }

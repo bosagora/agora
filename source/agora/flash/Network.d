@@ -212,7 +212,8 @@ public class Network
                     auto chan_fee = min_fee_hop[1];
 
                     auto total_fee = fees[min_pk];
-                    total_fee.mustAdd(chan_fee);
+                    if (!total_fee.add(chan_fee))
+                        assert(0);
                     if (total_fee < fees[peer_pk])
                     {
                         fees[peer_pk] = total_fee;

@@ -399,7 +399,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
 
         auto genesis_tx = GenesisBlock.txs.filter!(tx => tx.isPayment).front;
         Amount amount = genesis_tx.outputs[gen_out_ind].value;
-        amount.mustSub(fee);
+        amount -= fee;
         Transaction tx = Transaction(
                 [Input(genesis_tx.hashFull(), gen_out_ind)],
             [Output(amount, WK.Keys.AA.address)]);
