@@ -313,7 +313,6 @@ public class FullNode : API
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
     mixin DefineCollectorForStats!("endpoint_request_stats", "collectStats");
-    mixin DefineCollectorForStats!("block_stats", "collectBlockStats");
 
     /***************************************************************************
 
@@ -345,6 +344,21 @@ public class FullNode : API
 
     /***************************************************************************
 
+        Collect block stats
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
+    private void collectBlockStats (Collector collector)
+    {
+        this.block_stats.agora_block_height_counter = this.ledger.getBlockHeight();
+        collector.collect(this.block_stats);
+    }
+
+    /***************************************************************************
+
         Collect all validator & preimage stats into the collector
 
         Params:
@@ -368,14 +382,10 @@ public class FullNode : API
     private void recordBlockStats (in Block block) @safe
     {
         const new_count = this.ledger.enrollment_manager.validator_set.countActive(block.header.height + 1);
-        this.block_stats.setMetricTo!"agora_block_height_counter"(
-            block.header.height.value);
-        this.block_stats.setMetricTo!"agora_block_enrollments_gauge"(new_count);
-        this.block_stats.increaseMetricBy!"agora_block_txs_amount_total"(
-            getUnspentAmount(block.txs));
-        this.block_stats.increaseMetricBy!"agora_block_txs_total"(
-            block.txs.length);
-        this.block_stats.increaseMetricBy!"agora_block_externalized_total"(1);
+        this.block_stats.agora_block_enrollments_gauge = new_count;
+        this.block_stats.agora_block_txs_amount_total += getUnspentAmount(block.txs);
+        this.block_stats.agora_block_txs_total += block.txs.length;
+        this.block_stats.agora_block_externalized_total += 1;
     }
 
     /// Convenience function to increase an endpoint stats
