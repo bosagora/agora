@@ -175,9 +175,6 @@ public struct NodeConfig
     /// enrollment in the test Genesis block (1 - 6)
     public ubyte limit_test_validators;
 
-    /// How often a block should be created
-    public uint block_interval_sec = 600;
-
     /// The minimum number of listeners to connect to
     /// before discovery is considered complete
     public size_t min_listeners = 2;
@@ -529,8 +526,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
     if (limit_test_validators > 6)
         throw new Exception("Value of 'node.limit_test_validators' must be between 0 and 6, inclusive");
 
-    uint block_interval_sec = get!(uint, "node", "block_interval_sec")(cmdln, node);
-
     Duration retry_delay = get!(Duration, "node", "retry_delay",
                                 str => str.to!ulong.msecs)(cmdln, node);
 
@@ -555,7 +550,6 @@ private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
             commons_budget_address : commons_budget_address,
             testing : testing,
             limit_test_validators: limit_test_validators,
-            block_interval_sec : block_interval_sec,
             retry_delay : retry_delay,
             max_retries : max_retries,
             timeout : timeout,
@@ -607,6 +601,7 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
     const max_quorum_nodes = get!(uint, "consensus", "max_quorum_nodes")(cmdln, node);
     const quorum_threshold = get!(uint, "consensus", "quorum_threshold")(cmdln, node);
     const quorum_shuffle_interval = get!(uint, "consensus", "quorum_shuffle_interval")(cmdln, node);
+    const block_interval_sec = get!(uint, "consensus", "block_interval_sec")(cmdln, node);
     const tx_payload_max_size = get!(uint, "consensus", "tx_payload_max_size")(cmdln, node);
     const tx_payload_fee_factor = get!(uint, "consensus", "tx_payload_fee_factor")(cmdln, node);
     const validator_tx_fee_cut = get!(ubyte, "consensus", "validator_tx_fee_cut")(cmdln, node);
@@ -621,6 +616,7 @@ private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
         max_quorum_nodes: max_quorum_nodes,
         quorum_threshold: quorum_threshold,
         quorum_shuffle_interval: quorum_shuffle_interval,
+        block_interval_sec: block_interval_sec,
         tx_payload_max_size: tx_payload_max_size,
         tx_payload_fee_factor: tx_payload_fee_factor,
         validator_tx_fee_cut: validator_tx_fee_cut,

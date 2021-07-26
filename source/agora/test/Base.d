@@ -801,7 +801,7 @@ public class TestAPIManager
 
     public TimePoint getBlockTimeOffset (Height height)
     {
-        return height * this.test_conf.node.block_interval_sec;
+        return height * this.test_conf.consensus.block_interval_sec;
     }
 
     /***************************************************************************

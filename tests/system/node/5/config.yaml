@@ -11,7 +11,6 @@ node:
   timeout: 5000
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
-  block_interval_sec: 5
   block_catchup_interval_secs: 5
   relay_tx_max_num : 0
   relay_tx_interval_secs : 0
@@ -27,6 +26,7 @@ interfaces:
     port:    5735
 
 consensus:
+  block_interval_sec: 5
   validator_cycle: 20
 
 ################################################################################

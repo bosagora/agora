@@ -27,6 +27,7 @@ interfaces:
     port:    4735
 
 consensus:
+  block_interval_sec: 5
   validator_cycle: 20
 
 ################################################################################
