@@ -115,8 +115,8 @@ version(none) unittest
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { full_nodes : 1,
-        quorum_threshold : 75 };
+    TestConf conf = { full_nodes: 1 };
+    conf.consensus.quorum_threshold = 75;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

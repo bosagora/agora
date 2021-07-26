@@ -25,7 +25,8 @@ import agora.test.Base;
 /// Simple test
 unittest
 {
-    TestConf conf = { quorum_threshold : 100 };
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

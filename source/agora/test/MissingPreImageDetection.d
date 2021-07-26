@@ -166,8 +166,9 @@ unittest
 
     TestConf conf = {
         recurring_enrollment : false,
-        quorum_threshold : 60,  // we have one node without pre-image and one giving false info
     };
+    // we have one node without pre-image and one giving false info
+    conf.consensus.quorum_threshold = 60;
     auto network = makeTestNetwork!BadNominatingAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
