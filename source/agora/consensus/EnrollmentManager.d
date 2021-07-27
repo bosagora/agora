@@ -229,32 +229,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Params:
-            height = the height at which to look up the mapping for
-            K = the Key for which to find the bit mask index
-
-        Returns:
-            the index of this key, or ulong.max if none was found
-
-    ***************************************************************************/
-
-    public ulong getIndexOfValidator (in Height height, in PublicKey K) nothrow @safe
-    {
-        if (height !in this.keymap.key_to_index)
-        {
-            log.warn("No keys at this height {}", height);
-            return ulong.max;
-        }
-        if (K !in this.keymap.key_to_index[height])
-        {
-            log.warn("Public key {} not found in keys at this height {}", K, height);
-            return ulong.max;
-        }
-        return this.keymap.key_to_index[height][K];
-    }
-
-    /***************************************************************************
-
         Add a enrollment data to the enrollment pool
 
         Params:

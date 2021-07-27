@@ -302,11 +302,11 @@ public class Validator : FullNode, API
         auto signed_validators = BitMask(block.header.validators.count);
         signed_validators.copyFrom(block.header.validators);
 
-        auto node_validator_index = this.nominator.enroll_man
-            .getIndexOfValidator(block.header.height, this.config.validator.key_pair.address);
-
+        const self_utxo = this.enroll_man.getEnrollmentKey();
+        auto validators = this.ledger.getValidators(block.header.height);
+        const ptrdiff_t node_validator_index = validators.countUntil!(v => v.utxo() == self_utxo);
         // It can be a block before this validator was enrolled
-        if (node_validator_index == ulong.max)
+        if (node_validator_index < 0)
         {
             log.trace("This validator {} was not active at height {}",
                 this.config.validator.key_pair.address, block.header.height);

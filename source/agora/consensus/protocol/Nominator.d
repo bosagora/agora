@@ -991,7 +991,7 @@ extern(D):
     /// Create a combined Schnorr multisig and return the updated block
     private Block updateMultiSignature (in Block block) @safe
     {
-        auto all_validators = this.enroll_man.getCountOfValidators(block.header.height);
+        const validators = this.ledger.getValidators(block.header.height);
 
         if (block.header.height !in this.slot_sigs)
         {
@@ -1000,17 +1000,11 @@ extern(D):
         }
         const Signature[PublicKey] block_sigs = this.slot_sigs[block.header.height];
 
-        auto validator_mask = BitMask(all_validators);
-        foreach (K; block_sigs.byKey())
+        auto validator_mask = BitMask(validators.length);
+        foreach (idx, const ref val; validators)
         {
-            ulong idx = this.enroll_man.getIndexOfValidator(block.header.height, K);
-            if (idx == ulong.max)
-            {
-                log.warn("Unable to determine index of validator {} at block height {}",
-                    PublicKey(K[]), block.header.height, block.header.height);
-                return Block.init;
-            }
-            validator_mask[idx] = true;
+            if (val.address in block_sigs)
+                validator_mask[idx] = true;
         }
         Block signed_block = block.updateSignature(multiSigCombine(block_sigs.byValue),
             validator_mask);
