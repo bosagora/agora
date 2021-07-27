@@ -113,7 +113,7 @@ public struct BitMask
     public auto opIndexAssign(bool set, size_t bit_index) @nogc
     {
         if (bit_index >= this.length)
-                assert(0, "Attempt to set index beyond length of bitmask");
+            assert(0, "Attempt to set index beyond length of bitmask");
         const size_t byte_index = (bit_index) / 8;
         if (set)
             this.bytes[byte_index] |= mask(bit_index);
