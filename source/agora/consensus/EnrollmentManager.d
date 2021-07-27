@@ -691,24 +691,6 @@ public class EnrollmentManager
         return this.key_pair.address;
     }
 
-    /***************************************************************************
-
-        Get the index of this node's enrollment in the sorted enrolled UTXOs
-
-        Params:
-            height = block height that enrollment is active (i.e. not the block containing enrollment)
-
-        Returns:
-            the index of the enrollment, or ulong.max if this node is not
-            enrolled as a validator.
-
-    ***************************************************************************/
-
-    public ulong getIndexOfEnrollment (in Height height) @safe nothrow
-    {
-        return this.getIndexOfValidator(height, this.key_pair.address);
-    }
-
     /// Returns: true if this validator is currently enrolled
     public bool isEnrolled (in Height height, scope UTXOFinder finder) nothrow @safe
     {
