@@ -61,6 +61,7 @@ import std.container : DList;
 import std.conv;
 import std.format;
 import std.path : buildPath;
+import std.range : assumeSorted;
 import core.time;
 
 // TODO: The block should probably have a size limit rather than a maximum
@@ -120,8 +121,8 @@ public extern (C++) class Nominator : SCPDriver
     /// SCPEnvelopeStore instance
     protected SCPEnvelopeStore scp_envelope_store;
 
-    // Height => Point (public key) => Signature
-    private Signature[PublicKey][Height] slot_sigs;
+    // Height => Point (UTXO hash) => Signature
+    private Signature[Hash][Height] slot_sigs;
 
     /// Enrollment manager
     public EnrollmentManager enroll_man;
@@ -656,7 +657,7 @@ extern(D):
     {
         const cur_height = this.ledger.getBlockHeight();
         log.trace("Received BLOCK SIG {} from node {} for block {}",
-                    block_sig.signature, block_sig.public_key, block_sig.height);
+                    block_sig.signature, block_sig.utxo, block_sig.height);
         if (block_sig.height > cur_height)
             return;
 
@@ -666,8 +667,8 @@ extern(D):
         const signed_block = this.updateMultiSignature(block);
         if (signed_block == Block.init)
         {
-            log.trace("Failed to add signature {} for block {} public key {}",
-                block_sig.signature, block_sig.height, block_sig.public_key);
+            log.trace("Failed to add signature {} for block {} utxo {}",
+                block_sig.signature, block_sig.height, block_sig.utxo);
             return;
         }
         this.ledger.updateBlockMultiSig(signed_block.header);
@@ -817,45 +818,57 @@ extern(D):
     private bool collectBlockSignature (in ValidatorBlockSig block_sig,
         in Hash block_hash) @safe nothrow
     {
-        const PublicKey K = block_sig.public_key;
         auto sigs = block_sig.height in this.slot_sigs;
-        if (block_sig.height in this.slot_sigs && K in this.slot_sigs[block_sig.height])
+        if (block_sig.height in this.slot_sigs && block_sig.utxo in this.slot_sigs[block_sig.height])
         {
             log.trace("Signature already collected for this node at height {}", block_sig.height);
             return false;
         }
-        if (!K.isValid())
+
+        // Using `assumeSorted` and `getValidator` being a random access range
+        // means that the search should be `O(ln(n))`.
+        ValidatorInfo validator;
+        try
         {
-            log.warn("Invalid point from public_key {}", block_sig.public_key);
+            auto validators = this.ledger.getValidators(block_sig.height);
+            auto result = validators.assumeSorted.find!(v => v.utxo() == block_sig.utxo);
+            if (result.empty())
+            {
+                log.warn("Couldn't find validator {} at height {}", block_sig.utxo, block_sig.height);
+                return false;
+            }
+            validator = result.front();
+        }
+        catch (Exception exc)
+        {
+            log.error("Exception happened with calling `getValidators` in `collectBlockSignature: {}", exc);
             return false;
         }
+
         const Scalar block_challenge = block_hash;
-        // Fetch the R from enrollment commitment for signing validator
-        const CR = this.enroll_man.getCommitmentNonce(block_sig.public_key, block_sig.height);
-        // Get the preimage at ledger height
-        const preimage_info = this.enroll_man.validator_set.getPreimageAt(
-            this.enroll_man.validator_set.getEnrollmentForKey(block_sig.height, block_sig.public_key),
-            block_sig.height);
-        if (preimage_info.hash == Hash.init)
+        if (validator.preimage.height < block_sig.height)
         {
-            log.warn("collectBlockSignature: No preimage for {} to sign block at height {}", block_sig.public_key, block_sig.height);
+            log.warn("collectBlockSignature: Validator {} has preimage at height {} but sig: {}",
+                     validator.utxo(), validator.preimage.height, block_sig);
             return false;
         }
+        // Fetch the R from enrollment commitment for signing validator
+        const CR = this.enroll_man.getCommitmentNonce(validator.address, block_sig.height);
         // Determine the R of signature (R, s)
-        Point R = CR + Scalar(preimage_info.hash).toPoint();
+        Point R = CR + Scalar(validator.preimage[block_sig.height]).toPoint();
         // Compose the signature (R, s)
         const sig = Signature(R, block_sig.signature);
         // Check this signature is valid for this block and signing validator
-        if (!verify(sig, block_challenge, K))
+        if (!verify(sig, block_challenge, validator.address))
         {
             log.warn("collectBlockSignature: INVALID Block signature received for slot {} from node {}",
-                block_sig.height, block_sig.public_key);
+                block_sig.height, block_sig.utxo);
             return false;
         }
         log.trace("collectBlockSignature: VALID block signature at height {} for node {}",
-            block_sig.height, block_sig.public_key);
+            block_sig.height, block_sig.utxo);
         // collect the signature
-        this.slot_sigs[block_sig.height][K] = Signature(R, block_sig.signature);
+        this.slot_sigs[block_sig.height][block_sig.utxo] = Signature(R, block_sig.signature);
         return true;
     }
 
@@ -949,9 +962,10 @@ extern(D):
 
             // Now we add our signature and gossip to other nodes
             log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
-            this.slot_sigs[height][this.kp.address] = this.createBlockSignature(block);
-            this.gossipBlockSignature(ValidatorBlockSig(height, this.kp.address,
-                this.slot_sigs[height][this.kp.address].s));
+            const self = this.enroll_man.getEnrollmentKey();
+            this.slot_sigs[height][self] = this.createBlockSignature(block);
+            this.gossipBlockSignature(ValidatorBlockSig(height, self,
+                this.slot_sigs[height][self].s));
             this.ledger.addHeightAsExternalizing(height);
             this.verifyBlock(this.updateMultiSignature(block));
         }
@@ -998,12 +1012,12 @@ extern(D):
             log.warn("No signatures at height {}", block.header.height);
             return Block.init;
         }
-        const Signature[PublicKey] block_sigs = this.slot_sigs[block.header.height];
+        const Signature[Hash] block_sigs = this.slot_sigs[block.header.height];
 
         auto validator_mask = BitMask(validators.length);
         foreach (idx, const ref val; validators)
         {
-            if (val.address in block_sigs)
+            if (val.utxo() in block_sigs)
                 validator_mask[idx] = true;
         }
         Block signed_block = block.updateSignature(multiSigCombine(block_sigs.byValue),

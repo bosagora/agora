@@ -1221,7 +1221,7 @@ public class NetworkManager
     public void gossipBlockSignature (ValidatorBlockSig block_sig) nothrow
     {
         log.trace("Gossip block signature {} for height #{} node {}",
-            block_sig.signature, block_sig.height , block_sig.public_key);
+            block_sig.signature, block_sig.height , block_sig.utxo);
         this.validators().each!(v => v.client.sendBlockSignature(block_sig));
     }
 
