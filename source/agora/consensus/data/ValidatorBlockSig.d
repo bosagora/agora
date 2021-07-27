@@ -64,40 +64,41 @@ public struct ValidatorBlockSig
     /// The block height of this signature
     public Height height;
 
-    /// The public key of the validator
-    public PublicKey public_key;
+    /// The stake of the validator
+    public Hash utxo;
 
     /// The block signature as s of Signature (R, s) for the validator
     public SigScalar signature;
 
-    public this (Height height, PublicKey public_key, SigScalar signature) @safe @nogc nothrow
+    public this (Height height, Hash utxo, SigScalar signature) @safe @nogc nothrow
     {
         this.height = height;
-        this.public_key = public_key;
+        this.utxo = utxo;
         this.signature = signature;
     }
 
-    public this (Height height, PublicKey public_key, Scalar signature) @safe @nogc nothrow
+    public this (Height height, Hash utxo, Scalar signature) @safe @nogc nothrow
     {
-        this(height, public_key, SigScalar(signature));
+        this(height, utxo, SigScalar(signature));
     }
 }
 
 unittest
 {
+    import agora.crypto.Hash;
     import agora.serialization.Serializer;
 
     testSymmetry!ValidatorBlockSig();
 
     Height height = Height(100);
-    PublicKey public_key = PublicKey.fromString(`boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h`);
+    Hash hash = "Hello world".hashFull();
     Scalar signature = Scalar("0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778");
-    ValidatorBlockSig sig = ValidatorBlockSig(height, public_key, signature);
+    ValidatorBlockSig sig = ValidatorBlockSig(height, hash, signature);
     testSymmetry(sig);
 
     import vibe.data.json;
     assert(sig.serializeToJsonString() == "{\"height\":\"100\"," ~
-        "\"public_key\":\"boa1xrra39xpg5q9zwhsq6u7pw508z2let6dj8r5lr4q0d0nff240fvd27yme3h\"," ~
-        "\"signature\":\"0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778\"}",
-        sig.serializeToJsonString());
+        "\"utxo\":\"0xee438b9928cd623262b040b3b2b1522235b8a92269d1a724cd53c25" ~
+           "d1042ec86b2d178cef755014a5892706e689cd82e00de9f1225e87dcc0600b2c8b2be9931\"," ~
+        "\"signature\":\"0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778\"}");
 }

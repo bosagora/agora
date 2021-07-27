@@ -314,6 +314,7 @@ public class Validator : FullNode, API
                 (this.config.validator.key_pair.address, block.header.height);
         }
 
+        const this_utxo = this.enroll_man.getEnrollmentKey();
         auto sig = this.nominator.createBlockSignature(block);
         assert(node_validator_index < block.header.validators.count,
             format!"The validator index %s is invalid"(node_validator_index));
@@ -321,8 +322,8 @@ public class Validator : FullNode, API
         {
             log.trace("This node's signature is already in the block signature");
             // Gossip this signature as it may have been only shared via ballot signing
-            this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
-                this.config.validator.key_pair.address, sig.s));
+            this.network.gossipBlockSignature(
+                ValidatorBlockSig(block.header.height, this_utxo, sig.s));
         }
         else
         {
