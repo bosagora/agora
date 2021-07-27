@@ -1289,6 +1289,8 @@ public class FullNode : API
     public ValidatorInfo[] getValidators (ulong height)
     {
         this.recordReq("validators");
+        if (height == 0)
+            return null;
         return this.ledger.getValidators(Height(height));
     }
 
