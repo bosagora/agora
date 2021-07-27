@@ -1435,9 +1435,24 @@ public class ValidatingLedger : Ledger
         if (auto res = super.validateSlashingData(height, data, initial_missing_validators))
             return res;
 
-        const index = this.enroll_man.getIndexOfEnrollment(height);
-        return (index != ulong.max && !data.missing_validators.find(index).empty) ?
-            "Node is attempting to slash itself" : null;
+        try
+        {
+            const self = this.enroll_man.getEnrollmentKey();
+            foreach (index, const ref validator; this.getValidators(height))
+            {
+                if (self != validator.utxo())
+                    continue;
+
+                return data.missing_validators.find(index).empty ? null
+                    : "Node is attempting to slash itself";
+            }
+        }
+        catch (Exception exc)
+        {
+            log.error("Caught Exception while validating slashing data: {}", exc);
+            return "Internal error while validating slashing data";
+        }
+        return null;
     }
 
 
