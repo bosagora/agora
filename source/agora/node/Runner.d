@@ -27,6 +27,7 @@ import agora.utils.Log;
 import ocean.util.log.ILogger;
 
 import vibe.core.core;
+import vibe.http.auth.basic_auth;
 import vibe.http.server;
 import vibe.http.router;
 import vibe.web.rest;
@@ -132,8 +133,16 @@ public Listeners runNode (Config config)
     auto tls_ctx = getTLSContext();
     if (result.admin !is null)
     {
+        if (!tls_ctx)
+            throw new Exception("This node has admin interface enabled so should be configured for ssl");
+
+        bool checkPassword (string user, string password) @safe
+        {
+            return user == config.admin.username && password == config.admin.pwd;
+        }
         log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
         auto adminrouter = new URLRouter();
+        adminrouter.any("*", performBasicAuth("Agora Admin", &checkPassword));
         adminrouter.registerRestInterface(result.admin);
         auto settings = new HTTPServerSettings(config.admin.address);
         settings.port = config.admin.port;

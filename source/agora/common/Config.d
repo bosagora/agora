@@ -281,6 +281,12 @@ public struct AdminConfig
 
     /// Bind port
     public ushort port = 0xB0B;
+
+    /// Username
+    public string username;
+
+    /// Password
+    public string pwd;
 }
 
 public enum HandlerType
@@ -504,6 +510,8 @@ private Config parseConfigImpl (in CommandLine cmdln, Node root)
     {
         conf.admin.address = get!(string, "admin", "address")(cmdln, admin);
         conf.admin.port    = get!(ushort, "admin", "port")(cmdln, admin);
+        conf.admin.username = get!(string, "admin", "username")(cmdln, admin);
+        conf.admin.pwd = get!(string, "admin", "pwd")(cmdln, admin);
     }
     return conf;
 }
