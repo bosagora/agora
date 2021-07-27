@@ -161,6 +161,8 @@ admin:
   enabled: true      # `false` by default
   address: 127.0.0.1 # Private
   port:    2827      # 0xB0B
+  username: admin
+  pwd: someSecret
 
 ################################################################################
 ##                               Node discovery                               ##

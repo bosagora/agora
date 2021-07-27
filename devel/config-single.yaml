@@ -35,10 +35,12 @@ admin:
   enabled: true
   address: 0.0.0.0
   port:    2827
+  username: admin
+  pwd: s3cr3t
 
 # The node will self-ban but this section needs at least one entry
 network:
-  - http://127.0.0.1:2826/
+  - https://127.0.0.1:2826/
 
 logging:
   root:
