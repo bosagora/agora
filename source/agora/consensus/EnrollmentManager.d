@@ -116,49 +116,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        A two-way map between public key and indexes at a given height
-
-        In order to support collecting signatures *after* a block is
-        externalized we must know the key index for the block header bitmask
-        for the active validator set *for that block height*.
-        Once a block is externalized the validator set might change
-        - so we store for each block height (can be optimised later) the maps
-          for key_to_index and index_to_key
-
-    ***************************************************************************/
-
-    private struct ValidatorKeyMap
-    {
-        /// used for setting the signature bitmask during signature collection
-        private ulong[PublicKey][Height] key_to_index;
-
-        /// used for validating the signature
-        private PublicKey[ulong][Height] index_to_key;
-
-        /***********************************************************************
-
-            Update the validator key index maps
-
-            Params:
-                height = the block height the validators will next sign
-
-        ***********************************************************************/
-
-        public void update (in Height height, in PublicKey[] keys) @safe nothrow
-        {
-            foreach (idx, key; keys)
-            {
-                this.key_to_index[height][key] = idx;
-                this.index_to_key[height][idx] = key;
-            }
-        }
-    }
-
-    /// Ditto
-    public ValidatorKeyMap keymap;
-
-    /***************************************************************************
-
         Constructor
 
         Params:
