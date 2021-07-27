@@ -709,31 +709,7 @@ public class Ledger
     public string validateSlashingData (in Height height, in ConsensusData data,
         in uint[] initial_missing_validators) @safe nothrow
     {
-        if (auto res = this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators))
-            return res;
-
-        return this.isSelfSlashing(height, data);
-    }
-
-    /***************************************************************************
-
-        Check if the consensus data has the information that is slashing
-        a node itself
-
-        Params:
-            height = the height for which we want to check self slashing
-            data = consensus data
-
-        Returns:
-            error string, if node is trying to slash itself, null otherwise
-
-    ***************************************************************************/
-
-    public string isSelfSlashing (in Height height, in ConsensusData data) @safe nothrow
-    {
-        const index = this.enroll_man.getIndexOfEnrollment(height);
-        return (index != ulong.max && !data.missing_validators.find(index).empty) ?
-            "Node is attempting to slash itself" : null;
+        return this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators);
     }
 
     /***************************************************************************
@@ -1451,6 +1427,19 @@ public class ValidatingLedger : Ledger
         data.tx_set = this.getCandidateTransactions(next_height, max_txs,
             data.missing_validators);
     }
+
+    /// Validate slashing data, including checking if the node is slef slashing
+    public override string validateSlashingData (in Height height, in ConsensusData data,
+        in uint[] initial_missing_validators) @safe nothrow
+    {
+        if (auto res = super.validateSlashingData(height, data, initial_missing_validators))
+            return res;
+
+        const index = this.enroll_man.getIndexOfEnrollment(height);
+        return (index != ulong.max && !data.missing_validators.find(index).empty) ?
+            "Node is attempting to slash itself" : null;
+    }
+
 
     /***************************************************************************
 
