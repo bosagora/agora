@@ -932,6 +932,7 @@ extern(D):
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
         try
         {
+            const validators = this.ledger.getValidators(height);
             Hash random_seed = this.ledger.getRandomSeed(
                 height, data.missing_validators);
             Transaction[] externalized_tx_set;
@@ -944,7 +945,7 @@ extern(D):
             }
             const block = makeNewBlock(last_block,
                 externalized_tx_set, data.time_offset, random_seed,
-                this.enroll_man.getCountOfValidators(last_block.header.height + 1),
+                validators.length,
                 data.enrolls, data.missing_validators);
 
             // Now we add our signature and gossip to other nodes
