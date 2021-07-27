@@ -213,8 +213,30 @@ public class Ledger
 
     /***************************************************************************
 
+        Expose the list of validators at a given height
+
+        The `ValidatorInfo` struct contains the validator's UTXO hash, address,
+        and currently highest known pre-image.
+        It always returns valid historical data (although the pre-image might
+        be the current one).
+
+        Callers expecting the pre-image at a given height should first check
+        that the `height` is above or equal their expectation, then use
+        the `opIndex` method to get the correct value for the height they
+        are interested in. This method doesn't expose a mean to do so directly
+        because it would then need to filter out missing validators,
+        which would give the caller wrong indexes for validators.
+
+        Params:
+          height = Height at which to query the validator set.
+                   Accurate results are only guaranteed for
+                   `height <= this.getBlockHeight() + 1`.
+
+        Throws:
+          If no validators are present at height `height`.
+
         Returns:
-            A list of validators that can sign the block at `height`
+            A list of validators that are active at `height`
 
     ***************************************************************************/
 
