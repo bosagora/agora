@@ -213,22 +213,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Params:
-            height = the height at which to look up the mapping for
-
-        Returns:
-            the count of validators at this enrollment height
-
-    ***************************************************************************/
-
-    public size_t getCountOfValidators (in Height height) const nothrow @safe
-    {
-        return height !in this.keymap.key_to_index ? 0
-            : this.keymap.index_to_key[height].length;
-    }
-
-    /***************************************************************************
-
         Add a enrollment data to the enrollment pool
 
         Params:
