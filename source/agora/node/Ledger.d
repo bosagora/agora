@@ -473,9 +473,6 @@ public class Ledger
 
         const Height next = block.header.height + 1;
         this.updateSlashedValidatorSet(block);
-        auto keys = this.getValidators(next).map!(vi => vi.address).array();
-        this.log.trace("Update validator lookup maps at height {}: {}", next, keys);
-        this.enroll_man.keymap.update(next, keys);
     }
 
     /***************************************************************************
@@ -1987,7 +1984,8 @@ unittest
         auto params = new immutable(ConsensusParams)(ValidatorCycle);
         const blocks = genBlocksToIndex(ValidatorCycle, params);
         // Enrollment: Insufficient number of active validators
-        assertThrown!Exception(new TestLedger(WK.Keys.A, blocks, params));
+        auto ledger = new TestLedger(WK.Keys.A, blocks, params);
+        assertThrown(ledger.getValidators(Height(ValidatorCycle + 1)));
     }
 }
 
