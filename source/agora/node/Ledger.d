@@ -703,8 +703,14 @@ public class Ledger
                 return fail_reason;
         }
 
-        if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators))
-            return fail_reason;
+        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators))
+                return fail_reason;
+
+        catch (Exception exc)
+        {
+            log.error("Caught Exception while validating slashing data: {}", exc);
+            return "Internal error while validating slashing data";
+        }
 
         return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
             clock.networkTime(), block_time_offset_tolerance);
@@ -726,7 +732,7 @@ public class Ledger
     ***************************************************************************/
 
     public string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators) @safe nothrow
+        in uint[] initial_missing_validators) @safe
     {
         return this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators);
     }
@@ -1259,25 +1265,21 @@ public class Ledger
     ***************************************************************************/
 
     private string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe nothrow
+        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe
     {
         import std.algorithm.setops : setDifference;
 
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
-            assert(0, "Could not retrieve enrollments / no enrollments found");
+        auto validators = this.getValidators(height);
+        assert(validators.length <= uint.max);
 
-        uint[] missing_validators_lower_bound;
-        foreach (idx, key; keys)
-        {
-            if (!this.hasRevealedPreimage(height, key))
-                missing_validators_lower_bound ~= cast(uint)idx;
-        }
+        uint[] missing_validators_lower_bound = validators.enumerate
+            .filter!(kv => kv.value.preimage.height < height)
+            .map!(kv => cast(uint) kv.index).array();
 
         // trying to retrieve preimages that - based on the consensus data -
         // was shared with other nodes
         foreach (const validator_ind; setDifference(missing_validators_lower_bound, missing_validators))
-            this.enrolls_keys_for_unknown_preimages.put(keys[validator_ind]);
+            this.enrolls_keys_for_unknown_preimages.put(validators[validator_ind].utxo());
 
         // NodeA will check the candidate from NodeB in the following way:
         //
@@ -1449,27 +1451,19 @@ public class ValidatingLedger : Ledger
 
     /// Validate slashing data, including checking if the node is slef slashing
     public override string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators) @safe nothrow
+        in uint[] initial_missing_validators) @safe
     {
         if (auto res = super.validateSlashingData(height, data, initial_missing_validators))
             return res;
 
-        try
+        const self = this.enroll_man.getEnrollmentKey();
+        foreach (index, const ref validator; this.getValidators(height))
         {
-            const self = this.enroll_man.getEnrollmentKey();
-            foreach (index, const ref validator; this.getValidators(height))
-            {
-                if (self != validator.utxo())
-                    continue;
+            if (self != validator.utxo())
+                continue;
 
-                return data.missing_validators.find(index).empty ? null
-                    : "Node is attempting to slash itself";
-            }
-        }
-        catch (Exception exc)
-        {
-            log.error("Caught Exception while validating slashing data: {}", exc);
-            return "Internal error while validating slashing data";
+            return data.missing_validators.find(index).empty ? null
+                : "Node is attempting to slash itself";
         }
         return null;
     }
