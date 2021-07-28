@@ -548,13 +548,13 @@ public class NetworkClient
             not be included in the result.
 
         API:
-            GET /preimages_for_enroll_keys
+            GET /preimages
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @trusted nothrow
+    public PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @trusted nothrow
     {
-        return this.attemptRequest!(API.getPreimagesForEnrollKeys, Throw.No)(this.api, enroll_keys);
+        return this.attemptRequest!(API.getPreimages, Throw.No)(this.api, enroll_keys);
     }
 
     /***************************************************************************

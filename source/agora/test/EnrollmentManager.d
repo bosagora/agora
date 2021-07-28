@@ -118,9 +118,9 @@ unittest
 
     PreImageInfo b20_preimage = PreImageInfo(node0_utxo, b20.header.enrollments[0].commitment, Height(20));
 
-    retryFor(nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(node0_utxo.only))
+    retryFor(nodes[0].getPreimages(Set!Hash.from(node0_utxo.only))
         .any!(preimage => preimage.height > 20), 5.seconds);
-    PreImageInfo preimage_26 = nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(node0_utxo.only))[0];
+    PreImageInfo preimage_26 = nodes[0].getPreimages(Set!Hash.from(node0_utxo.only))[0];
 
     // Check if the new pre-image is valid from the restarted node
     assert(preimage_26.isInvalidReason(b20_preimage) is null);
@@ -263,8 +263,8 @@ unittest
     // Wait for the revelation of new pre-image to complete
     const org_preimage = PreImageInfo(e0.utxo_key, e0.commitment, Height(0));
 
-    retryFor(nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(e0.utxo_key.only))
+    retryFor(nodes[0].getPreimages(Set!Hash.from(e0.utxo_key.only))
         .any!(preimage => org_preimage != preimage),
         15.seconds);
-    assert(nodes[0].getPreimagesForEnrollKeys(Set!Hash.from(e0.utxo_key.only))[0] != PreImageInfo.init);
+    assert(nodes[0].getPreimages(Set!Hash.from(e0.utxo_key.only))[0] != PreImageInfo.init);
 }

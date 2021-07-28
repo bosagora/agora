@@ -708,7 +708,7 @@ public class TestAPIManager
         clients_idxs.each!(idx =>
             enrolls.enumerate.each!((idx_enroll, enroll) {
                 if (clients_idxs.canFind(idx_enroll))
-                    retryFor(this.clients[idx].getPreimagesForEnrollKeys(Set!Hash.from(enroll.utxo_key.only))
+                    retryFor(this.clients[idx].getPreimages(Set!Hash.from(enroll.utxo_key.only))
                         .any!(preimage => preimage.height >= height),
                             timeout, format!"Client #%s has no preimage for client #%s at distance %s"
                             (idx, idx_enroll, height));
@@ -2329,11 +2329,11 @@ public class NoPreImageVN : TestValidatorNode
     }
 
     /// GET: /preimages_for_enroll_keys
-    public override PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
+    public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
     {
         const self = this.enroll_man.getEnrollmentKey();
         const reveal = atomicLoad(*this.reveal_preimage);
-        return super.getPreimagesForEnrollKeys(enroll_keys)
+        return super.getPreimages(enroll_keys)
             .filter!(pi => reveal || pi.utxo != self)
             .array();
     }

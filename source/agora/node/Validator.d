@@ -297,7 +297,7 @@ public class Validator : FullNode, API
                  next_height, missing);
 
         auto query = this.network.peers[]
-            .map!(peer => peer.client.getPreimagesForEnrollKeys(missing));
+            .map!(peer => peer.client.getPreimages(missing));
 
         foreach (preimages; query)
         {
