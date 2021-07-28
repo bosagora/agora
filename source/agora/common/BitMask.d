@@ -12,6 +12,8 @@
 
 module agora.common.BitMask;
 
+import agora.serialization.Serializer;
+
 public struct BitMask
 {
     import std.algorithm;
@@ -20,6 +22,22 @@ public struct BitMask
     import std.range;
 
     @safe:
+
+    /// Binary serialize this bitmask (avoid double length serialization)
+    public void serialize (scope SerializeDg dg) const
+    {
+        serializePart(this.length, dg);
+        dg(this.bytes);
+    }
+
+    /// Binary deserialize this bitmask
+    public static QT fromBinary (QT) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        const len = deserializeLength(dg, opts.maxLength);
+        const size = BitMask.getSize(len);
+        return QT(len, dg(size));
+    }
 
     /// Serialization
     public void toString (scope void delegate (scope const char[]) @safe sink) const
@@ -68,13 +86,20 @@ public struct BitMask
     {
         this.length = length;
         if (length > 0)
-            this.bytes = new inout(ubyte)[1 + ((length - 1) / 8)];
+            this.bytes = new inout(ubyte)[BitMask.getSize(length)];
     }
 
     public this (size_t length, in ubyte[] bytes)
     {
         this(length);
         this.bytes[] = bytes;
+    }
+
+    /// Convenience function to map a 'length' to 'bytes.length'
+    pragma(inline, true)
+    private static size_t getSize (size_t length) @safe pure nothrow @nogc
+    {
+        return (length / 8) + !!(length % 8);
     }
 
     // copy bits set from given BitMask bytes
@@ -140,10 +165,19 @@ public struct BitMask
 
 version (unittest)
 {
-    import agora.serialization.Serializer;
-
     import std.algorithm;
     import std.range;
+}
+
+unittest
+{
+    assert(BitMask.getSize(0) == 0);
+    assert(BitMask.getSize(1) == 1);
+    assert(BitMask.getSize(6) == 1);
+    assert(BitMask.getSize(8) == 1);
+    assert(BitMask.getSize(9) == 2);
+    assert(BitMask.getSize(16) == 2);
+    assert(BitMask.getSize(100) == 13);
 }
 
 unittest
