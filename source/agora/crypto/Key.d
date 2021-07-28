@@ -13,6 +13,7 @@
 
 module agora.crypto.Key;
 
+import agora.common.Ensure;
 import agora.common.Types;
 import agora.crypto.Bech32;
 import agora.crypto.Crc16;
@@ -185,9 +186,9 @@ public struct PublicKey
     public static PublicKey fromString (scope const(char)[] str) @trusted
     {
         auto dec = decodeBech32(str);
-        enforce(dec.hrp == HumanReadablePart);
-        enforce(dec.data.length == VersionWidth + PublicKey.sizeof);
-        enforce(dec.data[0] == VersionByte.AccountID);
+        ensure(dec.hrp == HumanReadablePart, "PublicKey HRP should be {}", HumanReadablePart);
+        ensure(dec.data.length == VersionWidth + PublicKey.sizeof, "PublicKey binary size mismatch");
+        ensure(dec.data[0] == VersionByte.AccountID, "Account byte mismatch");
         return PublicKey(typeof(this.data)(dec.data[VersionWidth .. $]));
     }
 
@@ -345,9 +346,10 @@ public struct SecretKey
     public static SecretKey fromString (scope const(char)[] str)
     {
         const bin = Base32.decode(str);
-        enforce(bin.length == VersionWidth + SecretKey.sizeof + ChecksumWidth);
-        enforce(bin[0] == VersionByte.Seed);
-        enforce(validate(bin[0 .. $ - ChecksumWidth], bin[$ - ChecksumWidth .. $]));
+        ensure(bin.length == VersionWidth + SecretKey.sizeof + ChecksumWidth, "SecretKey binary size mismatch");
+        ensure(bin[0] == VersionByte.Seed, "SecretKey binary marker mismatch");
+        ensure(validate(bin[0 .. $ - ChecksumWidth], bin[$ - ChecksumWidth .. $]),
+               "SecretKey did not pass checksum validation");
         return SecretKey(typeof(this.data)(bin[VersionWidth .. $ - ChecksumWidth]));
     }
 

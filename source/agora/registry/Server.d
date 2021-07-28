@@ -13,6 +13,7 @@
 
 module agora.registry.Server;
 
+import agora.common.Ensure;
 import agora.common.Types;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -85,13 +86,13 @@ public final class NameRegistry: NameRegistryAPI
     public override void putValidator (RegistryPayload registry_payload)
     {
         // verify signature
-        if (!registry_payload.verifySignature(registry_payload.data.public_key))
-            throw new Exception("incorrect signature");
+        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
+                "Incorrect signature for payload");
 
         // check if we received stale data
         if (auto previous = registry_payload.data.public_key in registry_map)
-            if (previous.data.seq > registry_payload.data.seq)
-                throw new Exception("registry already has a more up-to-date version of the data");
+            ensure(previous.data.seq <= registry_payload.data.seq,
+                "registry already has a more up-to-date version of the data");
 
         // register data
         log.info("Registering network addresses: {} for public key: {}", registry_payload.data.addresses,

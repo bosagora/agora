@@ -27,6 +27,8 @@
 
 module agora.common.Amount;
 
+import agora.common.Ensure;
+
 import std.format;
 
 /// Defines a monetary type used in the blockchain
@@ -90,12 +92,11 @@ public struct Amount
     }
 
     /// Support for Vibe.d deserialization
-    public static Amount fromString (scope const(char)[] str) pure @safe
+    public static Amount fromString (scope const(char)[] str) @safe
     {
         import std.conv : to;
         immutable ul = str.to!ulong;
-        if (!Amount.isInRange(ul))
-            throw new Exception("Invalid input value to Amount");
+        ensure(Amount.isInRange(ul), "Invalid input value to Amount: {}", str);
         return Amount(ul, true);
     }
 
@@ -104,8 +105,7 @@ public struct Amount
     public ref Amount opOpAssign (string op : "+") (in Amount other) return
         @safe
     {
-        if (!this.add(other))
-            throw new Exception(format("Amount %d cannot be added to %d", other, this));
+        ensure(this.add(other), "Amount {} cannot be added to {}", other, this);
         return this;
     }
 
@@ -114,8 +114,7 @@ public struct Amount
     public ref Amount opOpAssign (string op : "-") (in Amount other) return
         @safe
     {
-        if (!this.sub(other))
-            throw new Exception(format("Amount %d cannot be subtracted to %d", other, this));
+        ensure(this.sub(other), "Amount {} cannot be subtracted from {}", other, this);
         return this;
     }
 
@@ -124,8 +123,7 @@ public struct Amount
         @safe
     {
         Amount copy = this;
-        if (!copy.add(other))
-            throw new Exception(format("Amount %d cannot be added to %d", other, this));
+        ensure(copy.add(other), "Amount {} cannot be added to {}", other, this);
         return copy;
     }
 
@@ -134,8 +132,7 @@ public struct Amount
         @safe
     {
         Amount copy = this;
-        if (!copy.sub(other))
-            throw new Exception(format("Amount %d cannot be subtracted to %d", other, this));
+        ensure(copy.sub(other), "Amount {} cannot be subtracted from {}", other, this);
         return copy;
     }
 
@@ -466,7 +463,7 @@ nothrow pure @nogc @safe unittest
     assert(val == Amount.UnitPerCoin);
 }
 
-pure @safe unittest
+@safe unittest
 {
     import std.exception;
     assert(Amount.fromString(`5000000000000000`) == Amount.MaxUnitSupply);
