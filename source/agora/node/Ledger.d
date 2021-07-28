@@ -1223,32 +1223,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Check if a validator has a pre-image for the height
-
-        Params:
-            height = the desired block height to look up the hash for
-            utxo_key = the UTXO key idendifying a validator
-
-        Returns:
-            true if the validator has revealed its preimage for the provided
-                block height or if current node
-
-    ***************************************************************************/
-
-    private bool hasRevealedPreimage (in Height height, in Hash utxo_key)
-        @safe nothrow
-    {
-        if (utxo_key == this.enroll_man.getEnrollmentKey())
-            return true; // this is current Ledger node
-
-        auto preimage = this.enroll_man.getValidatorPreimage(utxo_key);
-        auto enrolled = this.enroll_man.validator_set.getEnrolledHeight(height, preimage.utxo);
-        assert(height >= enrolled);
-        return preimage.height >= height;
-    }
-
-    /***************************************************************************
-
         Check if information for pre-images and slashed validators is valid
 
         Params:
@@ -1490,15 +1464,10 @@ public class ValidatingLedger : Ledger
 
     public uint[] getCandidateMissingValidators (in Height height) @safe
     {
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(height, keys) || keys.length == 0)
-            assert(0, "Could not retrieve enrollments / no enrollments found");
-
-        uint[] result;
-        foreach (idx, utxo_key; keys)
-            if (!this.hasRevealedPreimage(height, utxo_key))
-                result ~= cast(uint)idx;
-        return result;
+        return this.getValidators(height).enumerate()
+            .filter!(en => en.value.preimage.height < height)
+            .map!(en => cast(uint) en.index)
+            .array();
     }
 
     /***************************************************************************
