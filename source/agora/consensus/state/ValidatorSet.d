@@ -318,7 +318,7 @@ public class ValidatorSet
             "SELECT enrolled_height, public_key, key, preimage, height " ~
             "FROM validator " ~
             "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
-            "AND (slashed_height is null OR slashed_height > ?) " ~
+            "AND (slashed_height is null OR slashed_height >= ?) " ~
             "ORDER BY key ASC", this.minEnrollmentHeight(height), height, height);
 
         ValidatorInfo[] ret;
