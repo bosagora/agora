@@ -527,10 +527,10 @@ public class NetworkClient
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimages (ulong start_height,
+    public PreImageInfo[] getPreimagesRange (ulong start_height,
         ulong end_height) nothrow
     {
-        return this.attemptRequest!(API.getPreimages, Throw.No)(this.api,
+        return this.attemptRequest!(API.getPreimagesRange, Throw.No)(this.api,
             start_height, end_height);
     }
 

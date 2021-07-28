@@ -1057,13 +1057,27 @@ public class FullNode : API
         return preimage_infos;
     }
 
-    /// GET: /preimages
-    public override PreImageInfo[] getPreimages (ulong start_height,
-        ulong end_height) @safe nothrow
+    /// GET: /preimages_range
+    public override PreImageInfo[] getPreimagesRange (
+        ulong start_height, ulong end_height)
+        @safe nothrow
     {
-        this.recordReq("preimages");
-        return this.enroll_man.getValidatorPreimages(Height(start_height),
-            Height(end_height)).array();
+        this.recordReq("preimages_range");
+
+        const known = this.ledger.getBlockHeight();
+        // We have no data that could match this query
+        if (known < start_height)
+            return null;
+
+        // Bounds check end_height and make the API prractical
+        if (known < end_height)
+            end_height = known;
+        else if (end_height < start_height)
+            end_height = start_height;
+
+        return this.enroll_man.getValidatorPreimages(
+            Height(start_height), Height(end_height))
+            .array();
     }
 
     /// GET /local_time

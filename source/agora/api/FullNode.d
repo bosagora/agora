@@ -241,21 +241,35 @@ public interface API
 
     /***************************************************************************
 
-        Get validators' pre-image information
+        Get validators' pre-image information spanning a certain period
+
+        This is most useful when catching up, as it allows to get the last
+        preimage for validators active between `start_height` and `end_height`.
+        The returned value will include only one `PreImageInfo` per UTXO
+        (the latest one). A conforming implementation might return values
+        that are above `end_height`.
+
+        In other words, the parameters define the bound of the enrolled
+        validator, not the bound of the pre-images.
 
         API:
-            GET /preimages
+            GET /preimages_range
 
         Params:
             start_height = the starting enrolled height to begin retrieval from
-            end_height = the end enrolled height to finish retrieval to
+            end_height = the end enrolled height to finish retrieval to.
+                         If the value provided is lower than `start_height`,
+                         only the pre-images for validators active at
+                         `start_height` will be returned.
+                         If the value is higher than the currently known block
+                         height, the return will be bound to that value.
 
         Returns:
             preimages' information of the validators
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimages (ulong start_height, ulong end_height);
+    public PreImageInfo[] getPreimagesRange (ulong start_height, ulong end_height);
 
     /***************************************************************************
 
