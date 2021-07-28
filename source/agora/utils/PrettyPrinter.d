@@ -534,16 +534,16 @@ Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>
 ====================================================
-Height: 1, Prev: 0x2515...9397, Root: 0xbbc4...73d7, Enrollments: []
+Height: 1, Prev: 0x2515...9397, Root: 0xb039...ee32, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
 Random seed: [0x0000...0000],
 Slashed validators: [],
 Transactions: 2
-Inputs (1): 0x359a...f346:0x4b6e...a32f
-Outputs (1): boa1xzgenes5...gm67(61,000,000)<Payment>
 Inputs (1): 0xb979...d9ca:0x4b6e...a32f
-Outputs (1): boa1xzgenes5...gm67(61,000,000)<Payment>
+Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
+Inputs (1): 0x359a...f346:0x4b6e...a32f
+Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
@@ -552,13 +552,13 @@ Outputs (1): boa1xzgenes5...gm67(61,000,000)<Payment>
     // need reproducible unlocks for test (signing generates unique nonces)
     import agora.script.Lock;
     import agora.utils.Test;
-    Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
+    static Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
     {
         return Unlock.init;
     }
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.sign(OutputType.Payment, 0, &unlocker)), 0, Hash.init, genesis_validator_keys.length);
+        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign(OutputType.Payment, 0)), 0, Hash.init, genesis_validator_keys.length);
 
     auto validators = BitMask(6);
     only(0,2,3,5).each!(i => validators[i] = true);

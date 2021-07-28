@@ -586,6 +586,7 @@ private class FlashListener : TestFlashListenerAPI
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -688,6 +689,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -816,6 +818,7 @@ unittest
     }
 
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -918,6 +921,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1068,6 +1072,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1240,6 +1245,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1469,6 +1475,7 @@ unittest
     }
 
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1552,6 +1559,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1643,6 +1651,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1859,6 +1868,7 @@ unittest
     }
 
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -1973,6 +1983,7 @@ unittest
     }
 
     TestConf conf;
+    conf.consensus.min_fee = Amount(0); // TODO: Remove this
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();

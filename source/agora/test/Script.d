@@ -18,6 +18,7 @@ version (unittest):
 import agora.api.Validator;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
+import agora.crypto.Key;;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.script.Opcodes;
@@ -75,11 +76,13 @@ unittest
 
     const lock_height_2 = Height(2);
     auto unlock_height_2 = block_6.spendable()
-        .map!(txb => txb.lock(lock_height_2).sign(OutputType.Payment, 0, &keyUnlocker));
+        .map!(txb => txb.unlockSigner(&TxBuilder.signWithGenesis)
+            .lock(lock_height_2).sign(OutputType.Payment, 0));
 
     const lock_height_3 = Height(3);
     auto unlock_height_3 = block_6.spendable()
-        .map!(txb => txb.lock(lock_height_3).sign(OutputType.Payment, 0, &keyUnlocker)).array;
+        .map!(txb => txb.unlockSigner(&TxBuilder.signWithGenesis)
+            .lock(lock_height_3).sign(OutputType.Payment, 0)).array;
 
     // txs with unlock height 2 should be rejected by the lock script
     unlock_height_2.each!(tx => nodes.each!(node => node.putTransaction(tx)));
@@ -162,14 +165,14 @@ unittest
     // however the transaction lock specifically requires unlock age 3.
     const uint UnlockAge_2 = 2;
     auto age_2_txs = iota(cast(uint)txs[3].outputs.length)
-        .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, UnlockAge_2, &keyUnlocker))
+        .map!(idx => TxBuilder(txs[3], idx).unlockSigner(&TxBuilder.signWithGenesis))
+        .map!(t => t.sign(OutputType.Payment, UnlockAge_2))
         .array();
 
     const uint UnlockAge_3 = 3;
     auto age_3_txs = iota(cast(uint)txs[3].outputs.length)
-        .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, UnlockAge_3, &keyUnlocker))
+        .map!(idx => TxBuilder(txs[3], idx).unlockSigner(&TxBuilder.signWithGenesis))
+        .map!(t => t.sign(OutputType.Payment, UnlockAge_3))
         .array();
 
     age_2_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
@@ -198,8 +201,8 @@ unittest
         WK.Keys.Genesis.address.repeat.take(8)).sign()).array;
 
     /// using two different key pairs for the IF / ELSE branch
-    auto kp_a = WK.Keys[42];
-    auto kp_b = WK.Keys[69];
+    const KeyPair kp_a = WK.Keys[42];
+    const KeyPair kp_b = WK.Keys[69];
 
     Lock key_lock = Lock(LockType.Script,
         [ubyte(OP.IF)]
@@ -229,28 +232,20 @@ unittest
     auto blocks = node_1.getBlocksFrom(2, 1);
     assert(blocks.length == 1);
     sort(txs_0);
-    assert(blocks[0].txs == txs_0);
+    assert(blocks[0].txs.array == txs_0);
 
     // using IF branch
     auto true_a_txs = iota(cast(uint)txs[3].outputs.length)
         .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, 0,
-                (in Transaction tx, in OutputRef out_ref) @safe nothrow
-                {
-                    auto pair = SigPair(kp_a.sign(tx.getChallenge()), SigHash.All);
-                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.TRUE)]);
-                }))
+            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_a, OP.TRUE))
+            .sign(OutputType.Payment, 0))
         .array();
 
     // ditto, but different key-pair
     auto true_b_txs = iota(cast(uint)txs[3].outputs.length)
         .map!(idx => TxBuilder(txs[3], idx)
-            .sign(OutputType.Payment, 0,
-                (in Transaction tx, in OutputRef out_ref) @safe nothrow
-                {
-                    auto pair = SigPair(kp_b.sign(tx.getChallenge()), SigHash.All);
-                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.TRUE)]);
-                }))
+            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_b, OP.TRUE))
+            .sign(OutputType.Payment, 0))
         .array();
 
     // We don't want to rely on gossip before we set time for nominate or we will not know
@@ -266,23 +261,15 @@ unittest
     // using ELSE branch
     auto false_a_txs = iota(cast(uint)txs[4].outputs.length)
         .map!(idx => TxBuilder(txs[4], idx)
-            .sign(OutputType.Payment, 0,
-                (in Transaction tx, in OutputRef out_ref) @safe nothrow
-                {
-                    auto pair = SigPair(kp_a.sign(tx.getChallenge()), SigHash.All);
-                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.FALSE)]);
-                }))
+            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_a, OP.FALSE))
+            .sign(OutputType.Payment, 0))
         .array();
 
     // ditto, but different key-pair
     auto false_b_txs = iota(cast(uint)txs[4].outputs.length)
         .map!(idx => TxBuilder(txs[4], idx)
-            .sign(OutputType.Payment, 0,
-                (in Transaction tx, in OutputRef out_ref) @safe nothrow
-                {
-                    auto pair = SigPair(kp_b.sign(tx.getChallenge()), SigHash.All);
-                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.FALSE)]);
-                }))
+            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_b, OP.FALSE))
+            .sign(OutputType.Payment, 0))
         .array();
 
     false_a_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));

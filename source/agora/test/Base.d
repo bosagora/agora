@@ -1981,10 +1981,6 @@ public struct TestConf
 
         // `validator_cycle` is set to 20 to match the genesis block
         // Do not set it dynamically, it will be overridden
-
-        /// The minimum (transaction size adjusted) fee.
-        /// Transaction size adjusted fee = tx fee / tx size in bytes.
-        min_fee: Amount(0),
     };
 
     /***

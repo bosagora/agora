@@ -76,6 +76,7 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.script.Lock;
+import agora.script.Opcodes;
 import agora.script.Signature;
 /* version (unittest) */ import agora.utils.Test;
 
@@ -103,12 +104,14 @@ public struct TxBuilder
     public this (in PublicKey refundMe) @safe pure nothrow
     {
         this.leftover = Output(Amount(0), refundMe);
+        this.unlocker = &TxBuilder.keyUnlocker;
     }
 
     /// Ditto
     public this (in Lock lock) @safe pure nothrow
     {
         this.leftover = Output(Amount(0), lock);
+        this.unlocker = &TxBuilder.keyUnlocker;
     }
 
     /// Ditto
@@ -156,10 +159,11 @@ public struct TxBuilder
     public ref typeof(this) attach (const Transaction tx)
         @safe nothrow return
     {
+        // Don't include small change outputs less than required fees
         this.inputs ~= iota(tx.outputs.length)
             .map!(index => OutputRef(tx.outputs[index], Input(tx, index).utxo))
             .array;
-        if (tx.outputs.any!(outp => !this.leftover.value.add(outp.value)))
+        if (inputs.any!(input => !this.leftover.value.add(input.output.value)))
             assert(0, "Adding a transaction led to overflow");
         return this;
     }
@@ -228,9 +232,46 @@ public struct TxBuilder
         return this;
     }
 
+    /***************************************************************************
+
+        Sets the unlocker function to sign the inputs
+
+        If not set then the default unlocker using WellKnownKeys is used.
+
+        Params:
+            unlocker = function to sign the inputs of the transaction
+
+        Returns:
+            A reference to `this` to allow for chaining
+
+    ***************************************************************************/
+
+    public ref typeof(this) unlockSigner (Unlock
+        function (in Transaction tx, in OutputRef out_ref) @safe nothrow unlocker) return scope
+        @safe nothrow @nogc pure
+    {
+        this.unlocker = unlocker;
+        return this;
+    }
+
+    public static Unlock signWithGenesis (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow
+    {
+        auto pair = SigPair(WK.Keys.Genesis.sign(tx.getChallenge()), SigHash.All);
+        return Unlock([ubyte(65)] ~ pair[].dup);
+    }
+
+    // Sign with a given key and append the given OpCode to the unlock bytes
+    public static Unlock signWithSpecificKey (KeyPair key, OP op_code) (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow
+    {
+        auto pair = SigPair(key.sign(tx.getChallenge()), SigHash.All);
+        return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(op_code)]);
+    }
+
     // Uses a random nonce when signing (non-determenistic signature),
     // and defaults to LockType.Key
-    private Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
+    private static Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
         @safe nothrow
     {
         auto ownerKP = WK.Keys[out_ref.output.address];
@@ -270,6 +311,21 @@ public struct TxBuilder
 
     /***************************************************************************
 
+        Set the `feeRate` property of the resulting transaction
+
+        This is the fee per byte of tx size
+
+    ***************************************************************************/
+
+    public ref typeof(this) feeRate (in Amount fee_rate) return scope
+        @safe nothrow @nogc pure
+    {
+        this.fee_rate = fee_rate;
+        return this;
+    }
+
+    /***************************************************************************
+
         Finalize the transaction, signing the input, and reset the builder
 
         Params:
@@ -286,28 +342,12 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    // Temnporarily kept for Faucet compatibility
-    deprecated("Use the data / lock_height less overload")
-    public Transaction sign (in OutputType outputs_type, ubyte[] data,
-        Height lock_height = Height(0), uint unlock_age = 0,
-        Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
-        unlocker = null) @safe nothrow
-    {
-        return this.payload(data).lock(lock_height)
-            .sign(outputs_type, unlock_age, unlocker);
-    }
-
     public Transaction sign (
-        in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0,
-        Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
-        unlocker = null) @safe nothrow
+        in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
                "Output-less transactions are not valid");
-
-        if (unlocker is null)
-            unlocker = &this.keyUnlocker;
 
         // First we sort the OutputRefs as later we set the unlock by index
         this.inputs.sort;
@@ -320,19 +360,26 @@ public struct TxBuilder
         foreach (ref o; this.data.outputs)
             o.type = outputs_type;
 
-        // Add the refund output if needed
-        if (this.leftover.value > Amount(0))
+        auto total_fees = this.minFees();
+        assert(this.leftover.value >= total_fees);
+        // Add the refund output if more than `MinRefundAmount` is leftover
+        if (this.leftover.value > total_fees)
         {
-            if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
-                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
-            else
-                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
+            auto refund = this.leftover.value;
+            assert(refund.sub(total_fees));
+            if (refund >= this.MinRefundAmount)
+            {
+                if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
+                    this.data.outputs = [ Output(refund, this.leftover.lock, OutputType.Freeze) ];
+                else
+                    this.data.outputs = [ Output(refund, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
+            }
         }
         this.data.outputs.sort;
 
-        // Sign all inputs using unlocker
+        // Sign all inputs using unlocker now we have transaction outputs updated
         foreach (idx, ref in_; this.inputs)
-            this.data.inputs[idx].unlock = unlocker(this.data, in_);
+            this.data.inputs[idx].unlock = this.unlocker(this.data, in_);
 
         // Reset ready for next time
         this.inputs = null;
@@ -442,9 +489,18 @@ public struct TxBuilder
         auto newOutputs = this.data.outputs[oldLen .. $];
 
         // Now we know by how much we can divide out leftover
-        auto forEach = this.leftover.value;
-        this.leftover.value = forEach.div(newOutputs.length);
-        newOutputs.each!((ref output) { output.value = forEach; });
+        Amount forEach = this.leftover.value;
+        Amount total_fees = this.minFees();
+        assert(forEach >= total_fees);
+        assert(forEach.sub(total_fees));
+        auto refund = forEach.div(newOutputs.length);
+        newOutputs.each!((ref output)
+        {
+            output.value = forEach;
+            this.leftover.value.sub(forEach);
+        });
+        assert(this.leftover.value >= total_fees);
+        this.data.inputs = null; // reset as they are added in sign with the unlock age
         assert(newOutputs.all!(output => output.value > Amount(0)));
         return this;
     }
@@ -472,161 +528,229 @@ public struct TxBuilder
         return this;
     }
 
-    /***************************************************************************
-
-        Deduct all the remaining amount, so there will be no refund transaction
-
-        Useful when trying to test fee calculation
-
-        Returns:
-            Reference to `this` for easy chaining
-
-    ***************************************************************************/
-
-    public ref typeof(this) deductRemaining () pure nothrow @safe @nogc
-        return
-    {
-        this.leftover.value = Amount(0);
-
-        return this;
-    }
+    /// Any refund less than this amount will not create a refund output but be
+    /// left to be included as fees.
+    private const MinRefundAmount = Amount(500_000);
 
     /// Refund output for the transaction
     private Output leftover;
+
+    // fee per byte rate to be paid for the tx
+    private Amount fee_rate = Amount(700);
 
     /// Stores the inputs to consume until `sign` is called
     private OutputRef[] inputs;
 
     /// Transactions to be built and returned
     private Transaction data;
+
+    /// Unlocker function to sign the inputs
+    private Unlock function (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow unlocker;
+
+    private Amount minFees () nothrow @safe
+    {
+        // Sum the size of all inputs after signing with unlocker
+        auto tx_size = this.data.payload.length;
+        this.inputs.each!((OutputRef input)
+        {
+            tx_size += Input(input.hash, this.unlocker(this.data, input), 0).sizeInBytes;
+        });
+        this.data.outputs.each!((output)
+        {
+            tx_size += output.sizeInBytes;
+        });
+        Amount total_fees = this.fee_rate;
+        total_fees.mul(tx_size);
+        // Just in case there results in a refund output we add the fee based on the byte size
+        if (this.leftover.value > total_fees)
+        {
+            auto refund_output_fee = this.fee_rate;
+            assert(refund_output_fee.mul(Output(Amount(0), this.leftover.lock, OutputType.Payment).sizeInBytes));
+            assert(total_fees.add(refund_output_fee));
+        }
+        return total_fees;
+    }
+}
+
+version (unittest)
+{
+    Amount sumOfGenesisFirstTxOutputs ()
+    {
+        return genesisSpendable().front().leftover.value
+            * GenesisBlock.payments.front.outputs.length;
+    }
 }
 
 /// Test for a split with the same amount of outputs as inputs
-/// Essentially doing an equality transformation
+/// Essentially doing an equality transformation but with refund due to fee rate
 unittest
 {
     immutable Number = GenesisBlock.payments.front.outputs.length;
     assert(Number == 8);
 
-    const tx = TxBuilder(GenesisBlock.payments.front)
+    auto fee_rate = Amount(700);
+    const tx = TxBuilder(GenesisBlock.payments.front).feeRate(fee_rate)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
-    // This transaction has 8 txs, hence it's just equality
+    // This transaction splits to 8 outputs
     assert(tx.inputs.length == Number);
     assert(tx.outputs.length == Number);
     // Since the amount is evenly distributed in Genesis,
     // they all have the same value
-    const ExpectedAmount = genesisSpendable().front().leftover.value;
-    assert(tx.outputs.all!(val => val.value == ExpectedAmount));
+    const totalInputs = sumOfGenesisFirstTxOutputs();
+    auto outputs = tx.outputs.map!(o => o.value).reduce!((a,b) => a + b);
+    auto implied_fees = totalInputs - outputs;
+    assert(implied_fees >= fee_rate * tx.sizeInBytes);
+    auto refund = outputs.div(Number);
+    assert(refund == Amount(0));
+    assert(tx.outputs.map!(o => o.value).reduce!(max) == outputs);
+    assert(tx.outputs.count!(o => o.value == outputs) == Number);
 }
 
-/// Test with twice as many outputs as inputs
+// Test with twice as many outputs as inputs
 unittest
 {
     immutable Number = GenesisBlock.payments.front.outputs.length * 2;
     assert(Number == 16);
+    auto fee_rate = Amount(700);
 
-    const resTx1 = TxBuilder(GenesisBlock.payments.front)
+    const resTx1 = TxBuilder(GenesisBlock.payments.front).feeRate(fee_rate)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
     // This transaction has 16 txs
-    assert(resTx1.inputs.length == Number / 2);
+    assert(resTx1.inputs.length == GenesisBlock.payments.front.outputs.length);
+    // The transaction splits to 16 outputs
     assert(resTx1.outputs.length == Number);
 
     // 488M / 16
-    const Amount ExpectedAmount1 = Amount(30_500_000L * 10_000_000L);
-    assert(resTx1.outputs.all!(val => val.value == ExpectedAmount1));
+    const totalInputs = sumOfGenesisFirstTxOutputs();
+    auto outputs_1 = resTx1.outputs.map!(o => o.value).reduce!((a,b) => a + b);
+    auto implied_fees = totalInputs - outputs_1;
+    assert(implied_fees >= fee_rate * resTx1.sizeInBytes);
+    auto outputs = outputs_1;
+    auto refund = outputs.div(Number);
+    assert(refund == Amount(0));
+    assert(resTx1.outputs.map!(o => o.value).reduce!(max) == outputs);
+    assert(resTx1.outputs.count!(o => o.value == outputs) == Number);
 
     // Test with multi input keys
     // Split into 32 outputs
-    const resTx2 = TxBuilder(resTx1)
+    const resTx2 = TxBuilder(resTx1).feeRate(fee_rate)
         .split(iota(Number * 2).map!(_ => KeyPair.random().address))
         .sign();
 
     // This transaction has 32 txs
     assert(resTx2.inputs.length == Number);
     assert(resTx2.outputs.length == Number * 2);
-
-    // 500M / 32
-    const Amount ExpectedAmount2 = Amount(15_250_000L * 10_000_000L);
-    assert(resTx2.outputs.all!(val => val.value == ExpectedAmount2));
+    auto outputs_2 = resTx2.outputs.map!(o => o.value).reduce!((a,b) => a + b);
+    auto implied_fees_2 = outputs_1 - outputs_2;
+    assert(implied_fees_2 >= fee_rate * resTx2.sizeInBytes);
+    auto refund_2 = outputs_2.div(Number * 2);
+    assert(refund_2 == Amount(0));
+    assert(resTx2.outputs.map!(o => o.value).reduce!(max) == outputs_2);
+    assert(resTx2.outputs.count!(o => o.value == outputs_2) == Number * 2);
 }
 
 /// Test with remainder
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
-        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+    immutable Number = 3;
+    auto fee_rate = Amount(700);
+
+    const tx = TxBuilder(GenesisBlock.payments.front).feeRate(fee_rate)
+        .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
-    // This transaction has 4 txs (3 targets + 1 refund)
-    assert(result.inputs.length == 8);
-    assert(result.inputs.isSorted);
-    assert(result.outputs.length == 4);
-    assert(result.outputs.isSorted);
+    assert(tx.outputs.length == Number);
+    const totalInputs = sumOfGenesisFirstTxOutputs();
+    auto outputs = tx.outputs.map!(o => o.value).reduce!((a,b) => a + b);
+    auto implied_fees = totalInputs - outputs;
+    assert(implied_fees >= fee_rate * tx.sizeInBytes);
+    auto refund = outputs.div(Number);
+    assert(refund == Amount(0));
+    assert(tx.outputs.map!(o => o.value).reduce!(max) == outputs);
+    assert(tx.outputs.count!(o => o.value == outputs) == Number);
 
-    // 488M / 3
-    assert(result.outputs.count!(o => o.value == Amount(162_666_666_6666_666L)) == 3);
-    assert(result.outputs.count!(o => o.value == Amount(2)) == 1); // left over chance
+    // This transaction has 3 outputs
+    assert(tx.inputs.length == 8);
+    assert(tx.inputs.isSorted);
+    assert(tx.outputs.length == 3);
+    assert(tx.outputs.isSorted);
 }
 
 /// Test with one output key
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
+    auto fee_rate = Amount(700);
+    const tx = TxBuilder(GenesisBlock.payments.front).feeRate(fee_rate)
         .split([WK.Keys.A.address])
         .sign();
 
     // This transaction has 1 txs
-    assert(result.inputs.length == 8);
-    assert(result.outputs.length == 1);
+    assert(tx.inputs.length == 8);
+    assert(tx.outputs.length == 1);
 
-    // 500M
-    const Amount ExpectedAmount = Amount(488_000_000L * 10_000_000L);
-    assert(result.outputs[0].value == ExpectedAmount);
+    const totalInputs = sumOfGenesisFirstTxOutputs();
+    auto implied_fees = totalInputs - tx.outputs[0].value;
+    assert(implied_fees >= fee_rate * tx.sizeInBytes);
 }
 
 /// Test changing the refund address (and merging outputs by extension)
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
+    immutable Number = 3;
+    auto fee_rate = Amount(700);
+    const tx = TxBuilder(GenesisBlock.payments.front)
         // Refund needs to be called first as it resets the outputs
+        .feeRate(fee_rate)
         .refund(WK.Keys.Z.address)
-        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+        .draw(Amount(160_000_000_0000_000L), WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
-    // This transaction has 4 txs (3 targets + 1 refund)
-    assert(result.inputs.length == 8);
-    assert(result.outputs.length == 4);
+    // This transaction has 4 outputs (3 draw and 1 refund)
+    assert(tx.inputs.length == 8);
+    assert(tx.outputs.length == Number + 1);
 
-    assert(result.outputs == [
-        Output(Amount(2), WK.Keys.Z.address),
-        Output(Amount(162_666_666_6666_666L), WK.Keys.A.address),
-        Output(Amount(162_666_666_6666_666L), WK.Keys.C.address),
-        Output(Amount(162_666_666_6666_666L), WK.Keys.D.address),
+    const totalInputs = sumOfGenesisFirstTxOutputs();
+    auto outputs = tx.outputs.map!(o => o.value).reduce!((a,b) => a + b);
+    auto implied_fees = totalInputs - outputs;
+    assert(implied_fees >= fee_rate * tx.sizeInBytes);
+    assert(tx.outputs == [
+        Output(totalInputs - implied_fees - Amount(160_000_000_0000_000L) * 3, WK.Keys.Z.address),
+        Output(Amount(160_000_000_0000_000L), WK.Keys.A.address),
+        Output(Amount(160_000_000_0000_000L), WK.Keys.C.address),
+        Output(Amount(160_000_000_0000_000L), WK.Keys.D.address),
     ].sort.array);
 }
 
 /// Test with a range of tuples
 unittest
 {
+    auto fee_rate = Amount(700);
     Output[4] outs = [
-        Output(Amount(100), WK.Keys.A.address),
-        Output(Amount(200), WK.Keys.C.address),
-        Output(Amount(300), WK.Keys.D.address),
-        Output(Amount(400), WK.Keys.E.address),
+        Output(Amount(100000), WK.Keys.A.address),
+        Output(Amount(200000), WK.Keys.C.address),
+        Output(Amount(300000), WK.Keys.D.address),
+        Output(Amount(400000), WK.Keys.E.address),
     ];
 
     // The hash is incorrect (it's not a proper UTXO hash)
     // but TxBuilder only care about strictly monotonic hashes
     auto tup_rng = outs[].zip(outs[].map!(o => o.hashFull()));
-    auto result = TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
+    auto tx = TxBuilder(WK.Keys.F.address).feeRate(fee_rate)
+                                              .attach(tup_rng).sign();
 
-    assert(result.inputs.length == 4);
-    assert(result.outputs.length == 1);
-    assert(result.outputs[0] == Output(Amount(1000), WK.Keys.F.address));
+    auto fees = fee_rate * tx.sizeInBytes;
+    Amount total;
+    outs.each!(o => total += o.value);
+    auto expectedAmount = total - fees;
+
+    assert(tx.inputs.length == 4);
+    assert(tx.outputs.length == 1);
+    assert(tx.outputs[0] == Output(expectedAmount, WK.Keys.F.address));
 }
 
 ///
@@ -643,19 +767,21 @@ unittest
 /// Test with unfrozen remainder
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
-        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+    auto fee_rate = Amount(900);
+    const freezeAmount = Amount(50_000L * 10_000_000L);
+    const tx = TxBuilder(GenesisBlock.payments.front)
+        .feeRate(fee_rate)
+        .draw(freezeAmount, WK.Keys.byRange.map!(k => k.address).takeExactly(1))
         .sign(OutputType.Freeze);
 
-    // This transaction has 4 outputs (3 freeze + 1 refund)
-    assert(result.inputs.length == 8);
-    assert(result.outputs.length == 4);
+    // This transaction has 2 outputs (1 freeze + 1 refund)
+    assert(tx.inputs.length == 8);
+    assert(tx.outputs.length == 2);
 
-    // 488M / 3
-    assert(result.outputs.count!(o =>
-        o.value == Amount(162_666_666_6666_666L) && o.type == OutputType.Freeze) == 3);
-    assert(result.outputs.count!(o =>
-        o.value == Amount(2) && o.type == OutputType.Payment) == 1); // left over change
+    auto fees = fee_rate * tx.sizeInBytes;
+    assert(tx.outputs.count!(o => o.value == freezeAmount && o.type == OutputType.Freeze) == 1);
+    auto refund = sumOfGenesisFirstTxOutputs() - freezeAmount - fees;
+    assert(tx.outputs.count!(o => o.value == refund && o.type == OutputType.Payment) == 1);
 }
 
 /*******************************************************************************
