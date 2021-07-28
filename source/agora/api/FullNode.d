@@ -233,11 +233,11 @@ public interface API
             not be included in the result.
 
         API:
-            GET /preimages_for_enroll_keys
+            GET /preimages
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init);
+    public PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init);
 
     /***************************************************************************
 

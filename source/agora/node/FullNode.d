@@ -1032,10 +1032,10 @@ public class FullNode : API
         }
     }
 
-    /// GET: /preimages_for_enroll_keys
-    public override PreImageInfo[] getPreimagesForEnrollKeys (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
+    /// GET: /preimages
+    public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
     {
-        this.recordReq("preimages_for_enroll_keys");
+        this.recordReq("preimages");
 
         // if enroll_keys is empty, then all preimages should be returned
         if (enroll_keys.empty())
