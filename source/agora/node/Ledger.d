@@ -174,7 +174,7 @@ public class Ledger
             || this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
         {
             this.utxo_set.clear();
-            this.enroll_man.removeAllValidators();
+            this.enroll_man.validator_set.removeAll();
 
             // Calling `addValidatedBlock` will reset this value
             const HighestHeight = this.last_block.header.height;
