@@ -786,17 +786,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Remove all validators from the validator set
-
-    ***************************************************************************/
-
-    public void removeAllValidators () @trusted
-    {
-        this.validator_set.removeAll();
-    }
-
-    /***************************************************************************
-
         Returns: A delegate to query past Enrollments
 
     ***************************************************************************/
