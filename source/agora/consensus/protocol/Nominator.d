@@ -842,7 +842,7 @@ extern(D):
             return false;
         }
         // Determine the R of signature (R, s)
-        Point R = CR + Scalar(preimage_info.hash).toPoint();
+        Point R = CR * Scalar(preimage_info.hash);
         // Compose the signature (R, s)
         const sig = Signature(R, block_sig.signature);
         // Check this signature is valid for this block and signing validator
