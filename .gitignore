@@ -45,4 +45,7 @@ docs/
 source/scpp/extra/DVMChecks.cpp
 
 # Agora log directory when Agora is started up with config.example.yml
-log/ 
+log/
+
+# Agora single node data and log directory
+.single
