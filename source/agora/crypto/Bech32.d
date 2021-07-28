@@ -35,9 +35,9 @@
 
 module agora.crypto.Bech32;
 
+import agora.common.Ensure;
 import agora.crypto.ECC;
 
-import std.format;
 import std.string;
 import std.uni;
 
@@ -134,15 +134,15 @@ public DecodeResult decodeBech32 (in char[] str)
         ubyte c = str[i];
         if (c >= 'a' && c <= 'z') lower = true;
         else if (c >= 'A' && c <= 'Z') upper = true;
-        else if (c < 33 || c > 126)
-            throw new Exception(format("Character '%X' at pos %s outside of valid char range", c, i));
+        else
+            ensure(c >= '!' && c <= '~',
+                    "Character '{X}' at pos {} is outside of valid char range", c, i);
     }
-    if (lower && upper)
-        throw new Exception("Bech32 does not allow mixed lower and upper cases");
+    ensure(lower ^ upper, "Bech32 does not allow mixed lower and upper cases");
 
     auto pos = lastIndexOf(str, '1');
-    if (str.length > 90 || pos == -1 || pos == 0 || pos + 7 > str.length)
-        throw new Exception(format("Invalid HRP for Bech32: %s (pos: %s)", str, pos));
+    ensure(str.length <= 90 && pos != -1 && pos != 0 && pos + 7 <= str.length,
+            "Invalid HRP for Bech32: {} (pos: {})", str, pos);
 
     ubyte[] values;
     values.length = str.length - 1 - pos;
@@ -151,10 +151,8 @@ public DecodeResult decodeBech32 (in char[] str)
         ubyte c = str[i + pos + 1];
         byte rev = CHARSET_REV[c];
 
-        if (rev == -1)
-            throw new Exception(
-                format("Invalid byte (%X) in data at position %s: %s",
-                       c, i + pos + 1, str));
+        ensure(rev != -1,
+                "Invalid byte '{X}' in data at position {}: {}", c, i + pos + 1, str);
 
         values[i] = rev;
     }
@@ -163,12 +161,11 @@ public DecodeResult decodeBech32 (in char[] str)
         hrp ~= toLower(str[i]);
 
     auto encoding = verifyChecksum(hrp, values);
-    if (encoding == Encoding.Invalid)
-        throw new Exception(format("Bech32 checksum is invalid: %s", str));
+    ensure(encoding != Encoding.Invalid, "Bech32 checksum is invalid: {}", str);
 
     ubyte[] conv;
-    if (!convertBits(conv, values[0 .. $ - 6], 5, 8, false))
-        throw new Exception(format("Bech32 convertion of base failed: %s", str));
+    ensure(convertBits(conv, values[0 .. $ - 6], 5, 8, false),
+        "Bech32 convertion of base failed: {}", str);
 
     return DecodeResult(encoding, hrp, conv);
 }

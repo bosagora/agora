@@ -22,6 +22,7 @@ module agora.node.Ledger;
 
 import agora.common.Amount;
 import agora.common.Config;
+import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Types;
@@ -51,7 +52,7 @@ import agora.utils.PrettyPrinter;
 import std.algorithm;
 import std.algorithm.searching : maxElement;
 import std.conv : to;
-import std.exception;
+import std.exception : assumeUnique, assumeWontThrow;
 import std.format;
 import std.range;
 import std.typecons : Nullable, nullable;
@@ -163,12 +164,13 @@ public class Ledger
                  this.last_block.header.hashFull());
 
         Block gen_block = this.storage.readBlock(Height(0));
-        if (gen_block != params.Genesis)
-            throw new Exception("Genesis block loaded from disk is " ~
-                "different from the one in the config file");
-        foreach (const ref e; gen_block.header.enrollments)
-            if (e.cycle_length != params.ValidatorCycle)
-                throw new Exception("ConsensusParams are not consistent with Genesis");
+        ensure(gen_block == params.Genesis,
+                "Genesis block loaded from disk ({}) is different from the one in the config file ({})",
+                gen_block.hashFull(), params.Genesis.hashFull());
+        foreach (idx, const ref e; gen_block.header.enrollments)
+            ensure(e.cycle_length == params.ValidatorCycle,
+                    "ConsensusParams's ValidatorCycle ({}) is not consistent with Genesis ({}, idx: {})",
+                    params.ValidatorCycle, e.cycle_length, idx);
 
         if (this.utxo_set.length == 0
             || this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
@@ -243,8 +245,7 @@ public class Ledger
     public ValidatorInfo[] getValidators (in Height height) scope @safe
     {
         auto result = this.enroll_man.validator_set.getValidators(height);
-        if (result.length == 0)
-            throw new Exception("Ledger.getValidators didn't find any validator");
+        ensure(result.length > 0, "Ledger.getValidators didn't find any validator");
         return result;
     }
 
@@ -398,8 +399,7 @@ public class Ledger
     {
         // Make sure our data on disk is valid
         if (auto fail_reason = this.validateBlock(block))
-            throw new Exception("A block loaded from disk is invalid: " ~
-                fail_reason);
+            ensure(false, "A block loaded from disk is invalid: {}", fail_reason);
 
         this.addValidatedBlock(block);
     }
@@ -974,8 +974,9 @@ public class Ledger
         auto validators = this.getValidators(height);
 
         // A case where a > b should never happen, but better be conservative
-        if (missing_validators.length >= validators.length)
-            throw new Exception("Ledger.getRandomSeed() called with all-missing validators");
+        ensure(missing_validators.length < validators.length,
+                "Ledger.getRandomSeed() called with all-missing validators ({} !< {})",
+                missing_validators.length, validators.length);
 
         // Safety check, as the order will affect `missing_validators`
         assert(missing_validators.isStrictlyMonotonic());
@@ -997,8 +998,7 @@ public class Ledger
                       height, entry.value.preimage.height);
             missing = true;
         }
-        if (missing)
-            throw new Exception("Requested pre-images for validators that are not yet known");
+        ensure(!missing, "Requested pre-images for validators that are not yet known");
 
         return validators
             // Filter out entries in `missing_validators`
@@ -1947,6 +1947,8 @@ private immutable(Block)[] genBlocksToIndex (
 /// test enrollments in the genesis block
 unittest
 {
+    import std.exception : assertThrown;
+
     // Default test genesis block has 6 validators
     {
         scope ledger = new TestLedger(WK.Keys.A);
@@ -1978,6 +1980,7 @@ unittest
 unittest
 {
     import std.conv;
+    import std.exception : assertThrown;
     import core.stdc.time : time;
 
     static class ThrowingLedger : Ledger
@@ -2088,7 +2091,13 @@ unittest
     }
     catch (Exception ex)
     {
-        assert(ex.msg == "Genesis block loaded from disk is different from the one in the config file");
+        assert(ex.message ==
+               "Genesis block loaded from disk " ~
+               "(0x2515b2650e0defbc2419976e5306c6d014eb593a5969b49db6cd6858fdc5841" ~
+               "e1a1794dfd203b840dccd5d068d8dada155bdf2ae4ed5230e6fd9bd6b6cbe9397) " ~
+               "is different from the one in the config file " ~
+               "(0x01c9b940eeeaa335a8e4b87d6e2245366829a245faae34e133f93f131904ee3" ~
+               "9ff21201d7c1fe60e50970ea8f804b3b723915f9b4e0dbc57853bc663ecb73b58)");
     }
 
     immutable good_params = new immutable(ConsensusParams)();

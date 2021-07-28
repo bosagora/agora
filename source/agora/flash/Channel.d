@@ -22,6 +22,7 @@ import agora.flash.Types;
 import agora.flash.UpdateSigner;
 
 import agora.common.Amount;
+import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
@@ -328,10 +329,9 @@ public class Channel
 
         scope DeserializeDg dg = (size) @safe
         {
-            if (size > data.length)
-                throw new Exception(
-                    format("Requested %d bytes but only %d bytes available",
-                        size, data.length));
+            ensure(size <= data.length,
+                   "Requested {} bytes but only {} bytes available",
+                   size, data.length);
 
             auto res = data[0 .. size];
             data = data[size .. $];
@@ -540,10 +540,9 @@ public class Channel
             // this would mean some of the metadata on disk is missing (flash registry)
             // FIXME: add retry mechanism for loading this channel until peer is found,
             // and force unilateral closure after a given timeout.
-            if (this.peer is null)
-                throw new Exception(format(
-                    "Cannot find address of flash node in registry for the key %s",
-                    this.peer_pk));
+            ensure(this.peer !is null,
+                    "Cannot find address of flash node in registry for the key {}",
+                    this.peer_pk);
         }
 
         // check on start-up once in case this is a preloaded channel

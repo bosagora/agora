@@ -15,6 +15,7 @@ module scpd.types.Stellar_SCP;
 
 import vibe.data.json;
 
+import agora.common.Ensure;
 import agora.serialization.Serializer;
 
 import scpd.Cpp;
@@ -178,7 +179,7 @@ struct SCPStatement {
                 ret.nominate_ = (*obj).deserializeJson!SCPNomination();
             }
             else
-                throw new Exception("Unrecognized envelope type");
+                ensure(false, "Unrecognized envelope type");
             return ret;
         }
 

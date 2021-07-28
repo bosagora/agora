@@ -17,6 +17,7 @@
 
 module agora.flash.UpdateSigner;
 
+import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Task;
 import agora.common.Types;
@@ -121,10 +122,9 @@ public class UpdateSigner
 
         scope DeserializeDg dg = (size) @safe
         {
-            if (size > data.length)
-                throw new Exception(
-                    format("Requested %d bytes but only %d bytes available",
-                        size, data.length));
+            ensure(size <= data.length,
+                    "Requested {} bytes but only {} bytes available",
+                    size, data.length);
 
             auto res = data[0 .. size];
             data = data[size .. $];

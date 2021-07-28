@@ -18,6 +18,7 @@ module agora.node.BlockStorage;
 
 import agora.common.Amount;
 import agora.common.BitMask;
+import agora.common.Ensure;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.crypto.Hash;
@@ -29,7 +30,6 @@ import std.algorithm;
 import std.array;
 import std.container.rbtree;
 import std.digest.crc;
-import std.exception;
 import std.file;
 import std.format;
 import std.mmfile;
@@ -304,9 +304,7 @@ public class BlockStorage : IBlockStorage
     /// Implement `IBlockStorage.readLastBlock`
     public override Block readLastBlock () @safe
     {
-        if (this.height_idx.length == 0)
-            throw new Exception("No block has been loaded yet");
-
+        ensure(this.height_idx.length > 0, "No block has been loaded yet");
         return this.readBlock(this.height_idx.back.height);
     }
 
@@ -390,7 +388,7 @@ public class BlockStorage : IBlockStorage
     {
         if ((this.height_idx.length > 0) &&
             (this.height_idx.back.height >= block.header.height))
-            throw new Exception("BlockStorage internals are inconsistent");
+            ensure(false, "BlockStorage internals are inconsistent");
 
         size_t last_pos, last_size;
         if (this.length == ulong.max)
@@ -426,8 +424,8 @@ public class BlockStorage : IBlockStorage
         serializePart(block, dg);
 
         // write block data size
-        if (!this.writeSizeT(block_position, block_size))
-            throw new Exception("BlockStorage: Failed to write a size_t");
+        ensure(this.writeSizeT(block_position, block_size),
+                "BlockStorage: Failed to write a size_t at position {}", block_position);
 
         this.length += size_t.sizeof + block_size;
 
@@ -450,8 +448,8 @@ public class BlockStorage : IBlockStorage
             )
         );
 
-        if (!this.saveIndex(block.header.height, hash_bytes, block_position))
-            throw new Exception("Blockstorage: Failed to save the index");
+        ensure(this.saveIndex(block.header.height, hash_bytes, block_position),
+                "Blockstorage: Failed to save the index");
     }
 
     /// Implements `IBlockStorage.updateBlockSig`
@@ -459,8 +457,7 @@ public class BlockStorage : IBlockStorage
         in Signature sig, in BitMask validators) @safe
     {
         const size_t block_position = this.height_idx.findBlockPosition(height);
-        if (block_position == 0)
-            throw new Exception("Cannot update signature for Genesis block");
+        ensure(block_position != 0, "Cannot update signature for Genesis block");
 
         // Hardcoded values to ensure other invariant hold (such as no arrays)
         enum SignatureOffset = 192;
@@ -492,10 +489,9 @@ public class BlockStorage : IBlockStorage
     public override Block readBlock (in Height height) @safe
     {
         const block_pos = this.height_idx.findBlockPosition(height);
-        if (height != 0 && block_pos == 0)
-            throw new Exception(
-                format("Request height %s but highest height is %s",
-                       height, this.height_idx.back.height));
+        ensure(block_pos != 0 || height == 0,
+                "Requested height {} but highest height is {}",
+                height, this.height_idx.back.height);
 
         Block block;
         this.readBlockAtPosition(block, this.height_idx.findBlockPosition(height));
@@ -510,8 +506,7 @@ public class BlockStorage : IBlockStorage
         auto finds
             = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
 
-        if (finds.empty)
-            throw new Exception(format("Hash %s not found in block storage", hash));
+        ensure(!finds.empty, "Hash {} not found in block storage", hash);
 
         Block block;
         this.readBlockAtPosition(block, finds.front.position);
@@ -605,8 +600,7 @@ public class BlockStorage : IBlockStorage
             foreach (idx, ref b; data)
             {
                 const size_t pos = (from + idx);
-                if (!this.map(pos / DataSize))
-                    throw new Exception(format("Unabled to map data at position %d", pos));
+                ensure(this.map(pos / DataSize), "Unable to map data at position {}", pos);
                 b = this.file[pos - this.file_base + ChecksumSize];
             }
             return data;
@@ -912,9 +906,7 @@ public class MemBlockStorage : IBlockStorage
     /// Implement `IBlockStorage.readLastBlock`
     public Block readLastBlock () @safe
     {
-        if (this.height_idx.length == 0)
-            throw new Exception("No block has been loaded yet");
-
+        ensure(this.height_idx.length != 0, "No block has been loaded yet");
         return this.readBlock(this.height_idx.back.height);
     }
 
@@ -932,8 +924,9 @@ public class MemBlockStorage : IBlockStorage
 
     public void saveBlock (const ref Block block) @safe
     {
-        if (this.blocks.length != block.header.height)
-            throw new Exception("BlockStorage: Expected blocks in serial order");
+        ensure(this.blocks.length == block.header.height,
+                "BlockStorage: Expected blocks in serial order (next height is {} not: {})",
+                this.blocks.length, block.header.height,);
 
         size_t block_position = this.blocks.length;
 
@@ -961,14 +954,17 @@ public class MemBlockStorage : IBlockStorage
     public override void updateBlockSig (in Height height, in Hash hash,
         in Signature sig, in BitMask validators) @safe
     {
-        if (this.blocks.length < height)
-            throw new Exception("No such block");
+        ensure(this.blocks.length >= height,
+               "Can not update block signature at height {} as current height is  {}",
+               height, this.blocks.length);
 
         Block block = deserializeFull!Block(this.blocks[height.value]);
-        if (hash != block.hashFull())
-            throw new Exception("Mismatch in block hash while updating signatures");
-        if (block.header.validators.count != validators.count)
-            throw new Exception("Number of validators doesn't match while updating signatures");
+        const blockHash = block.hashFull();
+        ensure(hash == blockHash,
+                "Mismatch in block hash while updating signatures: {} != {}", hash, blockHash);
+        ensure(block.header.validators.count == validators.count,
+                "Number of validators doesn't match while updating signatures ({} != {})",
+                block.header.validators.count, validators.count);
 
         block.header.signature = sig;
         block.header.validators.copyFrom(validators);
@@ -979,18 +975,14 @@ public class MemBlockStorage : IBlockStorage
     /// Implements `IBlockStorage.readBlock(in Height)`
     public override Block readBlock (in Height height) @safe
     {
-        if (this.height_idx.length == 0)
-            throw new Exception("No block has been loaded yet");
-        if (this.height_idx.back.height < height)
-            throw new Exception(
-                format("Request height %s but highest height is %s",
-                       height, this.height_idx.back.height));
+        ensure(this.height_idx.length > 0, "No block has been loaded yet");
+        ensure(this.height_idx.back.height >= height,
+                "Requested height {} but highest height is {}",
+                       height, this.height_idx.back.height);
 
         auto finds = this.height_idx[].find!((a, b) => a.height == b)(height);
-        if (finds.empty)
-            throw new Exception(
-                format("Missing block at height %s despite knowing height %s",
-                       height, this.height_idx.back.height));
+        ensure(!finds.empty, "Missing block at height {} despite knowing height {}",
+                height, this.height_idx.back.height);
 
         return deserializeFull!Block(this.blocks[finds.front.position]);
     }
@@ -1001,8 +993,7 @@ public class MemBlockStorage : IBlockStorage
         ubyte[Hash.sizeof] hash_bytes = hash[];
 
         auto finds = this.hash_idx[].find!((a, b) => a.hash == b)(hash_bytes);
-        if (finds.empty)
-            throw new Exception(format("Couldn't find hash %s in chain: %s", hash));
+        ensure(!finds.empty, "Couldn't find hash {} in block storage", hash);
 
         return deserializeFull!Block(this.blocks[finds.front.position]);
     }
@@ -1041,6 +1032,7 @@ private void testStorage (IBlockStorage storage)
     import agora.crypto.Key;
     import agora.utils.Test;
     import std.algorithm.comparison;
+    import std.exception : assertThrown;
     import std.range;
 
     const size_t BlockCount = 50;

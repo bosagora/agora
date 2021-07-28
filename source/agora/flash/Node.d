@@ -15,6 +15,7 @@ module agora.flash.Node;
 
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
+import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
@@ -324,8 +325,9 @@ public abstract class FlashNode : FlashControlAPI
         catch (Exception exc)
         {
             () @trusted {
+                auto msg = exc.message();
                 printf("Error happened while dumping this node's state: %.*s\n",
-                       cast(int) exc.msg.length, exc.msg.ptr);
+                       cast(int) msg.length, msg.ptr);
 
                 scope (failure) assert(0);
                 writeln("========================================");
@@ -486,10 +488,9 @@ public abstract class FlashNode : FlashControlAPI
 
         scope DeserializeDg dg = (size) @safe
         {
-            if (size > data.length)
-                throw new Exception(
-                    format("Requested %d bytes but only %d bytes available",
-                        size, data.length));
+            ensure(size <= data.length,
+                    "Requested {} bytes but only {} bytes available",
+                    size, data.length);
 
             auto res = data[0 .. size];
             data = data[size .. $];
