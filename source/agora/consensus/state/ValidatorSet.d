@@ -640,8 +640,8 @@ public class ValidatorSet
             return false;
         }
 
-        // Ignore same height pre-image because validators will gossip them
-        if (prev_preimage.height == preimage.height)
+        // Ignore older height pre-image because validators will gossip them
+        if (prev_preimage.height >= preimage.height)
             return false;
 
         if (auto reason = isInvalidReason(preimage, prev_preimage))
