@@ -490,23 +490,6 @@ public class TestBanManager : BanManager
     public override void dump () { }
 }
 
-/// Nominator with custom rules for when blocks should be nominated
-public extern (C++) class TestNominator : Nominator
-{
-extern(D):
-    /// test start time
-    protected ulong test_start_time;
-
-    ///
-    public this (Parameters!(Nominator.__ctor) args,
-        ulong test_start_time)
-    {
-        super(args);
-        this.test_start_time = test_start_time;
-    }
-
-}
-
 /// We use a pair of (key, client) rather than a hashmap client[key],
 /// since we want to know the order of the nodes which were configured
 /// in the makeTestNetwork() call.
@@ -1542,9 +1525,6 @@ private mixin template TestNodeMixin ()
     /// pointer to the unittests-adjusted clock time
     protected shared(TimePoint)* cur_time;
 
-    /// test start time
-    protected ulong test_start_time;
-
     /// All txs which were at one point accepted into the tx pool
     protected Set!Hash accepted_txs;
 
@@ -1750,7 +1730,6 @@ public class TestFullNode : FullNode, TestAPI
         this.nregistry = nreg;
         this.blocks = blocks;
         this.cur_time = cur_time;
-        this.test_start_time = *cur_time;
         super(config);
     }
 
@@ -1814,7 +1793,6 @@ public class TestValidatorNode : Validator, TestAPI
         this.nregistry = nreg;
         this.blocks = blocks;
         this.cur_time = cur_time;
-        this.test_start_time = *cur_time;
 
         // This is normally done by `agora.node.Runner`
         // By default all output is written to the appender
@@ -1842,16 +1820,6 @@ public class TestValidatorNode : Validator, TestAPI
     public override QuorumConfig getQuorumConfig ()
     {
         return this.qc;
-    }
-
-    /// Returns an instance of a TestNominator with customizable behavior
-    protected override TestNominator makeNominator (
-        Parameters!(Validator.makeNominator) args)
-    {
-        return new TestNominator(
-            this.params, this.config.validator.key_pair, args,
-            this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.test_start_time);
     }
 
     /// Provides a unittest-adjusted clock source for the node

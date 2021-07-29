@@ -25,6 +25,7 @@ import agora.consensus.data.Transaction;
 import agora.consensus.data.Block;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.PreImage;
+import agora.consensus.protocol.Nominator;
 import agora.crypto.Hash;
 import agora.node.Ledger;
 import geod24.Registry;
@@ -163,7 +164,7 @@ unittest
 // create another enrollment request for the next block
 unittest
 {
-    static class SocialDistancingNominator : TestNominator
+    static class SocialDistancingNominator : Nominator
     {
         mixin ForwardCtor!();
 
@@ -181,13 +182,13 @@ unittest
         mixin ForwardCtor!();
 
         ///
-        protected override TestNominator makeNominator (
+        protected override SocialDistancingNominator makeNominator (
             Parameters!(TestValidatorNode.makeNominator) args)
         {
             return new SocialDistancingNominator(
                 this.params, this.config.validator.key_pair, args,
                 this.cacheDB, this.config.validator.nomination_interval,
-                &this.acceptBlock, this.test_start_time);
+                &this.acceptBlock);
         }
 
     }

@@ -22,6 +22,7 @@ import agora.common.Config;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.ValidatorBlockSig;
+import agora.consensus.protocol.Nominator;
 import agora.crypto.Schnorr: Signature;
 import agora.test.Base;
 import agora.utils.Log;
@@ -36,11 +37,10 @@ import core.thread;
 mixin AddLogger!();
 
 
-private extern(C++) class DoesNotExternalizeBlockNominator : TestNominator
+private extern(C++) class DoesNotExternalizeBlockNominator : Nominator
 {
-    extern(D) this (Parameters!(TestNominator.__ctor) args)
-    {
-        super(args);
+    extern(D) {
+        mixin ForwardCtor!();
     }
 
     public override void valueExternalized (uint64_t slot_idx, ref const(Value) value) nothrow
@@ -72,13 +72,13 @@ private class TestNode () : TestValidatorNode
 {
     mixin ForwardCtor!();
 
-    protected override TestNominator makeNominator (
+    protected override DoesNotExternalizeBlockNominator makeNominator (
         Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new DoesNotExternalizeBlockNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.test_start_time);
+            &this.acceptBlock);
     }
 }
 

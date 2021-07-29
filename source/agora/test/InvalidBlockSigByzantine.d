@@ -21,6 +21,7 @@ import agora.common.Config;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.protocol.Nominator;
 import agora.crypto.ECC;
 import agora.crypto.Schnorr;
 import agora.test.Base;
@@ -53,11 +54,11 @@ private enum ByzantineReason
     BadSignature
 }
 
-private extern(C++) class BadBlockSigningNominator : TestNominator
+private extern(C++) class BadBlockSigningNominator : Nominator
 {
     private ByzantineReason reason;
 
-    extern(D) this (Parameters!(TestNominator.__ctor) args, ByzantineReason reason)
+    extern(D) this (Parameters!(Nominator.__ctor) args, ByzantineReason reason)
     {
         super(args);
         this.reason = reason;
@@ -106,7 +107,7 @@ private class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new BadBlockSigningNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.test_start_time, reason);
+            &this.acceptBlock, reason);
     }
 }
 
