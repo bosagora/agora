@@ -42,7 +42,7 @@ import scpd.types.Stellar_SCP;
 /// ditto
 unittest
 {
-    extern (C++) static class CustomNominator : TestNominator
+    extern (C++) static class CustomNominator : Nominator
     {
         // To see how many voting rounds are needed to reach consensus
         public __gshared int round_number;
@@ -75,7 +75,7 @@ unittest
             return new CustomNominator(
                 this.params, this.config.validator.key_pair, args,
                 this.cacheDB, this.config.validator.nomination_interval,
-                &this.acceptBlock, this.test_start_time);
+                &this.acceptBlock);
         }
     }
 

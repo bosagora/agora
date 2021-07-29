@@ -142,12 +142,12 @@ unittest
     import geod24.Registry;
     import core.atomic;
 
-    static class BadNominator : TestNominator
+    static class BadNominator : Nominator
     {
         private shared(size_t)* runCount;
 
         /// Ctor
-        public this (Parameters!(TestNominator.__ctor) args, shared(size_t)* countPtr)
+        public this (Parameters!(Nominator.__ctor) args, shared(size_t)* countPtr)
         {
             super(args);
             this.runCount = countPtr;
@@ -182,14 +182,13 @@ unittest
         }
 
         ///
-        protected override TestNominator makeNominator (
+        protected override BadNominator makeNominator (
             Parameters!(TestValidatorNode.makeNominator) args)
         {
             return new BadNominator(
                 this.params, this.config.validator.key_pair, args,
                 this.cacheDB, this.config.validator.nomination_interval,
-                &this.acceptBlock, this.test_start_time,
-                this.runCount);
+                &this.acceptBlock, this.runCount);
         }
     }
 

@@ -21,6 +21,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Data;
+import agora.consensus.protocol.Nominator;
 import agora.serialization.Serializer;
 import agora.test.Base;
 import agora.utils.Test;
@@ -53,13 +54,11 @@ private void unexpectBlock (Clients)(Clients clients, Height height)
     }
 }
 
-private class BadNominator : TestNominator
+private class BadNominator : Nominator
 {
+extern(D):
     /// Ctor
-    public this (Parameters!(TestNominator.__ctor) args)
-    {
-        super(args);
-    }
+    mixin ForwardCtor!();
 
 extern (C++):
 
@@ -85,13 +84,13 @@ private class BadNominatingVN : TestValidatorNode
     mixin ForwardCtor!();
 
     ///
-    protected override TestNominator makeNominator (
+    protected override BadNominator makeNominator (
         Parameters!(TestValidatorNode.makeNominator) args)
     {
         return new BadNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.test_start_time);
+            &this.acceptBlock);
     }
 }
 

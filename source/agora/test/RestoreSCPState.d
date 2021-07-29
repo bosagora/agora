@@ -41,7 +41,7 @@ unittest
 {
     __gshared bool Checked = false;
 
-    static class ReNominator : TestNominator
+    static class ReNominator : Nominator
     {
         /// Ctor
         mixin ForwardCtor!();
@@ -83,7 +83,7 @@ unittest
             return new ReNominator(
                 this.params, this.config.validator.key_pair, args,
                 this.cacheDB, this.config.validator.nomination_interval,
-                &this.acceptBlock, this.test_start_time);
+                &this.acceptBlock);
         }
     }
 
