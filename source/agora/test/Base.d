@@ -1815,6 +1815,16 @@ public class TestValidatorNode : Validator, TestAPI
         this.blocks = blocks;
         this.cur_time = cur_time;
         this.test_start_time = *cur_time;
+
+        // This is normally done by `agora.node.Runner`
+        // By default all output is written to the appender
+        Log.root.level(Log.root.Level.Info, true);
+        foreach (const ref settings; config.logging)
+        {
+            auto log = settings.name ? Log.lookup(settings.name) : Log.root;
+            log.level(settings.level, settings.propagate);
+        }
+
         super(config);
     }
 
