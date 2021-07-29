@@ -1181,8 +1181,6 @@ extern(D):
     public override ValueWrapperPtr combineCandidates (uint64_t slot_idx,
         ref const(ValueWrapperPtrSet) candidates)
     {
-        log.info("combineCandidates: {}", slot_idx);
-
         try
         {
             CandidateHolder[] candidate_holders;
