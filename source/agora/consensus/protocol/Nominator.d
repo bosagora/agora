@@ -902,6 +902,9 @@ extern(D):
 
         if (auto fail_reason = this.ledger.validateConsensusData(data, this.initial_missing_validators))
         {
+            if (fail_reason == Ledger.InvalidConsensusDataReason.MayBeValid)
+                return ValidationLevel.kMaybeValidValue;
+
             log.error("validateValue(): Validation failed: {}. Data: {}",
                 fail_reason, data.prettify);
             return ValidationLevel.kInvalidValue;
