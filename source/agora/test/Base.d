@@ -1911,22 +1911,41 @@ public enum NetworkTopology
 public struct TestConf
 {
     /// Network topology to use
-    NetworkTopology topology = NetworkTopology.FullyConnected;
+    public NetworkTopology topology = NetworkTopology.FullyConnected;
 
     /// Extra blocks to generate in addition to the genesis block
-    size_t extra_blocks = 0;
+    public size_t extra_blocks = 0;
 
     /// Number of full nodes to instantiate
-    size_t full_nodes = 0;
+    public size_t full_nodes = 0;
 
     /// Number of extra validators which are initially outside the network
-    size_t outsider_validators = 0;
+    public size_t outsider_validators = 0;
 
     /// whether to set up the peers in the config
-    bool configure_network = true;
+    public bool configure_network = true;
 
-    /// Base values to use for the node configuration
-    NodeConfig node = {
+    /***************************************************************************
+
+        Base configuration for the nodes, matches `agora.common.Config : Config`
+
+    ***************************************************************************/
+
+    /// If the enrollments will be renewed or not at the end of the cycle
+    /// Matches the eponymous field in the `consensus` section.
+    public bool recurring_enrollment = true;
+
+    /// How often the validator should try to catchup for the preimages for the
+    /// next block
+    /// Matches the eponymous field in the `validator` section.
+    public Duration preimage_catchup_interval = 100.seconds;
+
+    /// max failed requests before a node is banned
+    /// Matches the eponymous field in the `banman` section.
+    public size_t max_failed_requests = 100;
+
+    /// Base values for the `node` section
+    public NodeConfig node = {
         /// Minimum number of clients to connect to
         /// Setting this to `size_t.max` makes it default to `nodes.length - 1`
         min_listeners: size_t.max,
@@ -1946,8 +1965,8 @@ public struct TestConf
         testing: true,
     };
 
-    /// Base values for consensus
-    ConsensusConfig consensus = {
+    /// Base values for the `consensus` section
+    public ConsensusConfig consensus = {
         // `genesis_timestamp` shouldn't be set, as one should use `setTimeFor`
 
         // `validator_cycle` is set to 20 to match the genesis block
@@ -1957,16 +1976,6 @@ public struct TestConf
         /// Transaction size adjusted fee = tx fee / tx size in bytes.
         min_fee: Amount(0),
     };
-
-    /// How often the validator should try to catchup for the preimages for the
-    /// next block
-    public Duration preimage_catchup_interval = 100.seconds;
-
-    /// max failed requests before a node is banned
-    size_t max_failed_requests = 100;
-
-    /// If the enrollments will be renewed or not at the end of the cycle
-    bool recurring_enrollment = true;
 }
 
 /*******************************************************************************
