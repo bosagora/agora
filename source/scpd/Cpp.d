@@ -47,6 +47,7 @@ extern(C++) {
     void copyCtorCPPObject(T) (T* ptr, inout(T)* rhs);
     void copyCtorCPPObject(T) (immutable(T)* ptr, inout(T)* rhs);
     int getCPPSizeof(T) ();
+    std_string sliceToStdString (const(char)* ptr, size_t length);
 }
 
 private mixin template CPPBindingMixin (T, bool Copyable = true, bool DefaultConstructable = false)

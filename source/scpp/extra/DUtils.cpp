@@ -18,6 +18,11 @@
 using namespace xdr;
 using namespace stellar;
 
+std::string sliceToStdString (char const* ptr, size_t length)
+{
+    return std::string(ptr, length);
+}
+
 std::set<unsigned int>* makeTestSet()
 {
     std::set<unsigned int>* set = new std::set<unsigned int>({1, 2, 3, 4, 5});
