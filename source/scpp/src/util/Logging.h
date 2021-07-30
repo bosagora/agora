@@ -16,8 +16,10 @@
 #define FATAL 4
 #define CLOG(LEVEL, MOD) stellar::DLogger(LEVEL, MOD)
 
-// Logging function to D code
-void writeDLog(const char* logger, int level, const char* msg);
+namespace agora {
+    // Exposed in `agora.utils.Log`
+    void writeDLog(const char* logger, int level, const char* msg);
+};
 
 namespace stellar
 {
