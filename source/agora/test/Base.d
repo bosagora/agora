@@ -1066,9 +1066,13 @@ public class TestAPIManager
             else
             {
                 // Send transaction to the first client
-                spendables.takeExactly(1)
-                    .map!(txb => txb.sign())
-                    .each!(tx => first_client.putTransaction(tx));
+                auto tx = spendables.takeExactly(1).map!(txb => txb.sign()).front;
+                first_client.putTransaction(tx);
+                // Wait for tx gossipping before setting time for block
+                client_idxs.each!(idx =>
+                    retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
+                        4.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
+                            (file, line, idx, target_height)));
                 break;
             }
         }
