@@ -27,7 +27,7 @@ import geod24.Registry;
 /// A test that stops and restarts a node
 unittest
 {
-    TestConf conf = TestConf.init;
+    TestConf conf = { outsider_validators: 1 };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -42,10 +42,13 @@ unittest
     network.expectHeight(Height(1));
 
     // Now shut down & restart one node
-    auto restartMe = nodes[$-1];
+    auto restartMe = nodes[0];
     network.restart(restartMe);
     network.waitForDiscovery();
     network.expectHeight(Height(1));
+
+    // Test for https://github.com/bosagora/agora/issues/2344
+    network.restart(nodes[$-1]);
 }
 
 /// Node which has a persistent Ledger (restart always clear the local state)
