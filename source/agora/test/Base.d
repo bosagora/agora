@@ -83,7 +83,9 @@ import core.thread;
 /* The following imports are frequently needed in tests */
 
 public import agora.common.Types;
- // Contains utilities for testing, e.g. `retryFor`
+/// Allows to easily configure the loggers
+public import agora.utils.Log : LogLevel;
+// Contains utilities for testing, e.g. `retryFor`
 public import agora.utils.Test;
 // `core.time` provides duration-related utilities, used e.g. for `retryFor`
 public import core.time;
@@ -1971,6 +1973,31 @@ public struct TestConf
         /// Transaction size adjusted fee = tx fee / tx size in bytes.
         min_fee: Amount(0),
     };
+
+    /***
+        Base values for the `logging` section
+
+        By default, the nodes will log at the default log level, which is either
+        the value of the `dloglevel` environment variable,
+        or `Info` if the variable is not set.
+
+        Any setting provided here will override this default value and
+        propagate to child loggers. For example, if the unittest binary is called
+        with `dloglevel=Error`, and the following is used, the nodes will
+        only log messages at `Error` level or above, except for the SCP log
+        messages which will be at `Trace` level:
+        ---
+        TestConf conf = {
+            logging: [
+                {
+                    name: "SCP",
+                    level: LogLevel.Trace,
+                },
+            ],
+        };
+        ---
+    */
+    public immutable(LoggerConfig)[] logging;
 }
 
 /*******************************************************************************
@@ -2087,6 +2114,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             consensus: makeConsensusConfig(),
             validator : validator,
             network : makeNetworkConfig(idx, addresses),
+            logging: test_conf.logging,
         };
 
         return conf;
@@ -2102,6 +2130,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             interfaces: [ makeInterfaceConfig(self_address) ],
             consensus: makeConsensusConfig(),
             network : makeNetworkConfig(idx, addresses),
+            logging: test_conf.logging,
         };
 
         return conf;
