@@ -19,6 +19,7 @@
 namespace agora {
     // Exposed in `agora.utils.Log`
     void writeDLog(const char* logger, int level, const char* msg);
+    int getLogLevel (const char* logger);
 };
 
 namespace stellar
@@ -29,8 +30,14 @@ class Logging
     static void init();
     static void setFmt(std::string const& peerID, bool timestamps = true);
     static void setLoggingToFile(std::string const& filename);
-    static bool logDebug(std::string const& partition) { return false; }
-    static bool logTrace(std::string const& partition) { return false; }
+    static bool logDebug(std::string const& partition)
+    {
+        return agora::getLogLevel(partition.c_str()) <= DEBUG;
+    }
+    static bool logTrace(std::string const& partition)
+    {
+        return agora::getLogLevel(partition.c_str()) <= TRACE;
+    }
     static void rotate();
 };
 

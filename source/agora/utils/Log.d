@@ -491,3 +491,13 @@ private extern(C++, "agora") void writeDLog (const(char)* logger, int level,
         assert(0);
     }
 }
+
+/// Used by C++ code to check whether a log level is enabled
+/// and avoid needlessly formatting messages
+private extern(C++, "agora") int getLogLevel (const(char)* logger)
+{
+    import std.string;
+    auto log = Log.lookup(fromStringz(logger));
+    assert(log !is null);
+    return log.level();
+}
