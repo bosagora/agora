@@ -412,9 +412,6 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
 
     public void printLogs (string file = __FILE__, int line = __LINE__)
     {
-        if (no_logs)
-            return;
-
         synchronized  // make sure logging output is not interleaved
         {
             writeln("---------------------------- START OF LOGS ----------------------------");
