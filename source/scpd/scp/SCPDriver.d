@@ -124,7 +124,10 @@ nothrow:
     {
         import agora.crypto.Hash;
         try
-            return std_string(v.hashFull().toString());
+        {
+            auto slice = v.hashFull().toString();
+            return sliceToStdString(slice.ptr, slice.length);
+        }
         catch (Exception exc)
         {
             scope (failure) assert(0);
@@ -136,7 +139,10 @@ nothrow:
     std_string toStrKey(ref const(NodeID) pk, bool fullKey = true) const
     {
         try
-            return std_string(Hash(pk).toString());
+        {
+            auto slice = Hash(pk).toString();
+            return sliceToStdString(slice.ptr, slice.length);
+        }
         catch (Exception exc)
         {
             scope (failure) assert(0);
@@ -147,9 +153,11 @@ nothrow:
     // `toShortString` converts to the common name of a key if found
     std_string toShortString(ref const(NodeID) pk) const
     {
-        import agora.crypto.Key : PublicKey;
         try
-            return std_string(Hash(pk).toString());
+        {
+            auto slice = Hash(pk).toString();
+            return sliceToStdString(slice.ptr, slice.length);
+        }
         catch (Exception exc)
         {
             scope (failure) assert(0);
