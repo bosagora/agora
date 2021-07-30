@@ -50,6 +50,11 @@ unittest
     {
         network.generateBlocks(h);
         network.assertSameBlocks(h, last_height + 1);
+        // Make sure the blocks are not empty
+        uint blocks = (h - last_height - 1).to!uint;
+        node_1.getBlocksFrom(last_height + 1, blocks)
+            .each!(block => assert(block.txs.count > 0,
+                format!"No txs in block %s"(block.header.height)));
         last_height = h;
     });
 }
