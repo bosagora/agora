@@ -456,7 +456,7 @@ public class AgoraLayout : Appender.Layout
 
 ***************************************************************************/
 
-private extern(C++) void writeDLog (const(char)* logger, int level,
+private extern(C++, "agora") void writeDLog (const(char)* logger, int level,
     const(char)* msg) nothrow
 {
     try
