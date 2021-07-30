@@ -73,7 +73,7 @@ package class UTXODB
         scope int delegate (const ref Hash, const ref UTXO) @safe dg) @safe
     {
         return () @trusted {
-            auto results = this.db.execute("SELECT hash, unlock_height, type, amount, locktype, lock FROM utxo");
+            auto results = this.db.execute("SELECT hash, unlock_height, type, amount, locktype, lock FROM utxo ORDER BY hash");
 
             foreach (ref row; results)
             {
@@ -157,7 +157,7 @@ package class UTXODB
         UTXO[Hash] utxos;
 
         auto results = this.db.execute(
-            "SELECT hash, unlock_height, type, amount, lock FROM utxo WHERE locktype = ? AND lock = ?",
+            "SELECT hash, unlock_height, type, amount, lock FROM utxo WHERE locktype = ? AND lock = ? ORDER BY hash",
             LockType.Key, pubkey[]);
 
         foreach (row; results)
