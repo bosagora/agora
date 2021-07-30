@@ -237,7 +237,7 @@ extern(D):
             // TODO: We should apply the situation where this validator has
             // enrolled with another UTXO after its previous enrollment expired.
             auto self_enroll = this.enroll_man.getEnrollmentKey();
-            if (this.scp == null && self_enroll != Hash.init)
+            if (this.scp is null && self_enroll != Hash.init)
             {
                 auto node_id = NodeID(self_enroll[][0 .. NodeID.sizeof]);
                 const IsValidator = true;
@@ -348,7 +348,7 @@ extern(D):
     {
         this.is_nominating = false;
         () @trusted {
-            if (this.scp != null)
+            if (this.scp !is null)
                 this.scp.stopNomination(height);
         }();
 
@@ -687,7 +687,7 @@ extern(D):
 
         () @trusted
         {
-            if (this.scp.empty())
+            if (this.scp is null || this.scp.empty())
                 return;
 
             envelopes = this.scp.getExternalizingState(this.scp.getHighSlotIndex());
