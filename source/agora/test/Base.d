@@ -105,6 +105,9 @@ public const size_t GenesisValidators = GenesisBlock.header.enrollments.count();
 public const uint GenesisValidatorCycle = GenesisBlock
     .header.enrollments[0].cycle_length;
 
+/// Initialized from the unittest runner and never overriden afterwards
+private __gshared LogLevel defaultLogLevel = LogLevel.Info;
+
 shared static this ()
 {
     Runtime.extendedModuleUnitTester = &customModuleUnitTester;
@@ -163,9 +166,6 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
     throw new AssertError(msg, file, line);
 }
 
-/// Skip printing out per-node logs ony agora/test/* failures
-shared bool no_logs;
-
 /// Custom unnitest runner as a workaround for multi-threading issue:
 /// Agora unittests spawn threads, which allocate. The Ocean tests
 /// inspect GC stats for memory allocation changes, and potentially fail
@@ -182,24 +182,22 @@ private UnitTestResult customModuleUnitTester ()
     import core.sync.semaphore;
     import core.thread.osthread;
 
-    // by default emit only errors during unittests.
-    // can be re-set by calling code.
-    Log.root.level(Log.root.Level.Error, true);
-
     // display the thread's log buffer when an assertion fails during a test
     assertHandler = &testAssertHandler;
 
     //
     const chatty = ("dchatty" in environment) ?
         to!bool(environment["dchatty"]) : false;
-    no_logs = ("dnologs" in environment) ?
-        to!bool(environment["dnologs"]) : false;
+    defaultLogLevel = environment.get("dloglevel", "Info").to!LogLevel;
     const all_single_threaded = ("dsinglethreaded" in environment) ?
         to!bool(environment["dsinglethreaded"]) : false;
     const should_fail_early = ("dfailearly" in environment) ?
         to!bool(environment["dfailearly"]) : true;
     auto filter = environment.get("dtest").toLower();
     size_t filtered;
+
+    // Set the default log level for this thread
+    Log.root.level(defaultLogLevel, true);
 
     // can't use ModuleInfo[], opApply returns temporaries..
     struct ModTest
@@ -942,9 +940,6 @@ public class TestAPIManager
 
     public void printLogs (string file = __FILE__, int line = __LINE__)
     {
-        if (no_logs)
-            return;
-
         synchronized  // make sure logging output is not interleaved
         {
             writeln("---------------------------- START OF LOGS ----------------------------");
@@ -1796,7 +1791,7 @@ public class TestValidatorNode : Validator, TestAPI
 
         // This is normally done by `agora.node.Runner`
         // By default all output is written to the appender
-        Log.root.level(Log.root.Level.Info, true);
+        Log.root.level(atomicLoad(defaultLogLevel), true);
         foreach (const ref settings; config.logging)
         {
             auto log = settings.name ? Log.lookup(settings.name) : Log.root;
