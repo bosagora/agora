@@ -384,3 +384,35 @@ static assert(SCPQuorumSet.sizeof == 56);
 
 /// From SCPDriver, here for convenience
 public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
+
+struct SimpleSCPStatement {
+    uint node_index;
+    uint64_t slot_index;
+    SCPStatement._pledges_t pledges;
+}
+
+static assert(SimpleSCPStatement.sizeof == 168);
+static assert(Signature.sizeof == 64);
+
+struct SimpleSCPEnvelope {
+    SimpleSCPStatement statement;
+    Signature signature;
+
+    static public SimpleSCPEnvelope toSimpleSCPEnvelope (in SCPEnvelope env, uint node_index)
+        nothrow
+    {
+        auto simpleState = SimpleSCPStatement(node_index, env.statement.slotIndex,
+            cast()env.statement.pledges);
+        return SimpleSCPEnvelope(simpleState, env.signature);
+    }
+
+    static public SCPEnvelope fromSimpleSCPEnvelope (in SimpleSCPEnvelope env, NodeID node_id)
+        nothrow
+    {
+        auto state = SCPStatement(node_id, env.statement.slot_index,
+            cast()env.statement.pledges);
+        return SCPEnvelope(state, env.signature);
+    }
+}
+
+static assert(SimpleSCPEnvelope.sizeof == 232);

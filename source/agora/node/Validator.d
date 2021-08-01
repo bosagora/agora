@@ -346,7 +346,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    public override void receiveEnvelope (SCPEnvelope envelope) @safe
+    public override void receiveEnvelope (SimpleSCPEnvelope envelope) @safe
     {
         this.recordReq("receive_envelope");
         this.nominator.receiveEnvelope(envelope);

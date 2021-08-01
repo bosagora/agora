@@ -666,7 +666,7 @@ public class NetworkManager
                         auto payload = this.registry_client.getValidator(ckey);
                         if (payload == RegistryPayload.init)
                         {
-                            log.warn("Could not find mapping in registry for key {}", key);
+                            // log.warn("Could not find mapping in registry for key {}", key);
                             return false;
                         }
 

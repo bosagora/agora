@@ -147,7 +147,7 @@ public extern (C++) class Nominator : SCPDriver
     protected uint[] initial_missing_validators;
 
     /// List of incoming SCPEnvelopes that need to be processed
-    private DList!SCPEnvelope queued_envelopes;
+    private DList!SimpleSCPEnvelope queued_envelopes;
 
     /// Timer used for processing queued incoming SCP Envelope messages
     private ITimer envelope_timer;
@@ -216,7 +216,9 @@ extern(D):
         {
             auto env = this.queued_envelopes.front;
             this.queued_envelopes.removeFront();
-            this.handleSCPEnvelope(env);
+            auto node_id = this.getNodeID(env.statement.slot_index, env.statement.node_index);
+            auto original_env = SimpleSCPEnvelope.fromSimpleSCPEnvelope(env, node_id);
+            this.handleSCPEnvelope(original_env);
         }
     }
 
@@ -526,10 +528,15 @@ extern(D):
         {
             if (!proc)
             {
-                this.queued_envelopes.insertBack(cast()envelope);
+                auto node_index = this.getNodeIndex(envelope.statement.slotIndex,
+                    envelope.statement.nodeID);
+                auto simple_env = SimpleSCPEnvelope.toSimpleSCPEnvelope(envelope,
+                    node_index);
+                this.queued_envelopes.insertBack(simple_env);
                 this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
                 continue;
             }
+
             auto shared_env = this.wrapEnvelope(envelope);
             this.scp.setStateFromEnvelope(envelope.statement.slotIndex,
                 shared_env);
@@ -548,9 +555,9 @@ extern(D):
 
     ***************************************************************************/
 
-    public void receiveEnvelope (in SCPEnvelope envelope) @trusted
+    public void receiveEnvelope (in SimpleSCPEnvelope envelope) @trusted
     {
-        auto copied = envelope.serializeFull.deserializeFull!SCPEnvelope;
+        auto copied = envelope.serializeFull.deserializeFull!SimpleSCPEnvelope;
         this.queued_envelopes.insertBack(copied);
         this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
     }
@@ -704,8 +711,18 @@ extern(D):
             this.scp_envelope_store.add(env, true);
 
         // Store the queued envelopes
-        foreach (const ref env; this.queued_envelopes[])
+        foreach (const ref simple_env; this.queued_envelopes[])
+        {
+            auto node_id = this.getNodeID(simple_env.statement.slot_index,
+                    simple_env.statement.node_index);
+            SCPEnvelope env;
+            () @trusted
+            {
+                env = SimpleSCPEnvelope.fromSimpleSCPEnvelope(simple_env, node_id);
+            }();
+
             this.scp_envelope_store.add(env, false);
+        }
 
         ManagedDatabase.commitBatch();
     }
@@ -1071,7 +1088,9 @@ extern(D):
             assert(0, ex.to!string);
         }
 
-        this.network.validators().each!(v => v.client.sendEnvelope(env));
+        auto node_index = this.getNodeIndex (env.statement.slotIndex, env.statement.nodeID);
+        auto simpleEnv = SimpleSCPEnvelope.toSimpleSCPEnvelope(env, node_index);
+        this.network.validators().each!(v => v.client.sendEnvelope(simpleEnv));
 
         // Per SCP rules, once we CONFIRM a NOMINATE; we can't
         // nominate new values. Keep track of the biggest slot_idx we confirmed
@@ -1079,6 +1098,45 @@ extern(D):
         if (envelope.statement.slotIndex > this.last_confirmed_height &&
             envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
             this.last_confirmed_height = Height(envelope.statement.slotIndex);
+    }
+
+    /***************************************************************************
+
+        Get the `NodeID` corresponding to the node index
+
+        Params:
+            slot_index = the slot index we're currently reaching consensus for
+            node_index = the index of the NodeID for which this computation is
+                being made
+
+        Returns:
+            the `NodeID` corresponding to the node index
+
+    ***************************************************************************/
+
+    public NodeID getNodeID (uint64_t slot_index, uint32_t node_index) @safe nothrow
+    {
+        auto hash = this.enroll_man.getEnrolledUTXOByIndex(Height(slot_index), node_index);
+        return NodeID(hash[][0 .. NodeID.sizeof]);
+    }
+
+    /***************************************************************************
+
+        Get the index corresponding to the node index
+
+        Params:
+            slot_index = the slot index we're currently reaching consensus for
+            node_id = the id of the node for which this computation is being made
+
+        Returns:
+            the index corresponding to the node index
+
+    ***************************************************************************/
+
+    public uint32_t getNodeIndex (uint64_t slot_index, NodeID node_id) @safe nothrow
+    {
+        return this.enroll_man.getEnrolledUTXOIndex(Height(slot_index),
+            cast(Hash)node_id);
     }
 
     /// Used for holding consensus candidate values. It contains precomputed

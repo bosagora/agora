@@ -60,7 +60,7 @@ public class NetworkClient
         union
         {
             Transaction tx;
-            SCPEnvelope envelope;
+            SimpleSCPEnvelope envelope;
             ValidatorBlockSig block_sig;
             Enrollment enrollment;
             PreImageInfo preimage;
@@ -72,7 +72,7 @@ public class NetworkClient
             this.tx = tx;
         }
 
-        this (SCPEnvelope envelope) nothrow
+        this (SimpleSCPEnvelope envelope) nothrow
         {
             this.type = GossipType.Envelope;
             this.envelope = envelope;
@@ -243,7 +243,7 @@ public class NetworkClient
     public void setIdentity (in PublicKey key)
     {
         this.log = Log.lookup(format("%s.%s", __MODULE__, key));
-        this.log.info("Peer identity established");
+        // this.log.info("Peer identity established");
     }
 
     /***************************************************************************
@@ -379,7 +379,7 @@ public class NetworkClient
 
     ***************************************************************************/
 
-    public void sendEnvelope (SCPEnvelope envelope) nothrow
+    public void sendEnvelope (SimpleSCPEnvelope envelope) nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(envelope));
         this.gossip_timer.rearm(GossipDelay, Periodic.No);

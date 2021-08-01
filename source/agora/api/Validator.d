@@ -102,7 +102,7 @@ public interface API : agora.api.FullNode.API
 
     ***************************************************************************/
 
-    public void receiveEnvelope (SCPEnvelope envelope);
+    public void receiveEnvelope (SimpleSCPEnvelope envelope);
 
    /***************************************************************************
 

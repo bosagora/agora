@@ -1756,7 +1756,7 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// FullNode does not implement this
-    public override void receiveEnvelope (SCPEnvelope envelope) @safe
+    public override void receiveEnvelope (SimpleSCPEnvelope envelope) @safe
     {
         assert(0);
     }

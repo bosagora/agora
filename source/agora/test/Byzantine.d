@@ -120,12 +120,14 @@ private class SpyNominator : Nominator
         this.envelope_type_counts = envelope_type_counts;
     }
 
-    public override void receiveEnvelope (in SCPEnvelope envelope) @trusted
+    public override void receiveEnvelope (in SimpleSCPEnvelope envelope) @trusted
     {
         super.receiveEnvelope(envelope);
         // Make sure we don't count for same node more than once
-        if (nodes_received[envelope.statement.pledges.type_].count(envelope.statement.nodeID) > 0) return;
-        nodes_received[envelope.statement.pledges.type_] ~= envelope.statement.nodeID;
+        auto node_id = this.getNodeID(envelope.statement.slot_index,
+            envelope.statement.node_index);
+        if (nodes_received[envelope.statement.pledges.type_].count(node_id) > 0) return;
+        nodes_received[envelope.statement.pledges.type_] ~= node_id;
         final switch (envelope.statement.pledges.type_) {
             case SCPStatementType.SCP_ST_NOMINATE:
                 atomicOp!("+=")(this.envelope_type_counts.nominate_count, 1);
