@@ -168,10 +168,10 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
     throw new AssertError(msg, file, line);
 }
 
-/// Custom unnitest runner as a workaround for multi-threading issue:
+/// Custom unittest runner as a workaround for multi-threading issue:
 /// Agora unittests spawn threads, which allocate. The Ocean tests
 /// inspect GC stats for memory allocation changes, and potentially fail
-/// if during such a test a runaway Agora unnittest child thread allocates.
+/// if during such a test a runaway Agora unittest child thread allocates.
 /// Workaround: Don't run ocean submodule unittests
 private UnitTestResult customModuleUnitTester ()
 {
@@ -338,7 +338,7 @@ private UnitTestResult customModuleUnitTester ()
         runInParallel(parallel_tests);
         runInParallel(heavy_tests);
 
-        //waiting for all parallel tasks to finish
+        // waiting for all parallel tasks to finish
         iota(parallel_tests.length + heavy_tests.length).each!(x => finished_tasks_num.wait());
     }
 
@@ -352,7 +352,7 @@ private UnitTestResult customModuleUnitTester ()
                  executed, single_threaded.length + parallel_tests.length + heavy_tests.length);
     }
 
-    //result.summarize = true;
+    // result.summarize = true;
     result.runMain = false;
     return result;
 }
@@ -530,7 +530,7 @@ public struct NodePair
 
     Allows unittests to spawn, communicate, and control the full network.
     Each unittest block should instantiate this class at most once.
-    Multiple configuration points exists, such as `createNewNode` (to inject
+    Multiple configuration points exist, such as `createNewNode` (to inject
     different node types), `createNameRegistry`, etc...
 
 *******************************************************************************/
@@ -1022,7 +1022,7 @@ public class TestAPIManager
             .each!(_ => this.addBlock(client_idxs, no_txs, file, line));
     }
 
-     /**************************************************************************
+    /**************************************************************************
 
         Add a block
 
@@ -1048,7 +1048,7 @@ public class TestAPIManager
 
         auto first_client = this.clients[client_idxs.front];
         auto last_height = first_client.getBlockHeight();
-        // traget height will be one more than previous block
+        // target height will be one more than previous block
         Height target_height = Height(last_height + 1);
 
         while (!no_txs)
@@ -2200,7 +2200,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 }
 
 /// API manager that creates nodes that are too lazy to reveal preimages
-/// (except when explicitely set to reveal)
+/// (except when explicitly set to reveal)
 class LazyAPIManager(PreImageVN = NoPreImageVN) : TestAPIManager
 {
     public shared bool reveal_preimage = false;
