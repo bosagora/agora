@@ -635,6 +635,56 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Get the UTXO corresponding to the UTXO index for the height
+
+        Params:
+            height = the height of proposed block 
+            index = the index to find the UTXO with
+
+        Returns:
+            the `UTXO` corresponding to the index
+
+    ***************************************************************************/
+
+    public Hash getEnrolledUTXOByIndex (in Height height, in uint index)
+        nothrow @safe
+    {
+        Hash[] keys;
+        this.getEnrolledUTXOs(height, keys);
+        if (keys.length > index)
+            return keys[index];
+        else
+            return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Get the index corresponding to the UTXO for the height
+
+        Params:
+            height = the height of proposed block
+            utxo = the UTXO to find the index with
+
+        Returns:
+            the index corresponding to the `UTXO`
+
+    ***************************************************************************/
+
+    public uint getEnrolledUTXOIndex (in Height height, in Hash utxo)
+        nothrow @safe
+    {
+        Hash[] keys;
+        this.getEnrolledUTXOs(height, keys);
+        foreach (index, key; keys)
+        {
+            if (utxo == key)
+                return cast(uint)index;
+        }
+        assert(0);
+    }
+
+    /***************************************************************************
+
         Get the commitment for the enrollment for this node
 
         If this node is not enrolled yet, the result will be empty. And if
