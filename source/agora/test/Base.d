@@ -684,7 +684,7 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         assert(height > enroll_header.height);
-        waitForPreimages(clients_idxs, enroll_header.enrollments, height, timeout);
+        this.waitForPreimages(clients_idxs, enroll_header.enrollments, height, timeout);
         this.expectHeight(clients_idxs, height, timeout, file, line);
     }
 
@@ -1004,7 +1004,7 @@ public class TestAPIManager
     public void generateBlocks (Height height, bool no_txs = false,
         string file = __FILE__, int line = __LINE__)
     {
-        generateBlocks(iota(GenesisValidators), height, no_txs, file, line);
+        this.generateBlocks(iota(GenesisValidators), height, no_txs, file, line);
     }
 
     /// Ditto
@@ -1037,7 +1037,7 @@ public class TestAPIManager
     void addBlock (bool no_txs = false,
         string file = __FILE__, int line = __LINE__)
     {
-        addBlock(iota(0, GenesisValidators), no_txs, file, line);
+        this.addBlock(iota(0, GenesisValidators), no_txs, file, line);
     }
 
     /// Ditto
@@ -1085,7 +1085,7 @@ public class TestAPIManager
                 (file, line, enrolled_height, target_height));
         // Check block is at target height for the participating clients
         const enroll_block = first_client.getBlock(enrolled_height);
-        expectHeightAndPreImg(client_idxs, target_height,
+        this.expectHeightAndPreImg(client_idxs, target_height,
             enroll_block.header, 10.seconds, file, line);
     }
 
