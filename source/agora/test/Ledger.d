@@ -26,6 +26,7 @@ import agora.consensus.validation;
 import agora.crypto.Hash;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.script.Signature;
 import agora.serialization.Serializer;
 import agora.test.Base;
 
@@ -207,7 +208,7 @@ unittest
     // create a double-spend tx
     txs[0].inputs[0] = txs[1].inputs[0];
     txs[0].outputs[0].value = Amount(100);
-    auto signature = WK.Keys.Genesis.sign(txs[0]);
+    auto signature = WK.Keys.Genesis.sign(txs[0].getChallenge());
     txs[0].inputs[0].unlock = genKeyUnlock(signature);
 
     scope payload_checker = new FeeManager();

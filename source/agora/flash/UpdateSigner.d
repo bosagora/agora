@@ -33,6 +33,7 @@ import agora.flash.Scripts;
 import agora.flash.Types;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.script.Signature;
 import agora.serialization.Serializer;
 import agora.utils.Backoff;
 import agora.utils.Log;
@@ -480,7 +481,7 @@ public class UpdateSigner
         if (this.seq_id == 0)
         {
             return sign(this.kp.secret, this.conf.pair_pk, nonce_pair_pk,
-                priv_nonce.update.v, update_tx);
+                priv_nonce.update.v, update_tx.getChallenge());
         }
         else
         {

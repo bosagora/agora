@@ -22,6 +22,7 @@ import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.Script;
+import agora.script.Signature;
 import agora.test.Base;
 
 import Schnorr = agora.crypto.Schnorr;
@@ -66,8 +67,8 @@ unittest
 
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
-        auto sig = WK.Keys.Genesis.sign(tx);
-        return Unlock([ubyte(64)] ~ sig.toBlob()[]);
+        auto pair = SigPair(WK.Keys.Genesis.sign(tx.getChallenge()), SigHash.All);
+        return Unlock([ubyte(65)] ~ pair[].dup);
     }
 
     const block_6 = node_1.getBlocksFrom(6, 1)[0];
@@ -153,8 +154,8 @@ unittest
 
     Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
     {
-        auto sig = WK.Keys.Genesis.sign(tx);
-        return Unlock([ubyte(64)] ~ sig.toBlob()[]);
+        auto pair = SigPair(WK.Keys.Genesis.sign(tx.getChallenge()), SigHash.All);
+        return Unlock([ubyte(65)] ~ pair[].dup);
     }
 
     // the protocol would allow both transactions (unlock time is fine),
@@ -236,8 +237,8 @@ unittest
             .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = kp_a.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.TRUE)]);
+                    auto pair = SigPair(kp_a.sign(tx.getChallenge()), SigHash.All);
+                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.TRUE)]);
                 }))
         .array();
 
@@ -247,8 +248,8 @@ unittest
             .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = kp_b.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.TRUE)]);
+                    auto pair = SigPair(kp_b.sign(tx.getChallenge()), SigHash.All);
+                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.TRUE)]);
                 }))
         .array();
 
@@ -268,8 +269,8 @@ unittest
             .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = kp_a.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.FALSE)]);
+                    auto pair = SigPair(kp_a.sign(tx.getChallenge()), SigHash.All);
+                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.FALSE)]);
                 }))
         .array();
 
@@ -279,8 +280,8 @@ unittest
             .sign(OutputType.Payment, 0,
                 (in Transaction tx, in OutputRef out_ref) @safe nothrow
                 {
-                    auto sig = kp_b.sign(tx);
-                    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(OP.FALSE)]);
+                    auto pair = SigPair(kp_b.sign(tx.getChallenge()), SigHash.All);
+                    return Unlock([ubyte(65)] ~ pair[] ~ [ubyte(OP.FALSE)]);
                 }))
         .array();
 

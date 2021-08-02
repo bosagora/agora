@@ -36,6 +36,7 @@ import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
 import agora.script.Script;
+import agora.script.Signature;
 import agora.utils.Utility;
 import std.format;
 import std.traits : EnumMembers;
@@ -339,8 +340,8 @@ public Lock genKeyLock (in PublicKey key) pure nothrow @safe
 
 *******************************************************************************/
 
-public Unlock genKeyUnlock (in Signature sig) pure nothrow @safe
+public Unlock genKeyUnlock (in Signature sig, in SigHash sig_hash = SigHash.All) pure nothrow @safe
 {
     // must dupe because it's a value on the stack..
-    return Unlock(sig.toBlob()[].dup);
+    return Unlock(SigPair(sig, sig_hash)[].dup);
 }

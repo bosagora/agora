@@ -25,6 +25,7 @@ import agora.flash.Types;
 import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.Script;
+import agora.script.Signature;
 
 import std.bitmanip;
 
@@ -515,9 +516,9 @@ public Lock createLockHTLC (Hash hash, Height lock_height, Point sender_pk,
 
 *******************************************************************************/
 
-public Unlock createUnlockHTLC (Signature sig, Hash secret)
+public Unlock createUnlockHTLC (Signature sig, Hash secret, SigHash sig_hash = SigHash.All)
 {
-    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(secret[]));
+    return Unlock([ubyte(65)] ~ SigPair(sig, sig_hash)[] ~ toPushOpcode(secret[]));
 }
 
 ///
@@ -526,8 +527,8 @@ unittest
     import agora.script.Engine;
     import std.stdio;
 
-    const Transaction bad_tx = Transaction(Height(99));
-    const Transaction tx = Transaction(Height(100));
+    const Transaction bad_tx = Transaction([Input.init], [], Height(99));
+    const Transaction tx = Transaction([Input.init], [], Height(100));
     const Hash wrong_secret = hashFull(99);
     const Hash secret = hashFull(42);
     auto hash = hashFull(secret);
@@ -541,9 +542,9 @@ unittest
 
     auto lock_script = createLockHTLC(hash, lock_height, send_kp.V, recv_kp.V);
 
-    auto send_sig = sign(send_kp, tx);
-    auto recv_sig = sign(recv_kp, tx);
-    auto bad_tx_send_sig = sign(send_kp, bad_tx);
+    auto send_sig = sign(send_kp, tx.getChallenge());
+    auto recv_sig = sign(recv_kp, tx.getChallenge());
+    auto bad_tx_send_sig = sign(send_kp, bad_tx.getChallenge());
 
     assert(engine.execute(
         lock_script,

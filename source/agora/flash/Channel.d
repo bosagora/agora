@@ -35,6 +35,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.script.Signature;
 import agora.serialization.Serializer;
 import agora.utils.Backoff;
 import agora.utils.Log;
@@ -621,7 +622,7 @@ LOuter: while (1)
         {
             auto funding_tx_signed = this.conf.funding_tx.clone();
             funding_tx_signed.inputs[0].unlock
-                = genKeyUnlock(this.kp.sign(this.conf.funding_tx));
+                = genKeyUnlock(this.kp.sign(this.conf.funding_tx.getChallenge()));
 
             log.info("Publishing funding tx..");
             this.txPublisher(funding_tx_signed);
@@ -1917,7 +1918,7 @@ LOuter: while (1)
 
         const nonce_pair_pk = priv_nonce.V + peer_nonce;
         this.pending_close.our_sig = sign(this.kp.secret, this.conf.pair_pk,
-            nonce_pair_pk, priv_nonce.v, this.pending_close.tx);
+            nonce_pair_pk, priv_nonce.v, this.pending_close.tx.getChallenge());
 
         const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
         Result!Signature sig_res = Result!Signature(ErrorCode.Unknown);
