@@ -1731,6 +1731,15 @@ public class TestFullNode : FullNode, TestAPI
         this.nregistry = nreg;
         this.blocks = blocks;
         this.cur_time = cur_time;
+
+        // Keep in sync with `TestValidator` ctor
+        Log.root.level(atomicLoad(defaultLogLevel), true);
+        foreach (const ref settings; config.logging)
+        {
+            auto log = settings.name ? Log.lookup(settings.name) : Log.root;
+            log.level(settings.level, settings.propagate);
+        }
+
         super(config);
     }
 
