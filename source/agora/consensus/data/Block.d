@@ -25,6 +25,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
+import agora.script.Signature;
 import agora.serialization.Serializer;
 
 import std.algorithm.comparison;
@@ -676,9 +677,8 @@ unittest
     for (int idx = 0; idx < 8; idx++)
     {
         auto tx = Transaction([Input(last_hash, 0)],[Output(Amount(100_000), key_pairs[idx+1].address)]);
-        last_hash = hashFull(tx);
         tx.inputs[0].unlock = genKeyUnlock(
-            key_pairs[idx].sign(last_hash[]));
+            key_pairs[idx].sign(tx.getChallenge()));
         txs ~= tx;
     }
 

@@ -21,6 +21,7 @@ import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.script.Engine;
 import agora.script.Lock;
+import agora.script.Signature;
 import agora.crypto.Schnorr;
 
 version (unittest)
@@ -35,7 +36,7 @@ version (unittest)
 version (unittest)
 public Unlock signUnlock (KeyPair key_pair, Transaction tx)
 {
-    return genKeyUnlock(key_pair.sign(tx));
+    return genKeyUnlock(key_pair.sign(tx.getChallenge()));
 }
 
 /*******************************************************************************

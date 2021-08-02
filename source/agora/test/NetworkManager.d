@@ -24,6 +24,7 @@ import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.script.Lock;
+import agora.script.Signature;
 import agora.test.Base;
 
 import core.thread;
@@ -90,7 +91,7 @@ unittest
                 last_block = block;
             }
 
-            auto signTx (Transaction tx) @trusted { return prev_key.sign(hashFull(tx)[]); }
+            auto signTx (Transaction tx) @trusted { return prev_key.sign(tx.getChallenge()); }
 
             foreach (block1; blocks)
             {

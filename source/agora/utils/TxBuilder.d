@@ -76,6 +76,7 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.script.Lock;
+import agora.script.Signature;
 /* version (unittest) */ import agora.utils.Test;
 
 import std.algorithm;
@@ -237,7 +238,7 @@ public struct TxBuilder
                 "Address not found in Well-Known keypairs: "
                 ~ out_ref.output.address.toString());
 
-        return genKeyUnlock(ownerKP.sign(tx));
+        return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
     }
 
     /***************************************************************************

@@ -22,6 +22,7 @@ import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.script.Lock;
+import agora.script.Signature;
 
 import std.format;
 import std.getopt;
@@ -189,7 +190,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     Transaction tx = Transaction([Input(Hash.fromString(op.txhash), op.index)],
         [Output(Amount(op.amount), PublicKey.fromString(op.address))]);
 
-    auto signature = key_pair.sign(tx);
+    auto signature = key_pair.sign(tx.getChallenge());
     tx.inputs[0].unlock = genKeyUnlock(signature);
 
     if (op.dump)
@@ -270,12 +271,11 @@ unittest
 
     Transaction tx = Transaction([Input(Hash.fromString(txhash), index)],
         [Output(Amount(amount), PublicKey.fromString(address))]);
-    Hash send_txhash = hashFull(tx);
     auto key_pair = KeyPair.fromSeed(SecretKey.fromString(key));
-    tx.inputs[0].unlock = genKeyUnlock(key_pair.sign(send_txhash[]));
+    tx.inputs[0].unlock = genKeyUnlock(key_pair.sign(tx.getChallenge()));
 
     foreach (ref line; outputs)
         writeln(line);
 
-    assert(node.hasTransactionHash(send_txhash));
+    assert(node.hasTransactionHash(hashFull(tx)));
 }

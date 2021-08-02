@@ -18,6 +18,7 @@ import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr: Signature;
 import agora.script.Opcodes;
+import agora.script.Signature;
 import agora.script.Stack;
 
 import std.bitmanip;
@@ -359,6 +360,7 @@ public Script createLockP2PKH (in Hash key_hash) pure nothrow @safe
 
     Params:
         sig = the signature
+        sig_hash = the SigHash type
         pub_key = the public key
 
     Returns:
@@ -367,10 +369,10 @@ public Script createLockP2PKH (in Hash key_hash) pure nothrow @safe
 *******************************************************************************/
 
 version (unittest)
-public Script createUnlockP2PKH (in Signature sig, in Point pub_key)
+public Script createUnlockP2PKH (in Signature sig, in SigHash sig_hash, in Point pub_key)
     pure nothrow @safe
 {
-    return Script([ubyte(64)] ~ sig.toBlob()[] ~ [ubyte(32)] ~ pub_key[]);
+    return Script([ubyte(65)] ~ sig.toBlob()[] ~ [cast(ubyte)sig_hash] ~ [ubyte(32)] ~ pub_key[]);
 }
 
 ///
@@ -387,7 +389,7 @@ unittest
     const key_hash = hashFull(kp.V);
     Script lock_script = createLockP2PKH(key_hash);
     assert(validateScriptSyntax(ScriptType.Lock, lock_script[], 512, result) is null);
-    Script unlock_script = createUnlockP2PKH(sig, kp.V);
+    Script unlock_script = createUnlockP2PKH(sig, SigHash.All, kp.V);
     assert(validateScriptSyntax(ScriptType.Unlock, unlock_script[], 512, result)
         is null);
 }
