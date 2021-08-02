@@ -47,6 +47,12 @@ unittest
 
     // Test for https://github.com/bosagora/agora/issues/2344
     network.restart(nodes[$-1]);
+    // Make sure to wait until restart is completed, otherwise the network will
+    // start to shut down before the node has fully started up and this will
+    // trigger the dreaded `assert`
+    // "Trying to access node at address ... without first creating it"
+    network.waitForDiscovery();
+    network.expectHeight(Height(1));
 }
 
 /// Node which has a persistent Ledger (restart always clear the local state)
