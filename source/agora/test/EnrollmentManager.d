@@ -139,7 +139,6 @@ unittest
     import agora.node.Ledger;
     import agora.node.Validator;
 
-    import geod24.Registry;
     import core.atomic;
 
     static class BadNominator : Nominator

@@ -26,7 +26,6 @@ import agora.node.Ledger;
 import agora.test.Base;
 import agora.utils.Log;
 import agora.script.Engine;
-import geod24.Registry;
 import core.thread;
 
 mixin AddLogger!();

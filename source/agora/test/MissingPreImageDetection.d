@@ -32,8 +32,6 @@ import scpd.types.Utils;
 import core.stdc.stdint;
 import core.thread;
 
-import geod24.Registry;
-
 /*******************************************************************************
 
     Verifies that the nodes have not generated a block at the given height.

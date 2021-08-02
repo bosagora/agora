@@ -33,8 +33,6 @@ import agora.utils.PrettyPrinter;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
 
-import geod24.Registry;
-
 import std.algorithm;
 import std.exception;
 import std.format;

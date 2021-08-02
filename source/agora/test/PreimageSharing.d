@@ -21,8 +21,6 @@ import agora.consensus.data.PreImageInfo;
 import agora.utils.Test;
 import agora.test.Base;
 
-import geod24.Registry;
-
 /// doesn't reveal any preimages, except during nomination or when
 /// reveal_preimage is set to true
 public class NoPreImageExceptNominationVN : NoPreImageVN
