@@ -26,8 +26,6 @@ import agora.crypto.Key;
 import agora.script.Lock;
 import agora.test.Base;
 
-import geod24.Registry;
-
 import core.thread;
 import std.array;
 

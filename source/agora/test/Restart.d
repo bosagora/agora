@@ -22,8 +22,6 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.test.Base;
 
-import geod24.Registry;
-
 /// A test that stops and restarts a node
 unittest
 {

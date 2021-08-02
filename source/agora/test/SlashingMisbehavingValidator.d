@@ -36,8 +36,6 @@ import core.atomic;
 import core.stdc.stdint;
 import core.thread;
 
-import geod24.Registry;
-
 /// Situation: A misbehaving validator does not reveal its preimages right after
 ///     it's enrolled.
 /// Expectation: The information about the validator is stored in a block.

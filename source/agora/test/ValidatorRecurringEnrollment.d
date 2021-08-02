@@ -28,7 +28,6 @@ import agora.consensus.PreImage;
 import agora.consensus.protocol.Nominator;
 import agora.crypto.Hash;
 import agora.node.Ledger;
-import geod24.Registry;
 
 unittest
 {

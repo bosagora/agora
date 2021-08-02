@@ -29,8 +29,6 @@ import agora.node.Validator;
 import agora.network.Clock;
 import agora.test.Base;
 
-import geod24.Registry;
-
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;
 

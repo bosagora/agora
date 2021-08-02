@@ -23,7 +23,6 @@ import agora.consensus.data.genesis.Test: genesis_validator_keys;
 import agora.test.Base;
 
 import core.thread;
-import geod24.Registry;
 
 private class SameKeyValidator : TestValidatorNode
 {

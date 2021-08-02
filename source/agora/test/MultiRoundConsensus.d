@@ -34,8 +34,6 @@ import agora.test.Base;
 import core.stdc.inttypes;
 import core.thread;
 
-import geod24.Registry;
-
 import scpd.types.Stellar_types;
 import scpd.types.Stellar_SCP;
 
