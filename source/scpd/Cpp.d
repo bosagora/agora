@@ -32,6 +32,7 @@ import agora.serialization.Serializer;
 import core.stdcpp.string;
 import core.stdcpp.xutility;
 import std.meta;
+import std.traits;
 
 import vibe.data.json;
 
@@ -441,7 +442,6 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
         static QT fromBinary (QT) (scope DeserializeDg data,
             in DeserializerOptions opts) @safe
         {
-            import std.traits;
             import scpd.types.Utils;
 
             // Note: Unqual necessary because we can't construct an
@@ -454,6 +454,16 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
                 ret.push_back(entry);
             }
             return () @trusted { return cast(QT) ret; }();
+        }
+
+        static if (isBasicType!T)
+        {
+            /// Overload for basic types to not require a `const ref`
+            public void push_back (T value) @trusted pure nothrow @nogc
+            {
+                import Utils = scpd.types.Utils;
+                Utils.push_back(this, value);
+            }
         }
 
         public void push_back (ref T value) @trusted pure nothrow @nogc
