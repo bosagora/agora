@@ -324,6 +324,9 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
 
     alias ElementType = T;
 
+    /// Allow to iterate this like a const slice
+    alias constIterator this;
+
     extern(D)
     {
         /// TODO: Separate from `vector` definition

@@ -384,3 +384,33 @@ static assert(SCPQuorumSet.sizeof == 56);
 
 /// From SCPDriver, here for convenience
 public alias SCPQuorumSetPtr = shared_ptr!SCPQuorumSet;
+
+/// TODO: Move to a test folder and/or automate this
+static assert(SCPBallot.sizeof == 32);
+static assert(Value.sizeof == 24);
+static assert(SCPQuorumSet.sizeof == 56);
+
+/// Test symmetry of serialization
+unittest
+{
+    import agora.test.NRVO;
+
+    // TODO: Fill those with relevant data
+    SCPStatement stmt;
+    stmt.slotIndex = 42;
+
+    checkFromBinary!(SelfRef!NodeID);
+    testNRVO!SCPStatement();
+
+    stmt.pledges.type_ = SCPStatementType.SCP_ST_PREPARE;
+    testSymmetry(stmt);
+
+    stmt.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
+    testSymmetry(stmt);
+
+    stmt.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
+    testSymmetry(stmt);
+
+    stmt.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
+    testSymmetry(stmt);
+}
