@@ -968,7 +968,7 @@ public class FullNode : API
     /// GET: /block_height
     public override ulong getBlockHeight ()
     {
-        this.recordReq("block_heigth");
+        this.recordReq("block_height");
         return this.ledger.getBlockHeight();
     }
 

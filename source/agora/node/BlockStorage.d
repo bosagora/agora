@@ -753,7 +753,7 @@ public class BlockStorage : IBlockStorage
             height = deserializeFull!Height(dg, opts);
             () @trusted { idx_file.rawRead(hash); }();
             pos    = deserializeFull!size_t(dg, opts);
-            // add to index of heigth
+            // add to index of height
             this.height_idx.insert(HeightPosition(height, pos));
             // add to index of hash
             this.hash_idx.insert(HashPosition(hash, pos));
@@ -939,7 +939,7 @@ public class MemBlockStorage : IBlockStorage
 
         this.blocks ~= serializeFull!Block(block);
 
-        // add to index of heigth
+        // add to index of height
         this.height_idx.insert(
             HeightPosition(
                 block.header.height,
