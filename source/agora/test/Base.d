@@ -1267,8 +1267,8 @@ public class TestNetworkManager : NetworkManager
         auto tid = this.registry.locate(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!TestAPI(tid, timeout);
-        assert(0, "Trying to access node at address '" ~ address ~
-               "' without first creating it");
+        assert(0, format("Trying to access node at address '%s' from '%s' without first creating it",
+                         address, this.address));
     }
 
     ///
