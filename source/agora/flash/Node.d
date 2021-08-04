@@ -1470,7 +1470,7 @@ public abstract class ThinFlashNode : FlashNode
 public class AgoraFlashNode : FlashNode
 {
     /// Callback for sending transactions to the network
-    protected void delegate (Transaction tx) putTransactionDg;
+    protected void delegate (in Transaction tx) putTransactionDg;
 
     /// Network manager
     protected NetworkManager network;
@@ -1498,7 +1498,7 @@ public class AgoraFlashNode : FlashNode
 
     public this (FlashConfig conf, string data_dir, Hash genesis_hash,
         Engine engine, ITaskManager taskman,
-        void delegate (Transaction tx) putTransactionDg,
+        void delegate (in Transaction tx) putTransactionDg,
         NetworkManager network)
     {
         const db_path = buildPath(data_dir, "flash.dat");

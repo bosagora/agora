@@ -1628,7 +1628,7 @@ private mixin template TestNodeMixin ()
 
     ***************************************************************************/
 
-    public override void putTransaction (Transaction tx) @safe
+    public override void putTransaction (in Transaction tx) @safe
     {
         super.putTransaction(tx);
         const tx_hash = tx.hashFull();

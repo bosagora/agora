@@ -39,7 +39,7 @@ unittest
         mixin ForwardCtor!();
 
         /// Do what `FullNode.putTransaction` does, minus gossipping
-        public override void putTransaction (Transaction tx) @safe
+        public override void putTransaction (in Transaction tx) @safe
         {
             auto tx_hash = hashFull(tx);
             if (this.pool.hasTransactionHash(tx_hash))
@@ -101,7 +101,7 @@ unittest
     {
         mixin ForwardCtor!();
 
-        public override bool acceptTransaction (Transaction tx) @safe
+        public override bool acceptTransaction (in Transaction tx) @safe
         {
             // Dont accept any incoming TX
             log.info("Picky node ignoring TX {}", tx);
@@ -121,7 +121,7 @@ unittest
                 &this.onAcceptedBlock);
         }
 
-        public override void putTransaction (Transaction tx) @safe
+        public override void putTransaction (in Transaction tx) @safe
         {
             // Dont accept any incoming TXs
             log.info("Picky node ignoring TX {}", tx);

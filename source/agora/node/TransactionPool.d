@@ -136,7 +136,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public bool add (Transaction tx) @safe
+    public bool add (in Transaction tx) @safe
     {
         static ubyte[] buffer;
 

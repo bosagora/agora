@@ -21,6 +21,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.serialization.Serializer;
 import agora.script.Lock;
 
 import std.format;
@@ -225,13 +226,13 @@ unittest
         /// Contains the transaction cache
         private Transaction[Hash] tx_cache;
 
-        public override void putTransaction (Transaction tx) @safe
+        public override void putTransaction (in Transaction tx) @safe
         {
-            this.tx_cache[hashFull(tx)] = tx;
+            this.tx_cache[hashFull(tx)] = tx.serializeFull().deserializeFull!Transaction;
         }
 
         /// GET: /hasTransactionHash
-        public override bool hasTransactionHash (Hash tx) @safe
+        public override bool hasTransactionHash (in Hash tx) @safe
         {
             return (tx in this.tx_cache) !is null;
         }
