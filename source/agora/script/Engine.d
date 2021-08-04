@@ -36,6 +36,7 @@ import std.bitmanip;
 import std.conv;
 import std.range;
 import std.traits;
+import std.algorithm;
 
 version (unittest)
 {
@@ -812,13 +813,14 @@ public class Engine
     ***************************************************************************/
 
     private bool isValidSignature (in PublicKey key, in SigHash sig_hash,
-        in Signature sig, in Transaction tx, in Input input)
+        in Signature sig, in Transaction tx, in Input input = Input.init)
         nothrow @safe // @nogc  // serializing allocates
     {
         // workaround: input index not explicitly passed in
         import std.algorithm : countUntil;
         const long input_idx = tx.inputs.countUntil(input);
-        assert(input_idx != -1, "Input does not belong to this transaction");
+        if (sig_hash != SigHash.All)
+            assert(input_idx != -1, "Input does not belong to this transaction");
 
         const challenge = getChallenge(tx, sig_hash, input_idx);
         return verify(key, sig, challenge);
@@ -972,22 +974,30 @@ public class Engine
         }
 
         // buffer
-        Signature[MAX_SIGNATURES] sigs_buffer;
+        SigPair[MAX_SIGNATURES] sigs_buffer;
         foreach (idx, ref sig; sigs_buffer[0 .. sig_count])
         {
             const sig_bytes = stack.pop();
-            if (sig_bytes.length != Signature.sizeof)
+            if (sig_bytes.length != SigPair.sizeof)
             {
                 static immutable err12 = op.to!string
-                    ~ " opcode requires 64-byte signature on the stack";
+                    ~ " opcode requires 65-byte encoded signature on the stack";
                 return err12;
             }
 
-            sig = sig_bytes.toSignature();
+            if (auto err = decodeSignature(sig_bytes, sig))
+                return err;
         }
 
         // slice
-        Signature[] sigs = sigs_buffer[0 .. sig_count];
+        SigPair[] sigs = sigs_buffer[0 .. sig_count];
+
+        if (sigs.map!(s => s.sig_hash).uniq().walkLength > 1)
+        {
+            static immutable err13 = op.to!string
+                ~ " opcode requires same sighash signatures";
+            return err13;
+        }
 
         // if there are no sigs left, validation succeeded.
         // if there are more sigs left than keys left it means we cannot reach
@@ -995,9 +1005,9 @@ public class Engine
         // compare with.
         while (sigs.length > 0 && sigs.length <= keys.length)
         {
-            if (keys.front.verify(sigs.front, tx))
+            if (this.isValidSignature(keys.front,
+                sigs.front.sig_hash, sigs.front.signature, tx))
                 sigs.popFront();
-
             keys.popFront();
         }
 
@@ -1372,7 +1382,7 @@ unittest
             ~ [ubyte(32)] ~ invalid_key[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ Signature.init.toBlob()[]),
+        Unlock([ubyte(65)] ~ SigPair.init[]),
         tx, Input.init) ==
         "CHECK_MULTI_SIG 32-byte public key on the stack is invalid");
     // valid key, invalid signature
@@ -1384,20 +1394,20 @@ unittest
             ~ [ubyte(32)] ~ valid_key[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ Signature.init.toBlob()[]),
+        Unlock([ubyte(65)] ~ SigPair.init[]),
         tx, Input.init) ==
         "Script failed");
 
     const kp1 = KeyPair.random();
-    const sig1 = kp1.sign(tx);
+    const sig1 = SigPair(kp1.sign(tx.getChallenge()), SigHash.All);
     const kp2 = KeyPair.random();
-    const sig2 = kp2.sign(tx);
+    const sig2 = SigPair(kp2.sign(tx.getChallenge()), SigHash.All);
     const kp3 = KeyPair.random();
-    const sig3 = kp3.sign(tx);
+    const sig3 = SigPair(kp3.sign(tx.getChallenge()), SigHash.All);
     const kp4 = KeyPair.random();
-    const sig4 = kp4.sign(tx);
+    const sig4 = SigPair(kp4.sign(tx.getChallenge()), SigHash.All);
     const kp5 = KeyPair.random();
-    const sig5 = kp5.sign(tx);
+    const sig5 = SigPair(kp5.sign(tx.getChallenge()), SigHash.All);
 
     // valid key + signature
     assert(engine.execute(
@@ -1406,7 +1416,7 @@ unittest
             ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]),
         tx, Input.init)
         is null);
     assert(engine.execute(
@@ -1415,8 +1425,8 @@ unittest
             ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(OP.PUSH_NUM_1)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig2.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig2[]),
         tx, Input.init) ==
         "CHECK_MULTI_SIG opcode cannot accept more signatures than there are keys");
     assert(engine.execute(
@@ -1426,7 +1436,7 @@ unittest
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]),  // fails: not enough sigs pushed
+        Unlock([ubyte(65)] ~ sig1[]),  // fails: not enough sigs pushed
         tx, Input.init) ==
         "CHECK_MULTI_SIG not enough signatures on the stack");
     // valid
@@ -1437,8 +1447,8 @@ unittest
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig2.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig2[]),
         tx, Input.init)
         is null);
     // invalid order
@@ -1449,8 +1459,8 @@ unittest
             ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig2.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig2[]),
         tx, Input.init) ==
         "Script failed");
     // ditto invalid order
@@ -1461,8 +1471,8 @@ unittest
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig2.toBlob()[]
-             ~ [ubyte(64)] ~ sig1.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig2[]
+             ~ [ubyte(65)] ~ sig1[]),
         tx, Input.init) ==
         "Script failed");
     // 1 of 2 is ok
@@ -1473,7 +1483,7 @@ unittest
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]),
         tx, Input.init)
         is null);
     // ditto 1 of 2 is ok
@@ -1484,7 +1494,7 @@ unittest
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(OP.PUSH_NUM_2)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig2.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig2[]),
         tx, Input.init)
         is null);
     // 1 of 5: any sig is enough
@@ -1498,7 +1508,7 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]),
         tx, Input.init)
         is null);
     // 1 of 5: ditto
@@ -1512,7 +1522,7 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig2.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig2[]),
         tx, Input.init)
         is null);
     // 2 of 5: ok when sigs are in the same order
@@ -1526,8 +1536,8 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig5.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig5[]),
         tx, Input.init)
         is null);
     // 2 of 5: fails when sigs are in the wrong order
@@ -1541,8 +1551,8 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig5.toBlob()[]
-             ~ [ubyte(64)] ~ sig1.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig5[]
+             ~ [ubyte(65)] ~ sig1[]),
         tx, Input.init) ==
         "Script failed");
     // 3 of 5: ok when sigs are in the same order
@@ -1556,9 +1566,9 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig3.toBlob()[]
-             ~ [ubyte(64)] ~ sig5.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig3[]
+             ~ [ubyte(65)] ~ sig5[]),
         tx, Input.init)
         is null);
     // 3 of 5: fails when sigs are in the wrong order
@@ -1572,9 +1582,9 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig5.toBlob()[]
-             ~ [ubyte(64)] ~ sig3.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig5[]
+             ~ [ubyte(65)] ~ sig3[]),
         tx, Input.init) ==
         "Script failed");
     // 5 of 5: ok when sigs are in the same order
@@ -1588,11 +1598,11 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig2.toBlob()[]
-             ~ [ubyte(64)] ~ sig3.toBlob()[]
-             ~ [ubyte(64)] ~ sig4.toBlob()[]
-             ~ [ubyte(64)] ~ sig5.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig2[]
+             ~ [ubyte(65)] ~ sig3[]
+             ~ [ubyte(65)] ~ sig4[]
+             ~ [ubyte(65)] ~ sig5[]),
         tx, Input.init)
         is null);
     // 5 of 5: fails when sigs are in the wrong order
@@ -1606,11 +1616,11 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.CHECK_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig3.toBlob()[]
-             ~ [ubyte(64)] ~ sig2.toBlob()[]
-             ~ [ubyte(64)] ~ sig4.toBlob()[]
-             ~ [ubyte(64)] ~ sig5.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig3[]
+             ~ [ubyte(65)] ~ sig2[]
+             ~ [ubyte(65)] ~ sig4[]
+             ~ [ubyte(65)] ~ sig5[]),
         tx, Input.init) ==
         "Script failed");
     // ditto but with VERIFY_MULTI_SIG
@@ -1624,9 +1634,9 @@ unittest
             ~ [ubyte(32)] ~ kp5.address[]
             ~ [ubyte(OP.PUSH_NUM_5)]  // number of keys
             ~ [ubyte(OP.VERIFY_MULTI_SIG)]),
-        Unlock([ubyte(64)] ~ sig1.toBlob()[]
-             ~ [ubyte(64)] ~ sig5.toBlob()[]
-             ~ [ubyte(64)] ~ sig3.toBlob()[]),
+        Unlock([ubyte(65)] ~ sig1[]
+             ~ [ubyte(65)] ~ sig5[]
+             ~ [ubyte(65)] ~ sig3[]),
         tx, Input.init) ==
         "VERIFY_MULTI_SIG signature failed validation");
 }
