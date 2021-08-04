@@ -102,7 +102,7 @@ public interface API
 
     ***************************************************************************/
 
-    public Identity handshake (PublicKey peer);
+    public Identity handshake (in PublicKey peer);
 
     /***************************************************************************
 
@@ -127,7 +127,7 @@ public interface API
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
-    public bool hasTransactionHash (Hash tx);
+    public bool hasTransactionHash (in Hash tx);
 
     /***************************************************************************
 
@@ -136,7 +136,7 @@ public interface API
 
     ***************************************************************************/
 
-    public void putTransaction (Transaction tx);
+    public void putTransaction (in Transaction tx);
 
     /***************************************************************************
 
@@ -207,7 +207,7 @@ public interface API
 
     ***************************************************************************/
 
-    public Hash[] getMerklePath (ulong height, Hash hash);
+    public Hash[] getMerklePath (ulong height, in Hash hash);
 
     /***************************************************************************
 
@@ -221,7 +221,7 @@ public interface API
 
     ***************************************************************************/
 
-    public void enrollValidator (Enrollment enroll);
+    public void enrollValidator (in Enrollment enroll);
 
     /***************************************************************************
 
@@ -239,7 +239,7 @@ public interface API
     ***************************************************************************/
 
     @method(HTTPMethod.GET)
-    public Enrollment getEnrollment (Hash enroll_hash);
+    public Enrollment getEnrollment (in Hash enroll_hash);
 
     /***************************************************************************
 
@@ -291,7 +291,7 @@ public interface API
 
     ***************************************************************************/
 
-    public void receivePreimage (PreImageInfo preimage);
+    public void receivePreimage (in PreImageInfo preimage);
 
     /***************************************************************************
 

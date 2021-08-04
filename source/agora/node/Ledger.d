@@ -322,7 +322,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptTransaction (Transaction tx) @safe
+    public bool acceptTransaction (in Transaction tx) @safe
     {
         const Height expected_height = this.getBlockHeight() + 1;
         string reason;

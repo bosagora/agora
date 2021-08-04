@@ -250,7 +250,7 @@ public class Validator : FullNode, API
     }
 
     ///
-    public override Identity handshake (PublicKey peer)
+    public override Identity handshake (in PublicKey peer)
     {
         return this.getPublicKey(peer);
     }

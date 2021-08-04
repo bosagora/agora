@@ -897,7 +897,7 @@ public class FullNode : API
     ***************************************************************************/
 
     ///
-    public override Identity handshake (PublicKey peer)
+    public override Identity handshake (in PublicKey peer)
     {
         return Identity.init;
     }
@@ -937,7 +937,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public override void putTransaction (Transaction tx) @safe
+    public override void putTransaction (in Transaction tx) @safe
     {
         this.recordReq("transaction");
         auto tx_hash = hashFull(tx);
@@ -959,7 +959,7 @@ public class FullNode : API
     }
 
     /// GET: /has_transaction_hash
-    public override bool hasTransactionHash (Hash tx) @safe
+    public override bool hasTransactionHash (in Hash tx) @safe
     {
         this.recordReq("has_transaction_hash");
         return this.pool.hasTransactionHash(tx);
@@ -993,7 +993,7 @@ public class FullNode : API
     }
 
     /// GET: /merkle_path
-    public override Hash[] getMerklePath (ulong height, Hash hash) @safe
+    public override Hash[] getMerklePath (ulong height, in Hash hash) @safe
     {
         this.recordReq("merkle_path");
 
@@ -1010,7 +1010,7 @@ public class FullNode : API
     }
 
     /// PUT: /enroll_validator
-    public override void enrollValidator (Enrollment enroll) @safe
+    public override void enrollValidator (in Enrollment enroll) @safe
     {
         this.recordReq("enroll_validator");
 
@@ -1026,14 +1026,14 @@ public class FullNode : API
     }
 
     /// GET: /enrollment
-    public override Enrollment getEnrollment (Hash enroll_hash) @safe
+    public override Enrollment getEnrollment (in Hash enroll_hash) @safe
     {
         this.recordReq("enrollment");
         return this.enroll_man.getEnrollment(enroll_hash);
     }
 
     /// PUT: /receive_preimage
-    public override void receivePreimage (PreImageInfo preimage) @safe
+    public override void receivePreimage (in PreImageInfo preimage) @safe
     {
         this.recordReq("receive_preimage");
         log.trace("Received Preimage: {}", prettify(preimage));
