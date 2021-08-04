@@ -126,12 +126,12 @@ public Lock createFlashLock (uint age, Hash first_utxo, Point pair_pk,
 
 *******************************************************************************/
 
-public Unlock createUnlockUpdate (Signature sig, in ulong seq_id)
-    @safe nothrow
+public Unlock createUnlockUpdate (Signature sig, in ulong seq_id,
+    SigHash sig_hash = SigHash.NoInput) @safe nothrow
 {
     // remember it's LIFO when popping, TRUE is pushed last
     const seq_bytes = nativeToLittleEndian(seq_id);
-    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(seq_bytes)
+    return Unlock([ubyte(65)] ~ SigPair(sig, sig_hash)[] ~ toPushOpcode(seq_bytes)
         ~ [ubyte(OP.TRUE)]);
 }
 
@@ -148,12 +148,12 @@ public Unlock createUnlockUpdate (Signature sig, in ulong seq_id)
 
 *******************************************************************************/
 
-public Unlock createUnlockSettle (Signature sig, in ulong seq_id)
-    @safe nothrow
+public Unlock createUnlockSettle (Signature sig, in ulong seq_id,
+    SigHash sig_hash = SigHash.NoInput) @safe nothrow
 {
     // remember it's LIFO when popping, FALSE is pushed last
     const seq_bytes = nativeToLittleEndian(seq_id);
-    return Unlock([ubyte(64)] ~ sig.toBlob()[] ~ toPushOpcode(seq_bytes)
+    return Unlock([ubyte(65)] ~ SigPair(sig, sig_hash)[] ~ toPushOpcode(seq_bytes)
         ~ [ubyte(OP.FALSE)]);
 }
 

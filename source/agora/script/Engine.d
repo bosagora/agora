@@ -1107,22 +1107,24 @@ public class Engine
         }
 
         const sig_bytes = stack.pop();
-        if (sig_bytes.length != Signature.sizeof)
+        if (sig_bytes.length != SigPair.sizeof)
         {
             static immutable err7 = op.to!string
-                ~ " opcode requires 64-byte signature on the stack";
+                ~ " opcode requires 65-byte encoded signature on the stack";
             return err7;
         }
 
-        const sig = sig_bytes.toSignature();
+        SigPair sig;
+        if (auto err = decodeSignature(sig_bytes, sig))
+            return err;
 
         // workaround: input index not explicitly passed in
         import std.algorithm : countUntil;
         const long input_idx = tx.inputs.countUntil(input);
         assert(input_idx != -1, "Input does not belong to this transaction");
 
-        const Hash challenge = getSequenceChallenge(tx, sequence, input_idx);
-        sig_valid = pubkey.verify(sig, challenge);
+        const Hash challenge = getSequenceChallenge(tx, sequence, input_idx, sig.sig_hash);
+        sig_valid = pubkey.verify(sig.signature, challenge);
         return null;
     }
 }
@@ -1142,10 +1144,10 @@ public class Engine
 *******************************************************************************/
 
 public Hash getSequenceChallenge (in Transaction tx, in ulong sequence,
-    in ulong input_idx) nothrow @safe
+    in ulong input_idx, SigHash sig_hash = SigHash.NoInput) nothrow @safe
 {
     assert(input_idx < tx.inputs.length, "Input index is out of range");
-    return hashMulti(tx.getChallenge(SigHash.NoInput, input_idx), sequence);
+    return hashMulti(tx.getChallenge(sig_hash, input_idx), sequence);
 }
 
 version (unittest)
@@ -1684,7 +1686,7 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ Signature.init.toBlob()[]
+            [ubyte(65)] ~ SigPair.init[]
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 32-byte public key on the stack");
 
@@ -1695,7 +1697,7 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ Signature.init.toBlob()[]
+            [ubyte(65)] ~ SigPair.init[]
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG 32-byte public key on the stack is invalid");
 
@@ -1707,7 +1709,7 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ Signature.init.toBlob()[]
+            [ubyte(65)] ~ SigPair.init[]
             // wrong sequence size
             ~ toPushOpcode(nativeToLittleEndian(ubyte(1)))), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG opcode requires 8-byte sequence on the stack");
@@ -1718,7 +1720,7 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ Signature.init.toBlob()[]
+            [ubyte(65)] ~ SigPair.init[]
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "Script failed");
 
@@ -1730,30 +1732,30 @@ unittest
         Unlock(
             [ubyte(1)] ~ [ubyte(1)]  // wrong signature size
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
-        "CHECK_SEQ_SIG opcode requires 64-byte signature on the stack");
+        "CHECK_SEQ_SIG opcode requires 65-byte encoded signature on the stack");
 
     const kp = KeyPair.random();
-    const bad_sig = kp.sign(tx);
+    const bad_sig = SigPair(kp.sign(tx.getChallenge()), SigHash.All);
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ rand_key[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ bad_sig.toBlob()[]
+            [ubyte(65)] ~ bad_sig[]
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "Script failed");  // still fails, signature didn't hash the sequence
 
     // create the proper signature which blanks the input and encodes the sequence
     const challenge_0 = getSequenceChallenge(tx, seq_0, 0);
-    const seq_0_sig = kp.sign(challenge_0);
+    const seq_0_sig = SigPair(kp.sign(challenge_0), SigHash.NoInput);
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ seq_0_sig.toBlob()[]
+            [ubyte(65)] ~ seq_0_sig[]
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0])
         is null);
 
@@ -1763,7 +1765,7 @@ unittest
             ~ toPushOpcode(seq_1_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ seq_0_sig.toBlob()[]
+            [ubyte(65)] ~ seq_0_sig[]
             ~ toPushOpcode(seq_0_bytes)), tx, tx.inputs[0]) ==
         "CHECK_SEQ_SIG sequence is not equal to or greater than min_sequence");
 
@@ -1773,19 +1775,19 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ seq_0_sig.toBlob()[]
+            [ubyte(65)] ~ seq_0_sig[]
             ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]),
         "Script failed");
 
     const challenge_1 = getSequenceChallenge(tx, seq_1, 0);
-    const seq_1_sig = kp.sign(challenge_1);
+    const seq_1_sig = SigPair(kp.sign(challenge_1), SigHash.NoInput);
     assert(engine.execute(
         Lock(LockType.Script,
               [ubyte(32)] ~ kp.address[]
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.CHECK_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ seq_1_sig.toBlob()[]
+            [ubyte(65)] ~ seq_1_sig[]
             ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0])
         is null);
 
@@ -1795,7 +1797,7 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ seq_1_sig.toBlob()[]
+            [ubyte(65)] ~ seq_1_sig[]
             ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]) ==
         "VERIFY_SEQ_SIG signature failed validation");
 
@@ -1805,7 +1807,7 @@ unittest
             ~ toPushOpcode(seq_0_bytes)
             ~ [ubyte(OP.VERIFY_SEQ_SIG)]),
         Unlock(
-            [ubyte(64)] ~ seq_0_sig.toBlob()[]
+            [ubyte(65)] ~ seq_0_sig[]
             ~ toPushOpcode(seq_1_bytes)), tx, tx.inputs[0]) ==  // sig mismatch
         "VERIFY_SEQ_SIG signature failed validation");
 }
