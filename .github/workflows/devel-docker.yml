@@ -32,7 +32,6 @@ jobs:
 
         # This step will checkout the source with all the submodules
       - name: '[Agora] Build and push'
-        id: agore_build
         uses: docker/build-push-action@v2
         with:
           push: ${{ steps.login.outcome == 'success' }}
@@ -41,14 +40,8 @@ jobs:
             AGORA_VERSION=${{ github.sha }}
 
       - name: '[Registry] Build and push'
-        id: registry_build
         uses: docker/build-push-action@v2
         with:
           push: ${{ steps.login.outcome == 'success' }}
           file: ./Dockerfile.NameRegistry
           tags: bpfk/name-registry:devel
-
-      - name: Image digest
-        run: |
-          echo ${{ steps.agora_build.outputs.digest }}
-          echo ${{ steps.registry_build.outputs.digest }}
