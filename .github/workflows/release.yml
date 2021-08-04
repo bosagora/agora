@@ -40,7 +40,7 @@ jobs:
         with:
           # Either 'success' or 'skipped'
           push: ${{ steps.login.outcome == 'success' }}
-          tags: bpfk/agora:${{ steps.version.outputs.VERSION }}
+          tags: bosagora/agora:${{ steps.version.outputs.VERSION }}
           build-args: |
             AGORA_VERSION=${{ steps.version.outputs.VERSION }}
 
@@ -49,4 +49,4 @@ jobs:
         with:
           push: ${{ steps.login.outcome == 'success' }}
           file: ./Dockerfile.NameRegistry
-          tags: bpfk/name-registry:${{ steps.version.outputs.VERSION }}
+          tags: bosagora/registry:${{ steps.version.outputs.VERSION }}
