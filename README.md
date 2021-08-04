@@ -1,6 +1,6 @@
 # Agora
 
-[Docker Hub image](https://hub.docker.com/r/bpfk/agora)
+[Docker Hub image](https://hub.docker.com/r/bosagora/agora)
 
 ![Github CI](https://github.com/bosagora/agora/actions/workflows/main.yml/badge.svg)
 [![codecov](https://codecov.io/gh/bosagora/agora/branch/v0.x.x/graph/badge.svg)](https://codecov.io/gh/bosagora/agora)
@@ -12,7 +12,7 @@ Node implementation for BOA CoinNet
 # Docker usage
 
 We provide a public build of this repository (see above).
-The easiest way to get agora is to run `docker pull bpfk/agora`.
+The easiest way to get agora is to run `docker pull bosagora/agora`.
 
 The `Dockerfile` lives at the root of this repository,
 so one can run `docker build -t agora .` to build it.

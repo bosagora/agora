@@ -19,11 +19,11 @@ To publish a release, one should:
 To deploy to production:
 - After pushing the tag, a new release will be built (this is done by the [Github workflow](../.github/workflows/release.yml));
 - The built image will be tagged with the same name (e.g. `v0.10.0`);
-- The tags can be seen at [Docker hub](https://hub.docker.com/repository/docker/bpfk/agora/tags);
-- Pull the tagged release locally: `docker pull bpfk/agora:v0.10.0`;
+- The tags can be seen at [Docker hub](https://hub.docker.com/repository/docker/bosagora/agora/tags);
+- Pull the tagged release locally: `docker pull bosagora/agora:v0.10.0`;
 - Optionally, do any extra testing necessary (most testing should be done before tagging a release);
-- Tag it as the latest release: `docker tag bpfk/agora:v0.10.0 bpfk/agora:latest`;
-- Finally, update the registry tag: `docker push bpfk/agora:latest`;
+- Tag it as the latest release: `docker tag bosagora/agora:v0.10.0 bosagora/agora:latest`;
+- Finally, update the registry tag: `docker push bosagora/agora:latest`;
 
 Any new deployment using the ansible scripts in the infrastructure repo will now use the new release.
 One can verify that the version deployed is correct on the Grafana dashboard.

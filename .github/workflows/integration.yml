@@ -45,7 +45,7 @@ jobs:
     - name: Build Faucet
       run: |
         cd ${{ github.workspace }}/faucet/
-        docker build -t bpfk/faucet ${{ github.workspace }}/faucet/
+        docker build -t bosagora/faucet ${{ github.workspace }}/faucet/
 
     - name: Test
       run: |

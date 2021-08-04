@@ -23,5 +23,5 @@ jobs:
       - name: Set ${{ github.event.inputs.tag }} as latest
         uses: akhilerm/tag-push-action@v1.1.0
         with:
-          src: docker.io/bpfk/agora:${{ github.event.inputs.tag }}
-          dst: docker.io/bpfk/agora:latest
+          src: docker.io/bosagora/agora:${{ github.event.inputs.tag }}
+          dst: docker.io/bosagora/agora:latest

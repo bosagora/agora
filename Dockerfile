@@ -1,5 +1,5 @@
 # Build Agora from source
-FROM bpfk/agora-builder:latest AS Builder
+FROM bosagora/agora-builder:latest AS Builder
 ARG DUB_OPTIONS
 ARG AGORA_VERSION="HEAD"
 RUN apk --no-cache add linux-headers python3 npm
@@ -11,7 +11,7 @@ RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2
 
 # Runner
 # Uses edge as we need the same `ldc-runtime` as the LDC that compiled Agora,
-# and `bpfk/agora-builder:latest` uses edge.
+# and `bosagora/agora-builder:latest` uses edge.
 FROM alpine:edge
 # The following makes debugging Agora much easier on server
 # Since it's a tiny configuration file read by GDB at init, it won't affect release build

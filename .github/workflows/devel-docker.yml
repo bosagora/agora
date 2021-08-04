@@ -35,7 +35,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: ${{ steps.login.outcome == 'success' }}
-          tags: bpfk/agora:devel
+          tags: bosagora/agora:devel
           build-args: |
             AGORA_VERSION=${{ github.sha }}
 
@@ -44,4 +44,4 @@ jobs:
         with:
           push: ${{ steps.login.outcome == 'success' }}
           file: ./Dockerfile.NameRegistry
-          tags: bpfk/name-registry:devel
+          tags: bosagora/registry:devel
