@@ -49,6 +49,7 @@ import std.format;
 import std.stdio;  // todo: remove
 import std.traits;
 import std.typecons;
+import std.range;
 
 import core.time;
 
@@ -727,14 +728,14 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public void onUpdateTxExternalized (in Transaction tx)
+    public void onUpdateTxExternalized (in Transaction tx, in uint utxo_idx, in bool is_last)
     {
         this.state = ChannelState.StartedUnilateralClose;
         this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
             ErrorCode.None);
 
-        // last update was published, publish the settlement
-        if (tx == this.channel_updates[$ - 1].update_tx)
+        this.last_externalized_update_utxo = UTXO.getHash(tx.hashFull(), utxo_idx);
+        if (is_last)
         {
             this.state = ChannelState.WaitingOnSettlement;
             this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
@@ -743,9 +744,10 @@ LOuter: while (1)
         }
         else
         {
-            // either the trigger or an outdated update tx was published.
-            // publish the latest update first.
-            const update_tx = this.channel_updates[$ - 1].update_tx;
+            // publish latest update
+            auto update_tx = this.channel_updates[$ - 1].update_tx;
+            // point the input to the last update utxo
+            update_tx.inputs[0].utxo = this.last_externalized_update_utxo;
             log.info("{}: Publishing latest update tx {}: {}",
                 this.kp.address.flashPrettify, this.channel_updates.length, update_tx.hashFull().flashPrettify);
             this.txPublisher(cast()update_tx);
@@ -771,7 +773,9 @@ LOuter: while (1)
         // ready to publish settlement
         if (this.height >= this.update_ext_height + this.conf.settle_time)
         {
-            const settle_tx = this.channel_updates[$ - 1].settle_tx;
+            auto settle_tx = this.channel_updates[$ - 1].settle_tx;
+            // point the input to the last update utxo
+            settle_tx.inputs[0].utxo = this.last_externalized_update_utxo;
             log.info("{}: Publishing last settle tx {}: {}",
                 this.kp.address.flashPrettify, this.channel_updates.length,
                 settle_tx.hashFull().flashPrettify);
@@ -1626,6 +1630,8 @@ LOuter: while (1)
 
         foreach (tx; block.txs)
         {
+            uint update_utxo_idx;
+            bool update_is_last;
             if (tx.hashFull() == this.conf.funding_tx_hash)
             {
                 log.info("{}: Funding tx externalized({}) on height {}",
@@ -1633,18 +1639,18 @@ LOuter: while (1)
                 this.onFundingTxExternalized(tx);
             }
             else
-            if (this.isClosingTx(tx))
+            if (this.isClosingTx(tx)) // always check for closing TX before update TX
             {
                 log.info("{}: Close tx externalized({}) on height {}",
                     this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onCloseTxExternalized(tx);
             }
             else
-            if (this.isUpdateTx(tx))
+            if (this.isUpdateTx(tx, update_utxo_idx, update_is_last)) // always check for update TX before settle TX
             {
                 log.info("{}: Update tx externalized({}) on height {}",
                     this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
-                this.onUpdateTxExternalized(tx);
+                this.onUpdateTxExternalized(tx, update_utxo_idx, update_is_last);
             }
             else
             if (this.isSettleTx(tx))
@@ -1688,21 +1694,37 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    private bool isUpdateTx (in Transaction tx)
+    private bool isUpdateTx (in Transaction tx, out uint utxo_idx, out bool is_last)
     {
-        if (tx.inputs.length != 1)
+        if (this.channel_updates.length == 0)
             return false;
 
-        // todo: this is also the close tx, check its utxo first
-        if (tx.inputs[0].utxo == UTXO.getHash(
-            hashFull(this.conf.funding_tx), this.conf.funding_utxo_idx))
-            return true;
+        auto last_update = deserializeFull!(Transaction)(serializeFull(this.channel_updates[$ - 1].update_tx));
+        auto last_settle = deserializeFull!(Transaction)(serializeFull(this.channel_updates[$ - 1].settle_tx));
+        assert(last_update.inputs.length == 1);
+        assert(last_settle.inputs.length == 1);
 
-        // todo: could there be a timing issue here if our `channel_updates`
-        // are not updated fast enough? chances are very slim, need to verify.
-        // todo: optimize by caching trigger tx utxo
-        return this.channel_updates.length > 0
-            && tx.inputs[0].utxo == this.trigger_utxo;
+        // See if last settlement can attach to any inputs.
+        // if so, this is the most recent update TX
+        auto found_idx = tx.outputs.enumerate.countUntil!((output)
+        {
+            last_settle.inputs[0].utxo = UTXO.getHash(tx.hashFull(), output.index);
+            return this.engine.execute(output.value.lock,
+                        last_settle.inputs[0].unlock, last_settle, last_settle.inputs[0]) is null;
+        });
+        is_last = found_idx >= 0;
+
+        // See if last update can attach to any inputs.
+        // if so, this is an older update TX
+        if (!is_last)
+            found_idx = tx.outputs.enumerate.countUntil!((output)
+            {
+                last_update.inputs[0].utxo = UTXO.getHash(tx.hashFull(), output.index);
+                return this.engine.execute(output.value.lock,
+                            last_update.inputs[0].unlock, last_update, last_update.inputs[0]) is null;
+            });
+        utxo_idx = cast(uint) found_idx;
+        return is_last || found_idx >= 0;
     }
 
     /***************************************************************************
@@ -1720,7 +1742,7 @@ LOuter: while (1)
 
     private bool isSettleTx (in Transaction tx)
     {
-        return !!(hashFull(tx) in this.known_settle_txs);
+        return tx.inputs.any!(input => input.utxo == this.last_externalized_update_utxo);
     }
 
     /***************************************************************************
@@ -2221,7 +2243,9 @@ LOuter: while (1)
             this.taskman.wait(100.msecs);
 
         assert(index < this.channel_updates.length);
-        const update_tx = this.channel_updates[index].update_tx;
+        auto update_tx = this.channel_updates[index].update_tx;
+        if (this.last_externalized_update_utxo != Hash.init)
+            update_tx.inputs[0].utxo = this.last_externalized_update_utxo;
         log.info("{}: Publishing update tx index {}: {}",
             this.kp.address.flashPrettify, index, update_tx.hashFull().flashPrettify);
         this.txPublisher(cast()update_tx);
@@ -2382,4 +2406,11 @@ private mixin template ChannelMetadata ()
     /// the blockchain, which begins a timeout after which a settlement tx
     /// may be published to the blockchain.
     private Height update_ext_height;
+
+    /// Last update UTXO that was externalized.
+    /// It is needed to update inputs of inputs of the update/settlement TXs
+    /// This assumes that multiple update TXs can not be externalized in the
+    /// same block. If they were, an earlier update could overwrite a more recent one.
+    /// todo: see if we can overcome this
+    private Hash last_externalized_update_utxo;
 }

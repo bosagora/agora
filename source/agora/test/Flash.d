@@ -110,6 +110,9 @@ public interface TestFlashAPI : FlashControlAPI
 
     /// Shut down any timers (forwards to ThinFlashNode.shutdown)
     public void shutdownNode ();
+
+    /// disable/enable tx publish
+    public void setPublishEnable (in bool enabled);
 }
 
 /// Controls behavior of database storage for the Flash layer
@@ -135,6 +138,9 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     protected Registry!TestFlashListenerAPI* listener_registry;
 
     ///
+    protected bool allow_publish;
+
+    ///
     public this (FlashConfig conf, Registry!TestAPI* agora_registry,
         string agora_address, DatabaseStorage storage,
         Registry!TestFlashAPI* flash_registry,
@@ -146,6 +152,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         const genesis_hash = hashFull(GenesisBlock);
         const TestStackMaxTotalSize = 16_384;
         const TestStackMaxItemSize = 512;
+        this.allow_publish = true;
         auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
         super(conf, storage, genesis_hash, engine, new LocalRestTaskManager(),
             agora_address);
@@ -311,6 +318,21 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         CircularAppender!()().print(output);
         output.put("======================================================================\n\n");
         stdout.flush();
+    }
+
+    /// disable/enable tx publish
+    public override void setPublishEnable (in bool enabled)
+    {
+        this.allow_publish = enabled;
+    }
+
+    ///
+    protected override void putTransaction (Transaction tx)
+    {
+        if (this.allow_publish)
+            super.putTransaction(tx);
+        else
+            log.info("Skipping publishing {}", tx);
     }
 }
 
@@ -2019,4 +2041,125 @@ unittest
     auto error = factory.listener.waitUntilChannelState(chan_id,
         ChannelState.Rejected);
     assert(error == ErrorCode.UserRejectedChannel);
+}
+
+/// Test unilateral non-collaborative close (funding + update* + settle)
+//version (none)
+unittest
+{
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    network.start();
+    scope (exit) network.shutdown();
+    //scope (failure) network.printLogs();
+    network.waitForDiscovery();
+
+    auto nodes = network.clients;
+    auto node_1 = nodes[0];
+    scope (failure) node_1.printLog();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    foreach (idx, tx; txs)
+    {
+        node_1.putTransaction(tx);
+        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
+    }
+
+    auto factory = new FlashNodeFactory!()(network.getRegistry());
+    scope (exit) factory.shutdown();
+    scope (failure) factory.printLogs();
+
+    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
+    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
+
+    // workaround to get a handle to the node from another registry's thread
+    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
+    auto alice = factory.create(alice_pair, address);
+    auto bob = factory.create(bob_pair, address);
+    const alice_pk = PublicKey(alice_pair.V);
+    const bob_pk = PublicKey(bob_pair.V);
+
+    // 3 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 3;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id_res = alice.openNewChannel(alice_pk,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+
+    // await funding transaction
+    network.expectTxExternalization(chan_id);
+
+    // wait for the parties & listener to detect the funding tx
+    alice.waitForChannelOpen(alice_pk, chan_id);
+    bob.waitForChannelOpen(bob_pk, chan_id);
+    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+
+    /* do some off-chain transactions */
+    auto inv_1 = bob.createNewInvoice(bob_pk, Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(alice_pk, inv_1.value);
+
+    alice.waitForUpdateIndex(alice_pk, chan_id, 2);
+    bob.waitForUpdateIndex(bob_pk, chan_id, 2);
+
+    auto inv_2 = bob.createNewInvoice(bob_pk, Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(alice_pk, inv_2.value);
+
+    // need to wait for invoices to be complete before we have the new balance
+    // to send in the other direction
+    alice.waitForUpdateIndex(alice_pk, chan_id, 4);
+    bob.waitForUpdateIndex(bob_pk, chan_id, 4);
+
+    // note the reverse payment from bob to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(alice_pk, Amount(2_000), time_t.max, "payment 3");
+    bob.payInvoice(bob_pk, inv_3.value);
+
+    alice.waitForUpdateIndex(alice_pk, chan_id, 6);
+    bob.waitForUpdateIndex(bob_pk, chan_id, 6);
+
+    // disallow nodes to publish TXs so that we can publish older updates
+    alice.setPublishEnable(false);
+    bob.setPublishEnable(false);
+
+    auto update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 0);
+    node_1.putTransaction(update_tx);
+    network.expectTxExternalization(update_tx);
+    factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose);
+
+
+    // publish an older update
+    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 2);
+    node_1.putTransaction(update_tx);
+    network.expectTxExternalization(update_tx);
+
+    // an even older update can not be externalized anymore
+    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 1);
+    node_1.putTransaction(update_tx);
+    assertThrown!Exception(network.expectTxExternalization(update_tx));
+
+    // allow normal node operation again
+    alice.setPublishEnable(true);
+    bob.setPublishEnable(true);
+
+    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 4);
+    node_1.putTransaction(update_tx);
+    network.expectTxExternalization(update_tx);
+
+    // nodes should publish last update
+    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 6);
+    network.expectTxExternalization(update_tx);
+
+    iota(4).each!(idx => network.addBlock(true));
+    factory.listener.waitUntilChannelState(chan_id,
+        ChannelState.Closed);
 }

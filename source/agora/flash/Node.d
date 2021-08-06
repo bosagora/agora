@@ -1401,7 +1401,7 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    private void monitorBlockchain ()
+    protected void monitorBlockchain ()
     {
         try
         {
