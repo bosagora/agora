@@ -1004,7 +1004,6 @@ public abstract class FlashNode : FlashControlAPI
             this.payment_errors.remove(payment_hash);
 
             // get the invoice if it exists and not just the pointer (GC safety)
-            Invoice inv;
             auto invoice = this.invoices.get(payment_hash, Invoice.init);
             this.invoices.remove(payment_hash);
 
