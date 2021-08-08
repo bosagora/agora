@@ -243,7 +243,7 @@ public class FullNode : API
     public this (Config config)
     {
         // Not at global scope because it would conflict with our `Clock` type
-        import std.datetime.systime : SysTime, unixTimeToStdTime;
+        import std.datetime.systime : Clock, SysTime, unixTimeToStdTime;
         import std.datetime.timezone: UTC;
 
         this.config = config;
@@ -308,6 +308,8 @@ public class FullNode : API
             config.validator.enabled
                 ? config.validator.key_pair.address.toString() : null,
             SysTime(unixTimeToStdTime(this.params.GenesisTimestamp), UTC()).toISOString(),
+            // Use second precision to simplify aggregation
+            Clock.currTime!(ClockType.second)(UTC()).toISOString(),
         );
     }
 

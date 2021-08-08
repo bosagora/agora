@@ -39,6 +39,8 @@ public struct ApplicationStatsLabels
     public string public_key;
     /// The genesis timestamp used (useful for TestNet)
     public string genesis_timestamp;
+    /// Time at which the node started
+    public string start_time;
 }
 
 /// Dummy stats with a single variable
