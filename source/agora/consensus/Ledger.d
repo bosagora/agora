@@ -2323,8 +2323,8 @@ unittest
 
     ledger.simulatePreimages(Height(params.ValidatorCycle), skip_indexes);
 
-    // Block with no fee
-    auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
+    // TODO: This zero fee rate is to temporarily enable zero fee per tx.
+    auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.feeRate(Amount(0)).sign()).array();
     no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
 
     ConsensusData data;
@@ -2352,8 +2352,9 @@ unittest
     // Create blocks from height 2 to 11 (only block 5 and 10 should have a coinbase tx)
     foreach (height; 2..7)
     {
+        // TODO: This zero fee rate is to temporarily enable fixed fee per tx.
         auto txs = blocks[$-1].spendable.map!(txb =>
-            txb.deduct(per_tx_fee).sign()).array();
+            txb.feeRate(Amount(0)).deduct(per_tx_fee).sign()).array();
         txs.each!(tx => assert(ledger.acceptTransaction(tx)));
         if (height % testPayoutPeriod == 0)
         {
