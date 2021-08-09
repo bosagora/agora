@@ -185,7 +185,17 @@ public class FeeManager
     /// Parameters for consensus-critical constants
     public immutable(ConsensusParams) params;
 
-    /// Total Amount of fees accumulated per address
+    /***************************************************************************
+
+        Accumulated fee per public key
+
+        Note that while we usually use UTXO hashes to refer to validators
+        instead of public keys (as two validators could be using the same public
+        key, although that is not recommended), the public key is what is used
+        to generated the UTXO, hence why it is used as index.
+
+    ***************************************************************************/
+
     private Amount[PublicKey] accumulated_fees;
 
     /// Ctor
