@@ -24,7 +24,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.SCPEnvelopeStore;
-import agora.node.Ledger;
+import agora.consensus.Ledger;
 import agora.node.Validator;
 import agora.network.Clock;
 import agora.test.Base;

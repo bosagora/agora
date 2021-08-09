@@ -36,7 +36,7 @@ import agora.network.Manager;
 import agora.node.admin.AdminInterface;
 import agora.node.BlockStorage;
 import agora.node.FullNode;
-import agora.node.Ledger;
+import agora.consensus.Ledger;
 import agora.registry.API;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;

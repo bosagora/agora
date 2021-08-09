@@ -18,7 +18,7 @@
 
 *******************************************************************************/
 
-module agora.node.Ledger;
+module agora.consensus.Ledger;
 
 import agora.common.Amount;
 import agora.common.Config;
