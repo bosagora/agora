@@ -73,9 +73,10 @@ unittest
     // Create 6 transactions - one for each validator
     auto txs = blocks[0].spendable().map!(txb => txb.sign());
     // Distribute them to different clients
-    txs.takeExactly(6).enumerate.each!((idx, tx) =>
-        network.clients[idx % network.clients.length]
-            .putTransaction(tx));
+    txs.takeExactly(6).enumerate.each!(
+        (idx, tx) {
+            network.ensureTxInPool(tx, (idx % network.clients.length).only);
+        });
     network.expectHeightAndPreImg(Height(1));
     network.assertSameBlocks(Height(1));
 }
