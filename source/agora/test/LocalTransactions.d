@@ -22,7 +22,7 @@ import agora.common.Task;
 import agora.common.Config;
 import agora.common.Metadata;
 import agora.crypto.Hash;
-import agora.node.Ledger;
+import agora.consensus.Ledger;
 import agora.test.Base;
 import agora.utils.Log;
 import agora.script.Engine;

@@ -39,7 +39,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Clock;
 import agora.network.Client;
-import agora.node.Ledger;
+import agora.consensus.Ledger;
 import agora.registry.API;
 import agora.utils.InetUtils;
 import agora.utils.Log;

@@ -47,7 +47,7 @@ import agora.network.Client;
 import agora.network.Clock;
 import agora.network.Manager;
 import agora.node.BlockStorage;
-import agora.node.Ledger;
+import agora.consensus.Ledger;
 import agora.node.TransactionPool;
 import agora.node.TransactionRelayer;
 import agora.script.Engine;
