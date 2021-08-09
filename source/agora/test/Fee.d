@@ -53,7 +53,7 @@ unittest
         // add next block
         blocks ~= node_1.getBlocksFrom(new_height, 1);
 
-        auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase) .array;
+        auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
         assert(cb_txs.length == 1);
         auto cb_outs = cb_txs[0].outputs;
 
