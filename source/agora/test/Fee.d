@@ -54,14 +54,15 @@ unittest
         blocks ~= node_1.getBlocksFrom(new_height, 1);
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
-        assert(cb_txs.length == 1);
-        auto cb_outs = cb_txs[0].outputs;
-
         // Regular block
         if (blocks[$-1].header.height % conf.consensus.payout_period)
-            assert(cb_outs.length == 1);
+            assert(cb_txs.length == 0);
         else // Payout block
+        {
+            assert(cb_txs.length == 1);
+            auto cb_outs = cb_txs[0].outputs;
             assert(cb_outs.length == 1 + blocks[0].header.enrollments.length);
+        }
     }
 
     // create GenesisValidatorCycle - 1 blocks
@@ -197,14 +198,15 @@ unittest
         blocks ~= valid_nodes.front.getBlocksFrom(new_height, 1);
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
-        assert(cb_txs.length == 1);
-        auto cb_outs = cb_txs[0].outputs;
-
         // Regular block
         if (blocks[$-1].header.height % conf.consensus.payout_period)
-            assert(cb_outs.length == 1);
+            assert(cb_txs.length == 0);
         else // Payout block
+        {
+            assert(cb_txs.length == 1);
+            auto cb_outs = cb_txs[0].outputs;
             assert(cb_outs.length == 1 + blocks[0].header.enrollments.length);
+        }
     }
 
     // create GenesisValidatorCycle - 1 blocks
@@ -213,9 +215,9 @@ unittest
         createAndExpectNewBlock(Height(block_idx));
     }
 
-    // Node with the different config should not accept any blocks
+    // Node with the different config should not accept payout block
     auto bad_node = nodes[0];
-    assert(bad_node.getBlockHeight() == Height(0));
+    assert(bad_node.getBlockHeight() == Height(conf.consensus.payout_period - 1));
 }
 
 // Fees from the previous block should not trigger a new block creation

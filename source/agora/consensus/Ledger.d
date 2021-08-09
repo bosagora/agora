@@ -572,6 +572,8 @@ public class Ledger
     public Transaction[] getCoinbaseTX (in Height height, in Amount tot_fee, in Amount tot_data_fee,
         in uint[] missing_validators) nothrow @safe
     {
+        if (height % this.params.PayoutPeriod != 0)    // This is not Coinbase payout block
+            return null;
         UTXO[] stakes;
         this.enroll_man.getValidatorStakes(height, &this.utxo_set.peekUTXO, stakes,
             missing_validators);
