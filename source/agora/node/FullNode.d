@@ -246,17 +246,29 @@ public class FullNode : API
         import std.datetime.systime : Clock, SysTime, unixTimeToStdTime;
         import std.datetime.timezone: UTC;
 
+        enum build_version = import(VersionFileName);
+
         this.config = config;
         this.log = this.makeLogger();
         this.params = FullNode.makeConsensusParams(config);
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
+        this.storage = this.makeBlockStorage();
+
+        // We need to apply updates early on - At the very least,
+        // before the Ledger is instantiated.
+        // It would be better if this could be moved out of the ctor,
+        // but that would require delaying most of the initialization
+        // to another function.
+        import agora.node.Versioning;
+        applyVersionDifferences(this.stateDB, this.cacheDB, this.storage,
+                                build_version, this.config, this.log);
+
         this.taskman = this.makeTaskManager();
         this.clock = this.makeClock(this.taskman);
         this.metadata = this.makeMetadata();
         this.network = this.makeNetworkManager(this.metadata, this.taskman, this.clock);
-        this.storage = this.makeBlockStorage();
         this.fee_man = this.makeFeeManager();
         this.utxo_set = this.makeUTXOSet();
         this.pool = this.makeTransactionPool();
@@ -300,7 +312,6 @@ public class FullNode : API
         Utils.getCollectorRegistry().addCollector(&this.collectBlockStats);
         Utils.getCollectorRegistry().addCollector(&this.collectValidatorStats);
 
-        enum build_version = import(VersionFileName);
         this.app_stats.setMetricTo!"agora_application_info"(
             1, // Unused, see article linked in the struct's documentationx
             build_version,
