@@ -367,9 +367,6 @@ public class FeeManager
     public void accumulateFees (in Block block, UTXO[] stakes,
         scope UTXOFinder peekUTXO) @trusted
     {
-        if (block.header.height % this.params.PayoutPeriod == 0)
-            this.clearAccumulatedFees();
-
         Amount tot_fee, tot_data_fee;
         this.getTXSetFees(block.txs, peekUTXO, tot_fee, tot_data_fee);
 
@@ -423,12 +420,16 @@ public class FeeManager
     }
 
     /// Clears the accumulated fees
-    public void clearAccumulatedFees () @safe
+    public void clearAccumulatedFees () nothrow @trusted
     {
-        () @trusted {
+        try
+        {
             this.db.execute("DELETE FROM accumulated_fees");
             this.accumulated_fees.clear();
-        } ();
+        } catch (Exception e)
+        {
+            assert(0, e.msg); // Should never happen
+        }
     }
 
     /***************************************************************************
