@@ -1190,6 +1190,19 @@ public class TestAPIManager
         }
         throw new Exception(format!"TX (%s) was not externalized in %d blocks!"(tx_hash, n_blocks));
     }
+
+    /// Ensure that a transaction is accepted by a node (put in the tx pool)
+    public void ensureTxInPool (Idxs) (in Transaction tx, Idxs indices)
+    {
+        indices.each!(idx => this.clients[idx].putTransaction(tx));
+        this.ensureTxInPool(tx.hashFull(), indices);
+    }
+
+    /// Ditto
+    public void ensureTxInPool (Idxs) (in Hash hash, Idxs indices)
+    {
+        retryFor(indices.each!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
+    }
 }
 
 /*******************************************************************************
