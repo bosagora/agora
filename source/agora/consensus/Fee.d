@@ -496,7 +496,6 @@ public class FeeManager
 
     unittest
     {
-        import std;
         import agora.crypto.Hash;
         import agora.utils.Test;
 
