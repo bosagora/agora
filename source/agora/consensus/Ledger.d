@@ -556,43 +556,34 @@ public class Ledger
 
     /***************************************************************************
 
-        Create the Coinbase TX for this nomination round and append it to the
-        tx_set
+        Create the Coinbase TX for this payout block and append it to the tx_set
 
         Params:
             height = block height
             tot_fee = Total fee amount (incl. data)
             tot_data_fee = Total data fee amount
-            missing_validators = MPVs
 
         Returns:
             List of expected Coinbase TXs
 
     ***************************************************************************/
 
-    public Transaction[] getCoinbaseTX (in Height height, in Amount tot_fee, in Amount tot_data_fee,
-        in uint[] missing_validators) nothrow @safe
+    public Transaction[] getCoinbaseTX (in Height height, in Amount tot_fee, in Amount tot_data_fee)
+        nothrow @safe
     {
-        UTXO[] stakes;
-        this.enroll_man.getValidatorStakes(height, &this.utxo_set.peekUTXO, stakes,
-            missing_validators);
-        const commons_fee = this.fee_man.getCommonsBudgetFee(tot_fee,
-            tot_data_fee, stakes);
+        if (height % this.params.PayoutPeriod != 0)    // This is not Coinbase payout block
+            return null;
 
         Output[] coinbase_tx_outputs;
-        // pay the commons budget
-        if (commons_fee > Amount(0))
-            coinbase_tx_outputs ~= Output(commons_fee,
-                this.params.CommonsBudgetAddress, OutputType.Coinbase);
 
-        // pay the validator for the past blocks
+        // pay the validator and Commons Budget for the past blocks
         if (auto payouts = this.fee_man.getAccumulatedFees(height))
             foreach (pair; payouts.byKeyValue())
-                if (pair.value > Amount(0))
+                // TODO: uncomment when fees are calculated in TxBuilder
+                // if (pair.value > Amount(0))
                     coinbase_tx_outputs ~= Output(pair.value, pair.key, OutputType.Coinbase);
         coinbase_tx_outputs.sort;
-        return coinbase_tx_outputs.length > 0 ?
-            [ Transaction([Input(height)], coinbase_tx_outputs) ] : null;
+        return [ Transaction([Input(height)], coinbase_tx_outputs) ];
     }
 
     /// Error message describing the reason of validation failure
@@ -625,7 +616,7 @@ public class Ledger
         Amount tot_fee, tot_data_fee;
         if (auto fee_res = this.fee_man.getTXSetFees(tx_set, &this.utxo_set.peekUTXO, tot_fee, tot_data_fee))
             assert(0, fee_res);
-        return this.getCoinbaseTX(this.last_block.header.height + 1, tot_fee, tot_data_fee, missing_validators);
+        return this.getCoinbaseTX(this.last_block.header.height + 1, tot_fee, tot_data_fee);
     }
 
     /***************************************************************************
@@ -1130,7 +1121,7 @@ public class Ledger
         }
 
         auto expected_cb_txs = this.getCoinbaseTX(expect_height, tot_fee,
-            tot_data_fee, data.missing_validators);
+            tot_data_fee);
         auto excepted_cb_hashes = expected_cb_txs.map!(tx => tx.hashFull());
         assert(expected_cb_txs.length <= 1);
 
@@ -1476,8 +1467,8 @@ public class ValidatingLedger : Ledger
         const pre_cb_len = result.length;
         // Dont append a CB TX to an empty TX set
         if (pre_cb_len > 0)
-            result ~= this.getCoinbaseTX(height, tot_fee, tot_data_fee,
-                missing_validators).map!(tx => tx.hashFull()).array;
+            result ~= this.getCoinbaseTX(height, tot_fee, tot_data_fee)
+                .map!(tx => tx.hashFull()).array;
         // No more than 1 CB per block
         assert(result.length - pre_cb_len <= 1);
         return result;
@@ -2309,10 +2300,11 @@ unittest
     import agora.consensus.PreImage;
     import agora.utils.WellKnownKeys : CommonsBudget;
 
-    ConsensusConfig config = { validator_cycle: 20, payout_period: 5 };
+    const testPayoutPeriod = 5;
+    ConsensusConfig config = { validator_cycle: 20, payout_period: testPayoutPeriod };
     auto params = new immutable(ConsensusParams)(GenesisBlock,
         CommonsBudget.address, config);
-
+    assert(params.PayoutPeriod == testPayoutPeriod);
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
@@ -2342,32 +2334,44 @@ unittest
         Ledger.InvalidConsensusDataReason.MayBeValid);
 
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
-    ledger.externalize(data);
+    assert(ledger.externalize(data));
     assert(ledger.getBlockHeight() == blocks.length);
-    blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
+    blocks ~= ledger.getBlocksFrom(Height(1))[0];
+    assert(blocks.length == 2);
 
     // No Coinbase TX
     assert(blocks[$-1].txs.filter!(tx => tx.isCoinbase).array.length == 0);
 
-    // Create blocks from height 2 to 6, with fees
+    auto total_fees = Amount(0);
+    const per_tx_fee = Amount(1);
+    auto next_payout_total = Amount(0);
+    // Create blocks from height 2 to 11 (only block 5 and 10 should have a coinbase tx)
     foreach (height; 2..7)
     {
-        Amount per_tx_fee = Amount.UnitPerCoin;
         auto txs = blocks[$-1].spendable.map!(txb =>
             txb.deduct(per_tx_fee).sign()).array();
         txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        if (height % testPayoutPeriod == 0)
+        {
+            next_payout_total = total_fees;
+            total_fees = Amount(0);
+        }
+        total_fees += per_tx_fee * txs.length;
 
         data = ConsensusData.init;
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
 
-        // Remove the coinbase TX
-        data.tx_set = data.tx_set[0 .. $ - 1];
-        assert(ledger.validateConsensusData(data, skip_indexes) == "Invalid Coinbase transaction");
-        // Add Invalid coinbase TX
-        data.tx_set ~= Transaction([
-            Output(Amount(1), CommonsBudgetAddress, OutputType.Coinbase),
-            Output(Amount(1), CommonsBudgetAddress, OutputType.Payment)]).hashFull();
-        assert(ledger.validateConsensusData(data, skip_indexes) == "Invalid Coinbase transaction");
+        if (height % testPayoutPeriod == 0)
+        {
+            // Remove the coinbase TX
+            data.tx_set = data.tx_set[0 .. $ - 1];
+            assert(ledger.validateConsensusData(data, skip_indexes) == "Invalid Coinbase transaction");
+            // Add Invalid coinbase TX
+            data.tx_set ~= Transaction([
+                Output(Amount(1), CommonsBudgetAddress, OutputType.Coinbase),
+                Output(Amount(1), CommonsBudgetAddress, OutputType.Payment)]).hashFull();
+            assert(ledger.validateConsensusData(data, skip_indexes) == "Invalid Coinbase transaction");
+        }
 
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
         ledger.externalize(data);
@@ -2375,19 +2379,21 @@ unittest
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
-        assert(cb_txs.length == 1);
-        // Payout block should pay the CommonsBudget + all validators (excl MPV)
-        // other blocks should only pay CommonsBudget
-        if (blocks[$-1].header.height == params.PayoutPeriod)
-            assert(cb_txs[0].outputs.length == 1 + genesis_validator_keys.length - skip_indexes.length);
-        else
-            assert(cb_txs[0].outputs.length == 1);
-
-        // MPV should never be paid
-        mpv_stakes.each!((mpv_stake)
+        if (height % testPayoutPeriod == 0)
         {
-            assert(cb_txs[0].outputs.filter!(output => output.address ==
-                mpv_stake.output.address).array.length == 0);
-        });
+            assert(cb_txs.length == 1);
+            // Payout block should pay the CommonsBudget + all validators (excluding slashed validators)
+            assert(cb_txs[0].outputs.length == 1 + genesis_validator_keys.length - skip_indexes.length);
+            assert(cb_txs[0].outputs.map!(o => o.value).reduce!((a,b) => a + b) ==  next_payout_total);
+            // Slashed validators should never be paid
+            mpv_stakes.each!((mpv_stake)
+            {
+                assert(cb_txs[0].outputs.filter!(output => output.address ==
+                    mpv_stake.output.address).array.length == 0);
+            });
+            total_fees = Amount(0);
+        }
+        else
+            assert(cb_txs.length == 0);
     }
 }

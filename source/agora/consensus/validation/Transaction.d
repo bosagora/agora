@@ -86,7 +86,8 @@ public string isInvalidReason (
             return "Transaction: Output(s) overflow or underflow";
 
         // disallow 0 amount
-        if (output.value == Amount(0))
+        // TODO: remove Coinbase check when fees are calculated in TxBuilder
+        if (output.type != OutputType.Coinbase && output.value == Amount(0))
             return "Transaction: Value of output is 0";
 
         // Each freeze output of a transaction must have at least `Amount.MinFreezeAmount`.

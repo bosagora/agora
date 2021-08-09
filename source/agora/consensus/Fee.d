@@ -377,6 +377,8 @@ public class FeeManager
         const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee,
             stakes);
 
+        const commons_fees = this.getCommonsBudgetFee(tot_fee, tot_data_fee, stakes);
+
         foreach (idx, stake; stakes)
         {
             this.accumulated_fees.update(stake.output.address,
@@ -391,6 +393,16 @@ public class FeeManager
                 "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
                 this.accumulated_fees[stake.output.address], stake.output.address);
         }
+        this.accumulated_fees.update(this.params.CommonsBudgetAddress,
+                { return commons_fees; },
+                (ref Amount so_far) {
+                    so_far += commons_fees;
+                    return so_far;
+                }
+            );
+        this.db.execute(
+                "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
+                this.accumulated_fees[this.params.CommonsBudgetAddress], this.params.CommonsBudgetAddress);
     }
 
     /***************************************************************************
