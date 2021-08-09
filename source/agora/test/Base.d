@@ -57,6 +57,7 @@ import agora.node.BlockStorage;
 import agora.node.FullNode;
 import agora.consensus.Ledger;
 import agora.node.TransactionPool;
+import agora.node.TransactionRelayer;
 import agora.node.Validator;
 import agora.registry.API;
 import agora.registry.Server;
@@ -2325,4 +2326,17 @@ public class NoPreImageVN : TestValidatorNode
             .filter!(pi => reveal || pi.utxo != self)
             .array();
     }
+}
+
+/// No-op transaction relayed, can be used to prevent gossipping
+public class NoGossipTransactionRelayer : TransactionRelayer
+{
+    ///
+    public override void start () {}
+
+    ///
+    public override void shutdown () @safe {}
+
+    ///
+    public override string addTransaction (in Transaction tx) @safe { return null; }
 }

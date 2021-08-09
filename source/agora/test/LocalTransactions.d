@@ -38,22 +38,9 @@ unittest
     {
         mixin ForwardCtor!();
 
-        /// Do what `FullNode.putTransaction` does, minus gossipping
-        public override void putTransaction (in Transaction tx) @safe
+        protected override NoGossipTransactionRelayer makeTransactionRelayer ()
         {
-            auto tx_hash = hashFull(tx);
-            if (this.pool.hasTransactionHash(tx_hash))
-                return;
-
-            if (this.ledger.acceptTransaction(tx))
-            {
-                log.info("Accepted transaction but not gossiping: {}", tx_hash);
-                this.pushTransaction(tx);
-            }
-
-            if (tx_hash !in this.accepted_txs &&
-                this.pool.hasTransactionHash(tx_hash))
-                this.accepted_txs.put(tx_hash);
+            return new NoGossipTransactionRelayer();
         }
     }
 
