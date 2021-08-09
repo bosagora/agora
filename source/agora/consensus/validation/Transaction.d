@@ -185,6 +185,8 @@ public string isInvalidReason (
 
         if (tx.payload.length != 0)
             return "Transaction: Coinbase transactions can't include payload";
+        // We can return early as fees are not included in Coinbase tx
+        return null;
     }
     else
         return "Transaction: Invalid output types";
@@ -192,7 +194,7 @@ public string isInvalidReason (
     Amount new_unspent;
     if (!tx.getSumOutput(new_unspent))
         return "Transaction: Referenced Output(s) overflow";
-    if (!tx.isCoinbase && !sum_unspent.sub(new_unspent))
+    if (!sum_unspent.sub(new_unspent))
         return "Transaction: Output(s) are higher than Input(s)";
     // NOTE: Make sure fees are always checked last
     return checkFee(tx, sum_unspent);
