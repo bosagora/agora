@@ -136,6 +136,16 @@ public struct Amount
         return copy;
     }
 
+    /// Ditto
+    public Amount opBinary (string op : "*") (in ulong multiplier) const scope
+        @safe
+    {
+        Amount copy = this;
+        if (!copy.mul(multiplier))
+            throw new Exception(format("Amount %d cannot be multiplied by %d", this, multiplier));
+        return copy;
+    }
+
     nothrow pure @nogc @safe:
 
     /***************************************************************************
