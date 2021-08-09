@@ -45,9 +45,8 @@ unittest
 
     // create double spend transactions with fees 10000, 10100 .. 13000
     auto txs = [Amount(10000), Amount(10100), Amount(10200), Amount(11000), Amount(13000)]
-        .map!((amount) => input_tx_amount - amount)
-        .map!(output_amount => TxBuilder(input_tx, 0).draw(output_amount, [output_addr])
-        .deductRemaining().sign()).array();
+        .map!(f => TxBuilder(input_tx, 0).feeRate(f).draw(Amount(100_000), [output_addr])
+        .sign()).array();
 
     // send the transaction with 10000 fee to node0
     nodes[0].putTransaction(txs[0]);
