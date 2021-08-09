@@ -602,7 +602,7 @@ public class Ledger
                     coinbase_tx_outputs ~= Output(pair.value, pair.key, OutputType.Coinbase);
         coinbase_tx_outputs.sort;
         return coinbase_tx_outputs.length > 0 ?
-            [ Transaction([Input(height)], coinbase_tx_outputs) ] : [];
+            [ Transaction([Input(height)], coinbase_tx_outputs) ] : null;
     }
 
     /// Error message describing the reason of validation failure
