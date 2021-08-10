@@ -116,6 +116,9 @@ public class Ledger
     /// but less than current time + block_time_offset_tolerance
     public Duration block_time_offset_tolerance;
 
+    /// Cache the result of `getValidators` to allow frequent calls
+    protected HeightCache!(ValidatorInfo[]) validatorCache;
+
     /***************************************************************************
 
         Constructor
@@ -224,6 +227,12 @@ public class Ledger
         because it would then need to filter out missing validators,
         which would give the caller wrong indexes for validators.
 
+        Caching:
+          Subsequent calls to `getValidators` might be cached to improve
+          efficiency, potentially resulting in stale data if the internals of
+          the Ledger are directly acted on. For proper cache invalidation,
+          use `Ledger.addPreimage` to add pre-images.
+
         Params:
           height = Height at which to query the validator set.
                    Accurate results are only guaranteed for
@@ -248,10 +257,24 @@ public class Ledger
         // special-casing height == 0, we just return `null`.
         if (height == 0) return null;
 
-        auto result = this.enroll_man.validator_set.getValidators(height);
-        ensure(empty || result.length > 0,
-               "Ledger.getValidators didn't find any validator at height {}", height);
-        return result;
+        if (this.validatorCache.height != height)
+        {
+            auto result = this.enroll_man.validator_set.getValidators(height);
+            ensure(empty || result.length > 0,
+                   "Ledger.getValidators didn't find any validator at height {}", height);
+
+            // Asking for historical data, just return the result without
+            // updating the cache
+            if (height < this.validatorCache.height)
+                return result;
+
+            // Our cache needs to be updated
+            this.validatorCache.height = height;
+            this.validatorCache.data = result;
+        }
+
+        assert(this.validatorCache.data.length > 0);
+        return this.validatorCache.data;
     }
 
     /***************************************************************************
@@ -268,7 +291,15 @@ public class Ledger
 
     public bool addPreimage (in PreImageInfo preimage) @safe nothrow
     {
-        return this.enroll_man.validator_set.addPreimage(preimage);
+        // Invalidate the cache to force re-fetching it on the next
+        // `getValidators` call. This isn't optimal but allow some caching.
+        if (this.enroll_man.validator_set.addPreimage(preimage))
+        {
+            this.validatorCache.height = 0;
+            this.validatorCache.data = null;
+            return true;
+        }
+        return false;
     }
 
     /***************************************************************************
@@ -1368,6 +1399,15 @@ private Height lastPaidHeight(in Height height, uint payout_period) @safe @nogc 
     if (height < 2 * payout_period)
         return  Height(1);
     return Height(height - (height % payout_period) - payout_period);
+}
+
+/// A cache for some data computed at a given height
+private struct HeightCache (T)
+{
+    /// The height at which the data is valid
+    public Height height;
+    /// The data itself
+    public T data;
 }
 
 // expected is the height of last block that has had fees and rewards paid
