@@ -722,50 +722,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Query Validators that have just finished their cycle
-
-        Params:
-            height = requested height
-            ex_validators = Array to save the ExpiringValidators
-
-        Returns:
-            `PublicKey`s and enrollment heights of `Validator`s whose enrollment
-            cycle have just ended
-
-    ***************************************************************************/
-
-    public ExpiringValidator[] getExpiringValidators (Height height,
-        ref ExpiringValidator[] ex_validators)
-        @trusted nothrow
-    {
-        ex_validators.length = 0;
-        assumeSafeAppend(ex_validators);
-
-        try
-        {
-            auto results = this.db.execute("SELECT enrolled_height, key, public_key " ~
-                "FROM validator WHERE enrolled_height + cycle_length = ?",
-                height.value);
-
-            foreach (row; results)
-            {
-                ex_validators ~= ExpiringValidator(Height(row.peek!(ulong)(0)),
-                    Hash(row.peek!(char[])(1)),
-                    PublicKey.fromString(row.peek!(char[])(2)));
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Exception occured on findExpiringValidators: {}, ",
-                ex.msg);
-            ex_validators.length = 0;
-        }
-
-        return ex_validators;
-    }
-
-    /***************************************************************************
-
         Query stakes of active Validators
 
         Params:
@@ -852,8 +808,6 @@ unittest
     assert(set.countActive(FirstEnrollHeight) == 0);
     assert(set.countActive(FirstEnrollHeight + 1) == 1);    // Will be active next block
     ExpiringValidator[] ex_validators;
-    assert(set.getExpiringValidators(
-        FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 1);
     assert(set.hasEnrollment(FirstEnrollHeight, utxos[0]));
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) == "Already enrolled at this height");
 
@@ -862,13 +816,6 @@ unittest
         set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
     assert(set.countActive(FirstEnrollHeight + 1) == 2);
-    assert(set.getExpiringValidators(FirstEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 2);
-    // Too early
-    assert(set.getExpiringValidators(
-        FirstEnrollHeight + (set.params.ValidatorCycle - 1), ex_validators).length == 0);
-    // Already expired
-    assert(set.getExpiringValidators(
-        FirstEnrollHeight + (set.params.ValidatorCycle + 1), ex_validators).length == 0);
 
     const SecondEnrollHeight = Height(9);
     getCycleSeed(WK.Keys[2], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
@@ -876,8 +823,6 @@ unittest
         set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
     assert(set.countActive(SecondEnrollHeight + 1) == 3);
-    assert(set.getExpiringValidators(
-        SecondEnrollHeight + set.params.ValidatorCycle, ex_validators).length == 1);
 
     // check if enrolled heights are not set
     Hash[] keys;
