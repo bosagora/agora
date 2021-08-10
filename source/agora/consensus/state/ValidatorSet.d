@@ -113,8 +113,8 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public string add (Height height, scope UTXOFinder finder,
-        const ref Enrollment enroll, PublicKey pubkey) @safe nothrow
+    public string add (in Height height, scope UTXOFinder finder,
+        in Enrollment enroll, in PublicKey pubkey) @safe nothrow
     {
         import agora.consensus.validation.Enrollment : isInvalidReason;
 
@@ -474,7 +474,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimages (Height start_height) @trusted nothrow
+    public PreImageInfo[] getPreimages (in Height start_height) @trusted nothrow
     {
         PreImageInfo[] preimages;
 
@@ -512,7 +512,7 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public bool addPreimage (const ref PreImageInfo preimage) @trusted nothrow
+    public bool addPreimage (in PreImageInfo preimage) @trusted nothrow
     {
         import agora.consensus.validation.PreImage : isInvalidReason;
 
