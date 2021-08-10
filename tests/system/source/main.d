@@ -72,9 +72,10 @@ int main (string[] args)
     }());
 
     /// Check block generation
-    void assertBlockHeightAtleast (ulong height)
+    size_t assertBlockHeightAtleast (ulong height)
     {
         Hash block_hash;
+        size_t tx_count = 0;
         const Duration retry_delay = 500.msecs;
         const Duration max_duration = 30.seconds;
         foreach (idx, ref client; clients)
@@ -95,9 +96,10 @@ int main (string[] args)
                 else
                 {
                     writefln("%s %s is at block height %s", PREFIX, nodeFromClientIndex(idx), node_height);
-                    const blocks = client.getBlocksFrom(height, 10);
+                    const blocks = client.getBlocksFrom(height, 1);
                     writefln("%s %s has blocks:\n%s", PREFIX, nodeFromClientIndex(idx), prettify(blocks));
                     writefln("%s ----------------------------------------", PREFIX);
+                    tx_count = blocks[$ - 1].txs.length;
                 }
                 duration += retry_delay;
             }
@@ -106,6 +108,7 @@ int main (string[] args)
                 format!"%s %s still has block height %s less than expected height %s after more than %s"
                     (PREFIX, nodeFromClientIndex(idx), node_height, height, duration));
         }
+        return tx_count;
     }
 
     clients.enumerate.each!((idx, client) =>
@@ -121,8 +124,19 @@ int main (string[] args)
     assert(blocks.length == 1);
     assert(blocks[0] == TestGenesis.GenesisBlock, format!"%s Not using expected TestGenesis.GenesisBlock"(PREFIX));
 
+    size_t empty = 0;
     auto target_height = 42;
-    iota(target_height + 1).each!(h => assertBlockHeightAtleast(h));
+    const LimitOfConsecutiveEmptyBlocks = 3;
+    iota(target_height + 1).each!((ulong h)
+    {
+        if (assertBlockHeightAtleast(h) == 0)
+            empty++;
+        else
+            empty = 0;
+        assert(empty < LimitOfConsecutiveEmptyBlocks,
+            format!"%s block at height %s and the preceding %s blocks had no transactions!"
+                (PREFIX, h, LimitOfConsecutiveEmptyBlocks - 1));
+    });
     writefln("%s All nodes reached target height %s", PREFIX, target_height);
 
     return 0;
