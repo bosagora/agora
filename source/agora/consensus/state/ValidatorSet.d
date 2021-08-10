@@ -91,8 +91,13 @@ public class ValidatorSet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator " ~
             "(key TEXT, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
-            "height INTEGER, preimage TEXT, nonce TEXT, slashed_height INTEGER,
+            "nonce TEXT, slashed_height INTEGER,
             PRIMARY KEY (key, enrolled_height))");
+
+        // create the table for preimages if it doesn't exist yet
+        this.db.execute("CREATE TABLE IF NOT EXISTS preimages " ~
+            "(key TEXT, height INTEGER, preimage TEXT,
+            PRIMARY KEY (key))");
     }
 
     /***************************************************************************
@@ -131,14 +136,17 @@ public class ValidatorSet
         try
         {
             () @trusted {
+                this.db.execute("INSERT OR REPLACE INTO preimages " ~
+                    "(key, height, preimage) " ~
+                    "VALUES (?, ?, ?)",
+                    enroll.utxo_key, height.value,
+                    enroll.commitment);
                 this.db.execute("INSERT INTO validator " ~
-                    "(key, public_key, cycle_length, enrolled_height, " ~
-                    "height, preimage, nonce) " ~
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "(key, public_key, cycle_length, enrolled_height, nonce) " ~
+                    "VALUES (?, ?, ?, ?, ?)",
                     enroll.utxo_key,
                     pubkey,
-                    enroll.cycle_length, height.value, height.value,
-                    enroll.commitment,
+                    enroll.cycle_length, height.value,
                     enroll.enroll_sig.R);
             }();
         }
@@ -164,6 +172,7 @@ public class ValidatorSet
         try
         {
             this.db.execute("DELETE FROM validator");
+            this.db.execute("DELETE FROM preimages");
         }
         catch (Exception ex)
         {
@@ -315,11 +324,13 @@ public class ValidatorSet
     public ValidatorInfo[] getValidators (in Height height) @trusted
     {
         auto results = this.db.execute(
-            "SELECT enrolled_height, public_key, key, preimage, height " ~
-            "FROM validator " ~
+            "SELECT enrolled_height, public_key, validator.key, preimages.preimage," ~
+            "preimages.height FROM validator " ~
+            "INNER JOIN preimages on preimages.key = validator.key " ~
             "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
             "AND (slashed_height is null OR slashed_height >= ?) " ~
-            "ORDER BY key ASC", this.minEnrollmentHeight(height), height, height);
+            "ORDER BY validator.key ASC",
+            this.minEnrollmentHeight(height), height, height);
 
         ValidatorInfo[] ret;
         foreach (row; results)
@@ -500,7 +511,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT preimage, height FROM " ~
-                "validator WHERE key = ? ORDER BY height DESC", enroll_key);
+                "preimages WHERE key = ?", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
@@ -540,7 +551,7 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute("SELECT key, preimage, height " ~
-                "FROM validator WHERE height >= ? AND height <= ?",
+                "FROM preimages WHERE height >= ? AND height <= ?",
                 start_height, end_height);
 
             foreach (row; results)
@@ -585,17 +596,16 @@ public class ValidatorSet
         try
         {
             auto results = this.db.execute(
-                "SELECT preimage, enrolled_height, height " ~
-                "FROM validator WHERE key = ? " ~
-                "AND height >= ? AND enrolled_height <= ? ORDER BY height",
-                enroll_key, height.value, height.value);
+                "SELECT preimage, height " ~
+                "FROM preimages WHERE key = ? " ~
+                "AND height >= ?",
+                enroll_key, height.value);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 auto row = results.front;
                 Hash preimage = Hash(row.peek!(char[])(0));
-                Height enrolled_height = Height(row.peek!ulong(1));
-                auto preimage_height = Height(row.peek!ulong(2));
+                auto preimage_height = Height(row.peek!ulong(1));
 
                 auto pi = PreImageInfo(enroll_key, preimage, preimage_height);
                 assert(preimage_height >= height); // The query should ensure this
@@ -655,10 +665,9 @@ public class ValidatorSet
         try
         {
             () @trusted {
-                this.db.execute("UPDATE validator SET preimage = ?, " ~
-                    "height = ? WHERE key = ? AND enrolled_height >= ? AND enrolled_height <= ?",
-                    preimage.hash, preimage.height, preimage.utxo,
-                   this.minEnrollmentHeight(preimage.height), preimage.height);
+                this.db.execute("UPDATE preimages SET preimage = ?, " ~
+                    "height = ? WHERE key = ?",
+                    preimage.hash, preimage.height, preimage.utxo);
             }();
         }
         catch (Exception ex)
@@ -690,8 +699,7 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height," ~
-                "cycle_length, preimage, height " ~
+            auto results = this.db.execute("SELECT enrolled_height, cycle_length " ~
                 "FROM validator WHERE key = ? ORDER BY enrolled_height DESC", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
@@ -699,9 +707,7 @@ public class ValidatorSet
                 auto row = results.front;
                 state.enrolled_height = Height(row.peek!(size_t)(0));
                 state.cycle_length = row.peek!(uint)(1);
-                state.preimage.hash = Hash(row.peek!(char[])(2));
-                state.preimage.utxo = enroll_key;
-                state.preimage.height = Height(row.peek!(size_t)(3));
+                state.preimage = this.getPreimage(enroll_key);
                 return true;
             }
         }
@@ -910,8 +916,6 @@ unittest
     auto preimage_11 = PreImageInfo(utxos[0], cache[SecondEnrollHeight + 2], SecondEnrollHeight + 2);
     assert(set.addPreimage(preimage_11));
     assert(set.getPreimage(utxos[0]) == preimage_11);
-    assert(set.getPreimageAt(utxos[0], Height(FirstEnrollHeight - 1)) is  // N/A: enrolled at height 1!
-        PreImageInfo.init);
     assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 3) is  // N/A: not revealed yet!
         PreImageInfo.init);
     assert(set.getPreimageAt(utxos[0], FirstEnrollHeight + 1) ==

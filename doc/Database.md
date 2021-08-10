@@ -30,10 +30,18 @@ Should be cleaned up and make readable. Once `utxo` is usable, both can be used 
 | public_key      | TEXT     | PublicKey        |                                      | Should be replaced with a join using the UTXO hash |
 | cycle_length    | INTEGER  | ulong            |                                      | Should be removed.                                 |
 | enrolled_height | INTEGER  | Height           | PRIMARY KEY (with `key`)             |                                                    |
-| height          | INTEGER  | ulong            |                                      |                                                    |
-| preimage        | TEXT     | Hash             |                                      |                                                    |
 | nonce           | TEXT     | Point            |                                      | The `R` used to sign the `Enrollment`              |
 | slashed_height  | INTEGER  | Height           |                                      | Height at which a validator is slashed or null     |
+
+### `preimages` table
+
+Stores the preimage information
+
+| Field name      | SQL Type | D type           | Attributes                           | Comment                                            |
+|-----------------|----------|------------------|--------------------------------------|----------------------------------------------------|
+| key             | TEXT     | Hash             |                                      | The `utxo` field in the `Enrollment`               |
+| height          | INTEGER  | ulong            |                                      |                                                    |
+| preimage        | TEXT     | Hash             |                                      |                                                    |
 
 ### `node_enroll_data` table
 
