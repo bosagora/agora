@@ -215,13 +215,56 @@ unittest
     assert(blocks[$ - 2].header.enrollments.length == 3);
 }
 
+/// node which will skip checkAndEnroll below given height
+private class DelayedEnrollNode (Height enroll_at) : TestValidatorNode
+{
+    mixin ForwardCtor!();
+
+    protected override Enrollment checkAndEnroll (Height height) @safe
+    {
+        if (height >= enroll_at)
+            return super.checkAndEnroll(height);
+        else
+            return Enrollment.init;
+    }
+}
+
+/// create a node that will skip enroll below given height
+private class NodeManager : TestAPIManager
+{
+    ///
+    public this (immutable(Block)[] blocks, TestConf test_conf, TimePoint genesis_start_time)
+    {
+        super(blocks, test_conf, genesis_start_time);
+    }
+
+    public override void createNewNode (Config conf,
+        string file = __FILE__, int line = __LINE__)
+    {
+        auto node_idx = this.nodes.length;
+        if (node_idx >= 4) // last two nodes
+        {
+            assert(conf.validator.enabled);
+            if (node_idx == 4)
+                this.addNewNode!(DelayedEnrollNode!(Height(19)))(conf, file, line);
+            else
+                this.addNewNode!(DelayedEnrollNode!(Height(20)))(conf, file, line);
+        }
+        else
+        {
+            super.createNewNode(conf, file, line);
+        }
+    }
+}
+
 // Some nodes are interrupted during their validator cycles, they should
 // still manage to enroll when they are back online
 unittest
 {
+
     TestConf conf;
     conf.consensus.quorum_threshold = 66;
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!NodeManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -238,16 +281,16 @@ unittest
     auto sleep_node_2 = nodes[$ - 2]; // node #4
 
     // Approach end of the cycle
-    network.generateBlocks(Height(GenesisValidatorCycle - 2));
+    network.generateBlocks(Height(GenesisValidatorCycle - 3));
 
-    // Make 2 nodes sleep
+    // Make 2 nodes sleep (they will not enroll as they are also DelayedEnrollNodes)
     sleep_node_1.ctrl.sleep(60.seconds, true);
     sleep_node_2.ctrl.sleep(60.seconds, true);
 
     network.generateBlocks(iota(GenesisValidators - 2),
         Height(GenesisValidatorCycle - 1));
 
-    // Wake one up right before cycle ends
+    // Wake up node #4 right before cycle ends
     sleep_node_2.ctrl.sleep(0.seconds);
     // Let it catch up
     network.expectHeightAndPreImg(only(GenesisValidators - 2), // node #4
@@ -256,10 +299,12 @@ unittest
     network.generateBlocks(iota(GenesisValidators - 1), // nodes #0 -> #4
         Height(GenesisValidatorCycle));
 
-    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    blocks = node_1.getBlocksFrom(GenesisValidatorCycle, 1);
     auto enrolls1 = blocks[$ - 1].header.enrollments.length;
 
-    // This nodes will wake up to an expired cycle, it should immediately enroll
+    assert(enrolls1 == GenesisValidators - 1);
+
+    // Wake up node #5 to an expired cycle, it should immediately enroll
     sleep_node_1.ctrl.sleep(0.seconds);
     // Let the last node catch up
     network.expectHeightAndPreImg(only(GenesisValidators - 1), Height(GenesisValidatorCycle));
@@ -267,11 +312,11 @@ unittest
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle + 1));
 
-    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    blocks = node_1.getBlocksFrom(GenesisValidatorCycle + 1, 1);
     auto enrolls2 = blocks[$ - 1].header.enrollments.length;
 
-    // By now, all genesis validators should be enrolled again
-    assert(enrolls1 + enrolls2 == GenesisValidators);
+    // Now the last node woken up is also enrolled
+    assert(enrolls2 == 1);
 }
 
 // No validator will willingly re-enroll until the network is stuck
