@@ -245,7 +245,8 @@ public class Ledger
     public ValidatorInfo[] getValidators (in Height height) scope @safe
     {
         auto result = this.enroll_man.validator_set.getValidators(height);
-        ensure(result.length > 0, "Ledger.getValidators didn't find any validator");
+        ensure(result.length > 0,
+               "Ledger.getValidators didn't find any validator at height {}", height);
         return result;
     }
 
