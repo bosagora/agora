@@ -99,7 +99,7 @@ public class Validator : FullNode, API
         // does not call `onAcceptedBlock`.
         PreImageInfo self;
         if (this.ledger.enrollment_manager.getNextPreimage(self, this.ledger.getBlockHeight()))
-            this.ledger.enrollment_manager.addPreimage(self);
+            this.ledger.addPreimage(self);
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
@@ -502,7 +502,7 @@ public class Validator : FullNode, API
         // allows us to unify usage of `getValidators`.
         PreImageInfo self;
         if (this.ledger.enrollment_manager.getNextPreimage(self, block.header.height))
-            this.ledger.enrollment_manager.addPreimage(self);
+            this.ledger.addPreimage(self);
 
         // note: may context switch, should be called last after quorums
         // are regenerated above.
@@ -556,7 +556,7 @@ public class Validator : FullNode, API
         if (this.enroll_man.getNextPreimage(preimage,
             this.ledger.getBlockHeight()))
         {
-            this.enroll_man.addPreimage(preimage);
+            this.ledger.addPreimage(preimage);
             this.network.peers.each!(p => p.client.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }

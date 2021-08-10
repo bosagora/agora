@@ -256,6 +256,23 @@ public class Ledger
 
     /***************************************************************************
 
+        Add a pre-image information to a validator data
+
+        Params:
+            preimage = the pre-image information to add
+
+        Returns:
+            true if the pre-image information has been added to the validator
+
+    ***************************************************************************/
+
+    public bool addPreimage (in PreImageInfo preimage) @safe nothrow
+    {
+        return this.enroll_man.validator_set.addPreimage(preimage);
+    }
+
+    /***************************************************************************
+
         Add a block to the ledger.
 
         If the block fails verification, it is not added to the ledger.
@@ -1254,17 +1271,17 @@ public class Ledger
         {
             auto validators = this.getValidators(height);
 
-            void addPreimages (in PublicKey public_key, in PreImageInfo preimage_info)
+            void addPreimageLog (in PublicKey public_key, in PreImageInfo preimage_info)
             {
                 log.info("Adding test preimages for height {} for validator {}: {}", height, public_key, preimage_info);
-                this.enroll_man.addPreimages([ preimage_info ]);
+                this.addPreimage(preimage_info);
             }
             validators.enumerate.each!((idx, val)
             {
                 if (skip_indexes.length && skip_indexes.canFind(idx))
                     log.info("Skip add preimage for validator idx {} at height {} as requested by test", idx, height);
                 else
-                    addPreimages(val.address, PreImageInfo(val.preimage.utxo,
+                    addPreimageLog(val.address, PreImageInfo(val.preimage.utxo,
                         getWellKnownPreimages(WK.Keys[val.address])[height], height));
             });
         } catch (Exception e)
