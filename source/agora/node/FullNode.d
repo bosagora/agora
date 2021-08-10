@@ -556,7 +556,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected string acceptBlock (const ref Block block) @trusted
+    protected string acceptBlock (in Block block) @trusted
     {
         ExpiringValidator[] ex_validators;
         this.enroll_man.getExpiringValidators(block.header.height, ex_validators);

@@ -138,7 +138,7 @@ public extern (C++) class Nominator : SCPDriver
         @safe onInvalidNomination;
 
     /// Delegate called when a block is to be externalized
-    public extern (D) string delegate (const ref Block) @safe acceptBlock;
+    public extern (D) string delegate (in Block) @safe acceptBlock;
 
     /// Nomination start time
     protected TimePoint nomination_start_time;
@@ -179,7 +179,7 @@ extern(D):
         Clock clock, NetworkManager network, ValidatingLedger ledger,
         EnrollmentManager enroll_man, ITaskManager taskman, ManagedDatabase cacheDB,
         Duration nomination_interval,
-        string delegate (const ref Block) @safe externalize)
+        string delegate (in Block) @safe externalize)
     {
         assert(externalize !is null);
 

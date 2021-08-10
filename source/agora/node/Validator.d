@@ -289,7 +289,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override string acceptBlock (const ref Block block) @trusted
+    protected override string acceptBlock (in Block block) @trusted
     {
         import agora.common.BitMask;
         import std.algorithm;
