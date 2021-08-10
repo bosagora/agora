@@ -558,16 +558,24 @@ public class FullNode : API
 
     protected string acceptBlock (in Block block) @trusted
     {
-        ExpiringValidator[] ex_validators;
-        this.enroll_man.getExpiringValidators(block.header.height, ex_validators);
+        auto old_validators = block.header.height > 1 ?
+            this.ledger.getValidators(this.ledger.getBlockHeight()) :
+            null;
         // Attempt to add block to the ledger (it may be there by other means)
         if (auto fail_msg = this.ledger.acceptBlock(block))
             return fail_msg;
 
         this.recordBlockStats(block);
-        ex_validators.each!(ex => this.network.unwhitelist(ex.utxo));
-        this.ledger.getValidators(block.header.height)
-            .each!(validator => this.network.whitelist(validator.utxo));
+
+        auto validators = this.ledger.getValidators(block.header.height);
+        auto expired = setDifference(
+            old_validators.map!(vi => vi.utxo),
+            validators.map!(vi => vi.utxo));
+
+        expired.each!(utxo => this.network.unwhitelist(utxo));
+        // Just whitelist them all to be sure, no need for `setDifference`
+        validators.each!(validator => this.network.whitelist(validator.utxo));
+
         // We return if height in ledger is reached for this block to prevent fetching again
         return this.ledger.getBlockHeight() >= block.header.height ? null
             : format!"Ledger is already at height %s"(block.header.height);

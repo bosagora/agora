@@ -751,27 +751,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Query Validators that have just finished their cycle
-
-        Params:
-            height = requested height
-            ex_validators = Array to save the ExpiringValidators
-
-        Returns:
-            `PublicKey`s and enrollment heights of `Validator`s whose enrollment
-            cycle have just ended
-
-    ***************************************************************************/
-
-    public ExpiringValidator[] getExpiringValidators (in Height height,
-        ref ExpiringValidator[] ex_validators)
-        @trusted nothrow
-    {
-        return this.validator_set.getExpiringValidators(height, ex_validators);
-    }
-
-    /***************************************************************************
-
         Query stakes of active Validators
 
         Params:
