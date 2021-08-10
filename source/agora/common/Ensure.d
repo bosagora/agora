@@ -49,12 +49,15 @@ private final class FormattedException : Exception
     }
 }
 
-public void ensure (Args...) (bool exp, string fmt, lazy Args args)
+public void ensure (Args...) (bool exp, string fmt, lazy Args args,
+    string file = __FILE__, typeof(__LINE__) line = __LINE__)
 {
     if (!exp)
     {
         auto res = instance.buffer.snformat(fmt, args);
         instance.end = res.length;
+        instance.file = file;
+        instance.line = line;
         throw instance;
     }
 }
