@@ -374,6 +374,7 @@ public class Ledger
         {
             // rollback on failure within the scope of the db transactions
             scope (failure) ManagedDatabase.rollback();
+            this.applySlashing(block.header);
             this.updateUTXOSet(block);
             this.updateValidatorSet(block);
             ManagedDatabase.commitBatch();
@@ -406,6 +407,61 @@ public class Ledger
 
     /***************************************************************************
 
+        Apply slashing to the current state
+
+        When a node is slashed, two actions are taken:
+        - First, it is "removed" from the validator set;
+          In practice, we store the height at which a node is slashed.
+        - Second, its stake is consumed: One refund is created to the key
+          controlling the stake, and a penalty is sent to the commons budget.
+
+        This is the first action that happens during block externalization,
+        so that slashed UTXOs are not spent by transactions.
+
+        Params:
+            header = The `BlockHeader` containing the slashing information
+
+    ***************************************************************************/
+
+    protected void applySlashing (in BlockHeader header) @safe
+    {
+        // In the most common case, there should be no slashing information.
+        // In this case, we should avoid calling `getValidators`, as it allocates,
+        // and doesn't handle Genesis.
+        if (header.missing_validators.length == 0)
+            return;
+
+        auto validators = this.getValidators(header.height);
+        auto slashed = validators.enumerate
+            .filter!(en => header.missing_validators.canFind(en.index));
+
+        foreach (idx, const ref validator; slashed)
+        {
+            UTXO utxo_value;
+            if (!this.utxo_set.peekUTXO(validator.utxo, utxo_value))
+                assert(0, "UTXO for the slashed validator not found!");
+
+            log.warn("Slashing validator {} at height {}: {} (UTXO: {})",
+                     idx, header.height, validator, utxo_value);
+            this.enroll_man.validator_set.slashValidator(validator.utxo, header.height);
+
+            auto remain_amount = utxo_value.output.value;
+            remain_amount.sub(this.params.SlashPenaltyAmount);
+            Transaction slashing_tx = Transaction(
+                [Input(validator.utxo)],
+                [
+                    Output(this.params.SlashPenaltyAmount,
+                        this.params.CommonsBudgetAddress),
+                    Output(remain_amount, utxo_value.output.address),
+                ]);
+
+            this.utxo_set.updateUTXOCache(slashing_tx, header.height,
+                this.params.CommonsBudgetAddress);
+        }
+    }
+
+    /***************************************************************************
+
         Update the UTXO set based on the block's transactions
 
         Params:
@@ -422,45 +478,6 @@ public class Ledger
 
         // remove the TXs from the Pool
         block.txs.each!(tx => this.pool.remove(tx));
-
-        // Slashing requires the validator set, however there is no slashing
-        // in genesis, and the validator set isn't ready yet.
-        if (block.header.height != 0)
-            this.updateSlashedUTXOSet(block);
-    }
-
-    /***************************************************************************
-
-        Update the UTXOs of validators that are to be slashed
-
-        Params:
-            block = the block to update the UTXO set with
-
-    ***************************************************************************/
-
-    protected void updateSlashedUTXOSet (in Block block) @safe
-    {
-        Hash[] validator_utxos;
-        this.getMissingValidatorsUTXOs(validator_utxos,
-            block.header.height, block.header.missing_validators);
-        foreach (utxo; validator_utxos)
-        {
-            UTXO utxo_value;
-            if (!this.utxo_set.peekUTXO(utxo, utxo_value))
-                assert(0, "UTXO for the slashed validator not found!");
-
-            auto remain_amount = Amount(utxo_value.output.value);
-            remain_amount.sub(this.params.SlashPenaltyAmount);
-            Transaction slashing_tx = Transaction(
-                [Input(utxo)],
-                [
-                    Output(this.params.SlashPenaltyAmount,
-                        this.params.CommonsBudgetAddress),
-                    Output(remain_amount, utxo_value.output.address),
-                ]);
-            this.utxo_set.updateUTXOCache(slashing_tx, block.header.height,
-                this.params.CommonsBudgetAddress);
-        }
     }
 
     /***************************************************************************
@@ -491,34 +508,6 @@ public class Ledger
                 log.fatal("Validated block: {}", block);
                 assert(0);
             }
-        }
-
-        const Height next = block.header.height + 1;
-        this.updateSlashedValidatorSet(block);
-    }
-
-    /***************************************************************************
-
-        Update the validators that are to be slashed
-
-        Params:
-            block = the block to update the Validator set with
-
-    ***************************************************************************/
-
-    protected void updateSlashedValidatorSet (in Block block) @safe
-    {
-        if (block.header.height == 0)
-            return;
-
-        Hash[] validators_utxos;
-        this.getMissingValidatorsUTXOs(validators_utxos,
-            block.header.height, block.header.missing_validators);
-        foreach (utxo; validators_utxos)
-        {
-            log.warn("Slashing validator UTXO {} at height {}",
-                     utxo, block.header.height);
-            this.enroll_man.validator_set.slashValidator(utxo, block.header.height);
         }
     }
 
@@ -1192,33 +1181,6 @@ public class Ledger
     public Set!Hash getEnrollKeysForUnknownPreimages () @safe nothrow
     {
         return this.enrolls_keys_for_unknown_preimages;
-    }
-    /***************************************************************************
-
-        Get the UTXOs of the validators that do not reveal their pre-images
-        by indices
-
-        Params:
-            validators_utxos = will contain the UTXOs ot the validators
-            height = curent block being created
-            missing_validators = indices of validators being slashed
-
-    ***************************************************************************/
-
-    private void getMissingValidatorsUTXOs (ref Hash[] validators_utxos,
-        in Height height, const uint[] missing_validators) @safe nothrow
-    {
-        validators_utxos.length = 0;
-        () @trusted { assumeSafeAppend(validators_utxos); }();
-
-        Hash[] keys;
-        if (!this.enroll_man.getEnrolledUTXOs(height, keys))
-            assert(0, "Could not retrieve enrollments");
-
-        foreach (idx; missing_validators)
-        {
-            validators_utxos ~= keys[idx];
-        }
     }
 
     /***************************************************************************
