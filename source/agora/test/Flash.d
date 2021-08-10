@@ -908,14 +908,8 @@ unittest
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
-    // trigger tx published
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-
-    // latest update tx published
-    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
-
-    // latest settle tx published
-    network.expectHeightAndPreImg(Height(12), network.blocks[0].header);
+    // trigger tx & latest update tx & latest settle tx
+    iota(4).each!(idx => network.addBlock(true));
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
@@ -1760,7 +1754,7 @@ unittest
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
-        ChannelState.Rejected);
+        ChannelState.Rejected, alice_pubkey);
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     const chan_id_res = alice.openNewChannel(alice_pubkey,
