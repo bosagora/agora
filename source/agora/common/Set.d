@@ -39,10 +39,11 @@ public struct Set (T)
         this._set[key] = true;
     }
 
-    /// Remove an element from the set
-    public void remove (T key)
+    /// Remove an element from the set if present, does nothing otherwise
+    /// Returns: Whether the element was removed
+    public bool remove (T key)
     {
-        this._set.remove(key);
+        return this._set.remove(key);
     }
 
     /// Support for `-checkaction=context` in LDC 1.26.0,
