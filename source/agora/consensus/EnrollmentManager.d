@@ -531,52 +531,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Add a pre-image information to a validator data
-
-        Params:
-            preimage = the pre-image information to add
-
-        Returns:
-            true if the pre-image information has been added to the validator
-
-    ***************************************************************************/
-
-    public bool addPreimage (in PreImageInfo preimage) @safe nothrow
-    {
-        return this.validator_set.addPreimage(preimage);
-    }
-
-    /***************************************************************************
-
-        Add pre-images for enrolled validators
-
-        Params:
-            preimages = the pre-images to add
-
-        Returns:
-            true if preimages was added successfully
-
-    ***************************************************************************/
-
-    public bool addPreimages (in PreImageInfo[] preimages) @safe nothrow
-    {
-        foreach (image; preimages)
-        {
-            auto stored_image =
-                this.validator_set.getPreimage(image.utxo);
-            if (stored_image == PreImageInfo.init ||
-                stored_image.height >= image.height)
-                continue;
-
-            if (!this.validator_set.addPreimage(image))
-                return false;
-        }
-
-        return true;
-    }
-
-    /***************************************************************************
-
         Get the pre-image hash for this validator
 
         Params:
@@ -1209,7 +1163,7 @@ unittest
             height : Height(params.ValidatorCycle),
             hash : cache[$ - params.ValidatorCycle - 1] };
 
-        assert(man.addPreimage(preimage));
+        assert(man.validator_set.addPreimage(preimage));
     }
 }
 
@@ -1312,7 +1266,7 @@ unittest
 
     PreImageInfo preimage;
     assert(man.getNextPreimage(preimage, Height(params.ValidatorCycle / 2)));
-    assert(man.addPreimage(preimage));
+    assert(man.validator_set.addPreimage(preimage));
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.preimage.hash == preimage.hash);
     assert(state.preimage.height == preimage.height);

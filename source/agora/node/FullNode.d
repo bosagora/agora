@@ -532,7 +532,7 @@ public class FullNode : API
             // A) We already have a duplicate preimage
             // B) The preimage is for a newer enrollment which is in one of the
             //    `blocks` which we haven't read from yet
-            this.ledger.enrollment_manager.addPreimages(preimages);
+            preimages.each!(pi => this.ledger.addPreimage(pi));
             // A block might have been externalized in the meantime,
             // so just skip older heights
             if (block.header.height <= this.ledger.getBlockHeight())
@@ -1037,7 +1037,7 @@ public class FullNode : API
         this.recordReq("receive_preimage");
         log.trace("Received Preimage: {}", prettify(preimage));
 
-        if (this.enroll_man.addPreimage(preimage))
+        if (this.ledger.addPreimage(preimage))
         {
             log.info("Accepted preimage: {}", prettify(preimage));
             this.network.peers.each!(p => p.client.sendPreimage(preimage));

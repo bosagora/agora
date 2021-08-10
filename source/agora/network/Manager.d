@@ -1001,7 +1001,7 @@ public class NetworkManager
                 break;
 
             foreach (const ref preimage_info; peer.client.getPreimagesForEnrollKeys(enroll_keys))
-                if (ledger.enrollment_manager.addPreimage(preimage_info))
+                if (ledger.addPreimage(preimage_info))
                     enroll_keys.remove(preimage_info.utxo);
         }
 
