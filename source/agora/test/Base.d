@@ -2346,7 +2346,7 @@ public class NoPreImageVN : TestValidatorNode
     }
 
     /// GET: /preimages_for_enroll_keys
-    public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
+    public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe
     {
         const self = this.enroll_man.getEnrollmentKey();
         const reveal = atomicLoad(*this.reveal_preimage);

@@ -1077,18 +1077,15 @@ public class FullNode : API
     }
 
     /// GET: /preimages
-    public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe nothrow
+    public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe
     {
         this.recordReq("preimages");
 
         // if enroll_keys is empty, then all preimages should be returned
         if (enroll_keys.empty())
-        {
-            Hash[] utxos;
-            if (this.enroll_man.validator_set.getEnrolledUTXOs(Height(ledger.getBlockHeight + 1), utxos))
-                foreach (const ref utxo; utxos)
-                    enroll_keys.put(utxo);
-        }
+            return this.ledger.getValidators(this.ledger.getBlockHeight() + 1)
+                .map!(vi => vi.preimage).array();
+
 
         PreImageInfo[] preimage_infos;
         foreach (const enroll_key; enroll_keys)
