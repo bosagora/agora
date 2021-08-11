@@ -40,10 +40,10 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
+    auto node_0 = nodes[0];
 
     // Get the genesis block, make sure it's the only block externalized
-    auto blocks = node_1.getBlocksFrom(0, 2);
+    auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
     Transaction[] txs;
@@ -54,12 +54,12 @@ unittest
         txs = blocks[new_height - 1].spendable().map!(txb => txb.sign()).array();
 
         // send it to one node
-        txs.each!(tx => node_1.putTransaction(tx));
+        txs.each!(tx => node_0.putTransaction(tx));
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 
         // add next block
-        blocks ~= node_1.getBlocksFrom(new_height, 1);
+        blocks ~= node_0.getBlocksFrom(new_height, 1);
     }
 
     // create GenesisValidatorCycle - 1 blocks
@@ -124,10 +124,10 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
+    auto node_0 = nodes[0];
 
     // Get the genesis block, make sure it's the only block externalized
-    auto blocks = node_1.getBlocksFrom(0, 2);
+    auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
     Transaction[] txs;
@@ -139,12 +139,12 @@ unittest
             .array();
 
         // send it to one node
-        txs.each!(tx => node_1.putTransaction(tx));
+        txs.each!(tx => node_0.putTransaction(tx));
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 
         // add next block
-        blocks ~= node_1.getBlocksFrom(new_height, 1);
+        blocks ~= node_0.getBlocksFrom(new_height, 1);
     }
 
     // create GenesisValidatorCycle - 1 blocks
@@ -202,14 +202,14 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
+    auto node_0 = nodes[0];
 
     // Get the genesis block, make sure it's the only block externalized
-    auto blocks = node_1.getBlocksFrom(0, 2);
+    auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
     network.generateBlocks(Height(GenesisValidatorCycle + 1));
-    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 2);
+    blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 2);
     assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 1));
     assert(blocks[$ - 1].header.enrollments.length == 3);
     assert(blocks[$ - 2].header.enrollments.length == 3);
@@ -228,10 +228,10 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
+    auto node_0 = nodes[0];
 
     // Get the genesis block, make sure it's the only block externalized
-    auto blocks = node_1.getBlocksFrom(0, 2);
+    auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
     auto sleep_node_1 = nodes[$ - 1];
@@ -256,7 +256,7 @@ unittest
     network.generateBlocks(iota(GenesisValidators - 1),
         Height(GenesisValidatorCycle));
 
-    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls1 = blocks[$ - 1].header.enrollments.length;
 
     // This nodes will wake up to an expired cycle, it should immediately enroll
@@ -267,7 +267,7 @@ unittest
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle + 1));
 
-    blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls2 = blocks[$ - 1].header.enrollments.length;
 
     // By now, all genesis validators should be enrolled again
