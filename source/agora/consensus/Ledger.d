@@ -311,8 +311,7 @@ public class Ledger
         Called when a new transaction is received.
 
         If the transaction is accepted it will be added to
-        the transaction pool. If there are enough valid transactions
-        in the pool, a block will be created.
+        the transaction pool.
 
         If the transaction is invalid, it's rejected and false is returned.
 
