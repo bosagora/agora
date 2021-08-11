@@ -605,9 +605,11 @@ public class Validator : FullNode, API
         const avail_height = enrolled == ulong.max ?
                                 next_height : enrolled + this.params.ValidatorCycle;
 
+        if (avail_height > height + 2) // We are near the end of the cycle
+            return Enrollment.init;
         const enrollment = this.enroll_man.createEnrollment(enroll_key, avail_height);
-        log.trace("Sending Enrollment for enrolling at height {} (to validate blocks {} to {})",
-            avail_height, avail_height + 1, avail_height + this.params.ValidatorCycle);
+        log.trace("Sending Enrollment for enrolling {} at height {} (to validate blocks {} to {})",
+            this.enroll_man.getEnrollmentPublicKey(), avail_height, avail_height + 1, avail_height + this.params.ValidatorCycle);
         this.enroll_man.enroll_pool.addValidated(enrollment, avail_height);
         this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
         return enrollment;
