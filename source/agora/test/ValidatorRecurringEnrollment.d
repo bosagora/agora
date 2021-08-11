@@ -234,35 +234,35 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    auto sleep_node_1 = nodes[$ - 1];
-    auto sleep_node_2 = nodes[$ - 2];
+    auto node_4 = nodes[4];
+    auto node_5 = nodes[5];
 
     // Approach end of the cycle
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
     // Make 2 nodes sleep
-    sleep_node_1.ctrl.sleep(60.seconds, true);
-    sleep_node_2.ctrl.sleep(60.seconds, true);
+    node_4.ctrl.sleep(60.seconds, true);
+    node_5.ctrl.sleep(60.seconds, true);
 
-    network.generateBlocks(iota(GenesisValidators - 2),
+    network.generateBlocks(iota(4),
         Height(GenesisValidatorCycle - 1));
 
-    // Wake one up right before cycle ends
-    sleep_node_2.ctrl.sleep(0.seconds);
+    // Wake up node #4 right before cycle ends
+    node_4.ctrl.sleep(0.seconds);
     // Let it catch up
-    network.expectHeightAndPreImg(only(GenesisValidators - 2), // node #4
+    network.expectHeightAndPreImg(only(4), // node #4
         Height(GenesisValidatorCycle - 1), network.blocks[0].header);
 
-    network.generateBlocks(iota(GenesisValidators - 1),
+    network.generateBlocks(iota(5), // nodes #0 .. #4
         Height(GenesisValidatorCycle));
 
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls1 = blocks[$ - 1].header.enrollments.length;
 
-    // This nodes will wake up to an expired cycle, it should immediately enroll
-    sleep_node_1.ctrl.sleep(0.seconds);
-    // Let the last node catch up
-    network.expectHeight([ GenesisValidators - 1 ], Height(GenesisValidatorCycle));
+    // Wake up node #5 to an expired cycle, it should immediately enroll
+    node_5.ctrl.sleep(0.seconds);
+    // Let node $5 catch up
+    network.expectHeight(only(5), Height(GenesisValidatorCycle));
 
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle + 1));
