@@ -234,8 +234,8 @@ unittest
     auto blocks = node_1.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    auto sleep_node_1 = nodes[$ - 1];
-    auto sleep_node_2 = nodes[$ - 2];
+    auto sleep_node_1 = nodes[$ - 1]; // node #5
+    auto sleep_node_2 = nodes[$ - 2]; // node #4
 
     // Approach end of the cycle
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
@@ -253,7 +253,7 @@ unittest
     network.expectHeightAndPreImg(iota(0, GenesisValidators - 1),
         Height(GenesisValidatorCycle - 1), network.blocks[0].header);
 
-    network.generateBlocks(iota(GenesisValidators - 1),
+    network.generateBlocks(iota(GenesisValidators - 1), // nodes #0 -> #4
         Height(GenesisValidatorCycle));
 
     blocks = node_1.getBlocksFrom(10, GenesisValidatorCycle + 3);
