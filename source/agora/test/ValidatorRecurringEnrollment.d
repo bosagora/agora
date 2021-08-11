@@ -238,7 +238,7 @@ unittest
     auto node_5 = nodes[5];
 
     // Approach end of the cycle
-    network.generateBlocks(Height(GenesisValidatorCycle - 2));
+    network.generateBlocks(Height(GenesisValidatorCycle - 3));
 
     // Make 2 nodes sleep
     node_4.ctrl.sleep(60.seconds, true);
@@ -259,6 +259,8 @@ unittest
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls1 = blocks[$ - 1].header.enrollments.length;
 
+    assert(enrolls1 == GenesisValidators - 1);
+
     // Wake up node #5 to an expired cycle, it should immediately enroll
     node_5.ctrl.sleep(0.seconds);
     // Let node $5 catch up
@@ -270,8 +272,8 @@ unittest
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls2 = blocks[$ - 1].header.enrollments.length;
 
-    // By now, all genesis validators should be enrolled again
-    assert(enrolls1 + enrolls2 == GenesisValidators);
+    // Now the last node woken up is also enrolled
+    assert(enrolls2 == 1);
 }
 
 // No validator will willingly re-enroll until the network is stuck

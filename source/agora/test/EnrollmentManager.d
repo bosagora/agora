@@ -71,12 +71,12 @@ unittest
     network.start();
     network.waitForDiscovery();
 
-    // generate 15 blocks, 5 short of the enrollments expiring.
-    network.generateBlocks(Height(GenesisValidatorCycle - 5));
+    // generate 18 blocks, 2 short of the enrollments expiring.
+    network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
     auto first_node = network.clients[0];
 
-    // Request enrollment at the height of 15
+    // Request enrollment at the height of 18
     auto enroll = first_node.setRecurringEnrollment(true);
 
     // Make 5 blocks in order to finish the validator cycle
