@@ -71,7 +71,7 @@ unittest
 
     // reject inbound requests
     const DropRequests = true;
-    nodes[1 .. $].each!(node => node.sleep(100.msecs, DropRequests));
+    nodes[1 .. $].each!(node => node.deafen(100.msecs, DropRequests));
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
 
