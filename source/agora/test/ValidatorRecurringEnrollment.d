@@ -250,7 +250,7 @@ unittest
     // Wake one up right before cycle ends
     sleep_node_2.ctrl.sleep(0.seconds);
     // Let it catch up
-    network.expectHeightAndPreImg(iota(0, GenesisValidators - 1),
+    network.expectHeightAndPreImg(only(GenesisValidators - 2), // node #4
         Height(GenesisValidatorCycle - 1), network.blocks[0].header);
 
     network.generateBlocks(iota(GenesisValidators - 1), // nodes #0 -> #4
