@@ -527,8 +527,8 @@ unittest
     import agora.script.Engine;
     import std.stdio;
 
-    const Transaction bad_tx = Transaction([Input.init], [], Height(99));
-    const Transaction tx = Transaction([Input.init], [], Height(100));
+    const Transaction bad_tx = Transaction([Input.init], [Output.init], Height(99));
+    const Transaction tx = Transaction([Input.init], [Output.init], Height(100));
     const Hash wrong_secret = hashFull(99);
     const Hash secret = hashFull(42);
     auto hash = hashFull(secret);
