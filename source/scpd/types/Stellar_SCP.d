@@ -308,7 +308,7 @@ struct SCPStatement {
     _pledges_t pledges;
 }
 
-static assert(SCPStatement.sizeof == 224);
+static assert(SCPStatement.sizeof == 168);
 static assert(Signature.sizeof == 64);
 
 struct SCPEnvelope {
@@ -316,7 +316,7 @@ struct SCPEnvelope {
   Signature signature;
 }
 
-static assert(SCPEnvelope.sizeof == 288);
+static assert(SCPEnvelope.sizeof == 232);
 
 struct SCPQuorumSet {
     import agora.crypto.Hash;
@@ -347,39 +347,27 @@ struct SCPQuorumSet {
     import agora.crypto.Key;
     import std.conv;
 
-    const qc1 = toSCPQuorumSet(QuorumConfig(2,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")]));
+    const qc1 = toSCPQuorumSet(QuorumConfig(2, [0, 1]));
 
     assert(qc1.hashFull() == Hash.fromString(
-        "0x2b202a92d7e32a7aa839ad17df498a8db0efa445b2cc1c73e32763db49e64162d43d766eb08d04d13ecb5eab1e012781e28a90375658a2f75f1cc02198904596"));
+        "0x57744ff3b19f006505cb69a617f99314119dbfa7bff94eb59b058b7088076ae8f4631085db5dca56c0b97d208e8276801a7602453f0fa57ec0ce2dfe25669db2"));
 
-    const qc2 = toSCPQuorumSet(QuorumConfig(3,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")]));
+    const qc2 = toSCPQuorumSet(QuorumConfig(3, [0, 1]));
 
     assert(qc2.hashFull() == Hash.fromString(
-        "0x2380963ec547f302eeb9b4ec95ad12bd986c587e4e0148b91fca421620404f250c3eadfae7b4de2807b8e8c25b1ca81aa3b856014b4d9c3b5b2060be8924a1b3"));
+        "0xdccacd796d28677dd3690c5dea888262c40c8d904e452eed3d56f99154fd209303ed4a270a81a51ed4224375889d86d1a441c914a2ec5ece78313a12a60aca72"));
 
-    const qc3 = toSCPQuorumSet(QuorumConfig(2,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
-             [QuorumConfig(2,
-                [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")])]));
+    const qc3 = toSCPQuorumSet(QuorumConfig(2, [0, 1],
+             [QuorumConfig(2, [0, 1])]));
 
     assert(qc3.hashFull() == Hash.fromString(
-        "0x36de5a8b9263cb1b08dc4fbc329b0bac645a33c7c22be3c452e4db91c346b3f80b0acce1b047b8e63c1918adccae5958000501f786d68ec29d240bf74335e9b4"));
+        "0xac26280aaea44f23c11fb6dc14eda3c83e5642288049244edb9bb0331a99f7e5f5e614e07e6d5b1009cc80e7895181f1eb0f0ad299cbb5fffe2d7994e970f6ee"));
 
-    const qc4 = toSCPQuorumSet(QuorumConfig(2,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
-             [QuorumConfig(3,
-                [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")])]));
+    const qc4 = toSCPQuorumSet(QuorumConfig(2, [0, 1],
+             [QuorumConfig(3, [0, 1])]));
 
     assert(qc4.hashFull() == Hash.fromString(
-        "0x0b7d0c118e89ce2a5f9c7c9c3ece531389c76242f99209d769359b3b0f3b8b54eec74ef8b1b820f2a8ecf9a68b252be9cc76931ce88d1b5795970e268891b95b"));
+        "0xeaafeb7634d31143b235b8d1e45d57deda854d3a8cca6af0e78379d5cdb2e547e15e67d8d2da01510f4de45b7d650b418da4051d34ca1d2760a7be2772ac66d0"));
 }
 static assert(SCPQuorumSet.sizeof == 56);
 

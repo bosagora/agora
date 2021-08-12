@@ -976,8 +976,7 @@ public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
 
     foreach (ref const node; quorum_conf.nodes)
     {
-        auto pub_key = NodeID(node[][0 .. NodeID.sizeof]);
-        quorum.validators.push_back(pub_key);
+        quorum.validators.push_back(node);
     }
 
     foreach (ref const sub_quorum; quorum_conf.quorums)
@@ -1007,7 +1006,7 @@ public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
     import std.conv;
     import scpd.types.Stellar_types : NodeID;
 
-    Hash[] nodes;
+    ulong[] nodes;
 
     foreach (node; scp_quorum.validators.constIterator)
         nodes ~= node;
@@ -1031,16 +1030,9 @@ unittest
 {
     import agora.crypto.Hash;
 
-    auto quorum = QuorumConfig(2,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
-        [QuorumConfig(2,
-            [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-             Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
-            [QuorumConfig(2,
-                [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd"),
-                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")])])]);
+    auto quorum = QuorumConfig(2, [0, 1, 2],
+        [QuorumConfig(2, [0, 2],
+            [QuorumConfig(2, [0, 1, 1])])]);
 
     auto scp_quorum = toSCPQuorumSet(quorum);
     assert(scp_quorum.toQuorumConfig() == quorum);

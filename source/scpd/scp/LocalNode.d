@@ -123,4 +123,4 @@ extern(C++, class) public struct LocalNode
                                     const ref vector!NodeID nodeSet);
 }
 
-static assert(LocalNode.sizeof == 280);
+static assert(LocalNode.sizeof == 224);

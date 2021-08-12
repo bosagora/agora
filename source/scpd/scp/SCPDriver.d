@@ -20,6 +20,8 @@ import scpd.types.Stellar_types;
 import scpd.types.XDRBase;
 
 import core.stdc.inttypes;
+import core.stdcpp.string;
+import std.conv;
 
 extern(C++, `stellar`):
 
@@ -140,7 +142,7 @@ nothrow:
     {
         try
         {
-            auto slice = Hash(pk).toString();
+            string slice = pk.to!string;
             return sliceToStdString(slice.ptr, slice.length);
         }
         catch (Exception exc)
@@ -155,7 +157,7 @@ nothrow:
     {
         try
         {
-            auto slice = Hash(pk).toString();
+            string slice = pk.to!string;
             return sliceToStdString(slice.ptr, slice.length);
         }
         catch (Exception exc)

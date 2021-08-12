@@ -9,7 +9,7 @@
 using namespace xdr;
 using namespace stellar;
 
-SCP* createSCP(SCPDriver* driver, NodeID const& nodeID, bool isValidator, SCPQuorumSet const& qSetLocal)
+SCP* createSCP(SCPDriver* driver, NodeID nodeID, bool isValidator, SCPQuorumSet const& qSetLocal)
 {
     return new stellar::SCP(*driver, nodeID, isValidator, qSetLocal);
 }

@@ -42,8 +42,9 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import scpd.types.Stellar_SCP;
+import scpd.types.Stellar_types : NodeID;
 
-import std.algorithm : each;
+import std.algorithm;
 
 import core.stdc.stdlib : abort;
 import core.time;
@@ -152,7 +153,8 @@ public class Validator : FullNode, API
         }
 
         // We create new SCP object if the enrollment key is changed.
-        this.nominator.createSCPObject();
+        NodeID node_id = utxo_keys.countUntil(this_utxo);
+        this.nominator.updateSCPObject(height, node_id);
 
         static QuorumConfig[] other_qcs;
         this.rebuildQuorumConfig(this.qc, other_qcs, this_utxo, utxo_keys, height);
@@ -195,7 +197,8 @@ public class Validator : FullNode, API
             const rand_seed = this.ledger.getBlockHeight() == height ?
                 this.ledger.getLastBlock().header.random_seed :
                 this.ledger.getBlocksFrom(height).front.header.random_seed;
-            qc = buildQuorumConfig(self_enroll, utxos, this.utxo_set.getUTXOFinder(),
+            auto idx = utxos.countUntil(self_enroll);
+            qc = buildQuorumConfig(idx, utxos, this.utxo_set.getUTXOFinder(),
                 rand_seed, this.quorum_params);
 
             other_qcs.length = 0;
@@ -204,7 +207,8 @@ public class Validator : FullNode, API
             foreach (utxo; utxos.filter!(
                 utxo => utxo != filter_utxo))  // skip our own
             {
-                other_qcs ~= buildQuorumConfig(utxo, utxos,
+                idx = utxos.countUntil(utxo);
+                other_qcs ~= buildQuorumConfig(idx, utxos,
                     this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
             }
         }

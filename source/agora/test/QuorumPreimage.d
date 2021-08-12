@@ -36,15 +36,6 @@ import std.range;
 import core.thread;
 import core.time;
 
-immutable A = Hash("0x210f6551d648a4da654da116b100e941e434e4f232b8579439c2ef64b04819bd2782eb3524c7a29c38c347cdf26006bccac54a58a58f103ae7eb5b252eb53b64");
-immutable B = Hash("0x3b44d65edb3361dd91441ab4f449eeda55644026624c4b8ae12ecf0264fa8a228dbf672ef97e2c4f87fb98ad7099e17b7f9ba7dbe8479672066912b1ea24ba77");
-immutable C = Hash("0x7bacc99e9bf827f0fa6dc6a77303d2e6ba6f1591277b896a9305a9e200853986fe9527fd551077a4ac2b511633ada4190a7b82cddaf606171336e1efba87ea8f");
-immutable D = Hash("0x9b2726e79f05abc107b6531486a46c977414e13ed9f3ee994ec14504964f86fcf9464055b891b9c34020feb72535c300ff19e8b5167eb9d202db1a053d746b2c");
-immutable E = Hash("0xab19131ad8974a20881e2cd0798684a06ca0054160735cdf67fe8ee5a0eb4e28e9bf3f4c735f9ed3da958778978c86b409b8d133f30992141f0ac7e01e7f1255");
-immutable F = Hash("0xdb7664caba94c8d4602c10992c13176307e1e05361c150217166ee77fc4af9bf176f31dc61aba61e634dfc0b4c5f729d59e604607f61c9f66b10c6841f972a0a");
-immutable G = Hash("0xf559434f0ef34d45904f91821aa44130ec0d681995f664ac1ec4993450b15adc4fab9ae22e343877bfe96ca317ff4bb538a686f22aa9f43bd49d408c7237a65c");
-immutable H = Hash("0xfe08a45e859d68d3696638189ac2a79178d5d709423175285451b443498b8efd54c9e02103abd3903bbe01813c32429d569acf10d39bb6a1e255bccf5f8e60d6");
-
 /// test preimage changing quorum configs
 unittest
 {
@@ -77,34 +68,24 @@ unittest
         }
     }
 
-    string[Hash] node_to_name = [
-        A : "A", B : "B", C : "C", D : "D", E : "E", F : "F", G : "G", H : "H"];
-
-    string printConvQuorum(in QuorumConfig qc)
-    {
-        return format("%-(%s, %)", qc.nodes.map!(n =>
-            (n in node_to_name) ? node_to_name[n]
-                : format!"Hash not found in node_to_name: %s"(n)));
-    }
-
     enum quorums_1 = [
         // 0
-        QuorumConfig(5, [A, B, C, D, E, F]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         // 1
-        QuorumConfig(5, [A, B, C, D, E, F]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         // 2
-        QuorumConfig(5, [A, B, C, D, E, F]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         // 3
-        QuorumConfig(5, [A, B, C, D, E, F]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         // 4
-        QuorumConfig(5, [A, B, C, D, E, F]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         // 5
-        QuorumConfig(5, [A, B, C, D, E, F]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         QuorumConfig.init,
         QuorumConfig.init,
@@ -115,8 +96,7 @@ unittest
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_1[idx], 5.seconds,
                 format("Node %s has quorum config [%s]. Expected quorums_1: [%s]",
-                    idx, printConvQuorum(node.getQuorumConfig()),
-                    printConvQuorum(quorums_1[idx]))));
+                    idx, node.getQuorumConfig(), quorums_1[idx])));
     }
 
     const keys = network.nodes.map!(node => node.getPublicKey().key)
@@ -148,28 +128,28 @@ unittest
 
     enum quorums_2 = [
         // 0
-        QuorumConfig(6, [A, B, C, D, F, G, H]),
+        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
 
         // 1
-        QuorumConfig(6, [A, B, C, D, E, G, H]),
+        QuorumConfig(6, [0, 1, 2, 3, 5, 6, 7]),
 
         // 2
-        QuorumConfig(6, [A, C, D, E, F, G, H]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 3
-        QuorumConfig(6, [A, C, D, E, F, G, H]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 4
-        QuorumConfig(6, [B, C, D, E, F, G, H]),
+        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
 
         // 5
-        QuorumConfig(6, [A, B, C, E, F, G, H]),
+        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
 
         // 6
-        QuorumConfig(6, [A, C, D, E, F, G, H]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 6, 7]),
 
         // 7
-        QuorumConfig(6, [A, B, C, D, F, G, H]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
     ];
 
     static assert(quorums_1 != quorums_2);
@@ -179,8 +159,7 @@ unittest
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_2[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_2: %s",
-                    idx, printConvQuorum(node.getQuorumConfig()),
-                    printConvQuorum(quorums_2[idx]))));
+                    idx, node.getQuorumConfig(), quorums_2[idx])));
     }
 
     // create 19 more blocks with all validators (1 short of end of 2nd cycle)
@@ -198,28 +177,28 @@ unittest
     // which use a different preimage
     enum quorums_3 = [
         // 0
-        QuorumConfig(6, [A, B, C, D, E, G, H]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 1
-        QuorumConfig(6, [A, B, C, D, F, G, H]),
+        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
 
         // 2
-        QuorumConfig(6, [B, C, D, E, F, G, H]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 3
-        QuorumConfig(6, [A, B, C, D, F, G, H]),
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
 
         // 4
-        QuorumConfig(6, [A, B, C, E, F, G, H]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 5
-        QuorumConfig(6, [A, B, C, D, F, G, H]),
+        QuorumConfig(6, [0, 1, 2, 3, 5, 6, 7]),
 
         // 6
-        QuorumConfig(6, [B, C, D, E, F, G, H]),
+        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
 
         // 7
-        QuorumConfig(6, [A, B, C, D, F, G, H]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 6, 7]),
     ];
 
     static assert(quorums_2 != quorums_3);
@@ -229,7 +208,6 @@ unittest
         nodes.enumerate.each!((idx, node) =>
             retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_3: %s",
-                    idx, printConvQuorum(node.getQuorumConfig()),
-                    printConvQuorum(quorums_3[idx]))));
+                    idx, node.getQuorumConfig(), quorums_3[idx])));
     }
 }

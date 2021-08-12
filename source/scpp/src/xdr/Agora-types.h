@@ -19,6 +19,6 @@ namespace stellar
 
     // Logical types used by SCP / Agora
     using Hash =      uint512;
-    using NodeID =    uint512; // Currently hash of `utxo` staked for validator
+    using NodeID =    uint64;   // Currently index of `utxo` staked for validator
     using Signature = uint512; // `(R,s)`, could be reduced to `(s)`
 }

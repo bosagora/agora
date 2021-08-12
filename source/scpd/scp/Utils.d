@@ -21,5 +21,5 @@ import scpd.types.Stellar_types;
 extern (C++):
 
 /// SCP constructor wrapper
-SCP* createSCP (SCPDriver driver, ref const(NodeID) nodeID, bool isValidator,
+SCP* createSCP (SCPDriver driver, NodeID nodeID, bool isValidator,
     ref const(SCPQuorumSet) qSetLocal);

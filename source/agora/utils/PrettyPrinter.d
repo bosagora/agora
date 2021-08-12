@@ -696,7 +696,7 @@ private struct QuorumConfigFmt
         {
             formattedWrite(sink, "{ thresh: %s, nodes: %s, subqs: %s }",
                 this.data.threshold,
-                this.data.nodes.map!(node => HashFmt(node)),
+                this.data.nodes,
                 this.data.quorums.map!(subq => QuorumConfigFmt(subq)));
         }
         catch (Exception ex)
@@ -709,18 +709,11 @@ private struct QuorumConfigFmt
 ///
 unittest
 {
-    auto quorum = immutable(QuorumConfig)(2,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
-        [immutable(QuorumConfig)(3,
-            [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-             Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")],
-            [immutable(QuorumConfig)(4,
-                [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd"),
-                 Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")])])]);
+    auto quorum = immutable(QuorumConfig)(2, [0, 1],
+        [immutable(QuorumConfig)(3, [0, 1],
+            [immutable(QuorumConfig)(4, [0, 1, 1])])]);
 
-    static immutable Res1 = `{ thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [{ thresh: 3, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [{ thresh: 4, nodes: [0x11c6...ebf5, 0xdfca...e5fd, 0xdfca...e5fd], subqs: [] }] }] }`;
+    static immutable Res1 = `{ thresh: 2, nodes: [0, 1], subqs: [{ thresh: 3, nodes: [0, 1], subqs: [{ thresh: 4, nodes: [0, 1, 1], subqs: [] }] }] }`;
 
     assert(Res1 == format("%s", prettify(quorum)),
                    format("%s", prettify(quorum)));

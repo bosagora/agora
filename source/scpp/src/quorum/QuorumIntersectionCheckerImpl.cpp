@@ -691,11 +691,15 @@ QuorumIntersectionCheckerImpl::buildSCCs()
     mStats.mNumSCCs = mTSC.mSCCs.size();
 }
 
+// The definition of the function moved to the file,
+// source/scpd/quorum/QuorumIntersectionChecker.d
+/*
 std::string
 QuorumIntersectionCheckerImpl::nodeName(size_t node) const
 {
     return stellar::KeyUtils::toShortString(mBitNumPubKeys.at(node));
 }
+*/
 
 bool
 QuorumIntersectionCheckerImpl::networkEnjoysQuorumIntersection() const
