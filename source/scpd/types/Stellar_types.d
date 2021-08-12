@@ -34,7 +34,7 @@ alias uint512 = opaque_array!64;
 
 
 alias Hash      = uint512;
-alias NodeID    = uint512;
+alias NodeID    = uint64_t;
 alias Signature = uint512;
 
 unittest
@@ -44,6 +44,5 @@ unittest
     static import agora.crypto.Schnorr;
 
     static assert(agora.crypto.Hash.Hash.sizeof == Hash.sizeof);
-    static assert(agora.crypto.Hash.Hash.sizeof == NodeID.sizeof);
     static assert(agora.crypto.Schnorr.Signature.sizeof == Signature.sizeof);
 }

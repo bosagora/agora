@@ -314,7 +314,7 @@ private struct SCPStatementFmt
         {
             formattedWrite(sink,
                 "{ node: %s, slotIndex: %s, pledge: %s }",
-                prettify(Hash(this.statement.nodeID[])),
+                cast(ulong)this.statement.nodeID,
                 cast(ulong)this.statement.slotIndex,  // cast: consistent cross-platform output
                 PledgesFmt(this.statement.pledges, getQSet));
         }
@@ -450,9 +450,7 @@ unittest
     auto pair = WK.Keys.NODE2;
     auto pair_utxo_key = Hash("0x321efeea33f06eceefcc2ff8a646eac3e7d0d3de52820485b7004105dec3211f3631981a9c436afcd2dfdb264c5546c04855825080b2f6173b67f74c8df321a3");
 
-    auto qc = QuorumConfig(2,
-        [Hash("0x11c6b0395c8e1716978c41958eab84e869755c09f7131b3bbdc882a647cb3f2c46c450607c6da71d34d1eab28fbfdf14376b444ef46ed1d0a7d2237ab430ebf5"),
-         Hash("0xdfcada320948a86f6027daf7e5a964a36103ea0e662abaa692212392a280b7c211e56beb2bf83fbc53459603c6750e00cdc194c773f9941dc43b07c6f639e5fd")]);
+    auto qc = QuorumConfig(2, [0, 1]);
 
     auto scp_quorum = toSCPQuorumSet(qc);
     auto qset = makeSharedSCPQuorumSet(scp_quorum);
@@ -468,7 +466,7 @@ unittest
     }
 
     SCPEnvelope env;
-    env.statement.nodeID = NodeID(pair_utxo_key[][0 .. NodeID.sizeof]);
+    env.statement.nodeID = NodeID(0);
 
     /** SCP PREPARE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_PREPARE;
@@ -482,23 +480,23 @@ unittest
     env.signature = typeof(env.signature).init;
 
     // missing signature
-    static immutable MissingSig = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2b20...4596, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...0000 }`;
+    static immutable MissingSig = `{ statement: { node: 0, slotIndex: 0, pledge: Prepare { qset: { hash: 0x5774...9db2, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...0000 }`;
 
     testAssert(MissingSig, scpPrettify(&env));
 
     env.signature = sig.toBlob();
 
     // null quorum (hash not found)
-    static immutable PrepareRes1 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2b20...4596, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes1 = `{ statement: { node: 0, slotIndex: 0, pledge: Prepare { qset: { hash: 0x5774...9db2, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // with quorum mapping
-    static immutable PrepareRes2 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes2 = `{ statement: { node: 0, slotIndex: 0, pledge: Prepare { qset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: <null>, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // 'prep' pointer is set
-    static immutable PrepareRes3 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes3 = `{ statement: { node: 0, slotIndex: 0, pledge: Prepare { qset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prepPrime: <null>, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // 'preparedPrime' pointer is set
-    static immutable PrepareRes4 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Prepare { qset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prepPrime: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable PrepareRes4 = `{ statement: { node: 0, slotIndex: 0, pledge: Prepare { qset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prep: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, prepPrime: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nc: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     testAssert(PrepareRes1, scpPrettify(&env));
     testAssert(PrepareRes1, scpPrettify(&env, null));
@@ -525,13 +523,13 @@ unittest
     env.statement.pledges.confirm_.nH = 200;
 
     // confirm without a known hash
-    static immutable ConfirmRes1 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Confirm { qset: { hash: 0x0000...0000, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable ConfirmRes1 = `{ statement: { node: 0, slotIndex: 0, pledge: Confirm { qset: { hash: 0x0000...0000, quorum: <unknown> }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // confirm with a known hash
-    static immutable ConfirmRes2 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Confirm { qset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable ConfirmRes2 = `{ statement: { node: 0, slotIndex: 0, pledge: Confirm { qset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, ballot: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
 
     // un-deserializable value
-    static immutable ConfirmRes3 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Confirm { qset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
+    static immutable ConfirmRes3 = `{ statement: { node: 0, slotIndex: 0, pledge: Confirm { qset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, ballot: { counter: 0, value: <un-deserializable> }, nPrep: 42, nComm: 100, nH: 200 } }, sig: 0x0000...be78 }`;
     // unknown hash
     testAssert(ConfirmRes1, scpPrettify(&env, &getQSet));
 
@@ -544,11 +542,11 @@ unittest
     testAssert(ConfirmRes3, scpPrettify(&env, &getQSet));
 
     // unknown hash
-    static immutable ExtRes1 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x0000...0000, quorum: <unknown> }, commit: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nh: 100 } }, sig: 0x0000...be78 }`;
+    static immutable ExtRes1 = `{ statement: { node: 0, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x0000...0000, quorum: <unknown> }, commit: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nh: 100 } }, sig: 0x0000...be78 }`;
     // known hash
-    static immutable ExtRes2 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, commit: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nh: 100 } }, sig: 0x0000...be78 }`;
+    static immutable ExtRes2 = `{ statement: { node: 0, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, commit: { counter: 42, value: { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 } }, nh: 100 } }, sig: 0x0000...be78 }`;
     // un-deserializable value
-    static immutable ExtRes3 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x2b20...4596, quorum: { thresh: 2, nodes: [0x11c6...ebf5, 0xdfca...e5fd], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0000...be78 }`;
+    static immutable ExtRes3 = `{ statement: { node: 0, slotIndex: 0, pledge: Externalize { commitQset: { hash: 0x5774...9db2, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, commit: { counter: 0, value: <un-deserializable> }, nh: 100 } }, sig: 0x0000...be78 }`;
 
     /** SCP EXTERNALIZE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
@@ -568,9 +566,9 @@ unittest
     testAssert(ExtRes3, scpPrettify(&env, &getQSet));
 
     // unknown hash
-    static immutable NomRes1 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Nominate { qset: { hash: 0x0000...0000, quorum: <unknown> }, votes: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }], accepted: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }] } }, sig: 0x0000...be78 }`;
+    static immutable NomRes1 = `{ statement: { node: 0, slotIndex: 0, pledge: Nominate { qset: { hash: 0x0000...0000, quorum: <unknown> }, votes: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }], accepted: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }] } }, sig: 0x0000...be78 }`;
     // known hash
-    static immutable NomRes2 = `{ statement: { node: 0x321e...21a3, slotIndex: 0, pledge: Nominate { qset: { hash: 0x2b20...4596, quorum: <unknown> }, votes: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }], accepted: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }] } }, sig: 0x0000...be78 }`;
+    static immutable NomRes2 = `{ statement: { node: 0, slotIndex: 0, pledge: Nominate { qset: { hash: 0x5774...9db2, quorum: <unknown> }, votes: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }], accepted: [{ tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }, { tx_set: [0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 42 }] } }, sig: 0x0000...be78 }`;
 
     /** SCP NOMINATE */
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;

@@ -197,7 +197,12 @@ extern(D):
         this.envelope_timer = this.taskman.setTimer(EnvTaskDelay,
             &this.envelopeProcessTask, Periodic.No);
         this.envelope_timer.stop();
-        this.createSCPObject();
+        // Find the node id of this validator and create an SCPObject
+        Hash[] utxo_keys;
+        this.enroll_man.getEnrolledUTXOs(Height(1), utxo_keys);
+        const this_utxo = this.enroll_man.getEnrollmentKey();
+        NodeID node_id = utxo_keys.countUntil(this_utxo);
+        this.updateSCPObject(Height(0), node_id);
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
@@ -222,34 +227,45 @@ extern(D):
 
     /***************************************************************************
 
-        Create Stellar SCP object
+        Create or update Stellar SCP object
 
         A validator creates SCP object with the UTXO for enrollment. This
         checks that the UTXO key for enrollment exists and new SCP should be
-        created because of new enrollment of this node.
+        created because of new enrollment of this node. If there is an 
+        existing SCP object, this just change the node id for the SCP object.
+
+        Params:
+            height = block height for creating SCP
+            node_id = the node id of this validator
 
     ***************************************************************************/
 
-    public void createSCPObject () nothrow @safe
+    public void updateSCPObject (in Height height, in NodeID node_id)
+        nothrow @safe
     {
+        import scpd.types.Stellar_types;
         try
         {
             // TODO: We should apply the situation where this validator has
             // enrolled with another UTXO after its previous enrollment expired.
-            auto self_enroll = this.enroll_man.getEnrollmentKey();
-            if (this.scp is null && self_enroll != Hash.init)
+            if (this.scp is null)
             {
-                auto node_id = NodeID(self_enroll[][0 .. NodeID.sizeof]);
                 const IsValidator = true;
                 const no_quorum = SCPQuorumSet.init;  // will be configured by setQuorumConfig()
                 () @trusted {
                     this.scp = createSCP(this, node_id, IsValidator, no_quorum);
                 }();
             }
+            else
+            {
+                () @trusted {
+                    this.scp.changeNodeID(node_id);
+                }();
+            }
         }
         catch (Exception e)
         {
-            log.fatal("createSCPObject: Exception thrown: {}", e);
+            log.fatal("updateSCPObject: Exception thrown: {}", e);
             assert(0);
         }
     }
@@ -585,7 +601,13 @@ extern(D):
             return;  // slot was already externalized or envelope is too new
         }
 
-        const Hash utxo = envelope.statement.nodeID;
+        Hash utxo = this.getNodeUTXO(envelope.statement.slotIndex, envelope.statement.nodeID);
+        if (utxo == Hash.init)
+        {
+            log.trace("utxo is Hash.init", envelope.statement.slotIndex);
+            return;
+        }
+
         UTXO utxo_value;
         if (!this.ledger.peekUTXO(utxo, utxo_value))
         {
@@ -1081,6 +1103,45 @@ extern(D):
             this.last_confirmed_height = Height(envelope.statement.slotIndex);
     }
 
+    /***************************************************************************
+
+        Get the UTXO hash for the index of the validator at a height
+
+        Params:
+            slot_idx = the height for which we search the index of the validator
+            index = the index of the validator
+
+        Returns:
+            the hash of the frozen UTXO
+
+    ***************************************************************************/
+
+    public StellarHash getNodeUTXO (uint64_t slot_index, uint64_t index)
+        @safe nothrow
+    {
+        Hash utxo;
+        ValidatorInfo[] validators;
+        try
+        {
+            validators = this.ledger.getValidators(Height(slot_index));
+        }
+        catch (Exception exc)
+        {
+            log.error("Exception happened with calling `getValidators` in `getNodeID: {}", exc);
+        }
+
+        if (validators.length > index)
+            utxo = validators[index].utxo;
+
+        if (utxo == Hash.init)
+        {
+            log.trace("utxo is Hash.init", slot_index);
+            assert(0, "utxo is Hash.init");
+        }
+
+        return StellarHash(utxo[][0 .. StellarHash.sizeof]);
+    }
+
     /// Used for holding consensus candidate values. It contains precomputed
     /// fields to speed up sorting.
     static struct CandidateHolder
@@ -1480,38 +1541,38 @@ private struct SCPEnvelopeHash
     auto getStHash () @trusted { return SCPStatementHash(&st); }
 
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xe085bd947f8296c57cc6cf14ff020932780676ea6ca4a9d9831dde6f6c764c890c4487186c7b3693f423da26787cb6da6d081d364a2db141296741778fcc1a95"));
+        "0x755a41baaba02e099e86224bec897428a1d985efa44aca8408ab17dd7682e272caf527707dfb02b1f665a3860f8f671e6ce651eaf6d6594126fbccac8dfbdac1"));
 
     prep.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x478942c42b1d514d269f2ce3b266626d4ebd692fcec5e637ef1d08664956fcbd6f05b115252a0b99d34978d0daa7e994b101b0b56bb75992b0ed95797416a8c4"));
+        "0x7dd0d0832ea5132ca96169bb76f958aba7fc131f2a7113a53fa152db8cb342a4cc853a7b69e2b2bffa0510a1d9665f3771d094315610747056923c455de1f523"));
 
     prep_prime.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xf84b10d2cf3251a7d334686d1316f5c9fbcdb59031612c3c6f0e4a94882666afdc1b62d4ed5fb6af235518e35cd0b0b626644fdf337442ab4e75e9d8299dbf29"));
+        "0x16d39c2a56a3cf75b85c8f2dc4ad1329713ab21515384f65f4b4e1591a9b20771492ebf26595362807c8fc11ef0028d0fa8bcaeed3f25946d4902acc66bcf55e"));
 
     () @trusted { st.pledges.prepare_.prepared = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x0144df2ed8fc66e7a15abb54aac8fc437d3427999daff481403c585d4657a16902c0aef9207055eaf44009dac580f6465efd4cf5a5ab3c02934a952d7536b715"));
+        "0xc49f187ceda67573afab46466b1e6e7207707174a9a0bf850ea79a5e87d76f56d5f0c13b56a73754d4337416d1322e2780420bb426b604c8db16e427d4fb5416"));
 
     () @trusted { st.pledges.prepare_.preparedPrime = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xb9f0c756c5ef9ee07e37bb75467efa0c7c10b594b4d0fd0e508c9db8867c06d7886b0df95164f309d141e99db1e22f5eed390b261a953335210526f3f3c5a665"));
+        "0x09e54206c86f7b1a6c796b7a6e56e2b30f465d24e223601e246cc19120d817ac867186f6e7c867f2dbaf7022e9eebc5e560de2fa9f2ab2aab2fdd221272caa5c"));
 
     () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x71f43018c8ca9742ec8e90983cc19fdec13a1c8c3e3c4797ea1b6239caae0c8441905cb39bcddc84b95e8c94c08bb1129c5f0b664001c9feab7af50efe99b173"));
+        "0x104cfee4945c44bd75783bdb2c8ed2de55d6e2346d84430282c1710e6474042079b122e9a24a75d2f2b577cf36b7e1eadefc156c5b2562a06c3c8e2b16f02470"));
 
     () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xdf2973102da2b5d037c28a98567320d1f3b55b40ee1b4e72621be103f5adbbe24d408a593f84b09119eb90019ffea2c82736a45f26f8eff05aea63542da7c69e"));
+        "0x92a0d0bd78e0b74cfd0664bbb1c4542f492991f260d5916bf290c2929790cfc3875179fb3774de8c664af9b3d135e6edb70d48188874723a3a8e884bad37584c"));
 
     () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x67869b462a3a7f9605891c131b3ef07c05491d4226c8dcd372461e56f499874fbd675c2de4fe5c416afd3072546688d9d6dad98aa88bba8a9f4109a56f82252a"));
+        "0x98fec9d03f95de3fb6e5fefe5afb4aed545532cf1ea0440718a17451480ac4740f9b0389e613eefb1c33247d1ddc111343fd0f19ed26124abb5f8d9a9b15ccb9"));
 
     SCPEnvelope env;
     auto getEnvHash () @trusted { return SCPEnvelopeHash(&env); }
@@ -1519,12 +1580,12 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x8f2b4abb0f946f92c3f7c9b0a0316e493cdf764a6d662203c97e9d5cf5a147e1dc9948491ec5f27551d82b64a600835ca18739516519203c0c8837f943034d44"));
+        "0x444a77f46f8da37b667c19df725b9ec4fbb9ba67e512dbed8e902fdecde5100a64bbdc90fb3a9e38ef2d52cf1d3a061d48765999d88c6db2c704244a91185705"));
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x14c8000eb81441eac3e9ac62ec475b3fe40bc88a1a88d4929ad974c61505ed7c9c7652b42744c081ca9388257e466970b724eb7f6c74a0eee58887157521f2af"));
+        "0x1935453249eaf3d3032633f170e515b06bb8327d3c95606c7cf9724bf592e9db227ef14558c0674c0365baa8a5291aa44a3e7fe6d5860c05585a2aed0e262e52"));
 
     // import agora.utils.Test;
     // import std.stdio;
@@ -1536,12 +1597,11 @@ private struct SCPEnvelopeHash
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xc0ad0386ca5a9653db928716d25447ea3e3adfa7fac386f566d73ec0adf3a1faa6626e5cee021115a2e40aa759ec869e2b881bb73d7fac4054e83fa21080eb7a"));
+        "0xf97a3cc4ad6420e1c79082627cc90fbc36af71e82500fb3bd40f5857571f8ce9f7e7c9a1e340bf225871bdf818f355362c5387f1775fa88c31228b7789861116"));
 }
 
 // Size assumptions made by this module
 unittest
 {
-    static assert(NodeID.sizeof == Hash.sizeof);
     static assert(StellarHash.sizeof == Hash.sizeof);
 }

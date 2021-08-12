@@ -19,6 +19,20 @@ import scpd.Cpp;
 import scpd.quorum.QuorumTracker;
 import scpd.types.Stellar_types;
 
+// Quorum intersection checker implementation
+// This method was originally implemented in C++ but 
+// since the changes to `NodeID` had to be moved to D.
+extern (C++, "_GLOBAL__N_1") {
+    extern class QuorumIntersectionCheckerImpl {
+        std_string nodeName (const NodeID node) const
+        {
+            import std.conv;
+            auto slice = node.to!string;
+            return sliceToStdString(slice.ptr, slice.length);
+        }
+    }
+}
+
 extern (C++, `stellar`):
 
 /// Ditto

@@ -531,7 +531,7 @@ class QuorumIntersectionCheckerImpl : public stellar::QuorumIntersectionChecker
     bool isMinimalQuorum(BitSet const& nodes) const;
     void noteFoundDisjointQuorums(BitSet const& nodes,
                                   BitSet const& disj) const;
-    std::string nodeName(size_t node) const;
+    std::string nodeName(const stellar::NodeID node) const;
 
     friend class MinQuorumEnumerator;
 

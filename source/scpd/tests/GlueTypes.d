@@ -43,7 +43,6 @@ alias TypesWithLayout = AliasSeq!
     SCPQuorumSet,
 
     /// scpd.types.Stellar_types
-    Hash,
 );
 
 /// For these types we cannot do layout checks as we require
@@ -55,7 +54,6 @@ alias TypesNoLayout = AliasSeq!
     Value,
     SCPStatementType,
     NodeID,
-    Signature,
 
     /// scpd.types.XDRBase
     xvector!Value,
