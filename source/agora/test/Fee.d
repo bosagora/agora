@@ -217,38 +217,3 @@ unittest
     auto bad_node = nodes[0];
     assert(bad_node.getBlockHeight() == Height(0));
 }
-
-// Fees from the previous block should not trigger a new block creation
-// where there is no TXs in the pool
-unittest
-{
-    import core.thread;
-
-    TestConf conf;
-    conf.consensus.payout_period = 1;
-    conf.consensus.quorum_threshold = 100;
-    auto network = makeTestNetwork!TestAPIManager(conf);
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-
-    // Get the genesis block, make sure it's the only block externalized
-    auto blocks = node_1.getBlocksFrom(0, 2);
-    assert(blocks.length == 1);
-
-    Transaction[] txs;
-    // create enough tx's for a single block
-    txs = blocks[$ - 1].spendable().map!(txb => txb
-        .deduct(Amount.UnitPerCoin).sign()).array();
-    // Send a single TX with fees to a node
-    node_1.putTransaction(txs[0]);
-    network.expectHeightAndPreImg(Height(1), blocks[0].header);
-
-    // The fees from the last block should not trigger a new block creation
-    Thread.sleep(1.seconds);
-    network.expectHeightAndPreImg(Height(1), blocks[0].header);
-}
