@@ -334,8 +334,10 @@ public class Ledger
                 expected_height, &this.fee_man.check)) !is null ||
             !this.pool.add(tx))
         {
-            log.info("Rejected tx. Reason: {}. Tx: {}",
-                reason !is null ? reason : "double-spend/coinbase", tx);
+            log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
+                reason !is null ? reason
+                    : tx.isCoinbase ? "Coinbase transaction" : "double-spend",
+                tx, tx.hashFull());
             return false;
         }
         // If we were looking for this TX, stop
