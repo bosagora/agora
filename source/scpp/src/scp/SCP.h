@@ -65,6 +65,10 @@ class SCP
     // Local nodeID getter
     NodeID const& getLocalNodeID();
 
+
+    // Change nodeID
+    void changeNodeID(NodeID const& id);
+
     // returns the local node descriptor
     std::shared_ptr<LocalNode> getLocalNode();
 

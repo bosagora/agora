@@ -90,6 +90,9 @@ nothrow:
     // Local nodeID getter
     ref const(NodeID) getLocalNodeID();
 
+    // Change nodeID
+    void changeNodeID(ref const(NodeID) id);
+
     // returns the local node descriptor
     //std::shared_ptr<LocalNode> getLocalNode();
     shared_ptr!LocalNode getLocalNode();

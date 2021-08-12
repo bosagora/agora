@@ -412,6 +412,12 @@ LocalNode::getNodeID()
     return mNodeID;
 }
 
+void
+LocalNode::changeNodeID(NodeID const& nodeID)
+{
+    mNodeID = nodeID;
+}
+
 bool
 LocalNode::isValidator()
 {
