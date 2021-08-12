@@ -20,7 +20,7 @@ namespace stellar
 class LocalNode
 {
   protected:
-    const NodeID mNodeID;
+    NodeID mNodeID;
     const bool mIsValidator;
     SCPQuorumSet mQSet;
     Hash mQSetHash;
@@ -36,6 +36,8 @@ class LocalNode
               SCPDriver& driver);
 
     NodeID const& getNodeID();
+
+    void changeNodeID(NodeID const& nodeID);
 
     void updateQuorumSet(SCPQuorumSet const& qSet);
 

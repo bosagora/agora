@@ -70,6 +70,12 @@ SCP::getLocalNodeID()
 }
 
 void
+SCP::changeNodeID(NodeID const& id)
+{
+    mLocalNode->changeNodeID(id);
+}
+
+void
 SCP::purgeSlots(uint64 maxSlotIndex)
 {
     auto it = mKnownSlots.begin();
