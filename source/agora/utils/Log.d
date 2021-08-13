@@ -382,6 +382,9 @@ public class PhobosFileAppender : Appender
     /// Append an event to the buffer
     public final override void append (LogEvent event)
     {
+        // We need the `file.flush()` to happen after the lockingTextWriter
+        // is destroyed (unlocking the file).
+        scope (exit) this.file.flush();
         scope writer = this.file.lockingTextWriter();
         this.layout.format(event,
             (cstring content)
