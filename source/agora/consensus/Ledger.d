@@ -233,19 +233,23 @@ public class Ledger
           height = Height at which to query the validator set.
                    Accurate results are only guaranteed for
                    `height <= this.getBlockHeight() + 1`.
+          empty = Whether to allow an empty return value.
+                  By default, this function will throw if there is no validators
+                  at `height`. If `true` is passed, it will not.
 
         Throws:
-          If no validators are present at height `height`.
+          If no validators are present at height `height` and `empty` is `false`.
 
         Returns:
             A list of validators that are active at `height`
 
     ***************************************************************************/
 
-    public ValidatorInfo[] getValidators (in Height height) scope @safe
+    public ValidatorInfo[] getValidators (in Height height, bool empty = false)
+        scope @safe
     {
         auto result = this.enroll_man.validator_set.getValidators(height);
-        ensure(result.length > 0,
+        ensure(empty || result.length > 0,
                "Ledger.getValidators didn't find any validator at height {}", height);
         return result;
     }

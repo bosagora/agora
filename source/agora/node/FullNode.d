@@ -1290,7 +1290,7 @@ public class FullNode : API
         this.recordReq("validators");
         if (height == 0)
             return null;
-        return this.ledger.getValidators(Height(height));
+        return this.ledger.getValidators(Height(height), true);
     }
 
     ///
