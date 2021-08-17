@@ -418,8 +418,9 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     public RemoteAPI!TestFlashListenerAPI createFlashListener (
         Listener : TestFlashListenerAPI)(string address)
     {
+        const string agora_address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
         RemoteAPI!TestFlashListenerAPI api
-            = RemoteAPI!TestFlashListenerAPI.spawn!Listener(5.seconds);
+            = RemoteAPI!TestFlashListenerAPI.spawn!Listener(this.agora_registry, agora_address, 5.seconds);
         this.listener_registry.register(address, api.listener());
         this.listener_addresses ~= address;
         this.listener_nodes ~= api;
@@ -503,10 +504,15 @@ private class FlashListener : TestFlashListenerAPI
     State[PublicKey][Hash] channel_state;
     ErrorCode[Invoice] invoices;
     LocalRestTaskManager taskman;
+    FullNodeAPI agora_node;
 
-    public this ()
+    public this (Registry!TestAPI* agora_registry, string agora_address)
     {
         this.taskman = new LocalRestTaskManager();
+
+        auto tid = agora_registry.locate(agora_address);
+        assert(tid != typeof(tid).init, "Agora node not initialized");
+        this.agora_node = new RemoteAPI!TestAPI(tid, 5.seconds);
     }
 
     public void onPaymentSuccess (PublicKey pk, Invoice invoice)
@@ -572,7 +578,24 @@ private class FlashListener : TestFlashListenerAPI
 
     public FeeUTXOs getFeeUTXOs (PublicKey pk, Amount amount)
     {
-        assert(0);
+        auto last_height = agora_node.getBlockHeight();
+
+        FeeUTXOs utxos;
+        do
+        {
+            const last_block = agora_node.getBlock(last_height);
+            foreach (tx; last_block.txs)
+            foreach (idx, output; tx.outputs)
+                if (output.address() == pk)
+                {
+                    utxos.utxos ~= UTXO.getHash(tx.hashFull(), idx);
+                    utxos.total_value += output.value;
+                }
+
+            last_height--;
+        } while (last_height > 0 && utxos.total_value < amount);
+
+        return utxos;
     }
 
     public Amount getEstimatedTxFee ()
