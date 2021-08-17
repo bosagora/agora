@@ -1126,8 +1126,8 @@ LOuter: while (1)
 
         if (update_pair_res.error)
         {
-            log.error("Couldn't sign incoming payment: {}. Error: {}",
-                payment, update_pair_res.message);
+            log.error("Couldn't sign incoming payment: {}. Error: {} Msg: {}",
+                payment, update_pair_res.error, update_pair_res.message);
             return;  // todo: anything else we can do here?
         }
 
@@ -1251,8 +1251,8 @@ LOuter: while (1)
 
         if (update_pair_res.error)
         {
-            log.error("Couldn't sign outgoing payment: {}. Error: {}",
-                payment, update_pair_res.message);
+            log.error("Couldn't sign outgoing payment: {}. Error: {} Msg: {}",
+                payment, update_pair_res.error, update_pair_res.message);
             this.onPaymentComplete(this.kp.address, this.conf.chan_id,
                 payment.payment_hash, update_pair_res.error);
             return true;  // remove it from the queue
