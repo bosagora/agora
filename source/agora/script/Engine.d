@@ -1116,7 +1116,8 @@ public class Engine
         const long input_idx = tx.inputs.countUntil(input);
         assert(input_idx != -1, "Input does not belong to this transaction");
 
-        const Hash challenge = getSequenceChallenge(tx, sequence, input_idx, sig.sig_hash);
+        const Hash challenge = getSequenceChallenge(tx, sequence, input_idx,
+            sig.output_idx, sig.sig_hash);
         sig_valid = pubkey.verify(sig.signature, challenge);
         return null;
     }
@@ -1137,10 +1138,10 @@ public class Engine
 *******************************************************************************/
 
 public Hash getSequenceChallenge (in Transaction tx, in ulong sequence,
-    in ulong input_idx, SigHash sig_hash = SigHash.NoInput) nothrow @safe
+    in ulong input_idx, in ulong output_idx = 0, SigHash sig_hash = SigHash.NoInput) nothrow @safe
 {
     assert(input_idx < tx.inputs.length, "Input index is out of range");
-    return hashMulti(tx.getChallenge(sig_hash, input_idx), sequence);
+    return hashMulti(tx.getChallenge(sig_hash, input_idx, output_idx), sequence);
 }
 
 version (unittest)
