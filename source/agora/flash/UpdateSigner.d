@@ -359,7 +359,7 @@ public class UpdateSigner
                 ~ " from {}: {}",
                 this.kp.address.flashPrettify, error, seq_id,
                 this.peer_pk.flashPrettify, settle_res.value);
-            return Result!UpdatePair(ErrorCode.InvalidSignature);
+            return Result!UpdatePair(ErrorCode.InvalidSignature, error);
         }
 
         log.info("{}: Settlement signature {} from {} validated",
@@ -407,7 +407,7 @@ public class UpdateSigner
                 this.kp.address.flashPrettify, error, seq_id,
                 this.peer_pk.flashPrettify, update_res.value);
 
-            return Result!UpdatePair(ErrorCode.InvalidSignature);
+            return Result!UpdatePair(ErrorCode.InvalidSignature, error);
         }
         this.pending_update.peer_sig = update_res.value;
         this.pending_update.validated = true;
