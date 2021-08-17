@@ -50,7 +50,7 @@ public GetoptResult parseCommandLine (ref CommandlineArgs cmdline_args, string[]
             "Port where the stats server will bind to (0 to disable), defaults to: " ~ to!string(CommandlineArgs.init.stats_port),
             &cmdline_args.stats_port,
         "verbose",
-        &cmdline_args.verbose,
+            &cmdline_args.verbose,
         );
 }
 
