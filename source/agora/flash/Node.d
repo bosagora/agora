@@ -41,6 +41,7 @@ import agora.flash.Scripts;
 import agora.flash.Types;
 import agora.network.Manager;
 import agora.script.Engine;
+import agora.script.Signature;
 import agora.registry.API;
 import agora.serialization.Serializer;
 import agora.utils.InetUtils;
@@ -709,12 +710,12 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     /// See `FlashAPI.requestCloseSig`
-    public override Result!Signature requestCloseSig (PublicKey sender_pk,
+    public override Result!SigPair requestCloseSig (PublicKey sender_pk,
         PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
         auto secret_key = recv_pk in this.managed_keys;
         if (secret_key is null)
-            return Result!Signature(ErrorCode.KeyNotRecognized,
+            return Result!SigPair(ErrorCode.KeyNotRecognized,
                 format("The provided key %s is not managed by this "
                 ~ "Flash node. Do you have the right address..?", recv_pk));
 
@@ -722,14 +723,14 @@ public abstract class FlashNode : FlashControlAPI
         if (auto channel = chan_id in *chans)
         {
             if (sender_pk != channel.peer_pk)
-                return Result!Signature(ErrorCode.KeyNotRecognized,
+                return Result!SigPair(ErrorCode.KeyNotRecognized,
                     format("Sender key does not belong to this channel: {}",
                         sender_pk));
 
             return channel.requestCloseSig(seq_id);
         }
 
-        return Result!Signature(ErrorCode.InvalidChannelID,
+        return Result!SigPair(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 

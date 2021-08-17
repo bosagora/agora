@@ -340,8 +340,15 @@ public Lock genKeyLock (in PublicKey key) pure nothrow @safe
 
 *******************************************************************************/
 
-public Unlock genKeyUnlock (in Signature sig, in SigHash sig_hash = SigHash.All) pure nothrow @safe
+public Unlock genKeyUnlock (in Signature sig) pure nothrow @safe
+{
+    // assume SigHash.All
+    return genKeyUnlock(SigPair(sig));
+}
+
+/// Ditto
+public Unlock genKeyUnlock (in SigPair sig) pure nothrow @safe
 {
     // must dupe because it's a value on the stack..
-    return Unlock(SigPair(sig, sig_hash)[].dup);
+    return Unlock(sig[].dup);
 }
