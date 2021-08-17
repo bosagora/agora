@@ -52,6 +52,15 @@ public struct SigPair
     /// Situational output index
     public ulong output_idx;
 
+    /// Ctor
+    this (Signature signature, SigHash sig_hash = SigHash.All, ulong output_idx = 0)
+        inout pure nothrow @safe @nogc
+    {
+        this.signature = signature;
+        this.sig_hash = sig_hash;
+        this.output_idx = output_idx;
+    }
+
     /***************************************************************************
 
         todo: unittest

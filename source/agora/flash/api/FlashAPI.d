@@ -23,6 +23,7 @@ import agora.flash.ErrorCode;
 import agora.flash.Invoice;
 import agora.flash.OnionPacket;
 import agora.flash.Types;
+import agora.script.Signature;
 
 import vibe.data.serialization;
 import vibe.http.common;
@@ -301,7 +302,7 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestCloseSig (PublicKey sender_pk,
+    public Result!SigPair requestCloseSig (PublicKey sender_pk,
         PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************

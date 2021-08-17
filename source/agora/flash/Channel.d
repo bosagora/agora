@@ -1938,11 +1938,11 @@ LOuter: while (1)
         this.pending_close.tx = createClosingTx(utxo, outputs);
 
         const nonce_pair_pk = priv_nonce.V + peer_nonce;
-        this.pending_close.our_sig = sign(this.kp.secret, this.conf.pair_pk,
-            nonce_pair_pk, priv_nonce.v, this.pending_close.tx.getChallenge());
+        this.pending_close.our_sig = SigPair(sign(this.kp.secret, this.conf.pair_pk,
+            nonce_pair_pk, priv_nonce.v, this.pending_close.tx.getChallenge(SigHash.All)));
 
         const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
-        Result!Signature sig_res = Result!Signature(ErrorCode.Unknown);
+        Result!SigPair sig_res = Result!SigPair(ErrorCode.Unknown);
 
         foreach (attempt; 0 .. uint.max)
         {
@@ -2076,25 +2076,25 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public Result!Signature requestCloseSig (in uint seq_id)
+    public Result!SigPair requestCloseSig (in uint seq_id)
     {
         if (this.state != ChannelState.StartedCollaborativeClose &&
             this.state != ChannelState.Closed)
-            return Result!Signature(ErrorCode.ChannelNotClosing,
+            return Result!SigPair(ErrorCode.ChannelNotClosing,
                 "Cannot request closing signature before issuing "
                 ~ "closeChannel() request");
 
         if (seq_id != this.cur_seq_id)
-            return Result!Signature(ErrorCode.InvalidSequenceID,
+            return Result!SigPair(ErrorCode.InvalidSequenceID,
                 format("requestCloseSig: expected seq_id: %s. Got: %s",
                     this.cur_seq_id, seq_id));
 
         // todo: handle this edge-case (can occur due to timing issues)
-        if (this.pending_close.our_sig == Signature.init)
-            return Result!Signature(ErrorCode.SigningInProcess,
+        if (this.pending_close.our_sig == SigPair.init)
+            return Result!SigPair(ErrorCode.SigningInProcess,
                 "Close signature not created yet, please try again later");
 
-        return Result!Signature(this.pending_close.our_sig);
+        return Result!SigPair(this.pending_close.our_sig);
     }
 
     /***************************************************************************
@@ -2118,11 +2118,16 @@ LOuter: while (1)
     ***************************************************************************/
 
     private string isInvalidCloseMultiSig (ref PendingClose close,
-        in Signature peer_sig, in Pair priv_nonce, in Point peer_nonce)
+        in SigPair peer_sig, in Pair priv_nonce, in Point peer_nonce)
     {
+        if (peer_sig.sig_hash != close.our_sig.sig_hash ||
+            peer_sig.output_idx != close.our_sig.output_idx)
+            return "Not matching SigPair from peer";
+
         const nonce_pair_pk = priv_nonce.V + peer_nonce;
-        const close_multi_sig = Signature(nonce_pair_pk,
-              close.our_sig.s + peer_sig.s);
+        const close_multi_sig = SigPair(Signature(nonce_pair_pk,
+              close.our_sig.signature.s + peer_sig.signature.s),
+              close.our_sig.sig_hash, close.our_sig.output_idx);
 
         Transaction close_tx
             = close.tx.serializeFull().deserializeFull!Transaction;
@@ -2275,10 +2280,10 @@ private struct PendingClose
     private Transaction tx;
 
     /// Our part of the multisig
-    private Signature our_sig;
+    private SigPair our_sig;
 
     /// The peer's part of the multisig
-    private Signature peer_sig;
+    private SigPair peer_sig;
 
     /// True if the multisig has been validated
     private bool validated;
