@@ -22,6 +22,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.flash.ErrorCode;
 import agora.serialization.Serializer;
+import agora.script.Signature;
 import agora.utils.Test;
 
 import std.conv;
@@ -104,7 +105,7 @@ public struct UpdatePair
     public Transaction update_tx;
 
     /// Our portion of the update multi-sig
-    public Signature our_update_sig;
+    public SigPair our_update_sig;
 }
 
 /// A pair of settlement and update public nonces used for signing

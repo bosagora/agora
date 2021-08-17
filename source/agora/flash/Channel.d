@@ -874,14 +874,14 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public Result!Signature onRequestUpdateSig (in uint seq_id)
+    public Result!SigPair onRequestUpdateSig (in uint seq_id)
     {
         if (seq_id < this.channel_updates.length)
-            return Result!Signature(this.channel_updates[seq_id].our_update_sig);
+            return Result!SigPair(this.channel_updates[seq_id].our_update_sig);
 
         const cur_seq_id = this.update_signer.getSeqID();
         if (seq_id != cur_seq_id)
-            return Result!Signature(ErrorCode.InvalidSequenceID,
+            return Result!SigPair(ErrorCode.InvalidSequenceID,
                 format("onRequestUpdateSig: expected seq_id: %s. Got: %s",
                     cur_seq_id, seq_id));
 

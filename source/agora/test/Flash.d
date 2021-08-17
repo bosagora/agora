@@ -1780,8 +1780,8 @@ unittest
     auto sig_res = alice.requestSettleSig(bob_pubkey, alice_pubkey, Hash.init, 0);
     assert(sig_res.error == ErrorCode.InvalidChannelID, sig_res.to!string);
 
-    sig_res = alice.requestUpdateSig(bob_pubkey, alice_pubkey, Hash.init, 0);
-    assert(sig_res.error == ErrorCode.InvalidChannelID, sig_res.to!string);
+    auto up_sig_res = alice.requestUpdateSig(bob_pubkey, alice_pubkey, Hash.init, 0);
+    assert(up_sig_res.error == ErrorCode.InvalidChannelID, up_sig_res.to!string);
 
     /*** test invalid payment proposals ***/
 
