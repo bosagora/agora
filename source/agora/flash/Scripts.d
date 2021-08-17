@@ -126,13 +126,11 @@ public Lock createFlashLock (uint age, Hash first_utxo, Point pair_pk,
 
 *******************************************************************************/
 
-public Unlock createUnlockUpdate (Signature sig, in ulong seq_id,
-    SigHash sig_hash = SigHash.NoInput) @safe nothrow
+public Unlock createUnlockUpdate (SigPair sig, in ulong seq_id) @safe nothrow
 {
     // remember it's LIFO when popping, TRUE is pushed last
     const seq_bytes = nativeToLittleEndian(seq_id);
-    return Unlock([ubyte(65)] ~ SigPair(sig, sig_hash)[] ~ toPushOpcode(seq_bytes)
-        ~ [ubyte(OP.TRUE)]);
+    return Unlock(toPushOpcode(sig[]) ~ toPushOpcode(seq_bytes) ~ [ubyte(OP.TRUE)]);
 }
 
 /*******************************************************************************

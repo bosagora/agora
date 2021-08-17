@@ -251,20 +251,20 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public Result!Signature getUpdateSig ()
+    public Result!SigPair getUpdateSig ()
     {
         // sharing the update signature prematurely can lead to funds being
         // permanently locked if the settlement signature is missing and the
         // update transaction is externalized.
         if (!this.pending_settle.validated)
-            return Result!Signature(ErrorCode.SettleNotReceived,
+            return Result!SigPair(ErrorCode.SettleNotReceived,
                 "Cannot share update signature until the settlement "
                 ~ "signature is received");
 
-        if (this.pending_update.our_sig != Signature.init)
-            return Result!Signature(this.pending_update.our_sig);
+        if (this.pending_update.our_sig != SigPair.init)
+            return Result!SigPair(this.pending_update.our_sig);
         else
-            return Result!Signature(ErrorCode.UpdateNotSigned);
+            return Result!SigPair(ErrorCode.UpdateNotSigned);
     }
 
     /***************************************************************************
@@ -368,7 +368,7 @@ public class UpdateSigner
         this.pending_settle.peer_sig = settle_res.value;
         this.pending_settle.validated = true;
 
-        Result!Signature update_res = Result!Signature(ErrorCode.Unknown);
+        Result!SigPair update_res = Result!SigPair(ErrorCode.Unknown);
         const update_fail_time = Clock.currTime()
             + this.flash_conf.max_retry_time;
         foreach (attempt; 0 .. uint.max)
@@ -466,7 +466,7 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    private Signature makeUpdateSig (in Transaction update_tx,
+    private SigPair makeUpdateSig (in Transaction update_tx,
         in PrivateNonce priv_nonce, in PublicNonce peer_nonce)
     {
         const nonce_pair_pk = priv_nonce.update.V + peer_nonce.update;
@@ -480,17 +480,17 @@ public class UpdateSigner
         // Note that an update tx with seq 0 do not exist.
         if (this.seq_id == 0)
         {
-            return sign(this.kp.secret, this.conf.pair_pk, nonce_pair_pk,
-                priv_nonce.update.v, update_tx.getChallenge());
+            return SigPair(sign(this.kp.secret, this.conf.pair_pk, nonce_pair_pk,
+                priv_nonce.update.v, update_tx.getChallenge()));
         }
         else
         {
             const update_key = getUpdateScalar(this.kp.secret,
                 this.conf.funding_tx_hash);
             const challenge_update = getSequenceChallenge(update_tx,
-                this.seq_id, 0);  // todo: should not be hardcoded
-            return sign(update_key, this.conf.update_pair_pk, nonce_pair_pk,
-                priv_nonce.update.v, challenge_update);
+                this.seq_id, 0, SigHash.NoInput);  // todo: should not be hardcoded
+            return SigPair(sign(update_key, this.conf.update_pair_pk, nonce_pair_pk,
+                priv_nonce.update.v, challenge_update), SigHash.NoInput);
         }
     }
 
@@ -645,12 +645,17 @@ public class UpdateSigner
     ***************************************************************************/
 
     private string isInvalidUpdateMultiSig (ref PendingUpdate update,
-        in Signature peer_sig, in PrivateNonce priv_nonce,
+        in SigPair peer_sig, in PrivateNonce priv_nonce,
         in PublicNonce peer_nonce, in UTXO prev_utxo)
     {
+        if (peer_sig.sig_hash != update.our_sig.sig_hash ||
+            peer_sig.output_idx != update.our_sig.output_idx)
+            return "Not matching SigPair from peer";
+
         const nonce_pair_pk = priv_nonce.update.V + peer_nonce.update;
-        const update_multi_sig = Signature(nonce_pair_pk,
-              update.our_sig.s + peer_sig.s);
+        const update_multi_sig = SigPair(Signature(nonce_pair_pk,
+              update.our_sig.signature.s + peer_sig.signature.s),
+              update.our_sig.sig_hash, update.our_sig.output_idx);
 
         Transaction update_tx
             = update.tx.serializeFull().deserializeFull!Transaction;
@@ -687,7 +692,7 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    private Unlock makeUpdateUnlock (Signature update_multi_sig)
+    private Unlock makeUpdateUnlock (SigPair update_multi_sig)
     {
         // if the current sequence is 0 then the update tx is a trigger tx that
         // only needs a multi-sig and does not require a sequence.
@@ -737,10 +742,10 @@ private struct PendingUpdate
     private Transaction tx;
 
     /// Our own signature
-    private Signature our_sig;
+    private SigPair our_sig;
 
     /// The counter-party's signature
-    private Signature peer_sig;
+    private SigPair peer_sig;
 
     /// Whether the two signatures above are valid, which means we can
     /// proceed to updating the channel balance state.

@@ -254,7 +254,7 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestUpdateSig (PublicKey sender_pk,
+    public Result!SigPair requestUpdateSig (PublicKey sender_pk,
         PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************
