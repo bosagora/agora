@@ -11,7 +11,7 @@
     "stringImportPaths" : [ "build" ],
     "excludedSourceFiles": [ "source/scpp/*.d", "source/scpd/quorum/QuorumIntersectionTests.d" ],
     "preGenerateCommands": [
-        "$DUB --verbose --single source/agora/cli/version/main.d || (sleep 5s && $DUB --verbose --single source/agora/cli/version/main.d)",
+        "$DUB --verbose --single scripts/version_gen.d || (sleep 5s && $DUB --verbose --single scripts/version_gen.d)",
         "$DUB --verbose --single source/scpp/build.d || (sleep 5s && $DUB --verbose --single source/scpp/build.d)"
     ],
     "sourceFiles-posix": [
@@ -76,7 +76,6 @@
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
-                "source/agora/cli/version/*",
                 "source/agora/test/*",
                 "source/agora/utils/gc/*"
             ]
@@ -133,7 +132,6 @@
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/client/*",
                 "source/agora/cli/vanity/*",
-                "source/agora/cli/version/*",
                 "source/agora/utils/gc/*"
             ]
         },
@@ -148,7 +146,6 @@
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
-                "source/agora/cli/version/*",
                 "source/agora/utils/gc/*"
             ]
         },
@@ -164,7 +161,6 @@
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
-                "source/agora/cli/version/*",
                 "source/agora/utils/gc/*"
             ]
         }

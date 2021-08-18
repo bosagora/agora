@@ -2,7 +2,7 @@
 /+
  dub.json:
  {
-     "name": "version_build"
+     "name": "version_gen"
  }
  +/
 /*******************************************************************************
@@ -23,7 +23,7 @@
 
 *******************************************************************************/
 
-module agora.cli.ver.main;
+module version_gen;
 
 import std.file : exists, mkdirRecurse, readText, write;
 import std.format;
@@ -35,7 +35,7 @@ import std.string;
 import core.stdc.stdlib : exit;
 
 private immutable VersionFileName = "VERSION";
-private immutable RootPath = __FILE_FULL_PATH__.dirName.dirName.dirName.dirName.dirName;
+private immutable RootPath = __FILE_FULL_PATH__.dirName.dirName;
 private immutable VersionFileDir = RootPath.buildPath("build");
 private immutable VersionFilePath = VersionFileDir.buildPath(VersionFileName);
 private immutable EnvVersionName = "AGORA_VERSION";
