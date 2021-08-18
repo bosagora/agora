@@ -2,7 +2,7 @@
 /+
  dub.json:
  {
-     "name": "version_build"
+     "name": "version_gen"
  }
  +/
 /*******************************************************************************
@@ -23,7 +23,7 @@
 
 *******************************************************************************/
 
-module agora.cli.ver.main;
+module version_gen;
 
 import std.file : exists, mkdirRecurse, readText, write;
 import std.format;
