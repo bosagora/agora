@@ -22,10 +22,6 @@ import agora.stats.Registry;
 import agora.stats.Utils;
 import agora.utils.Log;
 
-import vibe.core.core;
-import vibe.http.common;
-import vibe.web.rest;
-
 mixin AddLogger!();
 
 /// Implementation of `NameRegistryAPI` using associative arrays
