@@ -15,7 +15,7 @@
 *.exe
 build/
 tracy_build
-source/agora/cli/version/version_build
+scripts/version_get
 source/scpp/cpp_build
 
 # DUB
