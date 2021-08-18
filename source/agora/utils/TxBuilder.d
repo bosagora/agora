@@ -320,8 +320,8 @@ public struct TxBuilder
         foreach (ref o; this.data.outputs)
             o.type = outputs_type;
 
-        // Add the refund output if needed
-        if (this.leftover.value > Amount(0))
+        // Add the refund output if needed and only if more than min threshold to prevent very small change outputs
+        if (this.leftover.value > MinRefundAmount)
         {
             if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
                 this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
