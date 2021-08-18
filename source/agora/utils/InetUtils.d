@@ -41,11 +41,24 @@ public enum HostType : ubyte
     Domain,
 }
 
-///
-mixin template AddGetAllIPs()
+struct InetUtils
 {
-    public static string[] getAllIPs()
+    version (Posix) public static string[] getAllIPs()
     {
+        import core.sys.posix.netdb;
+
+        version (OSX)
+        {
+            import core.sys.darwin.ifaddrs;
+            import core.sys.posix.netinet.in_;
+            import core.sys.posix.sys.socket;
+        }
+        version (linux)
+        {
+            import core.sys.linux.ifaddrs;
+            import core.sys.posix.netdb;
+        }
+
         string[] ips;
 
         ifaddrs* if_address_head_poi;
@@ -77,26 +90,7 @@ mixin template AddGetAllIPs()
 
         return ips;
     }
-}
 
-struct InetUtils
-{
-version (OSX)
-{
-    import core.sys.darwin.ifaddrs;
-    import core.sys.posix.netdb;
-    import core.sys.posix.netinet.in_;
-    import core.sys.posix.sys.socket;
-
-    mixin AddGetAllIPs;
-}
-version (linux)
-{
-    import core.sys.linux.ifaddrs;
-    import core.sys.posix.netdb;
-
-    mixin AddGetAllIPs;
-}
 version (Windows)
 {
     import std.socket;
