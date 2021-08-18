@@ -51,7 +51,7 @@
             "sourceFiles-windows": [
                 "build/TracyClient.obj"
             ],
-            "excludedSourceFiles": ["source/agora/cli/*", "source/agora/registry/main.d"]
+            "excludedSourceFiles": ["source/agora/cli/*"]
         },
         {
             "name": "name-registry",
@@ -59,7 +59,6 @@
             "mainSourceFile": "source/agora/registry/main.d",
             "excludedSourceFiles": [
                 "source/agora/cli/*",
-                "source/agora/node/main.d",
                 "source/agora/utils/gc/*"
             ]
         },
@@ -86,7 +85,6 @@
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
-                "source/agora/registry/main.d",
                 "source/agora/test/*",
                 "source/agora/utils/gc/*"
             ]
@@ -96,7 +94,6 @@
             "targetName": "agora-unittests",
             "excludedSourceFiles": [
                 "source/agora/cli/*/main.d",
-                "source/agora/registry/main.d",
                 "source/agora/utils/gc/*"
             ],
             "sourceFiles-posix": [
@@ -123,8 +120,6 @@
                 "source/agora/cli/client/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
-                "source/agora/node/main.d",
-                "source/agora/registry/main.d",
                 "source/agora/utils/gc/*"
             ]
         },
@@ -140,8 +135,6 @@
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
-                "source/agora/node/main.d",
-                "source/agora/registry/main.d",
                 "source/agora/utils/gc/*"
             ]
         },
@@ -158,8 +151,6 @@
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
-                "source/agora/node/main.d",
-                "source/agora/registry/main.d",
                 "source/agora/utils/gc/*"
             ]
         }
