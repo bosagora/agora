@@ -320,8 +320,8 @@ public struct TxBuilder
         foreach (ref o; this.data.outputs)
             o.type = outputs_type;
 
-        // Add the refund output if needed
-        if (this.leftover.value > Amount(0))
+        // Add the refund output if needed and only if more than min threshold to prevent very small change outputs
+        if (this.leftover.value > MinRefundAmount)
         {
             if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
                 this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
@@ -491,6 +491,10 @@ public struct TxBuilder
         return this;
     }
 
+    /// Any refund less than this amount will not create a refund output but be
+    /// left to be included as fees.
+    private const MinRefundAmount = Amount(500_000);
+
     /// Refund output for the transaction
     private Output leftover;
 
@@ -554,22 +558,21 @@ unittest
     assert(resTx2.outputs.all!(val => val.value == ExpectedAmount2));
 }
 
-/// Test with remainder
+/// Test with small remainder
 unittest
 {
     const result = TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(3))
         .sign();
 
-    // This transaction has 4 txs (3 targets + 1 refund)
+    // This transaction has 3 outputs as change is too small for refund
     assert(result.inputs.length == 8);
     assert(result.inputs.isSorted);
-    assert(result.outputs.length == 4);
+    assert(result.outputs.length == 3);
     assert(result.outputs.isSorted);
 
     // 488M / 3
     assert(result.outputs.count!(o => o.value == Amount(162_666_666_6666_666L)) == 3);
-    assert(result.outputs.count!(o => o.value == Amount(2)) == 1); // left over chance
 }
 
 /// Test with one output key
@@ -594,7 +597,7 @@ unittest
     const result = TxBuilder(GenesisBlock.payments.front)
         // Refund needs to be called first as it resets the outputs
         .refund(WK.Keys.Z.address)
-        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+        .draw(Amount(62_666_666_6666_666L), WK.Keys.byRange.map!(k => k.address).take(3))
         .sign();
 
     // This transaction has 4 txs (3 targets + 1 refund)
@@ -602,10 +605,10 @@ unittest
     assert(result.outputs.length == 4);
 
     assert(result.outputs == [
-        Output(Amount(2), WK.Keys.Z.address),
-        Output(Amount(162_666_666_6666_666L), WK.Keys.A.address),
-        Output(Amount(162_666_666_6666_666L), WK.Keys.C.address),
-        Output(Amount(162_666_666_6666_666L), WK.Keys.D.address),
+        Output(Amount(62_666_666_6666_666L), WK.Keys.A.address),
+        Output(Amount(62_666_666_6666_666L), WK.Keys.C.address),
+        Output(Amount(62_666_666_6666_666L), WK.Keys.D.address),
+        Output(Amount(300_000_000_0000_002L), WK.Keys.Z.address),
     ].sort.array);
 }
 
@@ -613,10 +616,10 @@ unittest
 unittest
 {
     Output[4] outs = [
-        Output(Amount(100), WK.Keys.A.address),
-        Output(Amount(200), WK.Keys.C.address),
-        Output(Amount(300), WK.Keys.D.address),
-        Output(Amount(400), WK.Keys.E.address),
+        Output(Amount(1_000_000), WK.Keys.A.address),
+        Output(Amount(2_000_000), WK.Keys.C.address),
+        Output(Amount(3_000_000), WK.Keys.D.address),
+        Output(Amount(4_000_000), WK.Keys.E.address),
     ];
 
     // The hash is incorrect (it's not a proper UTXO hash)
@@ -626,7 +629,7 @@ unittest
 
     assert(result.inputs.length == 4);
     assert(result.outputs.length == 1);
-    assert(result.outputs[0] == Output(Amount(1000), WK.Keys.F.address));
+    assert(result.outputs[0] == Output(Amount(10_000_000), WK.Keys.F.address));
 }
 
 ///
@@ -644,7 +647,7 @@ unittest
 unittest
 {
     const result = TxBuilder(GenesisBlock.payments.front)
-        .split(WK.Keys.byRange.map!(k => k.address).take(3))
+        .draw(Amount.UnitPerCoin * 50_000, WK.Keys.byRange.map!(k => k.address).take(3))
         .sign(OutputType.Freeze);
 
     // This transaction has 4 outputs (3 freeze + 1 refund)
@@ -652,10 +655,12 @@ unittest
     assert(result.outputs.length == 4);
 
     // 488M / 3
-    assert(result.outputs.count!(o =>
-        o.value == Amount(162_666_666_6666_666L) && o.type == OutputType.Freeze) == 3);
-    assert(result.outputs.count!(o =>
-        o.value == Amount(2) && o.type == OutputType.Payment) == 1); // left over change
+    assert(result.outputs == [
+        Output(Amount(50_000_0000_000L), WK.Keys.A.address, OutputType.Freeze),
+        Output(Amount(50_000_0000_000L), WK.Keys.C.address, OutputType.Freeze),
+        Output(Amount(50_000_0000_000L), WK.Keys.D.address, OutputType.Freeze),
+        Output(Amount(487_850_000_0000_000L), WK.Keys.Genesis.address),
+    ].sort.array);
 }
 
 /*******************************************************************************
