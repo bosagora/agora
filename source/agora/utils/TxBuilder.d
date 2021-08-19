@@ -78,6 +78,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.script.Lock;
 import agora.script.Opcodes;
+import agora.script.Script: toPushOpcode;
 import agora.script.Signature;
 /* version (unittest) */ import agora.utils.Test;
 
@@ -253,6 +254,16 @@ public struct TxBuilder
         return this;
     }
 
+    /// Sign with a given key and append ubytes if given
+    public static Unlock signWithSpecificKey (KeyPair key, ubyte[] append = null) (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow
+    {
+        auto pair = SigPair(key.sign(tx.getChallenge()), SigHash.All);
+        if (append)
+            return Unlock(toPushOpcode(pair[]) ~ append);
+        return Unlock(toPushOpcode(pair[]));
+    }
+
     // Uses a random nonce when signing (non-determenistic signature),
     // and defaults to LockType.Key
     private static Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
@@ -323,66 +334,6 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    // Temnporarily kept for Faucet compatibility
-    deprecated("Use the new sign overload after setting unlockSigner")
-    public Transaction sign (
-        in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0,
-        Unlock delegate (in Transaction tx, in OutputRef out_ref) @safe nothrow
-        faucet_unlocker = null) @safe nothrow
-    {
-        assert(this.inputs.length, "Cannot sign input-less transaction");
-        assert(this.data.outputs.length || this.leftover.value > Amount(0),
-               "Output-less transactions are not valid");
-
-        // To enable Faucet until updated to use Function keyUnlocker above
-        Unlock deprecatedKeyUnlocker (in Transaction tx, in OutputRef out_ref)
-            @safe nothrow
-        {
-            auto ownerKP = WK.Keys[out_ref.output.address];
-            assert(ownerKP !is KeyPair.init,
-                    "Address not found in Well-Known keypairs: "
-                    ~ out_ref.output.address.toString());
-
-            return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
-        }
-
-        if (faucet_unlocker is null)
-            faucet_unlocker = &deprecatedKeyUnlocker;
-
-        // First we sort the OutputRefs as later we set the unlock by index
-        this.inputs.sort;
-        // Add the inputs with just their unlocks to be added
-        // (unlock is not part of Transaction hash but we need transaction hash to create the unlock)
-        this.inputs.each!(o => this.data.inputs ~= Input(o.hash, Unlock.init, unlock_age));
-
-        assert(this.data.inputs.isStrictlyMonotonic);
-
-        foreach (ref o; this.data.outputs)
-            o.type = outputs_type;
-
-        // Add the refund output if needed and only if more than min threshold to prevent very small change outputs
-        if (this.leftover.value > MinRefundAmount)
-        {
-            if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
-                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Freeze) ];
-            else
-                this.data.outputs = [ Output(this.leftover.value, this.leftover.lock, OutputType.Payment) ] ~ this.data.outputs;
-        }
-        this.data.outputs.sort;
-
-        // Sign all inputs using unlocker
-        foreach (idx, ref in_; this.inputs)
-            this.data.inputs[idx].unlock = faucet_unlocker(this.data, in_);
-
-        // Reset ready for next time
-        this.inputs = null;
-        this.leftover = Output.init;
-        // Reset transaction if it is returned successfully
-        scope (success) this.data = Transaction.init;
-        return this.data;
-    }
-
-    /// Ditto
     public Transaction sign (
         in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0) @safe nothrow
     {
