@@ -58,6 +58,7 @@ public struct SigPair
     {
         this.signature = signature;
         this.sig_hash = sig_hash;
+        assert(isValidSigHash(this.sig_hash));
         this.output_idx = output_idx;
     }
 

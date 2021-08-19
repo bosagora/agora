@@ -14,6 +14,7 @@
 module agora.flash.Channel;
 
 import agora.flash.api.FlashAPI;
+import agora.flash.api.FlashListenerAPI;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.OnionPacket;
@@ -117,6 +118,11 @@ public class Channel
     /// Retry delay algorithm
     private Backoff backoff;
 
+    /// Called when a channel update has been completed.
+    private alias GetFeeUTXOs = FeeUTXOs delegate (PublicKey pk,
+        ulong tx_size);
+    /// Ditto
+    private GetFeeUTXOs getFeeUTXOs;
 
     /***************************************************************************
 
@@ -136,6 +142,7 @@ public class Channel
             txPublisher = used to publish transactions to the Agora network.
             paymentRouter = used to forward HTLCs to the next hop
             onUpdateComplete = called when a channel update has completed
+            getFeeUTXOs = called to get UTXOs for on-chain fees
             db = the database to dump the channel metadata to
 
     ***************************************************************************/
@@ -148,6 +155,7 @@ public class Channel
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete,
+        GetFeeUTXOs getFeeUTXOs,
         ManagedDatabase db)
     {
         this.flash_conf = flash_conf;
@@ -168,6 +176,7 @@ public class Channel
         this.onChannelNotify = onChannelNotify;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
+        this.getFeeUTXOs = getFeeUTXOs;
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
             this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
@@ -193,6 +202,7 @@ public class Channel
             txPublisher = used to publish transactions to the Agora network.
             paymentRouter = used to forward HTLCs to the next hop
             onUpdateComplete = called when a channel update has completed
+            getFeeUTXOs = called to get UTXOs for on-chain fees
             db = the database to load the channel metadata from
             getFlashClient = delegate to get the FlashAPI client from
 
@@ -205,6 +215,7 @@ public class Channel
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete,
+        GetFeeUTXOs getFeeUTXOs,
         FlashAPI delegate (in PublicKey peer_pk, Duration timeout) getFlashClient,
         ManagedDatabase db)
     {
@@ -222,6 +233,7 @@ public class Channel
         this.onChannelNotify = onChannelNotify;
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
+        this.getFeeUTXOs = getFeeUTXOs;
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
             this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
@@ -244,6 +256,7 @@ public class Channel
             txPublisher = used to publish transactions to the Agora network.
             paymentRouter = used to forward HTLCs to the next hop
             onUpdateComplete = called when a channel update has completed
+            getFeeUTXOs = called to get UTXOs for on-chain fees
 
         Returns:
             a map of any loaded channels
@@ -257,7 +270,8 @@ public class Channel
         void delegate (Transaction) txPublisher, PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
-        OnUpdateComplete onUpdateComplete )
+        OnUpdateComplete onUpdateComplete,
+        GetFeeUTXOs getFeeUTXOs)
     {
         Channel[Hash][PublicKey] channels;
 
@@ -272,7 +286,7 @@ public class Channel
             const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(1));
             channels[key][chan_id] = new Channel(key, chan_id, flash_conf, engine,
                 taskman, txPublisher, paymentRouter, onChannelNotify,
-                onPaymentComplete, onUpdateComplete, getFlashClient, db);
+                onPaymentComplete, onUpdateComplete, getFeeUTXOs, getFlashClient, db);
         }
 
         return channels;
@@ -743,13 +757,7 @@ LOuter: while (1)
         }
         else
         {
-            // publish latest update
-            auto update_tx = this.channel_updates[$ - 1].update_tx;
-            // point the input to the last update utxo
-            update_tx.inputs[0].utxo = this.last_externalized_update_utxo;
-            log.info("{}: Publishing latest update tx {}: {}",
-                this.kp.address.flashPrettify, this.channel_updates.length, update_tx.hashFull().flashPrettify);
-            this.txPublisher(cast()update_tx);
+            this.publishUpdateTx(this.channel_updates[$ - 1]);
         }
     }
 
@@ -1833,12 +1841,7 @@ LOuter: while (1)
         this.taskman.setTimer(100.msecs,
         {
             // publish trigger tx. onUpdateTxExternalized() will handle the rest.
-            auto trigger_tx = this.channel_updates[0].update_tx;
-            log.info("{}: Publishing trigger tx: {}",
-                this.kp.address.flashPrettify,
-                trigger_tx.hashFull().flashPrettify);
-            this.txPublisher(trigger_tx);
-
+            this.publishUpdateTx(this.channel_updates[0]);
             this.onChannelNotify(this.kp.address, this.conf.chan_id,
                 ChannelState.StartedUnilateralClose, ErrorCode.None);
         });
@@ -2225,6 +2228,58 @@ LOuter: while (1)
         return this.last_update;
     }
 
+    /***************************************************************************
+
+        Prepare the update TX and publish
+
+        Params:
+            update = update to be published
+
+    ***************************************************************************/
+
+    protected Transaction publishUpdateTx (in UpdatePair update)
+    {
+        auto update_tx = update.update_tx.serializeFull.deserializeFull!Transaction();
+        assert(update_tx.inputs.length == 1);
+        assert(update_tx.outputs.length == 1);
+
+        // point the input to the last update utxo if not trigger TX
+        if (this.last_externalized_update_utxo != Hash.init && update.seq_id != 0)
+            update_tx.inputs[0].utxo = this.last_externalized_update_utxo;
+
+        auto update_input = update_tx.inputs[0];
+        auto update_ouput = update_tx.outputs[0];
+
+        auto utxos = this.getFeeUTXOs(this.kp.address, update_tx.sizeInBytes());
+        update_tx.inputs ~= utxos.utxos.map!(hash => Input(hash)).array;
+        update_tx.inputs.sort();
+
+        // check for refund amount
+        if (utxos.total_value > 0.coins)
+            update_tx.outputs ~= [Output(utxos.total_value, this.kp.address)];
+        update_tx.outputs.sort();
+
+        auto output_idx = update_tx.outputs.countUntil(update_ouput);
+        auto input_idx = update_tx.inputs.countUntil(update_input);
+
+        // update output_idx of the multi-sig, since it might have changed after sorting the outputs
+        auto multi_sig = update.multi_update_sig.serializeFull.deserializeFull!SigPair();
+        multi_sig.output_idx = output_idx;
+
+        auto fee_sig = SigPair(this.kp.sign(update_tx.getChallenge()));
+        // update input unlocks
+        foreach (idx; 0..update_tx.inputs.length)
+            if (idx == input_idx)
+                update_tx.inputs[idx].unlock = this.update_signer.makeUpdateUnlock(multi_sig, update.seq_id);
+            else
+                update_tx.inputs[idx].unlock = genKeyUnlock(fee_sig);
+
+        log.info("{}: Publishing update tx {}: {}",
+            this.kp.address.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify);
+        this.txPublisher(update_tx);
+        return update_tx;
+    }
+
     version (unittest)
     public void waitForUpdateIndex (in uint index)
     {
@@ -2247,13 +2302,7 @@ LOuter: while (1)
             this.taskman.wait(100.msecs);
 
         assert(index < this.channel_updates.length);
-        auto update_tx = this.channel_updates[index].update_tx;
-        if (this.last_externalized_update_utxo != Hash.init)
-            update_tx.inputs[0].utxo = this.last_externalized_update_utxo;
-        log.info("{}: Publishing update tx index {}: {}",
-            this.kp.address.flashPrettify, index, update_tx.hashFull().flashPrettify);
-        this.txPublisher(cast()update_tx);
-        return cast()update_tx;
+        return this.publishUpdateTx(this.channel_updates[index]);
     }
 
     version (unittest)

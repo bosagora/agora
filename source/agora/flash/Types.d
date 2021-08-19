@@ -106,6 +106,9 @@ public struct UpdatePair
 
     /// Our portion of the update multi-sig
     public SigPair our_update_sig;
+
+    /// Our portion of the update multi-sig
+    public SigPair multi_update_sig;
 }
 
 /// A pair of settlement and update public nonces used for signing
