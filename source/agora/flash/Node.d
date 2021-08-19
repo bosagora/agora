@@ -180,7 +180,8 @@ public abstract class FlashNode : FlashControlAPI
             &this.getFlashClient, engine, taskman,
             &this.putTransaction, &this.paymentRouter,
             &this.onChannelNotify,
-            &this.onPaymentComplete, &this.onUpdateComplete);
+            &this.onPaymentComplete, &this.onUpdateComplete,
+            &this.getFeeUTXOs);
 
         this.network = new Network((Hash chan_id, Point from) {
             if (auto updates = chan_id in this.channel_updates)
@@ -591,7 +592,8 @@ public abstract class FlashNode : FlashControlAPI
         auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, peer_nonce, peer, this.engine, this.taskman,
             &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
-            &this.onPaymentComplete, &this.onUpdateComplete, this.db);
+            &this.onPaymentComplete, &this.onUpdateComplete,  &this.getFeeUTXOs,
+            this.db);
 
         this.channels[recv_pk][chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
@@ -1194,7 +1196,7 @@ public abstract class FlashNode : FlashControlAPI
         auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, result.value, peer, this.engine, this.taskman,
             &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
-            &this.onPaymentComplete, &this.onUpdateComplete, this.db);
+            &this.onPaymentComplete, &this.onUpdateComplete, &this.getFeeUTXOs, this.db);
         this.channels[reg_pk][chan_conf.chan_id] = channel;
     }
 
@@ -1292,6 +1294,19 @@ public abstract class FlashNode : FlashControlAPI
             return false;
 
         return true;
+    }
+
+    ///
+    protected FeeUTXOs getFeeUTXOs (PublicKey pk, ulong tx_size)
+    {
+        auto per_byte = this.listener.getEstimatedTxFee();
+        if(!per_byte.mul(tx_size))
+            return FeeUTXOs.init;
+        auto utxos = this.listener.getFeeUTXOs(pk, per_byte);
+        // reuse total_value as refund amount
+        if (!utxos.total_value.sub(per_byte))
+            utxos.total_value = Amount(0);
+        return utxos;
     }
 }
 

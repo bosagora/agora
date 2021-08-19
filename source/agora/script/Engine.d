@@ -168,8 +168,7 @@ public class Engine
             if (auto reason = decodeSignature(unlock.bytes, sig_pair, pop_count))
                 return "LockType.Key " ~ reason;
 
-            if (!this.isValidSignature(key, sig_pair.sig_hash,
-                sig_pair.signature, tx, input))
+            if (!this.isValidSignature(key, sig_pair, tx, input))
                 return "LockType.Key signature in unlock script failed validation";
 
             break;
@@ -195,8 +194,7 @@ public class Engine
             if (hashFull(key) != key_hash)
                 return "LockType.KeyHash hash of key does not match key hash set in lock script";
 
-            if (!this.isValidSignature(key, sig_pair.sig_hash, sig_pair.signature,
-                tx, input))
+            if (!this.isValidSignature(key, sig_pair, tx, input))
                 return "LockType.KeyHash signature in unlock script failed validation";
 
             break;
@@ -778,8 +776,7 @@ public class Engine
         if (auto reason = decodeSignature(sig_bytes, sig_pair, pop_count))
             return opcode ~ " " ~ reason;
 
-        sig_valid = this.isValidSignature(point, sig_pair.sig_hash,
-            sig_pair.signature, tx, input);
+        sig_valid = this.isValidSignature(point, sig_pair, tx, input);
         return null;
     }
 
@@ -803,18 +800,21 @@ public class Engine
 
     ***************************************************************************/
 
-    private bool isValidSignature (in PublicKey key, in SigHash sig_hash,
-        in Signature sig, in Transaction tx, in Input input = Input.init)
+    private bool isValidSignature (in PublicKey key, in SigPair sig_pair,
+        in Transaction tx, in Input input = Input.init)
         nothrow @safe // @nogc  // serializing allocates
     {
         // workaround: input index not explicitly passed in
         import std.algorithm : countUntil;
         const long input_idx = tx.inputs.countUntil(input);
-        if (sig_hash != SigHash.All)
+        if (sig_pair.sig_hash != SigHash.All)
             assert(input_idx != -1, "Input does not belong to this transaction");
 
-        const challenge = getChallenge(tx, sig_hash, input_idx);
-        return verify(key, sig, challenge);
+        if (sig_pair.output_idx >= tx.outputs.length)
+            return false;
+
+        const challenge = getChallenge(tx, sig_pair.sig_hash, input_idx, sig_pair.output_idx);
+        return verify(key, sig_pair.signature, challenge);
     }
 
     /***************************************************************************
@@ -996,8 +996,7 @@ public class Engine
         // compare with.
         while (sigs.length > 0 && sigs.length <= keys.length)
         {
-            if (this.isValidSignature(keys.front,
-                sigs.front.sig_hash, sigs.front.signature, tx))
+            if (this.isValidSignature(keys.front, sigs.front, tx))
                 sigs.popFront();
             keys.popFront();
         }

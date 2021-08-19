@@ -446,6 +446,7 @@ public class UpdateSigner
             our_settle_sig : this.pending_settle.our_sig,
             update_tx : this.pending_update.tx,
             our_update_sig : this.pending_update.our_sig,
+            multi_update_sig : this.pending_update.multi_sig,
         };
 
         return Result!UpdatePair(pair);
@@ -664,7 +665,7 @@ public class UpdateSigner
         Transaction update_tx
             = update.tx.serializeFull().deserializeFull!Transaction;
 
-        const Unlock update_unlock = this.makeUpdateUnlock(update_multi_sig);
+        const Unlock update_unlock = this.makeUpdateUnlock(update_multi_sig, this.seq_id);
         update_tx.inputs[0].unlock = update_unlock;
         const lock = prev_utxo.output.lock;
 
@@ -675,6 +676,7 @@ public class UpdateSigner
             return error;
 
         update.tx = update_tx;
+        update.multi_sig = update_multi_sig;
         return null;
     }
 
@@ -696,15 +698,14 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    private Unlock makeUpdateUnlock (SigPair update_multi_sig)
+    public Unlock makeUpdateUnlock (SigPair update_multi_sig, uint seq_id)
     {
         // if the current sequence is 0 then the update tx is a trigger tx that
         // only needs a multi-sig and does not require a sequence.
         // an update tx with seq 0 do not exist.
-        if (this.seq_id == 0)
+        if (seq_id == 0)
             return genKeyUnlock(update_multi_sig);
-        else
-            return createUnlockUpdate(update_multi_sig, this.seq_id);
+        return createUnlockUpdate(update_multi_sig, seq_id);
     }
 
     /***************************************************************************
@@ -754,6 +755,9 @@ private struct PendingUpdate
     /// Whether the two signatures above are valid, which means we can
     /// proceed to updating the channel balance state.
     private bool validated;
+
+    /// Combined signature
+    private SigPair multi_sig;
 }
 
 /// All the update signer metadata which we keep in the DB for storage
