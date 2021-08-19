@@ -1948,7 +1948,10 @@ public struct TestConf
     /// How often the validator should try to catchup for the preimages for the
     /// next block
     /// Matches the eponymous field in the `validator` section.
-    public Duration preimage_catchup_interval = 100.seconds;
+    public Duration preimage_catchup_interval = 100.msecs;
+
+    /// How often the validator should check for preimages to reveal
+    public Duration preimage_reveal_interval = 100.msecs;
 
     /// max failed requests before a node is banned
     /// Matches the eponymous field in the `banman` section.
@@ -1968,9 +1971,9 @@ public struct TestConf
         block_catchup_interval: 1.seconds,
 
         // The default is much longer, but in unittests latency is negligible
-        retry_delay: 300.msecs,
-        timeout: 300.msecs,
-        max_retries: 10,
+        retry_delay: 50.msecs,
+        timeout: 100.msecs,
+        max_retries: 20,
 
         // Always set to true, cannot be overriden, but also set here for clarity
         testing: true,
@@ -2113,7 +2116,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             addresses_to_register : [self_address],
             registry_address : "name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
-            preimage_reveal_interval : 1.seconds,  // check revealing frequently
+            preimage_reveal_interval : test_conf.preimage_reveal_interval,
             nomination_interval: 100.msecs,
             preimage_catchup_interval: test_conf.preimage_catchup_interval,
             cycle_seed : cycle_seed,
