@@ -28,11 +28,12 @@ import std.algorithm.iteration : splitter;
 import std.algorithm.searching : endsWith;
 import std.socket;
 
-mixin AddLogger!();
-
 /// Implementation of `NameRegistryAPI` using associative arrays
 public final class NameRegistry: NameRegistryAPI
 {
+    /// Logger instance
+    protected Logger log;
+
     ///
     private RegistryPayload[PublicKey] registry_map;
 
@@ -42,6 +43,7 @@ public final class NameRegistry: NameRegistryAPI
     ///
     public this ()
     {
+        this.log = Logger(__MODULE__);
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
     }
 
