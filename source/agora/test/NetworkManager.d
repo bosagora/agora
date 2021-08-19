@@ -178,13 +178,6 @@ unittest
     node_bad.clearFilter();
     node_validators.each!(node => node.clearFilter());
 
-    // The testing time decreases compared to the last code because setting
-    // seeds to the `PreImageCycle`s make it unnecessary to generate kind of
-    // large number seeds. So we have to add some preparation time to this
-    // network test like this.
-    // TODO: We should find why this is needed and remove this waiting time.
-    Thread.sleep(10.seconds);
-
     // node test will accept its blocks from node_validator,
     // as the blocks in node_bad do not pass validation
     network.assertSameBlocks(iota(GenesisValidators + 1), Height(2));
