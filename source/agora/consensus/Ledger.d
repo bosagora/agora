@@ -1569,8 +1569,8 @@ public class ValidatingLedger : Ledger
         Transaction[] externalized_tx_set;
         if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
         {
-            log.info("Missing TXs, can not create new block at Height {} : {}",
-                next_block, prettify(data));
+            log.info("Ledger.externalize, can not create new block at Height {} : {}. Fail reason : {}",
+                next_block, data.prettify, fail_reason);
             return false;
         }
         const block = makeNewTestBlock(this.last_block,
