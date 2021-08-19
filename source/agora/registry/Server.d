@@ -66,7 +66,11 @@ public final class NameRegistry: NameRegistryAPI
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
         if (auto payload = public_key in registry_map)
+        {
+            log.trace("Successfull GET /validator: {} => {}", public_key, *payload);
             return *payload;
+        }
+        log.trace("Unsuccessfull GET /validators: {}", public_key);
         return RegistryPayload.init;
     }
 
@@ -143,6 +147,9 @@ public final class NameRegistry: NameRegistryAPI
             }
             reply.answers ~= answer;
         }
+        log.trace("{} DNS query: {} => {}",
+                  (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
+                  query, reply);
         return reply.fill(query.header);
     }
 
