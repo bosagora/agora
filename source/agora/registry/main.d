@@ -30,13 +30,13 @@ import std.getopt;
 import std.stdio;
 
 ///
-private int main (string[] args)
+private int main (string[] strargs)
 {
     import vibe.core.log;
-    CommandlineArgs cmdline_args;
+    CLIArgs args;
     try
     {
-        auto help = parseCommandLine(cmdline_args, args);
+        auto help = args.parseCommandLine(strargs);
         if (help.helpWanted)
         {
             defaultGetoptPrinter("Name Registry Server", help.options);
@@ -49,23 +49,23 @@ private int main (string[] args)
         return -1;
     }
 
-    if (cmdline_args.verbose)
+    if (args.verbose)
         setLogLevel(LogLevel.verbose3);
 
     StatsServer stats_server;
-    if (cmdline_args.stats_port != 0)
-        stats_server = new StatsServer(cmdline_args.stats_port);
+    if (args.stats_port != 0)
+        stats_server = new StatsServer(args.stats_port);
 
     auto router = new URLRouter();
     auto registry = new NameRegistry();
     router.registerRestInterface(registry);
 
     auto settings = new HTTPServerSettings;
-    settings.port = cmdline_args.bind_port;
-    settings.bindAddresses = [cmdline_args.bind_address];
+    settings.port = args.bind_port;
+    settings.bindAddresses = [args.bind_address];
     listenHTTP(settings, router);
 
-    if (!cmdline_args.nodns)
+    if (!args.nodns)
         runTask(() => runDNSServer(registry));
 
     return runEventLoop();
