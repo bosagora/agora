@@ -84,6 +84,8 @@ import core.thread;
 /* The following imports are frequently needed in tests */
 
 public import agora.common.Types;
+/// Any test implementing their own nodes will need to use `Config`
+public import agora.common.Config : Config;
 /// Allows to easily configure the loggers
 public import agora.utils.Log : LogLevel;
 // Contains utilities for testing, e.g. `retryFor`

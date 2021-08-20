@@ -15,7 +15,6 @@ module agora.test.MissingPreImageDetection;
 
 version (unittest):
 
-import agora.common.Config;
 import agora.common.Task;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.PreImageInfo;

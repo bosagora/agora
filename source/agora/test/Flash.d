@@ -17,9 +17,7 @@ version (unittest):
 
 import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.Amount;
-import agora.common.Config;
 import agora.common.ManagedDatabase;
-import agora.common.Types;
 import agora.common.Task;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;

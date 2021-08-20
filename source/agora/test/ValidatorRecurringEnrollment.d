@@ -18,7 +18,6 @@ version (unittest):
 
 import agora.test.Base;
 
-import agora.common.Config;
 import agora.consensus.protocol.Data;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;

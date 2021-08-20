@@ -17,7 +17,6 @@ version (unittest):
 
 import agora.api.Validator;
 import agora.common.Amount;
-import agora.common.Config;
 import agora.consensus.data.Params;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
