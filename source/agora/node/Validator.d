@@ -156,9 +156,10 @@ public class Validator : FullNode, API
         NodeID node_id = utxo_keys.countUntil(this_utxo);
         this.nominator.updateSCPObject(height, node_id);
 
-        static QuorumConfig[] other_qcs;
-        this.rebuildQuorumConfig(this.qc, other_qcs, this_utxo, utxo_keys, height);
-        this.nominator.setQuorumConfig(this.qc, other_qcs);
+        static QuorumConfig[NodeID] quorums;
+        this.rebuildQuorumConfig(quorums, utxo_keys, height);
+        this.qc = quorums[node_id];
+        this.nominator.setQuorumConfig(node_id, quorums);
         buildRequiredKeys(this_utxo, this.qc, utxo_keys,
             &this.utxo_set.peekUTXO, this.required_peer_utxos);
 
@@ -168,21 +169,18 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        Generate the quorum configuration for this node and all other validator
-        nodes in the network, based on the blockchain state (enrollments).
+        Generate the quorum configurations for all the actively enrolled
+        validators, using their combined preimages to shuffle the quorums.
 
         Params:
-            qc = will contain the quorum configuration
-            other_qcs = will contain the list of other nodes' quorum configs.
-            filter_utxo = the UTXO to filter out (UTXO of the self node)
+            quorums = will contain the mapping of all quorum configs
             utxos = The UTXO hashes of all the validators
             height = current block height
 
     ***************************************************************************/
 
-    private void rebuildQuorumConfig (ref QuorumConfig qc,
-        ref QuorumConfig[] other_qcs, in Hash filter_utxo, in Hash[] utxos,
-        Height height) nothrow @safe
+    private void rebuildQuorumConfig (ref QuorumConfig[NodeID]quorums,
+        in Hash[] utxos, Height height) nothrow @safe
     {
         import std.algorithm;
         import std.array;
@@ -193,22 +191,13 @@ public class Validator : FullNode, API
             // In the fast path, this is called immediately after a block has been
             // externalized, so we can simply use the Ledger. Otherwise we need
             // to run from storage.
-            auto self_enroll = this.enroll_man.getEnrollmentKey();
             const rand_seed = this.ledger.getBlockHeight() == height ?
                 this.ledger.getLastBlock().header.random_seed :
                 this.ledger.getBlocksFrom(height).front.header.random_seed;
-            auto idx = utxos.countUntil(self_enroll);
-            qc = buildQuorumConfig(idx, utxos, this.utxo_set.getUTXOFinder(),
-                rand_seed, this.quorum_params);
-
-            other_qcs.length = 0;
-            () @trusted { assumeSafeAppend(other_qcs); }();
-
-            foreach (utxo; utxos.filter!(
-                utxo => utxo != filter_utxo))  // skip our own
+            foreach (utxo; utxos)
             {
-                idx = utxos.countUntil(utxo);
-                other_qcs ~= buildQuorumConfig(idx, utxos,
+                const idx = utxos.countUntil(utxo);
+                quorums[idx] = buildQuorumConfig(idx, utxos,
                     this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
             }
         }

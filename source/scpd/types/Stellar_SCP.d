@@ -46,12 +46,11 @@ enum SCPStatementType : int32_t {
 }
 
 struct SCPNomination {
-    Hash quorumSetHash;
     xvector!(Value) votes;
     xvector!(Value) accepted;
 }
 
-static assert(SCPNomination.sizeof == 112);
+static assert(SCPNomination.sizeof == 48);
 
 struct SCPStatement {
 
@@ -65,7 +64,6 @@ struct SCPStatement {
 
     static struct _pledges_t {
         static struct _prepare_t {
-            Hash quorumSetHash;
             SCPBallot ballot;
             pointer!(SCPBallot) prepared;
             pointer!(SCPBallot) preparedPrime;
@@ -73,7 +71,7 @@ struct SCPStatement {
             uint32_t nH;
         }
 
-        static assert(_prepare_t.sizeof == 120);
+        static assert(_prepare_t.sizeof == 56);
 
         static struct _confirm_t {
             SCPBallot ballot;
@@ -81,18 +79,16 @@ struct SCPStatement {
             uint32_t nPrepared;
             uint32_t nCommit;
             uint32_t nH;
-            Hash quorumSetHash;
         }
 
-        static assert(_confirm_t.sizeof == 144);
+        static assert(_confirm_t.sizeof == 80);
 
         static struct _externalize_t {
             SCPBallot commit;
             uint32_t nH;
-            Hash commitQuorumSetHash;
         }
 
-        static assert(_externalize_t.sizeof == 104);
+        static assert(_externalize_t.sizeof == 40);
 
         //using _xdr_case_type = xdr::xdr_traits<SCPStatementType>::case_type;
         //private:
@@ -308,7 +304,7 @@ struct SCPStatement {
     _pledges_t pledges;
 }
 
-static assert(SCPStatement.sizeof == 168);
+static assert(SCPStatement.sizeof == 104);
 static assert(Signature.sizeof == 64);
 
 struct SCPEnvelope {
@@ -316,7 +312,7 @@ struct SCPEnvelope {
   Signature signature;
 }
 
-static assert(SCPEnvelope.sizeof == 232);
+static assert(SCPEnvelope.sizeof == 168);
 
 struct SCPQuorumSet {
     import agora.crypto.Hash;
