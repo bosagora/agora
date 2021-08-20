@@ -602,12 +602,22 @@ private class FlashListener : TestFlashListenerAPI
     }
 }
 
+version (unittest)
+{
+    TestConf flashTestConf ()
+    {
+        TestConf conf;
+        conf.consensus.quorum_threshold = 100;
+        conf.consensus.min_fee = Amount(0); // TODO: remove this line when fees are handled
+        return conf;
+    }
+}
+
 /// Test unilateral non-collaborative close (funding + update* + settle)
 //version (none)
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -707,8 +717,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -834,8 +843,7 @@ unittest
         }
     }
 
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -936,8 +944,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1086,8 +1093,7 @@ unittest
 /// Test path probing
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1258,8 +1264,7 @@ unittest
 /// Test path probing
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1487,8 +1492,7 @@ unittest
         }
     }
 
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1570,8 +1574,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1661,8 +1664,7 @@ unittest
 /// test various error cases
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1877,8 +1879,7 @@ unittest
         }
     }
 
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -1991,8 +1992,7 @@ unittest
         }
     }
 
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
@@ -2060,8 +2060,7 @@ unittest
 //version (none)
 unittest
 {
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
+    auto conf = flashTestConf();
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope (exit) network.shutdown();
