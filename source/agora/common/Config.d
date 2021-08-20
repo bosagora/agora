@@ -118,7 +118,13 @@ public struct Config
     public immutable string[] dns_seeds;
 
     /// Logging config
-    public immutable(LoggerConfig)[] logging;
+    public immutable(LoggerConfig)[] logging = [ {
+        name: null,
+        level: LogLevel.Info,
+        propagate: true,
+        console: true,
+        additive: true,
+    } ];
 
     /// Event handler config
     public immutable(EventHandlerConfig)[] event_handlers;
@@ -806,18 +812,8 @@ private BanManager.Config parseBanManagerConfig (Node* node, in CommandLine cmdl
 
 private immutable(LoggerConfig)[] parseLoggingSection (Node* ptr, in CommandLine)
 {
-    // By default, configure the root logger to be verbose enough for users
-    // to see what's happening
-    static immutable LoggerConfig[] DefaultConfig = [ {
-        name: null,
-        level: LogLevel.Info,
-        propagate: true,
-        console: true,
-        additive: true,
-    } ];
-
     if (ptr is null)
-        return DefaultConfig;
+        return Config.init.logging;
 
     immutable(LoggerConfig)[] result;
     foreach (string name_, Node value; *ptr)
@@ -839,7 +835,7 @@ private immutable(LoggerConfig)[] parseLoggingSection (Node* ptr, in CommandLine
         result ~= c;
     }
 
-    return result.length ? result : DefaultConfig;
+    return result.length ? result : Config.init.logging;
 }
 
 ///
