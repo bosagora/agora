@@ -19,33 +19,42 @@ import std.conv;
 import std.getopt;
 
 ///
-struct CommandlineArgs
+public struct CLIArgs
 {
-    string bind_address = "0.0.0.0";
-    ushort bind_port = 3003;
-    ushort stats_port = 0;
-    bool verbose = false;
-    bool nodns = false;
+    /// Network interface to bind to
+    public string bind_address = "0.0.0.0";
+
+    /// TCP port to bind to
+    public ushort bind_port = 3003;
+
+    /// Port on which to offer the stats interface - disabled by default
+    public ushort stats_port = 0;
+
+    /// Be extra verbose (enable `Trace` level and Vibe.d debug)
+    public bool verbose = false;
+
+    /// Disable the DNS server
+    public bool nodns = false;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
-public GetoptResult parseCommandLine (ref CommandlineArgs cmdline_args, string[] args)
+public GetoptResult parseCommandLine (ref CLIArgs args, string[] strargs)
 {
     return getopt(
-        args,
+        strargs,
         "bind-host|h",
-            "Address where the name register server will bind to, defaults to: " ~ CommandlineArgs.init.bind_address,
-            &cmdline_args.bind_address,
+            "Address where the name register server will bind to, defaults to: " ~ CLIArgs.init.bind_address,
+            &args.bind_address,
         "bind-port|p",
-            "Port where the name register server will bind to, defaults to: " ~ to!string(CommandlineArgs.init.bind_port),
-            &cmdline_args.bind_port,
+            "Port where the name register server will bind to, defaults to: " ~ CLIArgs.init.bind_port.to!string,
+            &args.bind_port,
         "stats-port",
-            "Port where the stats server will bind to (0 to disable), defaults to: " ~ to!string(CommandlineArgs.init.stats_port),
-            &cmdline_args.stats_port,
+            "Port where the stats server will bind to (0 to disable), defaults to: " ~ CLIArgs.init.stats_port.to!string,
+            &args.stats_port,
         "no-dns",
             "Disable the registry's DNS server",
-            &cmdline_args.nodns,
+            &args.nodns,
         "verbose",
-            &cmdline_args.verbose,
+            &args.verbose,
         );
 }
