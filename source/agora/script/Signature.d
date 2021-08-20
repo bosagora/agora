@@ -38,6 +38,10 @@ public enum SigHash : ubyte
     /// Signs only a single input
     /// Modifier that can only be used with other SigHash types
     AnyoneCanPay = 1 << 3,
+
+    /// Combined types
+    Single_AnyoneCanPay = Single | AnyoneCanPay,
+    Single_NoInput_AnyoneCanPay = Single | NoInput | AnyoneCanPay,
 }
 
 /// Contains the Signature and its associated SigHash
@@ -175,8 +179,8 @@ private bool isValidSigHash (in SigHash sig_hash) pure nothrow @safe @nogc
     case SigHash.All:
     case SigHash.NoInput:
     case SigHash.Single:
-    case SigHash.Single | SigHash.AnyoneCanPay:
-    case SigHash.Single | SigHash.NoInput | SigHash.AnyoneCanPay:
+    case SigHash.Single_AnyoneCanPay:
+    case SigHash.Single_NoInput_AnyoneCanPay:
         break;
 
     case SigHash.AnyoneCanPay:
@@ -197,7 +201,7 @@ unittest
     assert(!isValidSigHash(SigHash.AnyoneCanPay));
     // this combo is unrecognized
     assert(!isValidSigHash(cast(SigHash)(SigHash.All | SigHash.NoInput)));
-    assert(isValidSigHash(cast(SigHash)(SigHash.Single | SigHash.NoInput | SigHash.AnyoneCanPay)));
+    assert(isValidSigHash(SigHash.Single_NoInput_AnyoneCanPay));
 }
 
 /*******************************************************************************
@@ -244,12 +248,12 @@ public Hash getChallenge (in Transaction tx, in SigHash sig_hash = SigHash.All,
         dup.outputs = dup.outputs[output_idx .. output_idx + 1];
         return hashMulti(dup, sig_hash);
     // sign a single input and a single output
-    case SigHash.Single | SigHash.AnyoneCanPay:
+    case SigHash.Single_AnyoneCanPay:
         dup.inputs = dup.inputs[input_idx .. input_idx + 1];
         dup.outputs = dup.outputs[output_idx .. output_idx + 1];
         return hashMulti(dup, sig_hash);
     // sign a single output and no inputs
-    case SigHash.Single | SigHash.NoInput | SigHash.AnyoneCanPay:
+    case SigHash.Single_NoInput_AnyoneCanPay:
         dup.inputs = null;
         dup.outputs = dup.outputs[output_idx .. output_idx + 1];
         return hashMulti(dup, sig_hash);
@@ -328,31 +332,29 @@ unittest
 
     // SigHash.Single | SigHash.AnyoneCanPay
     {
-        SigHash sighash = cast(SigHash) (SigHash.Single | SigHash.AnyoneCanPay);
         auto tx = Transaction([Input(hashFull(1)), Input(hashFull(2))], [Output(Amount(1), PublicKey.init)], Height(10));
-        auto challenge_idx_0 = getChallenge(tx, sighash, 0, 0);
+        auto challenge_idx_0 = getChallenge(tx, SigHash.Single_AnyoneCanPay, 0, 0);
 
         // add a new input, challenge should hold
         tx.inputs ~= Input(hashFull(0));
-        assert(challenge_idx_0 == getChallenge(tx, sighash, 0, 0));
+        assert(challenge_idx_0 == getChallenge(tx, SigHash.Single_AnyoneCanPay, 0, 0));
 
         // change an existing input, challenge should hold
         tx.inputs[1] = Input(hashFull(3));
-        assert(challenge_idx_0 == getChallenge(tx, sighash, 0, 0));
+        assert(challenge_idx_0 == getChallenge(tx, SigHash.Single_AnyoneCanPay, 0, 0));
 
         tx.inputs = Input.init ~ tx.inputs;
         // change input index, challenge should hold
-        assert(challenge_idx_0 == getChallenge(tx, sighash, 1, 0));
+        assert(challenge_idx_0 == getChallenge(tx, SigHash.Single_AnyoneCanPay, 1, 0));
     }
 
     // SigHash.Single | SigHash.NoInput | SigHash.AnyoneCanPay
     {
-        SigHash sighash = cast(SigHash) (SigHash.Single | SigHash.NoInput | SigHash.AnyoneCanPay);
         auto tx = Transaction([Input(hashFull(1)), Input(hashFull(2))], [Output(Amount(1), PublicKey.init)], Height(10));
-        auto challenge_idx_0 = getChallenge(tx, sighash, 0, 0);
+        auto challenge_idx_0 = getChallenge(tx, SigHash.Single_NoInput_AnyoneCanPay, 0, 0);
 
         // change signed input, challenge should hold
         tx.inputs[0] = Input.init;
-        assert(challenge_idx_0 == getChallenge(tx, sighash, 0, 0));
+        assert(challenge_idx_0 == getChallenge(tx, SigHash.Single_NoInput_AnyoneCanPay, 0, 0));
     }
 }

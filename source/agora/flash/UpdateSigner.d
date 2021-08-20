@@ -483,19 +483,19 @@ public class UpdateSigner
         // Note that an update tx with seq 0 do not exist.
         if (this.seq_id == 0)
         {
-            const sig_hash = cast(SigHash)(SigHash.Single | SigHash.AnyoneCanPay);
             return SigPair(sign(this.kp.secret, this.conf.pair_pk, nonce_pair_pk,
-                priv_nonce.update.v, update_tx.getChallenge(sig_hash)), sig_hash, output_idx);
+                priv_nonce.update.v, update_tx.getChallenge(SigHash.Single_AnyoneCanPay)),
+                SigHash.Single_AnyoneCanPay, output_idx);
         }
         else
         {
-            const sig_hash = cast(SigHash)(SigHash.Single | SigHash.NoInput | SigHash.AnyoneCanPay);
             const update_key = getUpdateScalar(this.kp.secret,
                 this.conf.funding_tx_hash);
             const challenge_update = getSequenceChallenge(update_tx,
-                this.seq_id, 0, output_idx, sig_hash);  // todo: should not be hardcoded
+                this.seq_id, 0, output_idx, SigHash.Single_NoInput_AnyoneCanPay);  // todo: should not be hardcoded
             return SigPair(sign(update_key, this.conf.update_pair_pk, nonce_pair_pk,
-                priv_nonce.update.v, challenge_update), sig_hash, output_idx);
+                priv_nonce.update.v, challenge_update), SigHash.Single_NoInput_AnyoneCanPay,
+                output_idx);
         }
     }
 
