@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.consensus.data.Block;
 import agora.common.Types;
+import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.test.Base;
 
@@ -57,6 +58,8 @@ unittest
 unittest
 {
     TestConf conf = TestConf.init;
+    // Set a high value for block catchup interval as we are testing messaging
+    conf.node.block_catchup_interval = 60.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -80,5 +83,5 @@ unittest
     // node 1 will keep trying to send transactions up to
     // max_retries * (retry_delay + timeout) seconds (see Base.d),
     const delay = conf.node.max_retries * (conf.node.retry_delay + conf.node.timeout);
-    network.expectHeight(Height(1), delay);
+    network.expectHeightAndPreImg(Height(1), GenesisBlock.header, delay);
 }
