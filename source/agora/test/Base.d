@@ -1964,7 +1964,7 @@ public struct TestConf
     /// How often the validator should try to catchup for the preimages for the
     /// next block
     /// Matches the eponymous field in the `validator` section.
-    public Duration preimage_catchup_interval = 100.seconds;
+    public Duration preimage_catchup_interval = 5.seconds;
 
     /// max failed requests before a node is banned
     /// Matches the eponymous field in the `banman` section.

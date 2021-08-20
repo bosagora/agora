@@ -1213,10 +1213,12 @@ public class Ledger
             .filter!(kv => kv.value.preimage.height < height)
             .map!(kv => cast(uint) kv.index).array();
 
-        // trying to retrieve preimages that - based on the consensus data -
-        // was shared with other nodes
-        foreach (const validator_ind; setDifference(missing_validators_lower_bound, missing_validators))
-            this.enrolls_keys_for_unknown_preimages.put(validators[validator_ind].utxo());
+        // populate the lookup set which will be used retrieve preimages that are missing
+        () @trusted {
+            this.enrolls_keys_for_unknown_preimages.clear();
+        }();
+        missing_validators_lower_bound.each!(i =>
+            this.enrolls_keys_for_unknown_preimages.put(validators[i].utxo()));
 
         // NodeA will check the candidate from NodeB in the following way:
         //
