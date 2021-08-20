@@ -131,8 +131,8 @@ public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
     Duration timeout, lazy string msg = "",
     string file = __FILE__, size_t line = __LINE__)
 {
-    // wait 100 msecs between attempts
-    const SleepTime = 100;
+    // wait between attempts
+    const SleepTime = 50;
     auto attempts = timeout.total!"msecs" / SleepTime;
     const TotalAttempts = attempts;
 
