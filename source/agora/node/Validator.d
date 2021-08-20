@@ -89,8 +89,8 @@ public class Validator : FullNode, API
         this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
             this.params.QuorumThreshold);
 
-        auto vledger = this.makeLedger();
-        this.ledger = vledger;
+        auto vledger = cast(ValidatingLedger) this.ledger;
+        assert(vledger !is null);
         this.nominator = this.makeNominator(
             this.clock, this.network, vledger, this.enroll_man, this.taskman);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
