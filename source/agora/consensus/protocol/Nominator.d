@@ -97,7 +97,7 @@ public extern (C++) class Nominator : SCPDriver
     protected ValidatingLedger ledger;
 
     /// The mapping of all known quorum sets
-    private SCPQuorumSetPtr[Hash] known_quorums;
+    private SCPQuorumSetPtr[NodeID] known_quorums;
 
     private alias TimerType = Slot.timerIDs;
     static assert(TimerType.max == 1);
@@ -272,38 +272,30 @@ extern(D):
 
     /***************************************************************************
 
-        Set or update the quorum configuration
-
-        The node additionally takes the list of all other validator's quorum
-        configurations and saves them for later lookup by getQSet().
+        Update our quorum configuration and store the mapping of all quorums
+        for lookup in getQSet().
 
         Params:
-            quorum = the quorum config for this node
-            other_quorums = the quorum config for all other nodes in the network
+            node_id = the node id of this validator
+            quorums = the mapping of all active validators' quorums
 
     ***************************************************************************/
 
-    public void setQuorumConfig (const ref QuorumConfig quorum,
-        const(QuorumConfig)[] other_quorums) nothrow @safe
+    public void setQuorumConfig (ref const(NodeID) node_id,
+        const(QuorumConfig)[NodeID] quorums) nothrow @safe
     {
         assert(!this.is_nominating);
         () @trusted { this.known_quorums.clear(); }();
 
-        // store the list of other node's quorum hashes
-        foreach (qc; other_quorums)
+        foreach (qpair; quorums.byKeyValue)  // opApply2 is not nothrow..
         {
-            auto quorum_set = buildSCPConfig(qc);
+            auto quorum_set = buildSCPConfig(qpair.value);
             auto shared_set = makeSharedSCPQuorumSet(quorum_set);
-            const hash = this.getHashOfQuorum(quorum_set);
-            this.known_quorums[hash] = shared_set;
-        }
+            this.known_quorums[qpair.key] = shared_set;
 
-        // set up our own quorum
-        auto quorum_set = buildSCPConfig(quorum);
-        () @trusted { this.scp.updateLocalQuorumSet(quorum_set); }();
-        auto shared_set = makeSharedSCPQuorumSet(quorum_set);
-        const hash = this.getHashOfQuorum(quorum_set);
-        this.known_quorums[hash] = shared_set;
+            if (qpair.key == node_id)
+                () @trusted { this.scp.updateLocalQuorumSet(quorum_set); }();
+        }
     }
 
     /***************************************************************************
@@ -1053,18 +1045,19 @@ extern(D):
     /***************************************************************************
 
         Params:
-            qSetHash = the hash of the quorum set
+            node_id = the node's id of the quorum set
 
         Returns:
-            the SCPQuorumSet pointer for the provided quorum set hash
+            the SCPQuorumSetPtr for the provided node ID, or null if not found
 
     ***************************************************************************/
 
-    public override SCPQuorumSetPtr getQSet (ref const(StellarHash) qSetHash)
+    public override SCPQuorumSetPtr getQSet (ref const(NodeID) node_id)
     {
-        if (auto scp_quroum = qSetHash in this.known_quorums)
-            return *scp_quroum;
+        if (auto quorum = node_id in this.known_quorums)
+            return *quorum;
 
+        log.error("getQSet SCPQuorumSetPtr.init, id: {}", node_id);
         return SCPQuorumSetPtr.init;
     }
 
@@ -1374,7 +1367,7 @@ private struct SCPStatementHash
 {
     // sanity check in case a new field gets added.
     // todo: use .tupleof tricks for a more reliable field layout change check
-    static assert(SCPNomination.sizeof == 112);
+    static assert(SCPNomination.sizeof == 48);
 
     /// instance pointer
     private const SCPStatement* st;
@@ -1419,7 +1412,6 @@ private struct SCPStatementHash
         const ref SCPStatement._pledges_t._prepare_t prep,
         scope HashDg dg) @safe pure nothrow @nogc
     {
-        hashPart(prep.quorumSetHash[], dg);
         hashPart(prep.ballot, dg);
 
         /// these two can legitimately be null in the protocol
@@ -1452,7 +1444,6 @@ private struct SCPStatementHash
         hashPart(conf.nPrepared, dg);
         hashPart(conf.nCommit, dg);
         hashPart(conf.nH, dg);
-        hashPart(conf.quorumSetHash[], dg);
     }
 
     /***************************************************************************
@@ -1471,7 +1462,6 @@ private struct SCPStatementHash
     {
         hashPart(ext.commit, dg);
         hashPart(ext.nH, dg);
-        hashPart(ext.commitQuorumSetHash[], dg);
     }
 
     /***************************************************************************
@@ -1487,7 +1477,6 @@ private struct SCPStatementHash
     public static void computeHash (const ref SCPNomination nom, scope HashDg dg)
         @safe pure nothrow @nogc
     {
-        hashPart(nom.quorumSetHash[], dg);
         hashPart(nom.votes[], dg);
         hashPart(nom.accepted[], dg);
     }
@@ -1541,38 +1530,38 @@ private struct SCPEnvelopeHash
     auto getStHash () @trusted { return SCPStatementHash(&st); }
 
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x755a41baaba02e099e86224bec897428a1d985efa44aca8408ab17dd7682e272caf527707dfb02b1f665a3860f8f671e6ce651eaf6d6594126fbccac8dfbdac1"));
+        "0xf3f95c2bcdf182f3c4ab3aa22606983c90676d908bcd053110c560cface4b18ff36d4ab359e3a44332c23ff8280385b8bc22d44ee9ab98878ac947c17e61fe75"));
 
     prep.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x7dd0d0832ea5132ca96169bb76f958aba7fc131f2a7113a53fa152db8cb342a4cc853a7b69e2b2bffa0510a1d9665f3771d094315610747056923c455de1f523"));
+        "0xcd9c7719642dadd28f3a3fbbbcaca648f8bf35200041f39ed3c3c3ac7d8cc1c589754cff86063998a25c08bcf93ba6ad752df10b8447cfc5b4d43064debca92e"));
 
     prep_prime.counter++;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x16d39c2a56a3cf75b85c8f2dc4ad1329713ab21515384f65f4b4e1591a9b20771492ebf26595362807c8fc11ef0028d0fa8bcaeed3f25946d4902acc66bcf55e"));
+        "0xd876318b3559b52fe3dbd7fad5ba2756cfdd1729250c02d0b0b6fe2684eee520c9ce37d787027ef2ff3e79fec1ec73dd500b3ce9abdc724caa7bc45e91b26e9a"));
 
     () @trusted { st.pledges.prepare_.prepared = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0xc49f187ceda67573afab46466b1e6e7207707174a9a0bf850ea79a5e87d76f56d5f0c13b56a73754d4337416d1322e2780420bb426b604c8db16e427d4fb5416"));
+        "0xca227179325dd0aacec18c20f26ee97d40be1fbe505d685cfb20f297bbf62bdc17fd0da45e6464aa37a24139882ed0cb1db0a3f67b9d63e8b70d726c6dacae21"));
 
     () @trusted { st.pledges.prepare_.preparedPrime = null; }();
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x09e54206c86f7b1a6c796b7a6e56e2b30f465d24e223601e246cc19120d817ac867186f6e7c867f2dbaf7022e9eebc5e560de2fa9f2ab2aab2fdd221272caa5c"));
+        "0x85988fb0978100d2fc5da08c1e7cef35ad3ada741b81411d7b33d0d326454ceda82fd65166b2668416b70eb2fdd89bb1eb059b2831f1e576b5a553be210b95e5"));
 
     () @trusted { st.pledges.nominate_ = SCPNomination.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x104cfee4945c44bd75783bdb2c8ed2de55d6e2346d84430282c1710e6474042079b122e9a24a75d2f2b577cf36b7e1eadefc156c5b2562a06c3c8e2b16f02470"));
+        "0x39f437e1ceb4a6c8f70dae0791c29bd1adbf8f9e053137fc7a3ddd7454e51e47546a438f6da2d563c9bb4c38afa0c2af36340ad2d13efc99edee0d25ab815f7f"));
 
     () @trusted { st.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x92a0d0bd78e0b74cfd0664bbb1c4542f492991f260d5916bf290c2929790cfc3875179fb3774de8c664af9b3d135e6edb70d48188874723a3a8e884bad37584c"));
+        "0x4e9785c61b6302695b3b8a8ccabdd3ff55b34c9b235cdb54e64c28a5afe2623791f8f33129e0d791ba0ea04161f402a3e9abf54f0269b2f78a3ad0e899037ac7"));
 
     () @trusted { st.pledges.externalize_ = SCPStatement._pledges_t._externalize_t.init; }();
     st.pledges.type_ = SCPStatementType.SCP_ST_EXTERNALIZE;
     assert(getStHash().hashFull() == Hash.fromString(
-        "0x98fec9d03f95de3fb6e5fefe5afb4aed545532cf1ea0440718a17451480ac4740f9b0389e613eefb1c33247d1ddc111343fd0f19ed26124abb5f8d9a9b15ccb9"));
+        "0x8eb8d71b06c7842a5c257a7475522331f04971805ed9b84c036e1c3e232b0e98ceffa015bf146716f28e1f0c20c5d068fca56c5f00431fd44a260cccc342167a"));
 
     SCPEnvelope env;
     auto getEnvHash () @trusted { return SCPEnvelopeHash(&env); }
@@ -1580,24 +1569,24 @@ private struct SCPEnvelopeHash
     // empty envelope
     import std.conv;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x444a77f46f8da37b667c19df725b9ec4fbb9ba67e512dbed8e902fdecde5100a64bbdc90fb3a9e38ef2d52cf1d3a061d48765999d88c6db2c704244a91185705"));
+        "0xea6365d3a07bb5637e7afc1c4110aeaa6018a1bec5e3fa9104366ab46d9a79b83fd3c4a363d9c6dc7bd2266f3dbef79b8c5da06e9c5f16c6925a4070c00069f3"));
 
     // with a statement
     env.statement = st;
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0x1935453249eaf3d3032633f170e515b06bb8327d3c95606c7cf9724bf592e9db227ef14558c0674c0365baa8a5291aa44a3e7fe6d5860c05585a2aed0e262e52"));
+        "0x98fec9d03f95de3fb6e5fefe5afb4aed545532cf1ea0440718a17451480ac4740f9b0389e613eefb1c33247d1ddc111343fd0f19ed26124abb5f8d9a9b15ccb9"));
 
     // import agora.utils.Test;
     // import std.stdio;
     // writeln(WK.Keys.NODE5.sign(getStHash));
     env.signature = Signature.fromString(
-        "0x969c0879ffedac8d03034a60b59cf9ff8f195052ae5e5fae247823fe349462a0" ~
-        "08f8a0f915d0598cbab106a5bda6ccabe30327f2c4bc980ed817592a9bebb04b")
+        "0x8e506b0d32457a3e6e2c7ba14dec178a53c567430e71dd036301c8246d8a782b" ~
+        "3c4fdf745375bd2fed645433e2a9364b95d6e3931c29ea7fb445bc6ee80867a6")
         .toBlob();
 
     // with a signature
     assert(getEnvHash().hashFull() == Hash.fromString(
-        "0xf97a3cc4ad6420e1c79082627cc90fbc36af71e82500fb3bd40f5857571f8ce9f7e7c9a1e340bf225871bdf818f355362c5387f1775fa88c31228b7789861116"));
+        "0x5c67d7aa06d03a48e2bca081e2eb124afc63908488088271e0da388e76381c4c487cb229cf79839c87728c087077399dba3fe7e435dc71bbbb3de051a6e5a88e"));
 }
 
 // Size assumptions made by this module
