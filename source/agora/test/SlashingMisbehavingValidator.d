@@ -16,7 +16,6 @@ module agora.test.SlashingMisbehavingValidator;
 
 version (unittest):
 
-import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;

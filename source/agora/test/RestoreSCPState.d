@@ -15,7 +15,6 @@ module agora.test.RestoreSCPState;
 
 version (unittest):
 
-import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.Task;
 import agora.consensus.EnrollmentManager;

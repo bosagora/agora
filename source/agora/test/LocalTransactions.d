@@ -19,7 +19,6 @@ version (unittest):
 import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.common.Task;
-import agora.common.Config;
 import agora.common.Metadata;
 import agora.crypto.Hash;
 import agora.consensus.Ledger;

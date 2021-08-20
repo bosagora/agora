@@ -131,7 +131,6 @@ unittest
 /// Expectation: The nomination is rejected.
 unittest
 {
-    import agora.common.Config;
     import agora.common.Task;
     import agora.consensus.protocol.Nominator;
     import agora.consensus.protocol.Data;

@@ -81,7 +81,6 @@ version (none)
 unittest
 {
     import agora.consensus.data.Block;
-    import agora.common.Config;
     import core.thread;
 
     TestConf conf;
@@ -144,7 +143,6 @@ unittest
 unittest
 {
     import agora.consensus.data.Block;
-    import agora.common.Config;
     import core.thread;
 
     TestConf conf;

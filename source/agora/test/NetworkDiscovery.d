@@ -17,7 +17,6 @@ version (unittest):
 
 import agora.test.Base;
 import agora.api.Validator;
-import agora.common.Config;
 import agora.crypto.Schnorr;
 import agora.crypto.Key;
 

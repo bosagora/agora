@@ -15,7 +15,6 @@ module agora.test.PreimageSharing;
 
 version (unittest):
 
-import agora.common.Config;
 import agora.common.Set;
 import agora.consensus.data.PreImageInfo;
 import agora.utils.Test;
