@@ -32,7 +32,6 @@
 module agora.node.TransactionRelayer;
 
 import agora.common.Amount;
-import agora.common.Config;
 import agora.common.Task;
 import agora.common.Types;
 import agora.common.Set;
@@ -43,6 +42,7 @@ import agora.utils.Log;
 import agora.network.Client;
 import agora.network.Clock;
 import agora.network.Manager;
+import agora.node.Config;
 import agora.node.TransactionPool;
 
 import std.algorithm;

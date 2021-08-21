@@ -20,6 +20,7 @@ module agora.node.admin.Setup;
 
 import agora.common.Config;
 import agora.crypto.Key;
+import agora.node.Config;
 import agora.node.FullNode;
 import agora.node.Runner;
 import agora.utils.Log;
@@ -136,7 +137,8 @@ public class SetupInterface
 
         try
         {
-            auto config = parseConfigString(body, this.path);
+            auto config = parseConfigString!Config(body, this.path);
+            config.validate();
             res.writeJsonBody(Response(true, "Configuration successfully parsed"));
         }
         catch (Exception e)

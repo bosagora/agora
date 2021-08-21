@@ -115,6 +115,28 @@
             "targetType": "none"
         },
         {
+            "name": "config-dumper",
+            "targetType": "executable",
+            "targetName": "agora-config-dumper",
+            "mainSourceFile": "source/agora/cli/configdump.d",
+
+            "preGenerateCommands": [
+                "$DUB scripts/build_tracy.d",
+            ],
+            "sourceFiles-posix": [
+                "build/TracyClient.o"
+            ],
+            "sourceFiles-windows": [
+                "build/TracyClient.obj"
+            ],
+
+            "excludedSourceFiles": [
+                "source/agora/cli/vanity/*",
+                "source/agora/cli/version/*"
+            ],
+            "debugVersions": [ "ConfigFillerDebug" ]
+        },
+        {
             "name": "multi",
             "targetName": "agora-multi",
             "mainSourceFile": "source/agora/cli/multi/main.d",

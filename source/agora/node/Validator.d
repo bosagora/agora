@@ -15,7 +15,6 @@ module agora.node.Validator;
 
 import agora.api.Validator;
 import agora.common.Amount;
-import agora.common.Config;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -35,6 +34,7 @@ import agora.network.Clock;
 import agora.network.Manager;
 import agora.node.admin.AdminInterface;
 import agora.node.BlockStorage;
+import agora.node.Config;
 import agora.node.FullNode;
 import agora.consensus.Ledger;
 import agora.registry.API;

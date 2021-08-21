@@ -15,11 +15,11 @@ module agora.node.Runner;
 
 import agora.api.FullNode;
 import agora.api.Validator;
-import agora.common.Config;
 import agora.common.Task : Periodic;
 import agora.flash.api.FlashAPI;
 import agora.flash.Node;
 import agora.node.admin.AdminInterface;
+import agora.node.Config;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.utils.Log;

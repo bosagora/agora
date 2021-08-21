@@ -27,7 +27,6 @@ import agora.api.Validator : ValidatorAPI = API, Identity;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitMask;
-import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.common.Metadata;
 import agora.common.Set;
@@ -54,6 +53,7 @@ import agora.network.Client;
 import agora.network.Clock;
 import agora.network.Manager;
 import agora.node.BlockStorage;
+import agora.node.Config;
 import agora.node.FullNode;
 import agora.consensus.Ledger;
 import agora.node.TransactionPool;
@@ -85,7 +85,7 @@ import core.thread;
 
 public import agora.common.Types;
 /// Any test implementing their own nodes will need to use `Config`
-public import agora.common.Config : Config;
+public import agora.node.Config : Config;
 /// Allows to easily configure the loggers
 public import agora.utils.Log : LogLevel;
 // Contains utilities for testing, e.g. `retryFor`
