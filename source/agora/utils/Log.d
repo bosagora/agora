@@ -26,6 +26,8 @@
 
 module agora.utils.Log;
 
+import agora.common.ConfigAttributes;
+
 import ocean.text.convert.Formatter;
 import ocean.transition;
 import ocean.util.log.AppendConsole;
@@ -158,7 +160,7 @@ public struct LoggerConfig
     public string name;
 
     /// Level to set the logger to (messages at a lower level won't be printed)
-    public Ocean.Level level;
+    public Ocean.Level level = Ocean.Level.Info;
 
     /// Whether to propagate that level to the children
     /// Default to `true` as this is the expected behavior for most users
@@ -168,7 +170,7 @@ public struct LoggerConfig
     public bool console;
 
     /// Whether to use file output and if, which file path
-    public string file;
+    public @Optional string file;
 
     /// Whether this logger should be additive or not
     public bool additive;

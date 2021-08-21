@@ -22,7 +22,6 @@ module agora.utils.SCPPrettyPrinter;
 
 import agora.common.Types;
 import agora.common.Amount;
-import agora.common.Config;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.protocol.Data;
@@ -30,6 +29,7 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
+import agora.node.Config;
 import agora.serialization.Serializer;
 import agora.utils.PrettyPrinter;
 

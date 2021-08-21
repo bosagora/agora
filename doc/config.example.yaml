@@ -239,13 +239,17 @@ logging:
 event_handlers:
   # URLs to push a data when a block is externalized. (path is "/block_externalized")
   BlockExternalized:
-    - http://127.0.0.1:3836/block_externalized
+    addresses:
+      - http://127.0.0.1:3836/block_externalized
   # URLs to push a data when a block header is updated. (path is "/block_header_updated")
   BlockHeaderUpdated:
-    - http://127.0.0.1:3836/block_header_updated
+    addresses:
+      - http://127.0.0.1:3836/block_header_updated
   # URLs to push a data when a pre-image is updated. (path is "/preimage_received")
   PreimageReceived:
-    - http://127.0.0.1:3836/preimage_received
+    addresses:
+      - http://127.0.0.1:3836/preimage_received
   # URLs to push a data when a transaction is updated. (path is "/transaction_received")
   TransactionReceived:
-    - http://127.0.0.1:3836/transaction_received
+    addresses:
+      - http://127.0.0.1:3836/transaction_received

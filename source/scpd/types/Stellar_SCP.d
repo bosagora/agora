@@ -337,10 +337,10 @@ struct SCPQuorumSet {
 
 @safe unittest
 {
-    import agora.common.Config;
     import agora.common.Types;
     import agora.crypto.Hash;
     import agora.crypto.Key;
+    import agora.node.Config;
     import std.conv;
 
     const qc1 = toSCPQuorumSet(QuorumConfig(2, [0, 1]));

@@ -1,8 +1,77 @@
 /*******************************************************************************
 
-    Define the configuration objects that are used through the application
+    Utilities to fill a struct representing the configuration with the content
+    of a YAML document.
 
-    See `doc/config.example.yaml` for some documentation.
+    The main function of this module is `parseConfig`. Convenience functions
+    `parseConfigString` and `parseConfigFile` are also available.
+
+    The type parameter to those three functions must be a struct and is used
+    to drive the processing of the YAML node. When an error is encountered,
+    an `Exception` will be thrown, with a descriptive message.
+    The rules by which the struct is filled are designed to be
+    as intuitive as possible, and are described below.
+
+    Optional_Fields:
+      One of the major convenience offered by this utility is its handling
+      of optional fields. A field is detected as optional if it has
+      an initializer that is different from its type `init` value,
+      for example `string field = "Something";` is an optional field,
+      but `int count = 0;` is not.
+      To mark a field as optional even with its default value,
+      use the `Optional` UDA: `@Optional int count = 0;`.
+
+    Converter:
+      Because config structs may contain complex types such as
+      `core.time.Duration`, a user-defined `Amount`, or Vibe.d's `URL`,
+      one may need to apply a converter to a struct's field.
+      Converters are simply functions that take a `string` as argument
+      and return a type that is implicitly convertible to the field type
+      (usually just the field type).
+
+    Composite_Types:
+      Processing starts from a `struct` at the top level, and recurse into
+      every fields individually. If a field is itself a struct,
+      the filler will attempt the following, in order:
+      - If the field has no value and is not optional, an Exception will
+        be thrown with an error message detailing where the issue happened.
+      - If the field has no value and is optional, the default value will
+        be used.
+      - If the field has a value, the filler will first check for a converter
+        and use it if present.
+      - If the type has a `static` method named `fromString` whose sole argument
+        is a `string`, it will be used.
+      - If the type has a constructor whose sole argument is a `string`,
+        it will be used;
+      - Finally, the filler will attempt to deserialize all struct members
+        one by one and pass them to the default constructor, if there is any.
+      - If none of the above succeeded, a `static assert` will trigger.
+
+    Strict_Parsing:
+      When strict parsing is enabled, the config filler will also validate
+      that the YAML nodes do not contains entry which are not present in the
+      mapping (struct) being processed.
+      This can be useful to catch typos or outdated configuration options.
+
+    Post_Validation:
+      Some configuration will require validation accross multiple sections.
+      For example, two sections may be mutually exclusive as a whole,
+      or may have fields which are mutually exclusive with another section's
+      field(s). This kind of dependence is hard to account for declaratively,
+      and does not affect parsing. For this reason, the preferred way to
+      handle those cases is to define a `validate` member method on the
+      top level config struct, which will be called once parsing is completed.
+      If an error is detected, this method should throw an Exception.
+
+    Enabled_or_disabled_field:
+      While most complex logic validation should be handled post-parsing,
+      some section may be optional by default, but if provided, will have
+      required fields. To support this use case, if a field with the name
+      `enabled` is present in a struct, the parser will first process it.
+      If it is `false`, the parser will not attempt to process the struct
+      further, and the other fields will have their default value.
+      Likewise, if a field named `disabled` exists, the struct will not
+      be processed if it is set to `true`.
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -15,19 +84,11 @@
 
 module agora.common.Config;
 
-import agora.common.Amount;
-import agora.common.BanManager;
+public import agora.common.ConfigAttributes;
+import agora.common.Ensure;
 import agora.common.Set;
 import agora.common.Types;
-import agora.consensus.data.Params;
 import agora.crypto.Key;
-import agora.flash.Config;
-import agora.utils.Log;
-
-import vibe.inet.url;
-
-import scpd.types.Stellar_SCP;
-import scpd.types.Utils;
 
 import dyaml.node;
 import dyaml.loader;
@@ -37,14 +98,8 @@ import std.conv;
 import std.datetime;
 import std.exception;
 import std.format;
-import std.getopt;
 import std.range;
 import std.traits;
-
-import core.time;
-
-/// Path to the import file containing the version information
-public immutable VersionFileName = "VERSION";
 
 /// Command-line arguments
 public struct CommandLine
@@ -68,7 +123,7 @@ public struct CommandLine
     public string[][string] overrides;
 
     /// Helper to add items to `overrides`
-    private void overridesHandler (string, string value)
+    public void overridesHandler (string, string value)
     {
         import std.string;
         const idx = value.indexOf('=');
@@ -79,276 +134,6 @@ public struct CommandLine
         else
             this.overrides[k] = [ v ];
     }
-}
-
-/// Main config
-public struct Config
-{
-    static assert(!hasUnsharedAliasing!(typeof(this)),
-        "Type must be shareable accross threads");
-
-    /// Ban manager config
-    public BanManager.Config banman;
-
-    /// The node config
-    public NodeConfig node;
-
-    /// Configuration for interfaces the node expose (only http for now)
-    public immutable InterfaceConfig[] interfaces = InterfaceConfig.Default;
-
-    /// Proxy to be used for outgoing Agora connections
-    public URL proxy_url;
-
-    /// Consensus parameters for the chain
-    public ConsensusConfig consensus;
-
-    /// The validator config
-    public ValidatorConfig validator;
-
-    /// Flash configuration
-    public FlashConfig flash;
-
-    /// The administrator interface config
-    public AdminConfig admin;
-
-    /// The list of IPs for use with network discovery
-    public immutable string[] network;
-
-    /// The list of DNS FQDN seeds for use with network discovery
-    public immutable string[] dns_seeds;
-
-    /// Logging config
-    public immutable(LoggerConfig)[] logging = [ {
-        name: null,
-        level: LogLevel.Info,
-        propagate: true,
-        console: true,
-        additive: true,
-    } ];
-
-    /// Event handler config
-    public immutable(EventHandlerConfig)[] event_handlers;
-}
-
-/// Used to specify endpoint-specific configuration
-public struct InterfaceConfig
-{
-    static assert(!hasUnsharedAliasing!(typeof(this)),
-        "Type must be shareable accross threads");
-
-    /// Type of interface one is able to register
-    public enum Type
-    {
-        // FIXME: https://github.com/sociomantic-tsunami/ocean/issues/846
-        // /// Cannonical name is in upper case
-        // HTTP = 0,
-        /// Convenience alias for parsing
-        http = 0,
-    }
-
-    /// Ditto
-    public Type type;
-
-     /// Bind address
-    public string address;
-
-    /// Bind port
-    public ushort port;
-
-    /// Default values when none is given in the config file
-    private static immutable InterfaceConfig[/* Type.max */ 1] Default = [
-        // Publicly enabled by default
-        { type: Type.http, address: "0.0.0.0", port: 0xB0A, },
-    ];
-}
-
-/// Node config
-public struct NodeConfig
-{
-    static assert(!hasUnsharedAliasing!(typeof(this)),
-        "Type must be shareable accross threads");
-
-    /// If set, a commons budget address to use
-    /// in place of the built-in commons budget address as defined by CoinNet
-    public PublicKey commons_budget_address;
-
-    /// If set to true will run in testing mode and use different
-    /// genesis block (agora.consensus.data.genesis.Test)
-    /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
-    public bool testing;
-
-    /// Should only be set if `test` is set, can be set to the number of desired
-    /// enrollment in the test Genesis block (1 - 6)
-    public ubyte limit_test_validators;
-
-    /// The minimum number of listeners to connect to
-    /// before discovery is considered complete
-    public size_t min_listeners = 2;
-
-    /// Maximum number of listeners to connect to
-    public size_t max_listeners = 10;
-
-    /// The local address where the stats server (currently Prometheus)
-    /// is going to connect to, for example: http://0.0.0.0:8008
-    /// It can also be set to 0 do disable listening
-    public ushort stats_listening_port;
-
-    /// Time to wait between request retries
-    public Duration retry_delay = 3.seconds;
-
-    /// Maximum number of retries to issue before a request is considered failed
-    public size_t max_retries = 50;
-
-    /// Timeout for each request
-    public Duration timeout = 5000.msecs;
-
-    /// Path to the data directory to store metadata and blockchain data
-    public string data_dir = ".cache";
-
-    /// The duration between requests for doing periodic network discovery
-    public Duration network_discovery_interval = 5.seconds;
-
-    /// The duration between requests for retrieving the latest blocks
-    /// from all other nodes
-    public Duration block_catchup_interval = 20.seconds;
-
-    /// The new block time offset has to be greater than the previous block time offset,
-    /// but less than current time + block_time_offset_tolerance_secs
-    public Duration block_time_offset_tolerance = 60.seconds;
-
-    // The percentage by which the double spend transaction's fee should be
-    // increased in order to be added to the transaction pool
-    public ubyte double_spent_threshold_pct = 20;
-
-    /// The maximum number of transactions relayed in every batch.
-    /// Value 0 means no limit.
-    public uint relay_tx_max_num;
-
-    /// Transaction relay batch is triggered in every `relay_tx_interval`.
-    /// Value 0 means, the transaction will be relayed immediately.
-    public Duration relay_tx_interval;
-
-    /// The minimum amount of fee a transaction has to have to be relayed.
-    /// The fee is adjusted by the transaction size:
-    /// adjusted fee = fee / transaction size in bytes.
-    public Amount relay_tx_min_fee;
-
-    /// Transaction put into the relay queue will expire, and will be removed
-    /// after `relay_tx_cache_exp`.
-    public Duration relay_tx_cache_exp;
-}
-
-/// Validator config
-public struct ValidatorConfig
-{
-    /// Whether or not this node should try to act as a validator
-    public bool enabled;
-
-    /// The seed to use for the keypair of this node
-    public immutable KeyPair key_pair;
-
-    /// The seed of PreImageCycle which is not parsed from the configuraton file
-    public Hash cycle_seed;
-
-    /// The height of the seed of PreImageCycle which is not parsed from the configuraton file
-    public Height cycle_seed_height;
-
-    // Network addresses that will be registered with the public key (Validator only)
-    public immutable string[] addresses_to_register;
-
-    // Registry address
-    public string registry_address;
-
-    // If the enrollments will be renewed or not at the end of the cycle
-    public bool recurring_enrollment = true;
-
-    /// How often should the periodic preimage reveal timer trigger (in seconds)
-    public Duration preimage_reveal_interval = 10.seconds;
-
-    /// How often the nomination timer should trigger, in seconds
-    public Duration nomination_interval = 5.seconds;
-
-    /// How often the validator should try to catchup for the preimages for the
-    /// next block
-    public Duration preimage_catchup_interval = 2.seconds;
-}
-
-/// Admin API config
-public struct AdminConfig
-{
-    static assert(!hasUnsharedAliasing!(typeof(this)),
-        "Type must be shareable accross threads");
-
-    /// Is the control API enabled?
-    public bool enabled;
-
-    /// Bind address
-    public string address = "127.0.0.1";
-
-    /// Bind port
-    public ushort port = 0xB0B;
-
-    /// Username
-    public string username;
-
-    /// Password
-    public string pwd;
-}
-
-/// Type of event which can be forwarded to an API server
-public enum HandlerType
-{
-    ///
-    BlockExternalized,
-    ///
-    BlockHeaderUpdated,
-    ///
-    PreimageReceived,
-    ///
-    TransactionReceived,
-}
-
-/// Configuration for URLs to push a data when an event occurs
-public struct EventHandlerConfig
-{
-    ///
-    public HandlerType type;
-
-    /// URLs to push data to
-    public immutable string[] addresses;
-}
-
-/// Parse the command-line arguments and return a GetoptResult
-public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
-{
-    return getopt(
-        args,
-        "initialize",
-            "The address at which to offer a web-based configuration interface",
-            &cmdline.initialize,
-
-        "config|c",
-            "Path to the config file. Defaults to: " ~ CommandLine.init.config_path,
-            &cmdline.config_path,
-
-        "config-check",
-            "Check the state of the config and exit",
-            &cmdline.config_check,
-
-        "quiet|q",
-           "Do not output anything (currently only affects `--config-check`)",
-            &cmdline.quiet,
-
-        "override|O",
-            "Override a config file value\n" ~
-            "Example: ./agora -O node.validator=true -o dns=1.1.1.1 -o dns=2.2.2.2\n" ~
-            "Array values are additive, other items are set to the last override",
-            &cmdline.overridesHandler,
-
-        "version",
-            "Print Agora's version and build informations, then exit",
-            &cmdline.version_,
-        );
 }
 
 /*******************************************************************************
@@ -366,783 +151,678 @@ public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
 
 *******************************************************************************/
 
-public Config parseConfigFile (in CommandLine cmdln)
+public T parseConfigFile (T) (in CommandLine cmdln)
 {
     Node root = Loader.fromFile(cmdln.config_path).load();
-    return parseConfigImpl(cmdln, root);
+    return parseConfig!T(cmdln, root);
 }
 
 /// ditto
-public Config parseConfigString (string data, string path)
+public T parseConfigString (T) (string data, string path)
 {
     CommandLine cmdln = { config_path: path };
     Node root = Loader.fromString(data).load();
-    return parseConfigImpl(cmdln, root);
+    return parseConfig!T(cmdln, root);
 }
 
-///
-unittest
+/*******************************************************************************
+
+    Process the content of the YAML document described by `node` into an
+    instance of the struct `T`.
+
+    See the module description for a complete overview of this function.
+
+    Params:
+      T = Type of the config struct to fill
+      cmdln = Command line arguments
+      node = The root node matching `T`
+      strict = Whether to perform strict parsing
+      initPath = Unused
+
+    Returns:
+      An instance of `T` filled with the content of `node`
+
+    Throws:
+      If the content of `node` cannot satisfy the requirements set by `T`,
+      or if `node` contain extra fields and `strict` is `true`.
+
+*******************************************************************************/
+
+public T parseConfig (T) (
+    in CommandLine cmdln, Node node, bool strict = true, string initPath = null)
 {
-    assertThrown!Exception(parseConfigString("", "/dev/null"));
+    static assert(is(T == struct), "`" ~ __FUNCTION__ ~
+                  " should only be called with a `struct` type as argument, not: `" ~
+                  fullyQualifiedName!T ~ "`");
 
-    // Missing 'network' section for a non validator node
+    final switch (node.nodeID)
     {
-        immutable conf_str = `
-validator:
-  enabled: false
-`;
-        assertThrown!Exception(parseConfigString(conf_str, "/dev/null"));
-    }
-
-    // Missing 'network' section for a validator node with name registry
-    {
-        immutable conf_str = `
-validator:
-  enabled: true
-  registry_address: http://127.0.0.1:3003
-  seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
-  recurring_enrollment: true
-  preimage_reveal_interval: 10
-`;
-        parseConfigString(conf_str, "/dev/null");
-    }
-
-        // Missing 'network' section for a validator node without name registry
-    {
-        immutable conf_str = `
-validator:
-  enabled: true
-  registry_address: disabled
-  seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
-  recurring_enrollment: true
-  preimage_reveal_interval: 10
-`;
-        assertThrown!Exception(parseConfigString(conf_str, "/dev/null"));
-    }
-
-    {
-        immutable conf_str = `
-network:
-  - http://192.168.0.42:2826
-`;
-        auto conf = parseConfigString(conf_str, "/dev/null");
-        assert(conf.network == [ `http://192.168.0.42:2826` ]);
-    }
-}
-
-///
-private const(string)[] parseSequence (string section, in CommandLine cmdln,
-        Node root, bool optional = false)
-{
-    if (auto val = section in cmdln.overrides)
-        return *val;
-
-    if (auto node = section in root)
-        enforce(root[section].type == NodeType.sequence,
-            format("`%s` section must be a sequence", section));
-    else if (optional)
-        return null;
-    else
-        throw new Exception(
-            format("The '%s' section is mandatory and must " ~
-                "specify at least one item", section));
-
-    string[] result;
-    foreach (string item; root[section])
-        result ~= item;
-
-    return result;
-}
-
-/// ditto
-private Config parseConfigImpl (in CommandLine cmdln, Node root)
-{
-    immutable(InterfaceConfig)[] interfaces;
-
-    // TODO: Make parseSequence return any type, not just string[]
-    if (Node* interfacesNode = "interfaces" in root)
-    {
-        foreach (ref Node l; *interfacesNode)
+    case NodeID.mapping:
+            dbgWrite("Parsing config '%s', strict: %s, initPath: %s",
+                     fullyQualifiedName!T, strict.paintBool(true),
+                     initPath.length ? initPath : "(none)");
+        auto result = node.parseMapping!T(initPath, T.init, const(Context)(cmdln, strict), null);
+        static if (is(typeof(result.validate())))
         {
-            auto type = get!(InterfaceConfig.Type, "interfaces", "type")(cmdln, &l);
-            // All nodes have a default address
-            auto address = opt!(string, "interfaces", "address")(
-                cmdln, &l, InterfaceConfig.Default[type].address);
-            // ... but some are disabled by default
-            ushort port = () {
-                const defaultPort = InterfaceConfig.Default[type].port;
-                if (defaultPort == 0)
-                    return get!(ushort, "interfaces", "port")(cmdln, &l);
-                return opt!(ushort, "interfaces", "port")(cmdln, &l, defaultPort);
-            }();
+            dbgWrite("%s: Calling `%s` method",
+                     T.stringof.paint(Cyan), "validate()".paint(Green));
+            result.validate();
+        }
+        else
+            dbgWrite("%s: No `%s` method found",
+                     T.stringof.paint(Cyan), "validate()".paint(Yellow));
+        return result;
+    case NodeID.sequence:
+        throw new Exception("Expected to get a mapping (object) at the top level, but got a sequence (array)");
+    case NodeID.scalar:
+        throw new Exception("Expected to get a mapping (object) at top level, but got a scalar (value)");
+    case NodeID.invalid:
+        throw new Exception(format("Node type is invalid: %s", node));
+    }
+}
 
-            interfaces ~= InterfaceConfig(type, address, port);
+/// Used to pass around configuration
+private struct Context
+{
+    ///
+    private CommandLine cmdln;
+
+    ///
+    private bool strict;
+}
+
+/// Helper template for `staticMap` used for strict mode
+private template FieldToName (A)
+{
+    public template Pred (string FieldName)
+    {
+        static if (hasUDA!(FieldRef!(A, FieldName).Ref, Name))
+            enum Pred = getUDAs!(FieldRef!(A, FieldName).Ref, Name)[0].name;
+        else
+            enum Pred = FieldName;
+    }
+}
+
+/// Parse a single mapping, recurse as needed
+private T parseMapping (T)
+    (Node node, string path, auto ref T defaultValue, in Context ctx, in Node[string] fieldDefaults)
+{
+    static assert(is(T == struct), "`parseMapping` called with wrong type (should be a `struct`)");
+    assert(node.nodeID == NodeID.mapping, "Internal error: parseMapping shouldn't have been called");
+
+    dbgWrite("%s: `parseMapping` called for '%s' (node entries: %s)",
+             T.stringof.paint(Cyan), path.paint(Cyan),
+             node.length.paintIf(!!node.length, Green, Red));
+
+    if (ctx.strict)
+    {
+        /// First, check that all the sections found in the mapping are present in the type
+        /// If not, the user might have made a typo.
+        immutable string[] fieldNames = [ staticMap!(FieldToName!(T).Pred, FieldNameTuple!T) ];
+        // The second message has '{}' which will not format to anything,
+        // because `path` is empty. This allow us to call `ensure` with the same params.
+        const fmt = path.length ? "Unexpected key '{}' in section '{}'. Valid keys are: {}" :
+            "Unexpected key '{}' in document root{}. Valid keys are: {}";
+        foreach (const ref Node key, const ref Node value; node)
+            ensure(fieldNames.canFind(key.as!string), fmt, key.as!string, path, fieldNames);
+    }
+
+    const enabledState = node.isMappingEnabled!T(defaultValue);
+
+    if (enabledState.field != EnabledState.Field.None)
+        dbgWrite("%s: Mapping is enabled: %s", T.stringof.paint(Cyan), (!!enabledState).paintBool());
+
+    auto convert (string FName) ()
+    {
+        alias FR = FieldRef!(T, FName);
+        static if (hasUDA!(FR.Ref, Name))
+        {
+            static assert (getUDAs!(FR.Ref, Name).length == 1,
+                           "Field `" ~ fullyQualifiedName!(FR.Ref) ~
+                           "` cannot have more than one `Name` attribute");
+            enum NName = getUDAs!(FR.Ref, Name)[0].name;
+            dbgWrite("Field name `%s` will use YAML field `%s`",
+                     FName.paint(Yellow), NName.paint(Green));
+        }
+        else
+            enum NName = FName;
+        // Using exact type here matters: we could get a qualified type
+        // (e.g. `immutable(string)`) if the field is qualified,
+        // which causes problems.
+        FR.Type default_ = __traits(getMember, defaultValue, FName);
+
+        // If this struct is disabled, do not attempt to parse anything besides
+        // the `enabled` / `disabled` field.
+        if (!enabledState)
+        {
+            // Even this is too noisy
+            version (none)
+                dbgWrite("%s: %s field of disabled struct, default: %s",
+                         path.paint(Cyan), "Ignoring".paint(Yellow), default_);
+
+            static if (FName == "enabled")
+                return false;
+            else static if (FName == "disabled")
+                return true;
+            else
+                return default_;
         }
 
-        if (!interfaces.length)
-            throw new Exception("The 'interfaces' section must be empty or have valid values");
-    }
-    else
-        interfaces = InterfaceConfig.Default;
-
-    URL proxy_url;
-    if (Node* proxyNode = "proxy" in root)
-        proxy_url = URL.parse(get!(string, "proxy", "url")(cmdln, proxyNode));
-
-    auto validator = parseValidatorConfig("validator" in root, cmdln);
-    auto node = parseNodeConfig("node" in root, cmdln);
-
-    Config conf =
-    {
-        banman : parseBanManagerConfig("banman" in root, cmdln),
-        node : node,
-        interfaces: interfaces,
-        proxy_url: proxy_url,
-        consensus: parseConsensusConfig("consensus" in root, cmdln),
-        validator : validator,
-        flash : parseFlashConfig("flash" in root, cmdln, node, validator),
-        network : assumeUnique(parseSequence("network", cmdln, root, true)),
-        dns_seeds : assumeUnique(parseSequence("dns", cmdln, root, true)),
-        logging: parseLoggingSection("logging" in root, cmdln),
-        event_handlers: parserEventHandlers("event_handlers" in root, cmdln),
-    };
-
-    if (conf.validator.enabled)
-        enforce(conf.network.length ||
-                conf.validator.registry_address != "disabled" ||
-                // Allow single-network validator (assume this is NODE6)
-                conf.node.limit_test_validators == 1,
-            "Either the network section must not be empty, or 'validator.registry_address' must be set");
-    else
-        enforce(conf.network.length, "Network section must not be empty");
-
-    Node* admin = "admin" in root;
-    conf.admin.enabled = get!(bool, "admin", "enabled")(cmdln, admin);
-    if (conf.admin.enabled)
-    {
-        conf.admin.address = get!(string, "admin", "address")(cmdln, admin);
-        conf.admin.port    = get!(ushort, "admin", "port")(cmdln, admin);
-        conf.admin.username = get!(string, "admin", "username")(cmdln, admin);
-        conf.admin.pwd = get!(string, "admin", "pwd")(cmdln, admin);
-    }
-    return conf;
-}
-
-/// Parse the node config section
-private NodeConfig parseNodeConfig (Node* node, in CommandLine cmdln)
-{
-    auto min_listeners = get!(size_t, "node", "min_listeners")(cmdln, node);
-    auto max_listeners = get!(size_t, "node", "max_listeners")(cmdln, node);
-    auto commons_budget = opt!(string, "node", "commons_budget_address")(cmdln, node);
-
-    auto commons_budget_address = (commons_budget.length > 0)
-        ? PublicKey.fromString(commons_budget)
-        : PublicKey.init;
-
-    auto testing = opt!(bool, "node", "testing")(cmdln, node);
-    auto limit_test_validators = opt!(ubyte, "node", "limit_test_validators")(cmdln, node);
-    if (!testing && limit_test_validators)
-        throw new Exception("Cannot use 'node.limit_test_validator' without 'node.testing' set to 'true'");
-    if (limit_test_validators > 6)
-        throw new Exception("Value of 'node.limit_test_validators' must be between 0 and 6, inclusive");
-
-    Duration retry_delay = get!(Duration, "node", "retry_delay",
-                                str => str.to!ulong.msecs)(cmdln, node);
-
-    size_t max_retries = get!(size_t, "node", "max_retries")(cmdln, node);
-    Duration timeout = get!(Duration, "node", "timeout", str => str.to!ulong.msecs)
-        (cmdln, node);
-
-    string data_dir = get!(string, "node", "data_dir")(cmdln, node);
-    const stats_listening_port = opt!(ushort, "node", "stats_listening_port")(cmdln, node);
-    const block_time_offset_tolerance_secs = opt!(uint, "node", "block_time_offset_tolerance_secs")(cmdln, node);
-    const network_discovery_interval = opt!(uint, "node", "network_discovery_interval_secs")(cmdln, node);
-    const block_catchup_interval = opt!(uint, "node", "block_catchup_interval_secs")(cmdln, node);
-    const double_spent_threshold_pct = opt!(ubyte, "node", "double_spent_threshold_pct")(cmdln, node);
-    const relay_tx_max_num = opt!(ushort, "node", "relay_tx_max_num")(cmdln, node, 100);
-    Duration relay_tx_interval = opt!(ulong, "node", "relay_tx_interval_secs")(cmdln, node, 15).seconds;
-    const relay_tx_min_fee = Amount(opt!(ulong, "node", "relay_tx_min_fee")(cmdln, node, 0));
-    Duration relay_tx_cache_exp = opt!(ulong, "node", "relay_tx_cache_exp_secs")(cmdln, node, 1200).seconds;
-
-    NodeConfig result = {
-            min_listeners : min_listeners,
-            max_listeners : max_listeners,
-            commons_budget_address : commons_budget_address,
-            testing : testing,
-            limit_test_validators: limit_test_validators,
-            retry_delay : retry_delay,
-            max_retries : max_retries,
-            timeout : timeout,
-            data_dir : data_dir,
-            stats_listening_port : stats_listening_port,
-            block_time_offset_tolerance : block_time_offset_tolerance_secs.seconds,
-            network_discovery_interval : network_discovery_interval.seconds,
-            block_catchup_interval : block_catchup_interval.seconds,
-            double_spent_threshold_pct : double_spent_threshold_pct,
-            relay_tx_max_num : relay_tx_max_num,
-            relay_tx_interval : relay_tx_interval,
-            relay_tx_min_fee : relay_tx_min_fee,
-            relay_tx_cache_exp : relay_tx_cache_exp,
-    };
-    return result;
-}
-
-///
-unittest
-{
-    import dyaml.loader;
-
-    CommandLine cmdln;
-
-    {
-        immutable conf_example = `
-node:
-  data_dir: .cache
-  commons_budget_address: boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s
-network:
- - "something"
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto config = parseNodeConfig("node" in node, cmdln);
-        assert(config.min_listeners == 2);
-        assert(config.max_listeners == 10);
-        assert(config.data_dir == ".cache");
-        assert(config.commons_budget_address.toString() == "boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s");
-    }
-}
-
-/// Parse Consensus parameters
-private ConsensusConfig parseConsensusConfig (Node* node, in CommandLine cmdln)
-{
-    const validator_cycle = get!(uint, "consensus", "validator_cycle")(cmdln, node);
-    const genesis_ts = get!(ulong, "consensus", "genesis_timestamp")(cmdln, node);
-    const max_quorum_nodes = get!(uint, "consensus", "max_quorum_nodes")(cmdln, node);
-    const quorum_threshold = get!(uint, "consensus", "quorum_threshold")(cmdln, node);
-    const quorum_shuffle_interval = get!(uint, "consensus", "quorum_shuffle_interval")(cmdln, node);
-    const block_interval_sec = get!(uint, "consensus", "block_interval_sec")(cmdln, node);
-    const tx_payload_max_size = get!(uint, "consensus", "tx_payload_max_size")(cmdln, node);
-    const tx_payload_fee_factor = get!(uint, "consensus", "tx_payload_fee_factor")(cmdln, node);
-    const validator_tx_fee_cut = get!(ubyte, "consensus", "validator_tx_fee_cut")(cmdln, node);
-    const payout_period = get!(uint, "consensus", "payout_period")(cmdln, node);
-
-    if (quorum_threshold < 1 || quorum_threshold > 100)
-        throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
-
-    ConsensusConfig result = {
-        validator_cycle: validator_cycle,
-        genesis_timestamp: genesis_ts,
-        max_quorum_nodes: max_quorum_nodes,
-        quorum_threshold: quorum_threshold,
-        quorum_shuffle_interval: quorum_shuffle_interval,
-        block_interval_sec: block_interval_sec,
-        tx_payload_max_size: tx_payload_max_size,
-        tx_payload_fee_factor: tx_payload_fee_factor,
-        validator_tx_fee_cut: validator_tx_fee_cut,
-        payout_period: payout_period,
-    };
-
-    return result;
-}
-
-///
-unittest
-{
-    import dyaml.loader;
-
-    CommandLine cmdln;
-
-    immutable conf_example = `
-consensus:
-    validator_cycle:           42
-    max_quorum_nodes:         420
-    quorum_threshold:          96
-    quorum_shuffle_interval:  210
-    tx_payload_max_size:     2048
-    tx_payload_fee_factor:   2100
-    validator_tx_fee_cut:      69
-    payout_period:           9999
-    genesis_timestamp:     424242
-network:
- - "something"
-`;
-
-    auto node = Loader.fromString(conf_example).load();
-    auto config = parseConsensusConfig("consensus" in node, cmdln);
-    assert(config.validator_cycle == 42);
-    assert(config.max_quorum_nodes == 420);
-    assert(config.quorum_threshold == 96);
-    assert(config.quorum_shuffle_interval == 210);
-    assert(config.tx_payload_max_size == 2048);
-    assert(config.tx_payload_fee_factor == 2100);
-    assert(config.validator_tx_fee_cut == 69);
-    assert(config.payout_period == 9999);
-    assert(config.genesis_timestamp == 424242);
-}
-
-/// Parse the validator config section
-private ValidatorConfig parseValidatorConfig (Node* node, in CommandLine cmdln)
-{
-    const enabled = get!(bool, "validator", "enabled")(cmdln, node);
-    if (!enabled)
-        return ValidatorConfig(false);
-
-    auto registry_address = get!(string, "validator", "registry_address")(cmdln, node);
-    const recurring_enrollment = get!(bool, "validator", "recurring_enrollment")(cmdln, node);
-    const preimage_reveal_interval = get!(Duration, "validator", "preimage_reveal_interval",
-        str => str.to!ulong.seconds)(cmdln, node);
-    const nomination_interval = get!(Duration, "validator", "nomination_interval",
-        str => str.to!ulong.seconds)(cmdln, node);
-    const preimage_catchup_interval = get!(Duration, "validator", "preimage_catchup_interval",
-        str => str.to!ulong.seconds)(cmdln, node);
-
-    ValidatorConfig result = {
-        enabled: true,
-        key_pair:
-            KeyPair.fromSeed(SecretKey.fromString(get!(string, "validator", "seed")(cmdln, node))),
-        registry_address: registry_address,
-        addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
-        recurring_enrollment : recurring_enrollment,
-        preimage_reveal_interval : preimage_reveal_interval,
-        nomination_interval : nomination_interval,
-    };
-    return result;
-}
-
-/// Parse the flash config section
-private FlashConfig parseFlashConfig (Node* node, in CommandLine cmdln,
-    in NodeConfig node_config, in ValidatorConfig validator_config)
-{
-    const enabled = get!(bool, "flash", "enabled")(cmdln, node);
-    if (!enabled)
-        return FlashConfig(false);
-
-    const timeout = get!(Duration, "flash", "timeout", str => str.to!ulong.msecs)
-        (cmdln, node);
-
-    const listener_address = get!(string, "flash", "listener_address")(cmdln, node);
-    const min_funding = opt!(ulong, "flash", "min_funding")(cmdln, node);
-    const max_funding = opt!(ulong, "flash", "max_funding")(cmdln, node);
-    const min_settle_time = opt!(uint, "flash", "min_settle_time")(cmdln, node);
-    const max_settle_time = opt!(uint, "flash", "max_settle_time")(cmdln, node);
-    const max_retry_time = get!(Duration, "flash", "max_retry_time", str => str.to!ulong.msecs)
-        (cmdln, node);
-    const max_retry_delay = get!(Duration, "flash", "max_retry_delay", str => str.to!ulong.msecs)
-        (cmdln, node);
-    enforce(max_retry_time > max_retry_delay, "`max_retry_time` must be greater than `max_retry_delay`");
-    const retry_multiplier = opt!(uint, "flash", "retry_multiplier")(cmdln, node);
-    const registry_address = get!(string, "flash", "registry_address")(cmdln, node);
-
-    const control_address = get!(string, "flash", "control_address")(cmdln, node);
-    const control_port    = get!(ushort, "flash", "control_port")(cmdln, node);
-
-    FlashConfig result = {
-        enabled: true,
-        timeout: timeout,
-        listener_address: listener_address,
-        control_address: control_address,
-        control_port: control_port,
-        min_funding: min_funding.coins,
-        max_funding: max_funding.coins,
-        min_settle_time: min_settle_time,
-        max_settle_time: max_settle_time,
-        max_retry_time : max_retry_time,
-        max_retry_delay : max_retry_delay,
-        retry_multiplier : retry_multiplier,
-        registry_address : registry_address,
-        addresses_to_register : assumeUnique(parseSequence("addresses_to_register", cmdln, *node, true)),
-    };
-    return result;
-}
-
-unittest
-{
-    import dyaml.loader;
-
-    CommandLine cmdln;
-
-    {
-        immutable conf_example = `
-validator:
-  enabled: true
-  seed: SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
-  registry_address: http://127.0.0.1:3003
-  recurring_enrollment : false
-  preimage_reveal_interval: 99
-network:
- - "something"
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto config = parseValidatorConfig("validator" in node, cmdln);
-        assert(config.enabled);
-        assert(config.preimage_reveal_interval == 99.seconds);
-        assert(config.key_pair == KeyPair.fromSeed(
-            SecretKey.fromString("SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI")));
-        assert(!config.recurring_enrollment);
-    }
-    {
-    immutable conf_example = `
-validator:
-  enabled: true
-network:
- - "something"
-`;
-        auto node = Loader.fromString(conf_example).load();
-        assertThrown!Exception(parseValidatorConfig("validator" in node, cmdln));
-    }
-}
-
-/// Parse the banman config section
-private BanManager.Config parseBanManagerConfig (Node* node, in CommandLine cmdln)
-{
-    BanManager.Config conf;
-    conf.max_failed_requests = get!(size_t, "banman", "max_failed_requests")(cmdln, node);
-    conf.ban_duration = get!(Duration, "banman", "ban_duration",
-                             str => str.to!ulong.seconds)(cmdln, node);
-    return conf;
-}
-
-/*******************************************************************************
-
-    Parse the `logging` config section
-
-    Params:
-        ptr = pointer to the Yaml node containing the loggers configuration
-        c = the parsed command line arguments, for override
-
-    Returns:
-        the parsed config section
-
-*******************************************************************************/
-
-private immutable(LoggerConfig)[] parseLoggingSection (Node* ptr, in CommandLine)
-{
-    if (ptr is null)
-        return Config.init.logging;
-
-    immutable(LoggerConfig)[] result;
-    foreach (string name_, Node value; *ptr)
-    {
-        LoggerConfig c = { name: name_ != "root" ? name_ : null };
-        if (auto p = "level" in value)
-            c.level = (*p).as!string.to!LogLevel;
-        if (auto p = "propagate" in value)
-            c.propagate = (*p).as!bool;
-        if (auto p = "console" in value)
-            c.console = (*p).as!bool;
-        if (auto p = "additive" in value)
-            c.additive = (*p).as!bool;
-        if (auto p = "file" in value)
-            c.file = (*p).as!string;
-        if (auto p = "buffer_size" in value)
-            c.buffer_size = (*p).as!size_t;
-
-        result ~= c;
-    }
-
-    return result.length ? result : Config.init.logging;
-}
-
-///
-unittest
-{
-    import dyaml.loader;
-
-    {
-        CommandLine cmdln;
-        immutable conf_example = `
-logging:
-  root:
-    level: Trace
-  agora.network:
-    level: Error
-network:
- - "something"
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto config = parseLoggingSection("logging" in node, cmdln);
-        assert(config[0].name.length == 0);
-        assert(config[0].level == LogLevel.Trace);
-        assert(config[1].name == "agora.network");
-        assert(config[1].level == LogLevel.Error);
-    }
-
-    {
-        CommandLine cmdln;
-        immutable conf_example = `
-network:
- - "something"
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto config = parseLoggingSection("logging" in node, cmdln);
-        assert(config.length == 1);
-        assert(config[0].name.length == 0);
-        assert(config[0].level == LogLevel.Info);
-        assert(config[0].console == true);
-    }
-}
-
-/// Optionally get a value
-private T opt (T, string section, string name) (
-    in CommandLine cmdln, Node* node, lazy T def = T.init)
-{
-    try
-        return get!(T, section, name)(cmdln, node);
-    catch (Exception e)
-        return def;
-}
-
-/// Helper function to get a config parameter
-private T get (T, string section, string name) (in CommandLine cmdln, Node* node)
-{
-    return get!(T, section, name, (string val) => val.to!T)(cmdln, node);
-}
-
-/// Helper function to get a config parameter with a conversion routine
-private T get (T, string section, string name, alias conv)
-    (in CommandLine cmdl, Node* node)
-{
-    static immutable QualifiedName = (section ~ "." ~ name);
-    static immutable Names = [ section, name ];
-
-    if (auto val = QualifiedName in cmdl.overrides)
-        return conv((*val)[$ - 1]);
-
-    if (node)
-        if (auto val = name in *node)
-            return conv((*val).as!string);
-
-    // If the user sets a default value, just return it
-    static if (is(typeof(initValue!(Config.init, Names)) : T)
-               && hasCustomInit!(Config.init, Names))
-        return initValue!(Config.init, Names);
-    // Additionally, `bool` is special cased, as a `bool` that is mandatory
-    // does not make sense: it defaults to either `true` or `false`
-    else static if (is(T == bool))
-        return false;
-    else
-        throw new Exception(format(
-            "'%s' was not found in config's '%s' section, nor was '%s' in command line arguments",
-            name, section, QualifiedName));
-}
-
-/// Helper template to check if a struct's field has a non-default init
-private template hasCustomInit (alias instance, const string[] FieldNames)
-{
-    private alias T = typeof(initValue!(instance, FieldNames));
-    enum bool hasCustomInit = initValue!(instance, FieldNames) != T.init;
-}
-
-/// Helper template to get the initial value of a field
-private template initValue (alias instance, const string[] FieldNames)
-{
-    static if (FieldNames.length == 1)
-        static immutable initValue = __traits(getMember, instance, FieldNames[0]);
-    else
-        static immutable initValue =  initValue!(__traits(getMember, instance, FieldNames[0]), FieldNames[1 .. $]);
-}
-
-unittest
-{
-    static assert(initValue!(Config.init, ["consensus", "max_quorum_nodes"]) == 7);
-    static assert(hasCustomInit!(Config.init, [ "consensus", "max_quorum_nodes"]));
-
-    static assert(initValue!(Config.init, ["validator", "enabled"]) == false);
-    static assert(!hasCustomInit!(Config.init, ["validator", "enabled"]));
-
-    static assert(initValue!(Config.init.validator, ["preimage_reveal_interval"]) == 10.seconds);
-    static assert(hasCustomInit!(Config.init.validator, ["preimage_reveal_interval"]));
-}
-
-/// Helper function to get a config parameter with a converter
-private auto get (string section, string name, Converter) (
-    in CommandLine cmdl, Node* node, scope Converter converter)
-{
-    return converter(get!(ParameterType!convert, section, name)(cmdl, node));
-}
-
-/*******************************************************************************
-
-    Convert a QuorumConfig to the SCPQorum which the SCP protocol understands
-
-    Params:
-        quorum_conf = the quorum config
-
-    Returns:
-        `SCPQuorumSet` instance
-
-*******************************************************************************/
-
-public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
-{
-    import std.conv;
-    import scpd.types.Stellar_types : NodeID;
-
-    SCPQuorumSet quorum;
-    quorum.threshold = quorum_conf.threshold;
-
-    foreach (ref const node; quorum_conf.nodes)
-    {
-        quorum.validators.push_back(node);
-    }
-
-    foreach (ref const sub_quorum; quorum_conf.quorums)
-    {
-        auto scp_quorum = toSCPQuorumSet(sub_quorum);
-        quorum.innerSets.push_back(scp_quorum);
-    }
-
-    return quorum;
-}
-
-/*******************************************************************************
-
-    Convert an SCPQorum to a QuorumConfig
-
-    Params:
-        scp_quorum = the quorum config
-
-    Returns:
-        `SCPQuorumSet` instance
-
-*******************************************************************************/
-
-public QuorumConfig toQuorumConfig (const ref SCPQuorumSet scp_quorum)
-    @safe nothrow
-{
-    import std.conv;
-    import scpd.types.Stellar_types : NodeID;
-
-    ulong[] nodes;
-
-    foreach (node; scp_quorum.validators.constIterator)
-        nodes ~= node;
-
-    QuorumConfig[] quorums;
-    foreach (ref sub_quorum; scp_quorum.innerSets.constIterator)
-        quorums ~= toQuorumConfig(sub_quorum);
-
-    QuorumConfig quorum =
-    {
-        threshold : scp_quorum.threshold,
-        nodes : nodes,
-        quorums : quorums,
-    };
-
-    return quorum;
-}
-
-///
-unittest
-{
-    import agora.crypto.Hash;
-
-    auto quorum = QuorumConfig(2, [0, 1, 2],
-        [QuorumConfig(2, [0, 2],
-            [QuorumConfig(2, [0, 1, 1])])]);
-
-    auto scp_quorum = toSCPQuorumSet(quorum);
-    assert(scp_quorum.toQuorumConfig() == quorum);
-}
-
-/*******************************************************************************
-
-    Parse the `event_handlers` config section
-
-    Params:
-        ptr = pointer to the Yaml node containing the event_handlers configuration
-        c = the parsed command line arguments, for override
-
-    Returns:
-        the parsed event handlers
-
-*******************************************************************************/
-
-private immutable(EventHandlerConfig)[] parserEventHandlers (Node* node, in CommandLine c)
-{
-    immutable(EventHandlerConfig)[] handlers;
-    with (HandlerType)
-    {
-        only(BlockExternalized, BlockHeaderUpdated, PreimageReceived, TransactionReceived)
-            .each!((HandlerType type)
-            {
-                if (node !is null)
-                {
-                    auto addresses = parseSequence(type, c, *node, true);
-                    if (addresses.length > 0)
-                        handlers ~= EventHandlerConfig(type, assumeUnique(addresses));
-                }
-            });
-    }
-
-    return handlers;
-}
-
-///
-unittest
-{
-    // If the node does not exist
-    {
-        CommandLine cmdln;
-        immutable conf_example = `
-network:
- - "something"
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
-        assert(handlers.length == 0);
-    }
-
-    // If the nodes and values exist
-    {
-        CommandLine cmdln;
-        immutable conf_example = `
-network:
- - "something"
-event_handlers:
-  BlockExternalized:
-    - http://127.0.0.1:3836
-  BlockHeaderUpdated:
-    - http://127.0.0.2:3836
-  PreimageReceived:
-    - http://127.0.0.3:3836
-  TransactionReceived:
-    - http://127.0.0.4:3836
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
-        with (HandlerType)
+        if (auto ptr = FName in fieldDefaults)
         {
-            assert(handlers.filter!(h => h.type == BlockExternalized).front.addresses == [ `http://127.0.0.1:3836` ]);
-            assert(handlers.filter!(h => h.type == BlockHeaderUpdated).front.addresses == [ `http://127.0.0.2:3836` ]);
-            assert(handlers.filter!(h => h.type == PreimageReceived).front.addresses == [ `http://127.0.0.3:3836` ]);
-            assert(handlers.filter!(h => h.type == TransactionReceived).front.addresses == [ `http://127.0.0.4:3836` ]);
+            dbgWrite("Found %s (%s.%s) in `fieldDefaults",
+                     NName.paint(Cyan), path.paint(Cyan), FName.paint(Cyan));
+
+            enforce(!ctx.strict || FName !in node);
+            return (*ptr).parseField!(FR)(path.addPath(FName), default_, ctx)
+                .dbgWriteRet("Using value '%s' from fieldDefaults for field '%s'",
+                             FName.paint(Cyan));
+        }
+
+        if (auto ptr = NName in node)
+        {
+            dbgWrite("%s: YAML field is %s in node%s",
+                     NName.paint(Cyan), "present".paint(Green),
+                     (FName == NName ? "" : " (note that field name is overriden)").paint(Yellow));
+            return (*ptr).parseField!(FR)(path.addPath(NName), default_, ctx)
+                .dbgWriteRet("Using value '%s' from YAML document for field '%s'",
+                             FName.paint(Cyan));
+        }
+
+        dbgWrite("%s: Field is %s from node%s",
+                 NName.paint(Cyan), "missing".paint(Red),
+                 (FName == NName ? "" : " (note that field name is overriden)").paint(Yellow));
+
+        // A field is considered optional if it has an initializer that is different
+        // from its default value, or if it has the `Optional` UDA.
+        // In that case, just return this value.
+        static if (isOptional!FR)
+            return FR.Default
+                .dbgWriteRet("Using default value '%s' for optional field '%s'", FName.paint(Cyan));
+
+        // The field is not present, but it could be because it is an optional section.
+        // For example, the section could be defined as:
+        // ```
+        // struct RequestLimit { size_t reqs = 100; }
+        // struct Config { RequestLimit limits; }
+        // ```
+        // In this case we need to recurse into `RequestLimit` to check if any
+        // of its field is required.
+        else static if (mightBeOptional!FR)
+        {
+            const npath = path.addPath(FName);
+            string[string] aa;
+            return Node(aa).parseMapping!(FR.Type)(npath, FR.Default, ctx, null);
+        }
+        else
+        {
+            const fmt = path.length ?
+                "'{}' was not found in '{}', nor was it provided in command line arguments" :
+                // The extra `{}` is used to allow passing the same arguments to `ensure`
+                "'{}' was not found in document{}, nor was it provided in command line arguments";
+            ensure(false, fmt, NName, path);
+            assert(0);
         }
     }
 
-    // If the nodes and some values exist
+    debug (ConfigFillerDebug)
     {
-        CommandLine cmdln;
-        immutable conf_example = `
-network:
- - "something"
-event_handlers:
-  BlockExternalized:
-    - http://127.0.0.1:3836
-  TransactionReceived:
-    - http://127.0.0.4:3836
-    - http://127.0.0.5:3836
-`;
-        auto node = Loader.fromString(conf_example).load();
-        auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
-        with (HandlerType)
+        indent++;
+        scope (exit) indent--;
+    }
+    // This might trigger things like "`this` is not accessible".
+    // In this case, the user most likely needs to provide a converter.
+    return T(staticMap!(convert, FieldNameTuple!T));
+}
+
+/*******************************************************************************
+
+    Parse a field, trying to match up the compile-time expectation with
+    the run time value of the Node (`nodeID`).
+
+    Because a `struct` can be filled from either a mapping or a scalar,
+    this function will first try the converter / fromString / string ctor
+    methods before defaulting to fieldwise construction.
+
+    Note that optional fields are checked before recursion happens,
+    so this method does not do this check.
+
+*******************************************************************************/
+
+private FR.Type parseField (alias FR)
+    (Node node, string path, auto ref FR.Type defaultValue, in Context ctx)
+{
+    if (node.nodeID == NodeID.invalid)
+        throw new Exception(format("Node type is invalid: %s", node));
+
+    static if (hasConverter!(FR.Ref))
+        return node.viaConverter!(FR);
+
+    else static if (hasFromString!(FR.Type))
+        return FR.Type.fromString(node.as!string);
+
+    else static if (hasStringCtor!(FR.Type))
+        return FR.Type(node.as!string);
+
+    else static if (is(FR.Type == struct))
+    {
+        ensure(node.nodeID == NodeID.mapping,
+               "Expected '{}' to be a mapping (object), not a {}",
+               path, node.nodeTypeString());
+        return node.parseMapping!(FR.Type)(path, defaultValue, ctx, null);
+    }
+
+    // Handle string early as they match the sequence rule too
+    else static if (isSomeString!(FR.Type))
+        // Use `string` type explicitly because `Variant` thinks
+        // `immutable(char)[]` (aka `string`) and `immutable(char[])`
+        // (aka `immutable(string)`) are not compatible.
+        return node.parseScalar!(string)(path);
+    // Enum too, as their base type might be an array (including strings)
+    else static if (is(FR.Type == enum))
+        return node.parseScalar!(FR.Type)(path);
+
+    else static if (is(FR.Type : E[], E))
+    {
+        static if (hasUDA!(FR.Ref, Key))
         {
-            assert(handlers.filter!(h => h.type == BlockExternalized)
-                .front.addresses == [ `http://127.0.0.1:3836` ]);
-            assert(handlers.filter!(h => h.type == TransactionReceived)
-                .front.addresses == [ `http://127.0.0.4:3836`, `http://127.0.0.5:3836` ]);
-            assert(handlers.length == 2);
-            assert(handlers.count!(h => h.type == PreimageReceived) == 0);
-            assert(handlers.count!(h => h.type == BlockHeaderUpdated) == 0);
+            ensure(node.nodeID == NodeID.mapping,
+                   "Expected '{}' to be a mapping (object), not a {}",
+                   path, node.nodeTypeString());
+
+            static assert(getUDAs!(FR.Ref, Key).length == 1,
+                          "`" ~ fullyQualifiedName!(FR.Ref) ~
+                          "` field shouldn't have more than one `Key` attribute");
+            static assert(is(E == struct),
+                          "Field `" ~ fullyQualifiedName!(FR.Ref) ~
+                          "` has a `Key` attribute, but is a sequence of `" ~
+                          fullyQualifiedName!E ~ "`, not a sequence of `struct`");
+
+            string key = getUDAs!(FR.Ref, Key)[0].name;
+            return node.mapping().map!(
+                (Node.Pair pair) {
+                    ensure(pair.value.nodeID == NodeID.mapping,
+                           "Field '{}' should be a sequence of mapping (array of objects), " ~
+                           "but it is a sequence of {}",
+                           path, pair.value.nodeTypeString());
+
+                    return pair.value.parseMapping!E(
+                        path.addPath(pair.key.as!string),
+                        E.init, ctx, key.length ? [ key: pair.key ] : null);
+                }).array();
+        }
+        else
+        {
+            ensure(node.nodeID == NodeID.sequence,
+                   "Expected '{}' to be a sequence (array), not a {}",
+                   path, node.nodeTypeString());
+            return node.parseSequence!(FR.Type, E)(path, ctx);
         }
     }
+    else
+        return node.parseScalar!(FR.Type)(path);
 }
+
+/// Parse a node as a scalar
+private T parseScalar (T) (Node node, string path)
+{
+    ensure(node.nodeID == NodeID.scalar,
+           "Expected '{}' to be a scalar (value), not a {}",
+           path, node.nodeTypeString());
+    static if (is(T == enum))
+        return node.as!string.to!(T);
+    else
+        return node.as!(T);
+}
+
+private T parseSequence (T : E[], E) (Node node, string path, in Context ctx)
+{
+    assert(node.nodeID == NodeID.sequence, "Internal error: parseSequence shouldn't have been called");
+    // TODO: Fix path
+    static if (is(E == struct))
+        return node.sequence.map!(n => n.parseMapping!E(path, E.init, ctx, null)).array();
+    else static if (isSomeString!E) // Avoid Variant bug
+        return node.sequence.map!(n => cast(E) n.parseScalar!string(path)).array();
+    else
+        return node.sequence.map!(n => n.parseScalar!E(path)).array();
+}
+
+private auto parseDefaultMapping (alias SFR) (
+    string path, string firstMissing, in Context ctx)
+{
+    static assert(is(SFR.Type == struct), "Internal error: `parseDefaultMapping` called with non-struct");
+
+    // TODO: FIXME (default)
+    string[string] emptyMapping;
+    const enabledState = Node(emptyMapping).isMappingEnabled!(SFR.Type)(SFR.Default);
+
+    auto convert (string FName) ()
+    {
+        alias FR = FieldRef!(SFR.Type, FName);
+        const npath = path.addPath(FName);
+
+        // See `isMappingEnabled`
+        if (!enabledState)
+        {
+            static if (FName == "enabled")
+                return false;
+            else static if (FName == "disabled")
+                return true;
+            else
+                // FIXME
+                return FR.Default;
+        }
+
+        // If it has converters, we should not recurse into it
+        static if (isOptional!FR)
+            return FR.Default;
+        else static if (mightBeOptional!FR)
+            return parseDefaultMapping!FR(npath, firstMissing, ctx);
+        else
+        {
+            ensure(false, "Field '{}' is not optional (first undefined: {})",
+                   npath, firstMissing);
+            return FR.Default;
+        }
+    }
+
+    static if (hasFieldwiseCtor!(SFR.Type))
+        return SFR.Type(staticMap!(convert, FieldNameTuple!(SFR.Type)));
+    else
+    {
+        ensure(false, "Field '{}' is not optional (first undefined: {})",
+               path, firstMissing);
+        return SFR.Type.init; // Just so that the compiler doesn't get confused
+    }
+}
+
+/// Convenience short-hand template to get a field identifier
+private enum FId (alias Field) = __traits(identifier, Field);
+
+/// Evaluates to `true` if this field is to be considered optional
+/// (does not need to be present in the YAML document)
+private enum isOptional (alias FR) = hasUDA!(FR.Ref, Optional) ||
+    is(immutable(FR.Type) == immutable(bool)) ||
+    (FR.Default != FR.Type.init);
+
+/// Evaluates to `true` if we should recurse into the struct via `parseDefaultMapping`
+private enum mightBeOptional (alias FR) = is(FR.Type == struct) &&
+    !hasConverter!(FR.Ref) && !hasFromString!(FR.Type) && !hasStringCtor!(FR.Type);
+
+/// Convenience template to check for the presence of converter(s)
+private enum hasConverter (alias Field) = hasUDA!(Field, Converter);
+
+/// Provided a field reference `FR` which is known to have at least one converter,
+/// perform basic checks and return the value after applying the converter.
+private auto viaConverter (alias FR) (Node node)
+{
+    enum Converters = getUDAs!(FR.Ref, Converter);
+    static assert (Converters.length,
+                   "Internal error: `viaConverter` called on field `" ~
+                   FId!(FR.Ref) ~ "` with no converter");
+
+    static assert(Converters.length == 1,
+                  "Field `" ~ FId!(FR.Ref) ~ "` cannot have more than one `Converter`");
+    return Converters[0].converter(node.as!string);
+}
+
+/*******************************************************************************
+
+    A reference to a field in a `struct`
+
+    The compiler sometimes rejects passing fields by `alias`, or complains about
+    missing `this` (meaning it tries to evaluate the value). Sometimes, it also
+    discards the UDAs.
+
+    To prevent this from happening, we always pass around a `FieldRef`,
+    which wraps the parent struct type (`T`) and the name of the field (`name`).
+
+    To avoid any issue, eponymous usage is also avoided, hence the reference
+    needs to be accessed using `Ref`. A convenience `Type` alias is provided,
+    as well as `Default`.
+
+*******************************************************************************/
+
+private template FieldRef (alias T, string name)
+{
+    /// The reference to the field
+    public alias Ref = __traits(getMember, T, name);
+
+    /// Type of the field
+    public alias Type = typeof(Ref);
+
+    /// Default value of the field (may or may not be `Type.init`)
+    public enum Default = __traits(getMember, T.init, name);
+}
+
+/// Returns whether or not the field has a `enabled` / `disabled` field,
+/// and its value. If it does not, returns `true`.
+private EnabledState isMappingEnabled (M) (Node node, auto ref M default_)
+{
+    static if ([FieldNameTuple!M].canFind("enabled"))
+    {
+        if (auto ptr = "enabled" in node)
+            return EnabledState(EnabledState.Field.Enabled, (*ptr).as!bool);
+        return EnabledState(EnabledState.Field.Enabled, __traits(getMember, default_, "enabled"));
+    }
+    else static if ([FieldNameTuple!M].canFind("disabled"))
+    {
+        if (auto ptr = "disabled" in node)
+            return EnabledState(EnabledState.Field.Disabled, (*ptr).as!bool);
+        return EnabledState(EnabledState.Field.Disabled, __traits(getMember, default_, "disabled"));
+    }
+    else
+        return EnabledState(EnabledState.Field.None);
+}
+
+/// Retun value of `isMappingEnabled`
+private struct EnabledState
+{
+    /// Used to determine which field controls a mapping enabled state
+    private enum Field
+    {
+        /// No such field, the mapping is considered enabled
+        None,
+        /// The field is named 'enabled'
+        Enabled,
+        /// The field is named 'disabled'
+        Disabled,
+    }
+
+    /// Check if the mapping is considered enabled
+    public bool opCast () const scope @safe pure @nogc nothrow
+    {
+        return this.field == Field.None ||
+            (this.field == Field.Enabled && this.fieldValue) ||
+            (this.field == Field.Disabled && !this.fieldValue);
+    }
+
+    /// Type of field found
+    private Field field;
+
+    /// Value of the field, interpretation depends on `field`
+    private bool fieldValue;
+}
+
+unittest
+{
+    static struct Config1
+    {
+        int integer2 = 42;
+        @(42) string str2;
+    }
+
+    static struct Config2
+    {
+        Config1 c1dup = { 42, "Hello World" };
+        string message = "Something";
+    }
+
+    static struct Config3
+    {
+        Config1 c1;
+        int integer;
+        string str;
+        Config2 c2 = { c1dup: { integer2: 69 } };
+    }
+
+    static assert(is(FieldRef!(Config3, "c2").Type == Config2));
+    static assert(FieldRef!(Config3, "c2").Default != Config2.init);
+    static assert(FieldRef!(Config2, "message").Default == Config2.init.message);
+    alias NFR1 = FieldRef!(Config3, "c2");
+    alias NFR2 = FieldRef!(NFR1.Ref, "c1dup");
+    alias NFR3 = FieldRef!(NFR2.Ref, "integer2");
+    alias NFR4 = FieldRef!(NFR2.Ref, "str2");
+    static assert(hasUDA!(NFR4.Ref, int));
+}
+
+/// Evaluates to `true` if `T` is a `struct` with a default ctor
+private enum hasFieldwiseCtor (T) = (is(T == struct) && is(typeof(() => T(T.init.tupleof))));
+
+/// Evaluates to `true` if `T` has a static method that accepts a `string` and returns a `T`
+private enum hasFromString (T) = is(typeof(T.fromString(string.init)) : T);
+
+/// Evaluates to `true` if `T` is a `struct` which accepts a single string as argument
+private enum hasStringCtor (T) = (is(T == struct) && is(typeof(T.__ctor)) &&
+                                  Parameters!(T.__ctor).length == 1 &&
+                                  is(typeof(() => T(string.init))));
+
+unittest
+{
+    static struct Simple
+    {
+        int value;
+        string otherValue;
+    }
+
+    static assert( hasFieldwiseCtor!Simple);
+    static assert(!hasStringCtor!Simple);
+
+    static struct PubKey
+    {
+        ubyte[] data;
+
+        this (string hex) @safe pure nothrow @nogc{}
+    }
+
+    static assert(!hasFieldwiseCtor!PubKey);
+    static assert( hasStringCtor!PubKey);
+
+    static assert(!hasFieldwiseCtor!string);
+    static assert(!hasFieldwiseCtor!int);
+    static assert(!hasStringCtor!string);
+    static assert(!hasStringCtor!int);
+}
+
+/// Convenience function to extend a YAML path
+private string addPath (string opath, string newPart)
+{
+    return opath.length ? format("%s.%s", opath, newPart) : newPart;
+}
+
+/*******************************************************************************
+
+    Debugging utility for config filler
+
+    Since this module does a lot of meta-programming, some things can easily
+    go wrong. For example, a condition being false might happen because it is
+    genuinely false or because the condition is buggy.
+
+    To make figuring out if a config is properly parsed or not, a little utility
+    (config-dumper) exists, which will provide a verbose output of what the
+    config filler does. To do this, `config-dumper` is compiled with
+    the below `debug` version.
+
+*******************************************************************************/
+
+debug (ConfigFillerDebug)
+{
+    /// A thin wrapper around `stderr.writefln` with indentation
+    private void dbgWrite (Args...) (string fmt, Args args)
+    {
+        import std.stdio;
+        stderr.write(IndentChars[0 .. indent >= IndentChars.length ? $ : indent]);
+        stderr.writefln(fmt, args);
+    }
+
+    /// Log a value that is to be returned
+    /// The value will be the first argument and painted yellow
+    private T dbgWriteRet (T, Args...) (auto ref T return_, string fmt, Args args)
+    {
+        dbgWrite(fmt, return_.paint(Yellow), args);
+        return return_;
+    }
+
+    /// The current indentation
+    private size_t indent;
+
+    /// Helper for indentation (who needs more than 16 levels of indent?)
+    private immutable IndentChars = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+    /// Thin wrapper to simplify colorization
+    private struct Colored (T)
+    {
+        /// Color used
+        private string color;
+
+        /// Value to print
+        private T value;
+
+        /// Hook for `formattedWrite`
+        public void toString (scope void delegate (scope const char[]) @safe sink)
+        {
+            formattedWrite(sink, "%s%s%s", this.color, this.value, Reset);
+        }
+    }
+
+    /// Ditto
+    private Colored!T paint (T) (T arg, string color)
+    {
+        return Colored!T(color, arg);
+    }
+
+    /// Paint `arg` in color `ifTrue` if `cond` evaluates to `true`, use color `ifFalse` otherwise
+    private Colored!T paintIf (T) (T arg, bool cond, string ifTrue, string ifFalse)
+    {
+        return Colored!T(cond ? ifTrue : ifFalse, arg);
+    }
+
+    /// Paint a boolean in green if `true`, red otherwise, unless `reverse` is set to `true`,
+    /// in which case the colors are swapped
+    private Colored!bool paintBool (bool value, bool reverse = false)
+    {
+        return value.paintIf(reverse ^ value, Green, Red);
+    }
+}
+else
+{
+    /// No-op
+    private void dbgWrite (Args...) (string fmt, lazy Args args) {}
+
+    /// Ditto
+    private int paint (T) (in T, string) { return 42; }
+
+    /// Ditto
+    private int paintBool (bool, bool = true) { return 42; }
+
+    /// Ditto
+    private int paintIf (T) (in T, bool, string, string) { return 42; }
+
+    /// Ditto
+    private T dbgWriteRet (T, Args...) (auto ref T return_, string fmt, lazy Args args)
+    {
+        return return_;
+    }
+}
+
+/// Reset the foreground color used
+private immutable Reset = "\u001b[0m";
+/// Set the foreground color to red, used for `false`, missing, errors, etc...
+private immutable Red = "\u001b[31m";
+/// Set the foreground color to red, used for warnings and other things
+/// that should draw attention but do not pose an immediate issue
+private immutable Yellow = "\u001b[33m";
+/// Set the foreground color to green, used for `true`, present, etc...
+private immutable Green = "\u001b[32m";
+/// Set the foreground color to green, used field names / path
+private immutable Cyan = "\u001b[36m";

@@ -8,6 +8,7 @@ WORKDIR /root/agora/talos/
 RUN npm ci && npm run build
 WORKDIR /root/agora/
 RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
+RUN dub build --skip-registry=all --compiler=ldc2 -c config-dumper
 
 # Runner
 # Uses edge as we need the same `ldc-runtime` as the LDC that compiled Agora,
@@ -22,5 +23,6 @@ RUN apk --no-cache add --allow-untrusted -X /root/packages/build/ ldc-runtime=1.
 RUN apk --no-cache add llvm-libunwind libgcc libsodium libstdc++ sqlite-libs
 COPY --from=Builder /root/agora/talos/build/ /usr/share/agora/talos/
 COPY --from=Builder /root/agora/build/agora /usr/local/bin/agora
+COPY --from=Builder /root/agora/build/agora-config-dumper /usr/local/bin/agora-config-dumper
 WORKDIR /agora/
 ENTRYPOINT [ "/usr/local/bin/agora" ]

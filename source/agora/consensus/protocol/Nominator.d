@@ -15,7 +15,6 @@ module agora.consensus.protocol.Nominator;
 
 import agora.common.Amount;
 import agora.common.BitMask;
-import agora.common.Config;
 import agora.common.ManagedDatabase;
 import agora.serialization.Serializer;
 import agora.common.Set;
@@ -36,6 +35,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.network.Clock;
 import agora.network.Manager;
+import agora.node.Config;
 import agora.consensus.Ledger;
 import agora.utils.Log;
 import agora.utils.SCPPrettyPrinter;
