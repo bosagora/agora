@@ -287,6 +287,7 @@ public class FeeManager
     private Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
         UTXO[] stakes) nothrow @safe
     {
+        import std.numeric : gcd;
         // no stakes, no fees
         if (stakes.length == 0)
             return [];
@@ -297,22 +298,20 @@ public class FeeManager
         tx_fees -= tot_data_fee;
         tx_fees.percentage(this.params.ValidatorTXFeeCut);
 
-        Amount sum_stake;
-        Amount[] stake_amounts = stakes.map!(utxo => utxo.output.value).array;
-        stake_amounts.each!(stake => sum_stake += stake);
+        // A Validator with MinFreezeAmount of coins staked will get 100 "shares"
+        // this fixes the stake amount that is needed to get a share
+        Amount share_stake = Amount.MinFreezeAmount;
+        share_stake.div(100);
+        // this will ignore any remaning part of the stake that is not worth a share
+        auto shares = stakes.map!(utxo => utxo.output.value.count(share_stake));
+        auto shares_gcd = shares.fold!((a, b) => gcd(a,b));
+        auto normalized_shares = shares.map!(share => share / shares_gcd);
 
-        // Stake amount for a single "share"
-        Amount share_stake = Amount.gcd(stake_amounts);
-        // Total "share" count staked
-        const total_shares = sum_stake.count(share_stake);
-
-        // tx_fees now equals "share value"
-        tx_fees.div(total_shares);
-
-        ulong[] shares = stake_amounts.map!(stake => stake.count(share_stake)).array;
+        // tx_fees now equals "share value", which is the amount each share will get
+        tx_fees.div(normalized_shares.sum());
 
         Amount[] validator_fees;
-        foreach (share; shares)
+        foreach (share; normalized_shares)
         {
             auto validator_fee = tx_fees;
             validator_fee.mul(share);
@@ -524,11 +523,12 @@ public class FeeManager
         auto man = new FeeManager();
         auto utxoset = new TestUTXOSet();
 
-        Amount double_stake = Amount.MinFreezeAmount; assert(double_stake.mul(2));
+        Amount double_stake = Amount.MinFreezeAmount * 2;
+        Amount stake_with_excess = Amount.MinFreezeAmount + Amount(19); // this should not change distribution
         auto frozen_txs = [
             Transaction([], [Output(Amount.MinFreezeAmount,
                 WK.Keys[0].address, OutputType.Freeze)]),
-            Transaction([], [Output(Amount.MinFreezeAmount,
+            Transaction([], [Output(stake_with_excess,
                 WK.Keys[0].address, OutputType.Freeze)]),
             Transaction([], [Output(double_stake,
                 WK.Keys[0].address, OutputType.Freeze)]),
