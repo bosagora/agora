@@ -170,8 +170,6 @@ public class TransactionPool
     public void remove (in Transaction tx, bool rm_double_spent = true) @trusted
     {
         auto tx_hash = tx.hashFull();
-        if (!this.hasTransactionHash(tx_hash))
-            return;
 
         this.db.execute("DELETE FROM tx_pool WHERE key = ?", tx_hash);
 
@@ -196,9 +194,6 @@ public class TransactionPool
     /// Ditto
     public void remove (in Hash tx_hash, bool rm_double_spent = true) @trusted
     {
-        if (!this.hasTransactionHash(tx_hash))
-            return;
-
         auto results = this.db.execute("SELECT val FROM tx_pool " ~
             "WHERE key = ?", tx_hash);
         if (!results.empty)
