@@ -289,21 +289,27 @@ public struct AdminConfig
     public string pwd;
 }
 
+/// Type of event which can be forwarded to an API server
 public enum HandlerType
 {
-    block_externalized = "block_externalized",
-    block_header_updated = "block_header_updated",
-    preimage_received = "preimage_received",
-    transaction_received = "transaction_received"
+    ///
+    BlockExternalized = "block_externalized",
+    ///
+    BlockHeaderUpdated = "block_header_updated",
+    ///
+    PreimageReceived = "preimage_received",
+    ///
+    TransactionReceived = "transaction_received",
 }
 
 /// Configuration for URLs to push a data when an event occurs
 public struct EventHandlerConfig
 {
-    HandlerType handler_type;
+    ///
+    public HandlerType type;
 
     /// URLs to push data to
-    public immutable string[] handler_addresses;
+    public immutable string[] addresses;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
@@ -1062,16 +1068,16 @@ unittest
 private immutable(EventHandlerConfig)[] parserEventHandlers (Node* node, in CommandLine c)
 {
     immutable(EventHandlerConfig)[] handlers;
-    with(HandlerType)
+    with (HandlerType)
     {
-        only(block_externalized, block_header_updated, preimage_received, transaction_received)
-            .each!((HandlerType handler_type)
+        only(BlockExternalized, BlockHeaderUpdated, PreimageReceived, TransactionReceived)
+            .each!((HandlerType type)
             {
                 if (node !is null)
                 {
-                    auto addresses = parseSequence(handler_type, c, *node, true);
+                    auto addresses = parseSequence(type, c, *node, true);
                     if (addresses.length > 0)
-                        handlers ~= EventHandlerConfig(handler_type, assumeUnique(addresses));
+                        handlers ~= EventHandlerConfig(type, assumeUnique(addresses));
                 }
             });
     }
@@ -1109,12 +1115,12 @@ event_handlers:
 `;
         auto node = Loader.fromString(conf_example).load();
         auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
-        with(HandlerType)
+        with (HandlerType)
         {
-            assert(handlers.filter!(h => h.handler_type == block_externalized).front.handler_addresses == [ `http://127.0.0.1:3836` ]);
-            assert(handlers.filter!(h => h.handler_type == block_header_updated).front.handler_addresses == [ `http://127.0.0.2:3836` ]);
-            assert(handlers.filter!(h => h.handler_type == preimage_received).front.handler_addresses == [ `http://127.0.0.3:3836` ]);
-            assert(handlers.filter!(h => h.handler_type == transaction_received).front.handler_addresses == [ `http://127.0.0.4:3836` ]);
+            assert(handlers.filter!(h => h.type == BlockExternalized).front.addresses == [ `http://127.0.0.1:3836` ]);
+            assert(handlers.filter!(h => h.type == BlockHeaderUpdated).front.addresses == [ `http://127.0.0.2:3836` ]);
+            assert(handlers.filter!(h => h.type == PreimageReceived).front.addresses == [ `http://127.0.0.3:3836` ]);
+            assert(handlers.filter!(h => h.type == TransactionReceived).front.addresses == [ `http://127.0.0.4:3836` ]);
         }
     }
 
@@ -1131,15 +1137,15 @@ event_handlers:
 `;
         auto node = Loader.fromString(conf_example).load();
         auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
-        with(HandlerType)
+        with (HandlerType)
         {
-            assert(handlers.filter!(h => h.handler_type == block_externalized)
-                .front.handler_addresses == [ `http://127.0.0.1:3836` ]);
-            assert(handlers.filter!(h => h.handler_type == transaction_received)
-                .front.handler_addresses == [ `http://127.0.0.4:3836`, `http://127.0.0.5:3836` ]);
+            assert(handlers.filter!(h => h.type == BlockExternalized)
+                .front.addresses == [ `http://127.0.0.1:3836` ]);
+            assert(handlers.filter!(h => h.type == TransactionReceived)
+                .front.addresses == [ `http://127.0.0.4:3836`, `http://127.0.0.5:3836` ]);
             assert(handlers.length == 2);
-            assert(handlers.count!(h => h.handler_type == preimage_received) == 0);
-            assert(handlers.count!(h => h.handler_type == block_header_updated) == 0);
+            assert(handlers.count!(h => h.type == PreimageReceived) == 0);
+            assert(handlers.count!(h => h.type == BlockHeaderUpdated) == 0);
         }
     }
 }

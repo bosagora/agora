@@ -270,26 +270,26 @@ public class FullNode : API
         if (config.event_handlers.length > 0)
         {
             // Make `BlockExternalizedHandler`s from config
-            config.event_handlers.filter!(h => h.handler_type == HandlerType.block_externalized)
-                .each!(handler => handler.handler_addresses
+            config.event_handlers.filter!(h => h.type == HandlerType.BlockExternalized)
+                .each!(handler => handler.addresses
                     .each!((string address) =>
                         this.block_handlers[address] = this.network.getBlockExternalizedHandler(address)));
 
             // Make `BlockHeaderUpdatedHandler`s from config
-            config.event_handlers.filter!(h => h.handler_type == HandlerType.block_header_updated)
-                .each!(handler => handler.handler_addresses
+            config.event_handlers.filter!(h => h.type == HandlerType.BlockHeaderUpdated)
+                .each!(handler => handler.addresses
                     .each!((string address) =>
                         this.block_header_handlers[address] = this.network.getBlockHeaderUpdatedHandler(address)));
 
             // Make `PreImageReceivedHandler`s from config
-            config.event_handlers.filter!(h => h.handler_type == HandlerType.preimage_received)
-                .each!(handler => handler.handler_addresses
+            config.event_handlers.filter!(h => h.type == HandlerType.PreimageReceived)
+                .each!(handler => handler.addresses
                     .each!((string address) =>
                         this.preimage_handlers[address] = this.network.getPreImageReceivedHandler(address)));
 
             // Make `TransactionReceivedHandler`s from config
-            config.event_handlers.filter!(h => h.handler_type == HandlerType.transaction_received)
-                .each!(handler => handler.handler_addresses
+            config.event_handlers.filter!(h => h.type == HandlerType.TransactionReceived)
+                .each!(handler => handler.addresses
                     .each!((string address) =>
                         this.transaction_handlers[address] = this.network.getTransactionReceivedHandler(address)));
         }
