@@ -1969,9 +1969,6 @@ public struct TestConf
     /// How often the validator should check for preimages to reveal
     public Duration preimage_reveal_interval = 100.msecs;
 
-    /// How often the validator should check if it is time for nomination
-    public Duration nomination_interval = 100.msecs;
-
     /// max failed requests before a node is banned
     /// Matches the eponymous field in the `banman` section.
     public size_t max_failed_requests = 100;
@@ -2136,7 +2133,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             registry_address : "name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
             preimage_reveal_interval : test_conf.preimage_reveal_interval,
-            nomination_interval: test_conf.nomination_interval,
+            nomination_interval: 100.msecs,
             preimage_catchup_interval: test_conf.preimage_catchup_interval,
             cycle_seed : cycle_seed,
             cycle_seed_height : cycle_seed_height,
