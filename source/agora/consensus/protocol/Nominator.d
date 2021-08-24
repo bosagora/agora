@@ -231,7 +231,7 @@ extern(D):
 
         A validator creates SCP object with the UTXO for enrollment. This
         checks that the UTXO key for enrollment exists and new SCP should be
-        created because of new enrollment of this node. If there is an 
+        created because of new enrollment of this node. If there is an
         existing SCP object, this just change the node id for the SCP object.
 
         Params:
