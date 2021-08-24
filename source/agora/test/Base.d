@@ -262,18 +262,18 @@ private UnitTestResult customModuleUnitTester ()
 
             if (chatty)
             {
+                scope(exit) stdout.flush();
                 auto output = stdout.lockingTextWriter();
                 output.formattedWrite("Unittesting %s", mod.name);
-                stdout.flush();
             }
             auto sw = StopWatch(AutoStart.yes);
             mod.test();
             sw.stop();
             if (chatty)
             {
+                scope(exit) stdout.flush();
                 auto output = stdout.lockingTextWriter();
                 output.formattedWrite(" (took %s)\n", sw.peek());
-                stdout.flush();
             }
 
             atomicOp!"+="(passed, 1);
@@ -281,12 +281,12 @@ private UnitTestResult customModuleUnitTester ()
         }
         catch (Throwable ex)
         {
+            scope (exit) stdout.flush();
             auto output = stdout.lockingTextWriter();
             output.formattedWrite("Module tests failed: %s\n", mod.name);
             output.formattedWrite("%s\n", ex);
             // print logs of the work thread
             CircularAppender!()().print(output);
-            stdout.flush();
         }
         return false;
     }
