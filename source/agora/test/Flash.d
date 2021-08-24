@@ -644,7 +644,7 @@ unittest
     const bob_pk = PublicKey(bob_pair.V);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
-    const Settle_1_Blocks = 0;
+    const Settle_1_Blocks = 3;
     //const Settle_10_Blocks = 10;
 
     // the utxo the funding tx will spend (only relevant to the funder)
@@ -698,8 +698,7 @@ unittest
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
 
     // and then a settlement will be published (but only after time lock expires)
-    auto settle_tx = bob.getLastSettleTx(bob_pk, chan_id);
-    network.expectTxExternalization(settle_tx);
+    iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
@@ -813,8 +812,7 @@ unittest
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
 
     // and then a settlement will be automatically published
-    auto settle_tx = bob.getLastSettleTx(bob_pk, chan_id);
-    network.expectTxExternalization(settle_tx);
+    iota(Settle_4_Blocks * 2).each!(idx => network.addBlock(true));
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
@@ -2167,14 +2165,9 @@ unittest
     bob.setPublishEnable(true);
 
     update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 4);
-    node_1.putTransaction(update_tx);
     network.expectTxExternalization(update_tx);
 
-    // nodes should publish last update
-    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 6);
-    network.expectTxExternalization(update_tx);
-
-    iota(4).each!(idx => network.addBlock(true));
+    iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.Closed);
 }
