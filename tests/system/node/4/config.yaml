@@ -21,7 +21,7 @@ interfaces:
   - type: http
     address: 0.0.0.0
     port:    4826
-  - type: http
+  - type: https
     address: 0.0.0.0
     port:    4735
 

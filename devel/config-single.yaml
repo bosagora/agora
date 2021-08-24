@@ -33,6 +33,7 @@ validator:
 
 admin:
   enabled: true
+  tls: false
   address: 0.0.0.0
   port:    2827
   username: admin
