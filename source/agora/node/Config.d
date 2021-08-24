@@ -129,6 +129,7 @@ public struct InterfaceConfig
         // HTTP = 0,
         /// Convenience alias for parsing
         http = 0,
+        https = 1,
     }
 
     /// Ditto
@@ -272,6 +273,9 @@ public struct AdminConfig
 
     /// Is the control API enabled?
     public bool enabled;
+
+    /// Whether to use tls for admin
+    public bool tls = true;
 
     /// Bind address
     public string address = "127.0.0.1";

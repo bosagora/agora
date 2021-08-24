@@ -24,12 +24,12 @@ tx_generator:
 
   # Addresses to send transactions
   addresses:
-    - https://node-2:2826
-    - https://node-3:3826
-    - https://node-4:4826
-    - https://node-5:5826
-    - https://node-6:6826
-    - https://node-7:7826
+    - https://node-2:2735
+    - https://node-3:3735
+    - https://node-4:4735
+    - https://node-5:5735
+    - https://node-6:6735
+    - https://node-7:7735
 
   # When we deploy Faucet on the real TestNet, the keys used will not be well-known.
   keys:

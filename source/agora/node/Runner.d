@@ -130,41 +130,55 @@ public Listeners runNode (Config config)
 
     setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
 
-    auto tls_ctx = getTLSContext();
+    string tls_user_help;
+    auto tls_ctx = getTLSContext(tls_user_help);
     if (result.admin !is null)
     {
-        if (!tls_ctx)
-            throw new Exception("This node has admin interface enabled so should be configured for ssl");
 
         bool checkPassword (string user, string password) @safe
         {
             return user == config.admin.username && password == config.admin.pwd;
         }
-        log.info("Admin interface listening will be on {}:{}", config.admin.address, config.admin.port);
         auto adminrouter = new URLRouter();
         adminrouter.any("*", performBasicAuth("Agora Admin", &checkPassword));
         adminrouter.registerRestInterface(result.admin);
         auto settings = new HTTPServerSettings(config.admin.address);
         settings.port = config.admin.port;
-        settings.tlsContext = tls_ctx;
+        if (config.admin.tls)
+        {
+            if (!tls_ctx)
+                throw new Exception(tls_user_help ~
+                    "Otherwise disable tls by setting `admin.tls` to `false` in the config file " ~
+                    "or use `-O admin.tls=false` as command line argument.");
+            settings.tlsContext = tls_ctx;
+        }
+        log.info("Admin interface is listening on http{}://{}:{}",
+            config.admin.tls ? "s" : "", config.admin.address, config.admin.port);
         result.http ~= listenHTTP(settings, adminrouter);
     }
 
     // HTTP interfaces for the node
-    foreach (interface_; config.interfaces.filter!(i => i.type == InterfaceConfig.Type.http))
+    foreach (interface_; config.interfaces.filter!(i => i.type <= InterfaceConfig.Type.https))
     {
         auto settings = new HTTPServerSettings(interface_.address);
         settings.port = interface_.port;
         settings.rejectConnectionPredicate = isBannedDg;
-        settings.tlsContext = tls_ctx;
-        log.info("Node will be listening on HTTP interface: {}:{}", interface_.address, settings.port);
+        if (interface_.type == InterfaceConfig.Type.https)
+        {
+            if (!tls_ctx)
+                throw new Exception(tls_user_help ~
+                    format!"Otherwise set type to `http` for interface `%s:%s` in the config file."(interface_.address, settings.port));
+            settings.tlsContext = tls_ctx;
+        }
+        log.info("Node is listening on interface: http{}://{}:{}",
+            interface_.type == InterfaceConfig.Type.https ? "s" : "" , interface_.address, settings.port);
         result.http ~= listenHTTP(settings, router);
     }
 
     // also register the FlashControlAPI
     if (result.flash !is null)
     {
-        log.info("Flash control interface listening will be on {}:{}",
+        log.info("Flash control interface is listening on {}:{}",
             config.flash.control_address, config.flash.control_port);
         result.http ~= result.flash.startControlInterface();
     }
@@ -224,7 +238,7 @@ private void setVibeLogLevel (ILogger.Level level) @safe
 
 *******************************************************************************/
 
-private TLSContext getTLSContext ()
+private TLSContext getTLSContext (out string user_help_message)
 {
     const cert_file = "agora-cert.pem";
     const cert_search_paths = [
@@ -253,6 +267,12 @@ private TLSContext getTLSContext ()
             ctx.useCertificateChainFile(cert_path);
             ctx.usePrivateKeyFile(key_path);
             break;
+        }
+        else
+        {
+            user_help_message = format("To enable tls add a key file named `%s` to one of `%s` " ~
+                "and a certificate file named `%s` to corresponding path of `%s`. ",
+                key_file, key_search_paths, cert_file, cert_search_paths);
         }
     }
 

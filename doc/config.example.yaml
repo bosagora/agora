@@ -161,6 +161,7 @@ banman:
 ################################################################################
 admin:
   enabled: true      # `false` by default
+  tls: false         # Use local tls context - `true` by default
   address: 127.0.0.1 # Private
   port:    2827      # 0xB0B
   username: admin
