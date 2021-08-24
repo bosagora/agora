@@ -134,8 +134,6 @@ unittest
     }
 
     TestConf conf = { full_nodes : 2 };
-    // We want a more frequent block catchup for this test
-    conf.node.block_catchup_interval = 50.msecs;
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
