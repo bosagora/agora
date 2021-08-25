@@ -299,13 +299,13 @@ public struct AdminConfig
 public enum HandlerType
 {
     ///
-    BlockExternalized = "block_externalized",
+    BlockExternalized,
     ///
-    BlockHeaderUpdated = "block_header_updated",
+    BlockHeaderUpdated,
     ///
-    PreimageReceived = "preimage_received",
+    PreimageReceived,
     ///
-    TransactionReceived = "transaction_received",
+    TransactionReceived,
 }
 
 /// Configuration for URLs to push a data when an event occurs
@@ -1092,13 +1092,13 @@ noexist_event_handlers:
         CommandLine cmdln;
         immutable conf_example = `
 event_handlers:
-  block_externalized:
+  BlockExternalized:
     - http://127.0.0.1:3836
-  block_header_updated:
+  BlockHeaderUpdated:
     - http://127.0.0.2:3836
-  preimage_received:
+  PreimageReceived:
     - http://127.0.0.3:3836
-  transaction_received:
+  TransactionReceived:
     - http://127.0.0.4:3836
 `;
         auto node = Loader.fromString(conf_example).load();
@@ -1117,9 +1117,9 @@ event_handlers:
         CommandLine cmdln;
         immutable conf_example = `
 event_handlers:
-  block_externalized:
+  BlockExternalized:
     - http://127.0.0.1:3836
-  transaction_received:
+  TransactionReceived:
     - http://127.0.0.4:3836
     - http://127.0.0.5:3836
 `;
