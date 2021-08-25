@@ -1480,11 +1480,10 @@ public class ValidatingLedger : Ledger
 
             if (result.length >= max_txs)
             {
-                result.sort();
-                return result;
+                break;
             }
         }
-
+        result.sort();
         const pre_cb_len = result.length;
         // Dont append a CB TX to an empty TX set
         if (pre_cb_len > 0)
