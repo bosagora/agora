@@ -597,12 +597,10 @@ unittest
     {
         immutable conf_example = `
 node:
-  interfaces:
-    - type: http
-      address: 0.0.0.0
-      port: 2926
   data_dir: .cache
   commons_budget_address: boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s
+network:
+ - "something"
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseNodeConfig("node" in node, cmdln);
@@ -664,6 +662,8 @@ consensus:
     validator_tx_fee_cut:      69
     payout_period:           9999
     genesis_timestamp:     424242
+network:
+ - "something"
 `;
 
     auto node = Loader.fromString(conf_example).load();
@@ -768,6 +768,8 @@ validator:
   registry_address: http://127.0.0.1:3003
   recurring_enrollment : false
   preimage_reveal_interval: 99
+network:
+ - "something"
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseValidatorConfig("validator" in node, cmdln);
@@ -781,6 +783,8 @@ validator:
     immutable conf_example = `
 validator:
   enabled: true
+network:
+ - "something"
 `;
         auto node = Loader.fromString(conf_example).load();
         assertThrown!Exception(parseValidatorConfig("validator" in node, cmdln));
@@ -846,13 +850,13 @@ unittest
     {
         CommandLine cmdln;
         immutable conf_example = `
-foo:
-  bar: Useless
 logging:
   root:
     level: Trace
   agora.network:
     level: Error
+network:
+ - "something"
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseLoggingSection("logging" in node, cmdln);
@@ -865,8 +869,8 @@ logging:
     {
         CommandLine cmdln;
         immutable conf_example = `
-noLoggingSectionHere:
-  foo: bar
+network:
+ - "something"
 `;
         auto node = Loader.fromString(conf_example).load();
         auto config = parseLoggingSection("logging" in node, cmdln);
@@ -1080,7 +1084,8 @@ unittest
     {
         CommandLine cmdln;
         immutable conf_example = `
-noexist_event_handlers:
+network:
+ - "something"
 `;
         auto node = Loader.fromString(conf_example).load();
         auto handlers = parserEventHandlers("event_handlers" in node, cmdln);
@@ -1091,6 +1096,8 @@ noexist_event_handlers:
     {
         CommandLine cmdln;
         immutable conf_example = `
+network:
+ - "something"
 event_handlers:
   BlockExternalized:
     - http://127.0.0.1:3836
@@ -1116,6 +1123,8 @@ event_handlers:
     {
         CommandLine cmdln;
         immutable conf_example = `
+network:
+ - "something"
 event_handlers:
   BlockExternalized:
     - http://127.0.0.1:3836
