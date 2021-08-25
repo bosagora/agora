@@ -58,6 +58,8 @@ unittest
     }
 
     TestConf conf;
+    // This test relies on getUnknownTXs which is called when block catchup is performed.
+    conf.node.block_catchup_interval = 100.msecs;
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!NoGossipAPIManager(conf);
     network.start();
