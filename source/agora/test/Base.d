@@ -2013,7 +2013,7 @@ public struct TestConf
     public Duration preimage_catchup_interval = 100.seconds;
 
     /// How often the validator should check for preimages to reveal
-    public Duration preimage_reveal_interval = 1.seconds;
+    public Duration preimage_reveal_interval = 200.msecs;
 
     /// How often the validator should check if it is time for nomination
     public Duration nomination_interval = 100.msecs;
