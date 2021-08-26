@@ -206,6 +206,10 @@ public struct NodeConfig
     // increased in order to be added to the transaction pool
     public ubyte double_spent_threshold_pct = 20;
 
+    // The minimum percentage of average fee in the pool which the incoming
+    // transaction should include
+    public ushort min_fee_pct = 80;
+
     /// The maximum number of transactions relayed in every batch.
     /// Value 0 means no limit.
     public @Optional uint relay_tx_max_num;
