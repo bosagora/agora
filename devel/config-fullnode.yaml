@@ -30,12 +30,12 @@ validator:
 
 # Note: You may want to comment some of those to selectively test
 network:
-  - http://eu-002.bosagora.io:2826/
-  - http://eu-002.bosagora.io:3826/
-  - http://na-001.bosagora.io:4826/
-  - http://na-001.bosagora.io:5826/
-  - http://na-002.bosagora.io:6826/
-  - http://na-002.bosagora.io:7826/
+  - https://v2.bosagora.io/
+  - https://v3.bosagora.io/
+  - https://v4.bosagora.io/
+  - https://v5.bosagora.io/
+  - https://v6.bosagora.io/
+  - https://v7.bosagora.io/
 
 logging:
   root:
