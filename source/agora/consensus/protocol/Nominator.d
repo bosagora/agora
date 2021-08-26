@@ -649,6 +649,19 @@ extern(D):
                 return; // We dont have all the TXs for this block. Try to catchup
             }
         }
+        else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
+        {
+            // show some tolerance to early nominations
+            ulong tolerance = this.params.BlockInterval.total!"seconds" / 20; // 5%
+
+            // too early to nominate a new block
+            if (this.clock.networkTime() + tolerance < this.getExpectedBlockTime())
+            {
+                log.trace("Ignoring early nomination for height {}", envelope.statement.slotIndex);
+                return;
+            }
+        }
+
         auto shared_env = this.wrapEnvelope(envelope);
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
             log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope));
