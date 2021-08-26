@@ -116,6 +116,8 @@ version(none) unittest
 unittest
 {
     TestConf conf = { full_nodes: 1 };
+    conf.nomination_interval = 500.msecs;
+    conf.node.block_catchup_interval = 1.seconds;
     conf.consensus.quorum_threshold = 75;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
