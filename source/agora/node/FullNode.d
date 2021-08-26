@@ -952,19 +952,15 @@ public class FullNode : API
     public override void postTransaction (in Transaction tx) @safe
     {
         this.recordReq("transaction");
-        auto tx_hash = hashFull(tx);
-        if (this.pool.hasTransactionHash(tx_hash) ||
-            !ledger.isAcceptableDoubleSpent(tx, config.node.double_spent_threshold_pct))
-            return;
-
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
-        if (!this.ledger.acceptTransaction(tx))
+
+        if (!this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct))
         {
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return;
         }
 
-        log.info("Accepted transaction: {} ({})", prettify(tx), tx_hash);
+        log.info("Accepted transaction: {} ({})", prettify(tx), hashFull(tx));
         this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         this.transaction_relayer.addTransaction(tx);
         this.pushTransaction(tx);
