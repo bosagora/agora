@@ -79,14 +79,21 @@ private struct GossipEvent
 
     union
     {
-        ChannelConfig open;
+        ChannelOpen open;
         ChannelUpdate update;
     }
 
-    this (ChannelConfig open) @trusted nothrow
+    this (ChannelOpen open) @trusted nothrow
     {
         this.type = GossipType.Open;
         this.open = open;
+    }
+
+    this (ChannelConfig config, ChannelUpdate update) @trusted nothrow
+    {
+        this.type = GossipType.Open;
+        this.open.conf = config;
+        this.open.update = update;
     }
 
     this (ChannelUpdate update) @trusted nothrow
@@ -644,31 +651,30 @@ public abstract class FlashNode : FlashControlAPI
         this.channel_updates[conf.chan_id][dir] = update;
 
         // todo: should not gossip this to counterparty of the just opened channel
-        this.gossip_queue.insertBack(GossipEvent(conf));
-        this.gossip_queue.insertBack(GossipEvent(update));
+        this.gossip_queue.insertBack(GossipEvent(conf, update));
 
         this.dump();
     }
 
     /// See `FlashAPI.gossipChannelsOpen`
-    public override void gossipChannelsOpen ( ChannelConfig[] chan_configs )
+    public override void gossipChannelsOpen (ChannelOpen[] opens)
     {
-        log.info("gossipChannelsOpen() with {} channels", chan_configs.length);
+        log.info("gossipChannelsOpen() with {} channels", opens.length);
 
-        foreach (conf; chan_configs)
+        foreach (open; opens)
         {
-            if (conf.chan_id in this.known_channels)
-                continue;
+            if (open.conf.chan_id !in this.known_channels)
+            {
+                log.info("gossipChannelsOpen(): Discovered: {}",
+                        open.conf.chan_id.flashPrettify);
+                // todo: need to verify the blockchain actually contains the
+                // funding transaction, otherwise this becomes a point of DDoS.
+                this.known_channels[open.conf.chan_id] = open.conf;
+                this.network.addChannel(open.conf);
+            }
 
-            log.info("gossipChannelsOpen(): Discovered: {}",
-                     conf.chan_id.flashPrettify);
-
-            // todo: need to verify the blockchain actually contains the
-            // funding transaction, otherwise this becomes a point of DDoS.
-            this.known_channels[conf.chan_id] = conf;
-            this.network.addChannel(conf);
-
-            this.gossip_queue.insertBack(GossipEvent(conf));  // gossip only new channels
+            if (this.addUpdate(open.update))
+                this.gossip_queue.insertBack(GossipEvent(open));
         }
     }
 
@@ -679,36 +685,43 @@ public abstract class FlashNode : FlashControlAPI
 
         foreach (update; chan_updates)
         {
-            if (auto conf = update.chan_id in this.known_channels)
-            {
-                auto pk = update.direction == PaymentDirection.TowardsPeer ?
-                                                conf.funder_pk : conf.peer_pk;
-                if (auto chan_update = update.chan_id in this.channel_updates)
-                    if (auto dir_update = update.direction in *chan_update)
-                    {
-                        if (*dir_update == update // same fees as before
-                            || update.update_idx <= dir_update.update_idx)  // must be newer (replay attacks)
-                            continue;
-                    }
-
-                if (!verify(pk, update.sig, update))
-                {
-                    log.info("gossipChannelUpdates() rejected bad signature: {}",
-                        update);
-                    continue;
-                }
-                this.channel_updates[update.chan_id][update.direction] = update;
-                log.info("gossipChannelUpdates() added channel update: {}. chan_id: {}. direction: {}. address: {}",
-                        update, update.chan_id, update.direction, cast(void*)&this.channel_updates);
+            if (this.addUpdate(update))
                 this.gossip_queue.insertBack(GossipEvent(update));
-                this.dump();
-            }
             else
-            {
                 log.info("gossipChannelUpdates() rejected missing channel update: {}",
                     update);
-            }
         }
+    }
+
+    ///
+    private bool addUpdate (in ChannelUpdate update) @safe
+    {
+        if (auto conf = update.chan_id in this.known_channels)
+        {
+            auto pk = update.direction == PaymentDirection.TowardsPeer ?
+                                            conf.funder_pk : conf.peer_pk;
+            if (auto chan_update = update.chan_id in this.channel_updates)
+                if (auto dir_update = update.direction in *chan_update)
+                {
+                    if (*dir_update == update // same fees as before
+                        || update.update_idx <= dir_update.update_idx)  // must be newer (replay attacks)
+                        return false;
+                }
+
+            if (!verify(pk, update.sig, update))
+            {
+                log.info("gossipChannelUpdates() rejected bad signature: {}",
+                    update);
+                return false;
+            }
+            this.channel_updates[update.chan_id][update.direction] = update;
+            log.info("gossipChannelUpdates() added channel update: {}. chan_id: {}. direction: {}. address: {}",
+                    update, update.chan_id, update.direction, cast(void*)&this.channel_updates);
+
+            this.dump();
+            return true;
+        }
+        return false;
     }
 
     /// See `FlashAPI.requestCloseSig`
@@ -1698,11 +1711,9 @@ public class AgoraFlashNode : FlashNode
         auto peer = new RestInterfaceClient!FlashAPI(settings);
         this.known_peers[peer_pk] = peer;
         if (this.known_channels.length > 0)
-        {
-            peer.gossipChannelsOpen(this.known_channels.values);
-            peer.gossipChannelUpdates(this.channel_updates.byValue
-                .map!(updates => updates.byValue).joiner.array);
-        }
+            peer.gossipChannelsOpen(this.channel_updates.byValue
+                .map!(updates => updates.byValue).joiner
+                .map!(update => ChannelOpen(this.known_channels[update.chan_id], update)).array);
 
         return peer;
     }
