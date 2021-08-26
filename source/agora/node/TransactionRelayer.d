@@ -447,7 +447,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         assert(transaction_relayer.addTransactionImp(tx4) is null);
 
         // adding tx1 .. tx4 to the transaction pool
-        [tx1, tx2, tx3, tx4].each!(tx => transaction_relayer.pool.add(tx));
+        [tx1, tx2, tx3, tx4].each!(tx => transaction_relayer.pool.add(tx, 0.coins));
 
         assert(transaction_relayer.tx_hashes.length == 4);
         assert(transaction_relayer.txs.length == 4);

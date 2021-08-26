@@ -344,11 +344,20 @@ public class Ledger
         const Height expected_height = this.getBlockHeight() + 1;
         string reason;
 
+        Amount fee_rate;
+        auto checkAndSave = (in Transaction tx, Amount tx_fee)
+        {
+            fee_rate = tx_fee;
+            fee_rate.div(tx.sizeInBytes());
+
+            return this.fee_man.check(tx, tx_fee);
+        };
+
         if (tx.isCoinbase ||
             (reason = tx.isInvalidReason(this.engine,
                 this.utxo_set.getUTXOFinder(),
-                expected_height, &this.fee_man.check)) !is null ||
-            !this.pool.add(tx))
+                expected_height, checkAndSave)) !is null ||
+            !this.pool.add(tx, fee_rate))
         {
             if (!reason)
                 reason = tx.isCoinbase ? "Coinbase transaction" : "double-spend";

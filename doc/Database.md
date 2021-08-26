@@ -72,6 +72,7 @@ Stores the pending transaction. Should be made readable.
 |------------|----------|-------------|-------------|-------------------|
 | key        | TEXT     | Hash        | PRIMARY KEY | Transaction hash  |
 | val        | BLOB     | Transaction | NOT NULL    | Binary-serialized |
+| fee        | INTEGER  | Amount      | NOT NULL    | fee rate          |
 
 ### `enrollment_pool` table
 

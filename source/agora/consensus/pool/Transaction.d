@@ -14,6 +14,7 @@
 
 module agora.consensus.pool.Transaction;
 
+import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Set;
@@ -107,7 +108,7 @@ public class TransactionPool
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, fee INTEGER NOT NULL)");
 
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
@@ -130,13 +131,14 @@ public class TransactionPool
 
         Params:
             tx = the transaction to add
+            fee = fee_rate
 
         Returns:
             true if the transaction has been added to the pool
 
     ***************************************************************************/
 
-    public bool add (in Transaction tx) @safe
+    public bool add (in Transaction tx, in Amount fee) @safe
     {
         static ubyte[] buffer;
 
@@ -150,8 +152,8 @@ public class TransactionPool
         serializeToBuffer(tx, buffer);
 
         () @trusted {
-            db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
-                hashFull(tx), buffer);
+            db.execute("INSERT INTO tx_pool (key, val, fee) VALUES (?, ?, ?)",
+                hashFull(tx), buffer, fee);
         }();
 
         return true;
@@ -455,6 +457,25 @@ public class TransactionPool
 
     /***************************************************************************
 
+        Returns:
+            average fee_rate of the transactions in the pool
+
+    ***************************************************************************/
+
+    public Amount getAverageFeeRate () @trusted nothrow
+    {
+        try
+        {
+            return Amount(this.db.execute("SELECT AVG(fee) FROM tx_pool").oneValue!ulong);
+        }
+        catch (Exception ex)
+            log.error("ManagedDatabase operation error on getTransactionByHash");
+
+        return 0.coins;
+    }
+
+    /***************************************************************************
+
         Take the specified number of transactions and remove them from the pool.
 
         Params:
@@ -508,7 +529,7 @@ unittest
     auto gen_key = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
-    txs.each!(tx => pool.add(tx));
+    txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
 
     foreach (const ref tx; txs)
@@ -519,7 +540,7 @@ unittest
         assert(!pool.hasTransactionHash(hash));
     }
 
-    txs.each!(tx => pool.add(tx));
+    txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
     const(Hash) hash = Hash.init;
     assert(!pool.hasTransactionHash(hash));
@@ -545,14 +566,14 @@ unittest
     auto gen_key = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
-    txs.each!(tx => pool.add(tx));
+    txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
 
     auto pool_txs = pool.take(txs.length);
     assert(pool.length == 0);
     assert(txs == pool_txs);
 
-    txs.each!(tx => pool.add(tx));
+    txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
 
     auto half_txs = pool.take(txs.length / 2);
@@ -560,8 +581,8 @@ unittest
     assert(pool.length == txs.length / 2);
 
     // adding duplicate tx hash => return false
-    pool.add(txs[0]);
-    assert(!pool.add(txs[0]));
+    pool.add(txs[0], 0.coins);
+    assert(!pool.add(txs[0], 0.coins));
 }
 
 /// memory reclamation tests
@@ -575,7 +596,7 @@ unittest
     auto gen_key = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
-    txs.each!(tx => pool.add(tx));
+    txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
 
     // store the txes in serialized form
@@ -619,15 +640,15 @@ unittest
         [Output(Amount(0), WK.Keys.C.address)]);
 
     // add txs to the pool
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
 
     assert(pool.length == 2);
     pool.remove(tx1);
     assert(pool.length == 0);
 
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
     assert(pool.length == 2);
     pool.remove(tx2);
     assert(pool.length == 0);
@@ -650,9 +671,9 @@ unittest
         [Input(Hash.init, 1)],
         [Output(Amount(0), WK.Keys.NL.address)]);
 
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
-    assert(pool.add(tx3));
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
+    assert(pool.add(tx3, 0.coins));
     assert(pool.length == 3);
     // tx3 should be removed as well.
     pool.remove(tx2);
@@ -678,9 +699,9 @@ unittest
         [Input(Hash.init, 1)],
         [Output(Amount(0), WK.Keys.ZD.address)]);
 
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
-    assert(pool.add(tx3));
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
+    assert(pool.add(tx3, 0.coins));
     assert(tx1 == pool.getTransactionByHash(tx1.hashFull()));
     assert(tx2 == pool.getTransactionByHash(tx2.hashFull()));
     assert(tx3 == pool.getTransactionByHash(tx3.hashFull()));
@@ -724,8 +745,8 @@ unittest
     Transaction tx2 = Transaction([Input(Hash.init, 0), Input(Hash.init, 1)],
         [Output(Amount(1), WK.Keys.KR.address)]);
 
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
     assert(pool.length == 2);
 
     ulong idx = 0;
@@ -742,8 +763,8 @@ unittest
 
     // Now tx1 has lower output value
     tx1.outputs[0].value.sub(Amount(2));
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
     assert(pool.length == 2);
 
     idx = 0;
@@ -794,8 +815,8 @@ unittest
     Transaction tx3 = Transaction([Input(tx1.hashFull(), 0)],
         [Output(Amount(100), WK.Keys.AU.address)]);
 
-    assert(pool.add(tx2));
-    assert(pool.add(tx3));
+    assert(pool.add(tx2, 0.coins));
+    assert(pool.add(tx3, 0.coins));
     assert(pool.length == 2);
 
     // only tx3 should be returned, as we filter double spend transactions
@@ -826,11 +847,18 @@ unittest
         [Input(Hash.init, 1)],
         [Output(Amount(1), WK.Keys.CA.address)]);
 
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
+    assert(pool.getAverageFeeRate() == 0.coins);
+
+    assert(pool.add(tx1, Amount(4)));
+    assert(pool.add(tx2, Amount(12)));
+
+    assert(pool.getAverageFeeRate() == Amount(8));
 
     foreach (ref Hash hash, ref Transaction tx; pool)
     {
         assert(tx.hashFull() == hash);
     }
+
+    pool.remove(tx2);
+    assert(pool.getAverageFeeRate() == Amount(4));
 }
