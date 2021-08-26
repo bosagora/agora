@@ -492,7 +492,6 @@ private auto parseDefaultMapping (alias SFR) (
 {
     static assert(is(SFR.Type == struct), "Internal error: `parseDefaultMapping` called with non-struct");
 
-    // TODO: FIXME (default)
     string[string] emptyMapping;
     const enabledState = Node(emptyMapping).isMappingEnabled!(SFR.Type)(SFR.Default);
 
@@ -509,7 +508,6 @@ private auto parseDefaultMapping (alias SFR) (
             else static if (FName == "disabled")
                 return true;
             else
-                // FIXME
                 return FR.Default;
         }
 
@@ -826,3 +824,45 @@ private immutable Yellow = "\u001b[33m";
 private immutable Green = "\u001b[32m";
 /// Set the foreground color to green, used field names / path
 private immutable Cyan = "\u001b[36m";
+
+/// Basic usage tests
+unittest
+{
+    static struct Address
+    {
+        string address;
+        string city;
+        bool accessible;
+    }
+
+    static struct Nested
+    {
+        Address address;
+    }
+
+    static struct Config
+    {
+        bool enabled = true;
+
+        string name = "Jessie";
+        int age = 42;
+        double ratio = 24.42;
+
+        Address address = { address: "Yeoksam-dong", city: "Seoul", accessible: true };
+
+        Nested nested = { address: { address: "Gangnam-gu", city: "Also Seoul", accessible: false } };
+    }
+
+    auto c1 = parseConfigString!Config("enabled: false", "/dev/null");
+    assert(c1.name == "Jessie");
+    assert(c1.age == 42);
+    assert(c1.ratio == 24.42);
+
+    assert(c1.address.address == "Yeoksam-dong");
+    assert(c1.address.city == "Seoul");
+    assert(c1.address.accessible);
+
+    assert(c1.nested.address.address == "Gangnam-gu");
+    assert(c1.nested.address.city == "Also Seoul");
+    assert(!c1.nested.address.accessible);
+}
