@@ -344,10 +344,16 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptTransaction (in Transaction tx) @safe
+    public bool acceptTransaction (in Transaction tx,
+        in ubyte double_spent_threshold_pct = 0) @safe
     {
         const Height expected_height = this.getBlockHeight() + 1;
         string reason;
+
+        auto tx_hash = hashFull(tx);
+        if (this.pool.hasTransactionHash(tx_hash) ||
+            !this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
+            return false;
 
         Amount adjusted_fee;
         auto checkAndSave = (in Transaction tx, Amount tx_fee)
@@ -367,11 +373,11 @@ public class Ledger
             if (!reason)
                 reason = tx.isCoinbase ? "Coinbase transaction" : "double-spend";
             log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
-                reason, tx, tx.hashFull());
+                reason, tx, tx_hash);
             return false;
         }
         // If we were looking for this TX, stop
-        this.unknown_txs.remove(tx.hashFull());
+        this.unknown_txs.remove(tx_hash);
         return true;
     }
 
