@@ -954,7 +954,8 @@ public class FullNode : API
         this.recordReq("transaction");
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
 
-        if (!this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct))
+        if (!this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct,
+            config.node.min_fee_pct))
         {
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return;

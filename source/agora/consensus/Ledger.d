@@ -340,10 +340,24 @@ public class Ledger
     ***************************************************************************/
 
     public bool acceptTransaction (in Transaction tx,
-        in ubyte double_spent_threshold_pct = 0) @safe
+        in ubyte double_spent_threshold_pct = 0,
+        in ushort min_fee_pct = 0) @safe
     {
         const Height expected_height = this.getBlockHeight() + 1;
         string reason;
+        auto tx_hash = hashFull(tx);
+
+        // If we were looking for this TX, stop
+        this.unknown_txs.remove(tx_hash);
+
+        scope (exit)
+            if (reason)
+                log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
+                    reason, tx, tx_hash);
+
+        if (tx.isCoinbase ||
+            this.pool.hasTransactionHash(tx_hash))
+            return false;
 
         Amount fee_rate;
         auto checkAndSave = (in Transaction tx, Amount tx_fee)
@@ -354,21 +368,23 @@ public class Ledger
             return this.fee_man.check(tx, tx_fee);
         };
 
-        if (tx.isCoinbase ||
-            (reason = tx.isInvalidReason(this.engine,
+        if ((reason = tx.isInvalidReason(this.engine,
                 this.utxo_set.getUTXOFinder(),
-                expected_height, checkAndSave)) !is null ||
-            !this.pool.add(tx, fee_rate))
+                expected_height, checkAndSave)) !is null)
+            return false;
+
+        auto min_fee = this.pool.getAverageFeeRate();
+        if (!min_fee.percentage(min_fee_pct))
+            assert(0);
+
+        if (fee_rate < min_fee ||
+            !this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
         {
-            if (!reason)
-                reason = tx.isCoinbase ? "Coinbase transaction" : "double-spend";
-            log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
-                reason, tx, tx_hash);
+            reason = "Not enough fees";
             return false;
         }
-        // If we were looking for this TX, stop
-        this.unknown_txs.remove(tx_hash);
-        return true;
+
+        return this.pool.add(tx, fee_rate);
     }
 
     /***************************************************************************
@@ -2362,4 +2378,32 @@ unittest
         else
             assert(cb_txs.length == 0);
     }
+}
+
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+    import agora.consensus.PreImage;
+
+    auto params = new immutable(ConsensusParams)(20);
+    const(Block)[] blocks = [ GenesisBlock ];
+    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
+
+    ushort min_fee_pct = 80;
+
+    auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
+    assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct));
+
+    // switch to a different input, with low fees this should be rejected because of average of fees in the pool
+    auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
+    assert(!ledger.acceptTransaction(different_tx, 0, min_fee_pct));
+
+    // lower than average, but enough
+    auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
+    assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct));
+
+    // overwrite the old TX
+    auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
+    assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct));
 }
