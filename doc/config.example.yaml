@@ -57,6 +57,9 @@ node:
   # The percentage by which the double spend transaction's fee should be
   # increased in order to be added to the transaction pool
   double_spent_threshold_pct: 20
+  # The maximum percentage which the incoming transaction fees can be lower by
+  # compared to average fees of transactions in the pool
+  max_fee_undercut_pct: 20
 
 # Each entry in this array is an interface Agora will listen to, allowing to
 # expose the same node on more than one network interface or with different
