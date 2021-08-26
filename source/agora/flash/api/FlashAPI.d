@@ -29,6 +29,17 @@ import vibe.data.serialization;
 import vibe.http.common;
 import vibe.web.rest;
 
+/// Data associated with a channel open event
+public struct ChannelOpen
+{
+    /// Config of the newly opened channel
+    public ChannelConfig conf;
+
+    /// Latest update available
+    /// usually the first ever update
+    public ChannelUpdate update;
+}
+
 /// This is the API that each Flash node must implement.
 @path("/")
 @serializationPolicy!(Base64ArrayPolicy)
@@ -105,11 +116,11 @@ public interface FlashAPI
         transaction has been spent on the blockchain (todo: not yet implemented)
 
         Params:
-            chan_configs = the list of channel configs
+            opens = the list of channel configs and updates
 
     ***************************************************************************/
 
-    public void gossipChannelsOpen (ChannelConfig[] chan_configs);
+    public void gossipChannelsOpen (ChannelOpen[] opens);
 
     /***************************************************************************
 

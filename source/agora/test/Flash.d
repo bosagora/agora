@@ -225,11 +225,9 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         auto peer = new RemoteAPI!TestFlashAPI(tid, timeout);
         this.known_peers[peer_pk] = peer;
         if (this.known_channels.length > 0)
-        {
-            peer.gossipChannelsOpen(this.known_channels.values);
-            peer.gossipChannelUpdates(this.channel_updates.byValue
-                .map!(updates => updates.byValue).joiner.array);
-        }
+            peer.gossipChannelsOpen(this.channel_updates.byValue
+                .map!(updates => updates.byValue).joiner
+                .map!(update => ChannelOpen(this.known_channels[update.chan_id], update)).array);
 
         return peer;
     }
