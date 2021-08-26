@@ -14,6 +14,7 @@
 
 module agora.node.TransactionPool;
 
+import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Set;
@@ -107,7 +108,7 @@ public class TransactionPool
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, fee INTEGER NOT NULL)");
 
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
@@ -130,13 +131,14 @@ public class TransactionPool
 
         Params:
             tx = the transaction to add
+            fee = adjusted fee
 
         Returns:
             true if the transaction has been added to the pool
 
     ***************************************************************************/
 
-    public bool add (in Transaction tx) @safe
+    public bool add (in Transaction tx, in Amount fee = 0.coins) @safe
     {
         static ubyte[] buffer;
 
@@ -150,8 +152,8 @@ public class TransactionPool
         serializeToBuffer(tx, buffer);
 
         () @trusted {
-            db.execute("INSERT INTO tx_pool (key, val) VALUES (?, ?)",
-                hashFull(tx), buffer);
+            db.execute("INSERT INTO tx_pool (key, val, fee) VALUES (?, ?, ?)",
+                hashFull(tx), buffer, fee);
         }();
 
         return true;
@@ -451,6 +453,25 @@ public class TransactionPool
         catch (Exception ex)
             log.error("ManagedDatabase operation error on getTransactionByHash");
         return Transaction.init;
+    }
+
+    /***************************************************************************
+
+        Returns:
+            average adjusted fees of the transactions in the pool
+
+    ***************************************************************************/
+
+    public Amount getAverageAdjustedFees () @trusted nothrow
+    {
+        try
+        {
+            return Amount(this.db.execute("SELECT AVG(fee) FROM tx_pool").oneValue!ulong);
+        }
+        catch (Exception ex)
+            log.error("ManagedDatabase operation error on getTransactionByHash");
+
+        return 0.coins;
     }
 
     /***************************************************************************
@@ -826,11 +847,18 @@ unittest
         [Input(Hash.init, 1)],
         [Output(Amount(1), WK.Keys.CA.address)]);
 
-    assert(pool.add(tx1));
-    assert(pool.add(tx2));
+    assert(pool.getAverageAdjustedFees() == 0.coins);
+
+    assert(pool.add(tx1, Amount(4)));
+    assert(pool.add(tx2, Amount(12)));
+
+    assert(pool.getAverageAdjustedFees() == Amount(8));
 
     foreach (ref Hash hash, ref Transaction tx; pool)
     {
         assert(tx.hashFull() == hash);
     }
+
+    pool.remove(tx2);
+    assert(pool.getAverageAdjustedFees() == Amount(4));
 }
