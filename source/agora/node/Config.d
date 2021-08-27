@@ -180,30 +180,30 @@ public struct NodeConfig
     public @Optional ushort stats_listening_port;
 
     /// Time to wait between request retries
-    public @fromMsecs Duration retry_delay = 3.seconds;
+    public Duration retry_delay = 3.seconds;
 
     /// Maximum number of retries to issue before a request is considered failed
     public size_t max_retries = 50;
 
     /// Timeout for each request
-    public @fromMsecs Duration timeout = 5000.msecs;
+    public Duration timeout = 5000.msecs;
 
     /// Path to the data directory to store metadata and blockchain data
     public string data_dir = ".cache";
 
     /// The duration between requests for doing periodic network discovery
-    @Name("network_discovery_interval_secs")
-    public @fromSeconds Duration network_discovery_interval = 5.seconds;
+    @Name("network_discovery_interval_seconds")
+    public Duration network_discovery_interval = 5.seconds;
 
     /// The duration between requests for retrieving the latest blocks
     /// from all other nodes
-    @Name("block_catchup_interval_secs")
-    public @fromSeconds Duration block_catchup_interval = 20.seconds;
+    @Name("block_catchup_interval_seconds")
+    public Duration block_catchup_interval = 20.seconds;
 
     /// The new block time offset has to be greater than the previous block time offset,
-    /// but less than current time + block_time_offset_tolerance_secs
-    @Name("block_time_offset_tolerance_secs")
-    public @fromSeconds Duration block_time_offset_tolerance = 60.seconds;
+    /// but less than current time + block_time_offset_tolerance
+    @Name("block_time_offset_tolerance_seconds")
+    public Duration block_time_offset_tolerance = 60.seconds;
 
     // The percentage by which the double spend transaction's fee should be
     // increased in order to be added to the transaction pool
@@ -215,8 +215,8 @@ public struct NodeConfig
 
     /// Transaction relay batch is triggered in every `relay_tx_interval`.
     /// Value 0 means, the transaction will be relayed immediately.
-    @Name("relay_tx_interval_secs")
-    public @fromSeconds @Optional Duration relay_tx_interval;
+    @Name("relay_tx_interval_seconds")
+    public @Optional Duration relay_tx_interval;
 
     /// The minimum amount of fee a transaction has to have to be relayed.
     /// The fee is adjusted by the transaction size:
@@ -225,8 +225,8 @@ public struct NodeConfig
 
     /// Transaction put into the relay queue will expire, and will be removed
     /// after `relay_tx_cache_exp`.
-    @Name("relay_tx_cache_exp_secs")
-    public @fromSeconds @Optional Duration relay_tx_cache_exp;
+    @Name("relay_tx_cache_exp_seconds")
+    public @Optional Duration relay_tx_cache_exp;
 }
 
 /// Validator config
@@ -255,14 +255,14 @@ public struct ValidatorConfig
     public bool recurring_enrollment = true;
 
     /// How often should the periodic preimage reveal timer trigger (in seconds)
-    public @fromSeconds Duration preimage_reveal_interval = 10.seconds;
+    public Duration preimage_reveal_interval = 10.seconds;
 
     /// How often the nomination timer should trigger, in seconds
-    public @fromSeconds Duration nomination_interval = 5.seconds;
+    public Duration nomination_interval = 5.seconds;
 
     /// How often the validator should try to catchup for the preimages for the
     /// next block
-    public @fromSeconds Duration preimage_catchup_interval = 2.seconds;
+    public Duration preimage_catchup_interval = 2.seconds;
 }
 
 /// Admin API config
@@ -368,7 +368,8 @@ validator:
   registry_address: http://127.0.0.1:3003
   seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   recurring_enrollment: true
-  preimage_reveal_interval: 10
+  preimage_reveal_interval:
+    seconds: 10
 `;
         parseConfigString!Config(conf_str, "/dev/null");
     }
@@ -381,7 +382,8 @@ validator:
   registry_address: disabled
   seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   recurring_enrollment: true
-  preimage_reveal_interval: 10
+  preimage_reveal_interval:
+    seconds: 10
 `;
         assertThrown!Exception(parseConfigString!Config(conf_str, "/dev/null"));
     }
@@ -452,7 +454,8 @@ validator:
   seed: SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   registry_address: http://127.0.0.1:3003
   recurring_enrollment : false
-  preimage_reveal_interval: 99
+  preimage_reveal_interval:
+    seconds: 99
 network:
  - "something"
 `;

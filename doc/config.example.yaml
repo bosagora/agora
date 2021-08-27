@@ -21,12 +21,14 @@ node:
   min_listeners: 2
   # Maximum number of non-validating nodes to connect to
   max_listeners: 10
-  # Number of milliseconds to wait between retrying requests
-  retry_delay: 3000
+  # Time to wait between retrying requests
+  retry_delay:
+    seconds: 3
   # Maximum number of retries to issue before a request is considered failed
   max_retries: 50
-  # Timeout for each request in milliseconds
-  timeout: 5000
+  # Timeout for each request
+  timeout:
+    msecs: 5000
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: data
   # The local address where the stats server (currently Prometheus)
@@ -34,26 +36,26 @@ node:
   # It can also be set to -1 do disable listening (default is -1)
   stats_listening_port: 9110
   # The new block time offset has to be greater than the previous block time offset
-  # but less than current time + block_time_offset_tolerance_secs
-  block_time_offset_tolerance_secs: 60
+  # but less than current time + block_time_offset_tolerance
+  block_time_offset_tolerance_seconds: 60
   # The duration between requests for doing periodic network discovery
-  network_discovery_interval_secs: 5
+  network_discovery_interval_seconds: 5
   # The duration between requests for retrieving the latest blocks
   # from all other nodes
-  block_catchup_interval_secs: 20
+  block_catchup_interval_seconds: 20
   # The maximum number of transactions relayed in every batch.
   # Value 0 means no limit.
   relay_tx_max_num : 100
-  # Transaction relay batch is triggered in every `relay_tx_interval_secs`.
+  # Transaction relay batch is triggered in every `relay_tx_interval`.
   # Value 0 means, the transaction will be relayed immediately.
-  relay_tx_interval_secs : 30
+  relay_tx_interval_seconds : 30
   # The minimum amount of fee a transaction has to have to be relayed.
   # The fee is adjusted by the transaction size:
   # adjusted fee = fee / transaction size in bytes.
   relay_tx_min_fee : 0
   # Transaction put into the relay queue will expire, and will be removed
-  # after `relay_tx_cache_exp_secs`.
-  relay_tx_cache_exp_secs : 1200
+  # after `relay_tx_cache_exp`.
+  relay_tx_cache_exp_seconds : 1200
   # The percentage by which the double spend transaction's fee should be
   # increased in order to be added to the transaction pool
   double_spent_threshold_pct: 20
@@ -99,11 +101,13 @@ validator:
   # Whether or not the Validator will enroll automatically at the startup or
   # at the end of Validator cycle
   recurring_enrollment: true
-  # How often (in seconds) we should check for pre-images to reveal
-  preimage_reveal_interval: 10
+  # How often we should check for pre-images to reveal
+  preimage_reveal_interval:
+    seconds: 10
   # How often the validator should try to catchup for the preimages for the
   # next block
-  preimage_catchup_interval: 2
+  preimage_catchup_interval:
+    seconds: 2
 
 ################################################################################
 ##                             Flash configuration                            ##
@@ -113,8 +117,9 @@ validator:
 flash:
   # Whether or not the Flash protocol should be supported
   enabled: true
-  # Timeout for each request in milliseconds
-  timeout: 10000
+  # Timeout for each request
+  timeout:
+    msecs: 10000
 
   # Flash name registry address (required)
   registry_address: https://flash-registry.bosagora.io
@@ -142,10 +147,11 @@ flash:
   # transaction has been published
   max_settle_time: 144
 
-  # Maximum number of milliseconds to re-try a failed payment / update request
+  # How long to re-try a failed payment / update request
   # before the request is considered failed and is reported to the listener
   # (wallet / etc)
-  max_retry_time: 60000
+  max_retry_time:
+    msecs: 60000
 
 ################################################################################
 ##                         Ban manager configuration                          ##
@@ -154,7 +160,8 @@ banman:
   # max failed requests until an address is banned
   max_failed_requests: 100
   # the default duration of a ban
-  ban_duration: 86400
+  ban_duration:
+    days: 1
 
 ################################################################################
 ##                          Administrative interface                          ##
