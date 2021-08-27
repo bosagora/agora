@@ -15,7 +15,6 @@
 module agora.common.BanManager;
 
 import agora.serialization.Serializer;
-import agora.common.ConfigAttributes;
 import agora.common.Types;
 import agora.network.Clock;
 import agora.utils.InetUtils;
@@ -39,7 +38,7 @@ public class BanManager
         public size_t max_failed_requests = 100;
 
         /// How long does a ban lasts, in seconds (default: 1 day)
-        public @fromSeconds Duration ban_duration = 1.days;
+        public Duration ban_duration = 1.days;
     }
 
     ///

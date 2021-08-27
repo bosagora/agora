@@ -40,7 +40,7 @@ public struct FlashConfig
     public immutable string[] addresses_to_register;
 
     /// Timeout for requests
-    public @fromMsecs Duration timeout = 10.seconds;
+    public Duration timeout = 10.seconds;
 
     /// The address to listen to for the control interface
     public string control_address = "127.0.0.1";
@@ -64,11 +64,11 @@ public struct FlashConfig
     public uint max_settle_time = 100;
 
     /// Maximum time spent retrying requests before they're considered failed
-    public @fromSeconds Duration max_retry_time = 60.seconds;
+    public Duration max_retry_time = 60.seconds;
 
     /// The maximum retry delay between retrying failed requests. Should be lower
     /// than `max_retry_time`
-    public @fromSeconds Duration max_retry_delay = 2000.msecs;
+    public Duration max_retry_delay = 2.seconds;
 
     /// Multiplier for the truncating exponential backoff retrying algorithm
     public uint retry_multiplier = 10;
