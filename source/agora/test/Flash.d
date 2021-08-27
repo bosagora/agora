@@ -377,7 +377,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
 
     /// Create a new flash node user
     public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
-        (const Pair pair, string agora_address,
+        (const KeyPair kp, string agora_address,
          DatabaseStorage storage = DatabaseStorage.Local)
     {
         FlashConfig conf = { enabled : true,
@@ -388,12 +388,12 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
             max_retry_time : 4.seconds,
             max_retry_delay : 100.msecs,
             listener_address : ListenerAddress, };
-        return this.create!FlashNodeImpl(pair, conf, agora_address, storage);
+        return this.create!FlashNodeImpl(kp, conf, agora_address, storage);
     }
 
     /// ditto
     public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
-        (const Pair pair, FlashConfig conf, string agora_address,
+        (const KeyPair kp, FlashConfig conf, string agora_address,
          DatabaseStorage storage = DatabaseStorage.Local)
     {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
@@ -401,13 +401,11 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
             &this.flash_registry, &this.listener_registry,
             10.seconds);  // timeout from main thread
 
-        auto pk = PublicKey(pair.V);
-        this.addresses ~= pk;
+        this.addresses ~= kp.address;
         this.nodes ~= api;
-        this.flash_registry.register(pk.to!string, api.listener());
+        this.flash_registry.register(kp.address.to!string, api.listener());
         api.start();
-        const key_pair = KeyPair(pk, SecretKey(pair.v));
-        api.registerKey(key_pair.secret);
+        api.registerKey(kp.secret);
 
         return api;
     }
@@ -643,15 +641,10 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create(bob_pair, address);
-    const alice_pk = PublicKey(alice_pair.V);
-    const bob_pk = PublicKey(bob_pair.V);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 3;
@@ -660,8 +653,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -670,33 +663,33 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(alice_pk, chan_id);
-    bob.waitForChannelOpen(bob_pk, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
-    auto update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 0);
+    auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
     /* do some off-chain transactions */
-    auto inv_1 = bob.createNewInvoice(bob_pk, Amount(5_000), time_t.max, "payment 1");
-    alice.payInvoice(alice_pk, inv_1.value);
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 2);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
-    auto inv_2 = bob.createNewInvoice(bob_pk, Amount(1_000), time_t.max, "payment 2");
-    alice.payInvoice(alice_pk, inv_2.value);
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
     // need to wait for invoices to be complete before we have the new balance
     // to send in the other direction
-    alice.waitForUpdateIndex(alice_pk, chan_id, 4);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 4);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 4);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 4);
 
-    // note the reverse payment from bob to alice. Can use this for refunds too.
-    auto inv_3 = alice.createNewInvoice(alice_pk, Amount(2_000), time_t.max, "payment 3");
-    bob.payInvoice(bob_pk, inv_3.value);
+    // note the reverse payment from charlie to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(WK.Keys.A.address, Amount(2_000), time_t.max, "payment 3");
+    charlie.payInvoice(WK.Keys.C.address, inv_3.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 6);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 6);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 6);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 6);
 
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
@@ -704,7 +697,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
-    // at this point bob will automatically publish the latest update tx
+    // at this point charlie will automatically publish the latest update tx
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
 
     // and then a settlement will be published (but only after time lock expires)
@@ -743,15 +736,10 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create(bob_pair, address);
-    const alice_pk = PublicKey(alice_pair.V);
-    const bob_pk = PublicKey(bob_pair.V);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, address);
 
     // 4 blocks settle time after trigger tx is published
     const Settle_4_Blocks = 4;
@@ -759,8 +747,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -769,36 +757,36 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(alice_pk, chan_id);
-    bob.waitForChannelOpen(bob_pk, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
-    auto update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 0);
+    auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
     /* do some off-chain transactions */
-    auto inv_1 = bob.createNewInvoice(bob_pk, Amount(5_000), time_t.max,
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max,
         "payment 1");
-    alice.payInvoice(alice_pk, inv_1.value);
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 2);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
-    auto inv_2 = bob.createNewInvoice(bob_pk, Amount(1_000), time_t.max,
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max,
         "payment 2");
-    alice.payInvoice(alice_pk, inv_2.value);
+    alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
     // need to wait for invoices to be complete before we have the new balance
     // to send in the other direction
-    alice.waitForUpdateIndex(alice_pk, chan_id, 4);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 4);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 4);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 4);
 
-    // note the reverse payment from bob to alice. Can use this for refunds too.
-    auto inv_3 = alice.createNewInvoice(alice_pk, Amount(2_000), time_t.max,
+    // note the reverse payment from charlie to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(WK.Keys.A.address, Amount(2_000), time_t.max,
         "payment 3");
-    bob.payInvoice(bob_pk, inv_3.value);
+    charlie.payInvoice(WK.Keys.C.address, inv_3.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 6);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 6);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 6);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 6);
 
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
@@ -806,7 +794,7 @@ unittest
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
-    // at this point bob will automatically publish the latest update tx
+    // at this point charlie will automatically publish the latest update tx
     network.expectHeightAndPreImg(Height(7), network.blocks[0].header);
 
     // at `Settle_4_Blocks` blocks need to be externalized before a settlement
@@ -869,15 +857,10 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create!RejectingCloseNode(bob_pair, address);
-    const alice_pk = PublicKey(alice_pair.V);
-    const bob_pk = PublicKey(bob_pair.V);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create!RejectingCloseNode(WK.Keys.C, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -886,8 +869,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -896,41 +879,41 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(alice_pk, chan_id);
-    bob.waitForChannelOpen(bob_pk, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
-    auto inv_1 = bob.createNewInvoice(bob_pk, Amount(5_000), time_t.max, "payment 1");
-    alice.payInvoice(alice_pk, inv_1.value);
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 2);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
-    auto inv_2 = bob.createNewInvoice(bob_pk, Amount(1_000), time_t.max, "payment 2");
-    alice.payInvoice(alice_pk, inv_2.value);
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
     // need to wait for invoices to be complete before we have the new balance
     // to send in the other direction
-    alice.waitForUpdateIndex(alice_pk, chan_id, 4);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 4);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 4);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 4);
 
-    // note the reverse payment from bob to alice. Can use this for refunds too.
-    auto inv_3 = alice.createNewInvoice(alice_pk, Amount(2_000), time_t.max, "payment 3");
-    bob.payInvoice(bob_pk, inv_3.value);
+    // note the reverse payment from charlie to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(WK.Keys.A.address, Amount(2_000), time_t.max, "payment 3");
+    charlie.payInvoice(WK.Keys.C.address, inv_3.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 6);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 6);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 6);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 6);
 
     log.info("Alice collaboratively closing the channel..");
-    auto error = alice.beginCollaborativeClose(alice_pk, chan_id).error;
+    auto error = alice.beginCollaborativeClose(WK.Keys.A.address, chan_id).error;
     assert(error == ErrorCode.None, error.to!string);
     // note: not checking for StartedUnilateralClose due to timing
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.RejectedCollaborativeClose);
 
     log.info("Alice unilaterally closing the channel..");
-    error = alice.beginUnilateralClose(alice_pk, chan_id).error;
+    error = alice.beginUnilateralClose(WK.Keys.A.address, chan_id).error;
     assert(error == ErrorCode.None, error.to!string);
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
@@ -970,123 +953,111 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
-
-    const alice_pk = alice_pair.V;
-    const bob_pk = bob_pair.V;
-    const charlie_pk = charlie_pair.V;
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
-    const charlie_pubkey = PublicKey(charlie_pair.V);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create(bob_pair, address);
-    auto charlie = factory.create(charlie_pair, address);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, address);
+    auto diego = factory.create(WK.Keys.D, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
     //const Settle_10_Blocks = 10;
 
-    /+ OPEN ALICE => BOB CHANNEL +/
+    /+ OPEN ALICE => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pk);
-    assert(alice_bob_chan_id_res.error == ErrorCode.None,
-        alice_bob_chan_id_res.message);
-    const alice_bob_chan_id = alice_bob_chan_id_res.value;
-    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+    assert(alice_charlie_chan_id_res.error == ErrorCode.None,
+        alice_charlie_chan_id_res.message);
+    const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
+    log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await alice & bob channel funding transaction
-    network.expectTxExternalization(alice_bob_chan_id);
+    // await alice & charlie channel funding transaction
+    network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
-    bob.waitForChannelOpen(bob_pubkey, alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
+    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
 
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    /+ OPEN BOB => CHARLIE CHANNEL +/
+    /+ OPEN CHARLIE => DIEGO CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo = UTXO(0, txs[1].outputs[0]);
-    const bob_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
-    const bob_charlie_chan_id_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo, bob_utxo_hash, Amount(3_000), Settle_1_Blocks, charlie_pk);
-    assert(bob_charlie_chan_id_res.error == ErrorCode.None,
-        bob_charlie_chan_id_res.message);
-    const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
-    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    const charlie_utxo = UTXO(0, txs[1].outputs[0]);
+    const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
+    const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
+        charlie_utxo, charlie_utxo_hash, Amount(3_000), Settle_1_Blocks, WK.Keys.D.address);
+    assert(charlie_diego_chan_id_res.error == ErrorCode.None,
+        charlie_diego_chan_id_res.message);
+    const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
+    log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await bob & bob channel funding transaction
-    network.expectTxExternalization(bob_charlie_chan_id);
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id);
-    charlie.waitForChannelOpen(charlie_pubkey, bob_charlie_chan_id);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
+    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
+    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
-    alice.waitForChannelDiscovery(bob_charlie_chan_id);
-    charlie.waitForChannelDiscovery(alice_bob_chan_id);
+    alice.waitForChannelDiscovery(charlie_diego_chan_id);
+    diego.waitForChannelDiscovery(alice_charlie_chan_id);
 
     // begin off-chain transactions
-    auto inv_1 = charlie.createNewInvoice(charlie_pubkey, Amount(2_000),
+    auto inv_1 = diego.createNewInvoice(WK.Keys.D.address, Amount(2_000),
         time_t.max, "payment 1");
 
-    // here we assume bob sent the invoice to alice through some means,
+    // here we assume charlie sent the invoice to alice through some means,
     // e.g. QR code. Alice scans it and proposes the payment.
-    // it has a direct channel to bob so it uses it.
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    // it has a direct channel to charlie so it uses it.
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
     auto inv_res = factory.listener.waitUntilNotified(inv_1.value);
     assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
 
     // wait for payment + folding update indices
-    alice.waitForUpdateIndex(alice_pubkey, alice_bob_chan_id, 2);
-    bob.waitForUpdateIndex(bob_pubkey, alice_bob_chan_id, 2);
-    bob.waitForUpdateIndex(bob_pubkey, bob_charlie_chan_id, 2);
-    charlie.waitForUpdateIndex(charlie_pubkey, bob_charlie_chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, alice_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, alice_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, charlie_diego_chan_id, 2);
+    diego.waitForUpdateIndex(WK.Keys.D.address, charlie_diego_chan_id, 2);
 
     //
-    log.info("Beginning bob => charlie collaborative close..");
-    assert(bob.beginCollaborativeClose(bob_pubkey, bob_charlie_chan_id).error
+    log.info("Beginning charlie => diego collaborative close..");
+    assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.StartedCollaborativeClose);
-    auto close_tx = bob.getClosingTx(bob_pubkey,
-        bob_charlie_chan_id);
+    auto close_tx = charlie.getClosingTx(WK.Keys.C.address,
+        charlie_diego_chan_id);
     network.expectTxExternalization(close_tx);
-    log.info("bob closing tx: {}", close_tx);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    log.info("charlie closing tx: {}", close_tx);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.Closed);
 
     // can't close twice
-    assert(bob.beginCollaborativeClose(bob_pubkey, bob_charlie_chan_id).error
+    assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id).error
         == ErrorCode.ChannelNotOpen);
 
-    log.info("Beginning alice => bob collaborative close..");
-    assert(alice.beginCollaborativeClose(alice_pubkey,
-        alice_bob_chan_id).error == ErrorCode.None);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    log.info("Beginning alice => charlie collaborative close..");
+    assert(alice.beginCollaborativeClose(WK.Keys.A.address,
+        alice_charlie_chan_id).error == ErrorCode.None);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
-    close_tx = alice.getClosingTx(alice_pubkey,
-        alice_bob_chan_id);
+    close_tx = alice.getClosingTx(WK.Keys.A.address,
+        alice_charlie_chan_id);
     network.expectTxExternalization(close_tx);
     log.info("alice closing tx: {}", close_tx);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
 }
 
@@ -1119,18 +1090,6 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
-
-    const alice_pk = alice_pair.V;
-    const bob_pk = bob_pair.V;
-    const charlie_pk = charlie_pair.V;
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
-    const charlie_pubkey = PublicKey(charlie_pair.V);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
@@ -1144,118 +1103,118 @@ unittest
         max_retry_delay : 100.msecs,
     };
 
-    auto alice = factory.create(alice_pair, alice_conf, address);
-    auto bob = factory.create(bob_pair, address);
-    auto charlie = factory.create(charlie_pair, address);
+    auto alice = factory.create(WK.Keys.A, alice_conf, address);
+    auto charlie = factory.create(WK.Keys.C, address);
+    auto diego = factory.create(WK.Keys.D, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
     //const Settle_10_Blocks = 10;
 
-    /+ OPEN ALICE => BOB CHANNEL +/
+    /+ OPEN ALICE => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pk);
-    assert(alice_bob_chan_id_res.error == ErrorCode.None,
-        alice_bob_chan_id_res.message);
-    const alice_bob_chan_id = alice_bob_chan_id_res.value;
-    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+    assert(alice_charlie_chan_id_res.error == ErrorCode.None,
+        alice_charlie_chan_id_res.message);
+    const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
+    log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await alice & bob channel funding transaction
-    network.expectTxExternalization(alice_bob_chan_id);
+    // await alice & charlie channel funding transaction
+    network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
-    bob.waitForChannelOpen(bob_pubkey, alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
+    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    /+ OPEN BOB => CHARLIE CHANNEL +/
+    /+ OPEN CHARLIE => DIEGO CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo = UTXO(0, txs[1].outputs[0]);
-    const bob_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
-    const bob_charlie_chan_id_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo, bob_utxo_hash, Amount(10_000), Settle_1_Blocks, charlie_pk);
-    assert(bob_charlie_chan_id_res.error == ErrorCode.None,
-        bob_charlie_chan_id_res.message);
-    const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
-    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    const charlie_utxo = UTXO(0, txs[1].outputs[0]);
+    const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
+    const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
+        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address);
+    assert(charlie_diego_chan_id_res.error == ErrorCode.None,
+        charlie_diego_chan_id_res.message);
+    const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
+    log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await bob & bob channel funding transaction
-    network.expectTxExternalization(bob_charlie_chan_id);
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id);
-    charlie.waitForChannelOpen(charlie_pubkey, bob_charlie_chan_id);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
+    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
+    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    /+ OPEN CHARLIE => ALICE CHANNEL +/
+    /+ OPEN DIEGO => ALICE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const charlie_utxo = UTXO(0, txs[2].outputs[0]);
-    const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
-    const charlie_alice_chan_id_res = charlie.openNewChannel(charlie_pubkey,
-        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, alice_pk);
-    assert(charlie_alice_chan_id_res.error == ErrorCode.None,
-        charlie_alice_chan_id_res.message);
-    const charlie_alice_chan_id = charlie_alice_chan_id_res.value;
-    log.info("Charlie Alice channel ID: {}", charlie_alice_chan_id);
-    factory.listener.waitUntilChannelState(charlie_alice_chan_id,
+    const diego_utxo = UTXO(0, txs[2].outputs[0]);
+    const diego_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
+    const diego_alice_chan_id_res = diego.openNewChannel(WK.Keys.D.address,
+        diego_utxo, diego_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.A.address);
+    assert(diego_alice_chan_id_res.error == ErrorCode.None,
+        diego_alice_chan_id_res.message);
+    const diego_alice_chan_id = diego_alice_chan_id_res.value;
+    log.info("Diego Alice channel ID: {}", diego_alice_chan_id);
+    factory.listener.waitUntilChannelState(diego_alice_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await bob & bob channel funding transaction
-    network.expectTxExternalization(charlie_alice_chan_id);
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(diego_alice_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, charlie_alice_chan_id);
-    charlie.waitForChannelOpen(charlie_pubkey, charlie_alice_chan_id);
-    factory.listener.waitUntilChannelState(charlie_alice_chan_id, ChannelState.Open);
+    alice.waitForChannelOpen(WK.Keys.A.address, diego_alice_chan_id);
+    diego.waitForChannelOpen(WK.Keys.D.address, diego_alice_chan_id);
+    factory.listener.waitUntilChannelState(diego_alice_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
-    alice.waitForChannelDiscovery(bob_charlie_chan_id);
-    bob.waitForChannelDiscovery(charlie_alice_chan_id);
-    charlie.waitForChannelDiscovery(alice_bob_chan_id);
+    alice.waitForChannelDiscovery(charlie_diego_chan_id);
+    charlie.waitForChannelDiscovery(diego_alice_chan_id);
+    diego.waitForChannelDiscovery(alice_charlie_chan_id);
 
     // begin off-chain transactions
-    auto inv_1 = charlie.createNewInvoice(charlie_pubkey, Amount(2_000),
+    auto inv_1 = diego.createNewInvoice(WK.Keys.D.address, Amount(2_000),
         time_t.max, "payment 1");
 
-    // here we assume bob sent the invoice to alice through some means,
+    // here we assume charlie sent the invoice to alice through some means,
 
-    // Alice has a direct channel to charlie, but it does not have enough funds
+    // Alice has a direct channel to diego, but it does not have enough funds
     // to complete the payment in that direction. Alice will first naively try
-    // that route and fail. In the second try, alice will route the payment through bob.
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    // that route and fail. In the second try, alice will route the payment through charlie.
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
     auto res1 = factory.listener.waitUntilNotified(inv_1.value);
     assert(res1 != ErrorCode.None);  // should fail at first
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
     auto res2 = factory.listener.waitUntilNotified(inv_1.value);
     assert(res2 == ErrorCode.None);  // should succeed the second time
 
-    bob.waitForUpdateIndex(bob_pubkey, bob_charlie_chan_id, 2);
-    charlie.waitForUpdateIndex(charlie_pubkey, bob_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, charlie_diego_chan_id, 2);
+    diego.waitForUpdateIndex(WK.Keys.D.address, charlie_diego_chan_id, 2);
 
-    alice.changeFees(alice_pubkey, charlie_alice_chan_id, Amount(1337),
+    alice.changeFees(WK.Keys.A.address, diego_alice_chan_id, Amount(1337),
         Amount(1));
-    auto update = alice.waitForChannelUpdate(charlie_alice_chan_id,
+    auto update = alice.waitForChannelUpdate(diego_alice_chan_id,
         PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
-    update = bob.waitForChannelUpdate(charlie_alice_chan_id,
+    update = charlie.waitForChannelUpdate(diego_alice_chan_id,
         PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
-    update = charlie.waitForChannelUpdate(charlie_alice_chan_id,
+    update = diego.waitForChannelUpdate(diego_alice_chan_id,
         PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
@@ -1290,186 +1249,174 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
-
-    const alice_pk = alice_pair.V;
-    const bob_pk = bob_pair.V;
-    const charlie_pk = charlie_pair.V;
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
-    const charlie_pubkey = PublicKey(charlie_pair.V);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create(bob_pair, address);
-    auto charlie = factory.create(charlie_pair, address);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, address);
+    auto diego = factory.create(WK.Keys.D, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
     //const Settle_10_Blocks = 10;
 
-    /+ OPEN ALICE => BOB CHANNEL +/
+    /+ OPEN ALICE => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pk);
-    assert(alice_bob_chan_id_res.error == ErrorCode.None,
-        alice_bob_chan_id_res.message);
-    const alice_bob_chan_id = alice_bob_chan_id_res.value;
-    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+    assert(alice_charlie_chan_id_res.error == ErrorCode.None,
+        alice_charlie_chan_id_res.message);
+    const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
+    log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await alice & bob channel funding transaction
-    network.expectTxExternalization(alice_bob_chan_id);
+    // await alice & charlie channel funding transaction
+    network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
-    bob.waitForChannelOpen(bob_pubkey, alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
+    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    /+ OPEN BOB => CHARLIE CHANNEL +/
+    /+ OPEN CHARLIE => DIEGO CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo = UTXO(0, txs[2].outputs[0]);
-    const bob_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
-    const bob_charlie_chan_id_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo, bob_utxo_hash, Amount(10_000), Settle_1_Blocks, charlie_pk);
-    assert(bob_charlie_chan_id_res.error == ErrorCode.None,
-        bob_charlie_chan_id_res.message);
-    const bob_charlie_chan_id = bob_charlie_chan_id_res.value;
-    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    const charlie_utxo = UTXO(0, txs[2].outputs[0]);
+    const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
+    const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
+        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address);
+    assert(charlie_diego_chan_id_res.error == ErrorCode.None,
+        charlie_diego_chan_id_res.message);
+    const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
+    log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await bob & bob channel funding transaction
-    network.expectTxExternalization(bob_charlie_chan_id);
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id);
-    charlie.waitForChannelOpen(charlie_pubkey, bob_charlie_chan_id);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id, ChannelState.Open);
-    alice.waitForChannelDiscovery(bob_charlie_chan_id);  // also alice (so it can detect fees)
+    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
+    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
+    alice.waitForChannelDiscovery(charlie_diego_chan_id);  // also alice (so it can detect fees)
 
-    bob.changeFees(bob_pubkey, bob_charlie_chan_id, Amount(100), Amount(1));
-    alice.waitForChannelUpdate(bob_charlie_chan_id, PaymentDirection.TowardsPeer, 1);
-    charlie.waitForChannelUpdate(bob_charlie_chan_id, PaymentDirection.TowardsPeer, 1);
+    charlie.changeFees(WK.Keys.C.address, charlie_diego_chan_id, Amount(100), Amount(1));
+    alice.waitForChannelUpdate(charlie_diego_chan_id, PaymentDirection.TowardsPeer, 1);
+    diego.waitForChannelUpdate(charlie_diego_chan_id, PaymentDirection.TowardsPeer, 1);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
-    /+ OPEN SECOND BOB => CHARLIE CHANNEL +/
+    /+ OPEN SECOND CHARLIE => DIEGO CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
-    const bob_utxo_2 = UTXO(0, txs[3].outputs[0]);
-    const bob_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
-    const bob_charlie_chan_id_2_res = bob.openNewChannel(bob_pubkey,
-        bob_utxo_2, bob_utxo_hash_2, Amount(10_000), Settle_1_Blocks, charlie_pk);
-    assert(bob_charlie_chan_id_2_res.error == ErrorCode.None,
-        bob_charlie_chan_id_2_res.message);
-    const bob_charlie_chan_id_2 = bob_charlie_chan_id_2_res.value;
-    log.info("Bob Charlie channel ID: {}", bob_charlie_chan_id_2);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
-        ChannelState.SettingUp, bob_pubkey);
+    const charlie_utxo_2 = UTXO(0, txs[3].outputs[0]);
+    const charlie_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
+    const charlie_diego_chan_id_2_res = charlie.openNewChannel(WK.Keys.C.address,
+        charlie_utxo_2, charlie_utxo_hash_2, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address);
+    assert(charlie_diego_chan_id_2_res.error == ErrorCode.None,
+        charlie_diego_chan_id_2_res.message);
+    const charlie_diego_chan_id_2 = charlie_diego_chan_id_2_res.value;
+    log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id_2);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2,
+        ChannelState.SettingUp, WK.Keys.C.address);
 
-    auto chans = bob.getManagedChannels(null);
+    auto chans = charlie.getManagedChannels(null);
     assert(chans.length == 3, chans.to!string);
 
-    chans = bob.getManagedChannels([bob_pubkey]);
+    chans = charlie.getManagedChannels([WK.Keys.C.address]);
     assert(chans.length == 3, chans.to!string);
 
-    chans = bob.getManagedChannels([alice_pubkey]);
+    chans = charlie.getManagedChannels([WK.Keys.A.address]);
     assert(chans.length == 0, chans.to!string);
 
-    auto infos = bob.getChannelInfo([bob_charlie_chan_id_2]);
+    auto infos = charlie.getChannelInfo([charlie_diego_chan_id_2]);
     assert(infos.length == 1);
     auto info = infos[0];
-    assert(info.chan_id == bob_charlie_chan_id_2);
-    assert(info.owner_key == bob_pubkey);
-    assert(info.peer_key == charlie_pubkey);
+    assert(info.chan_id == charlie_diego_chan_id_2);
+    assert(info.owner_key == WK.Keys.C.address);
+    assert(info.peer_key == WK.Keys.D.address);
     assert(info.state == ChannelState.Negotiating
         || info.state == ChannelState.SettingUp
         || info.state == ChannelState.WaitingForFunding, info.state.to!string);
     assert(info.owner_balance == Amount(0), info.owner_balance.to!string);
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
-    // await bob & bob channel funding transaction
-    network.expectTxExternalization(bob_charlie_chan_id_2);
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(charlie_diego_chan_id_2);
 
     // wait for the parties to detect the funding tx
-    bob.waitForChannelOpen(bob_pubkey, bob_charlie_chan_id_2);
-    charlie.waitForChannelOpen(charlie_pubkey, bob_charlie_chan_id_2);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2, ChannelState.Open);
+    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id_2);
+    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id_2);
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2, ChannelState.Open);
 
     // check if info is different now
-    infos = bob.getChannelInfo([bob_charlie_chan_id_2]);
+    infos = charlie.getChannelInfo([charlie_diego_chan_id_2]);
     assert(infos.length == 1);
     info = infos[0];
     assert(info.state == ChannelState.Open);
     assert(info.owner_balance == Amount(10_000), info.owner_balance.to!string);
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
-    bob.changeFees(bob_pubkey, bob_charlie_chan_id_2, Amount(10), Amount(1));
-    alice.waitForChannelUpdate(bob_charlie_chan_id_2, PaymentDirection.TowardsPeer, 1);
-    charlie.waitForChannelUpdate(bob_charlie_chan_id_2, PaymentDirection.TowardsPeer, 1);
+    charlie.changeFees(WK.Keys.C.address, charlie_diego_chan_id_2, Amount(10), Amount(1));
+    alice.waitForChannelUpdate(charlie_diego_chan_id_2, PaymentDirection.TowardsPeer, 1);
+    diego.waitForChannelUpdate(charlie_diego_chan_id_2, PaymentDirection.TowardsPeer, 1);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
-    alice.waitForChannelDiscovery(bob_charlie_chan_id);
-    alice.waitForChannelDiscovery(bob_charlie_chan_id_2);
-    charlie.waitForChannelDiscovery(alice_bob_chan_id);
+    alice.waitForChannelDiscovery(charlie_diego_chan_id);
+    alice.waitForChannelDiscovery(charlie_diego_chan_id_2);
+    diego.waitForChannelDiscovery(alice_charlie_chan_id);
 
     // begin off-chain transactions
-    auto inv_1 = charlie.createNewInvoice(charlie_pubkey, Amount(2_000),
+    auto inv_1 = diego.createNewInvoice(WK.Keys.D.address, Amount(2_000),
         time_t.max, "payment 1");
 
     // Alice is expected to route the payment through the channel
-    // with lower fee between Bob and Charlie
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    // with lower fee between Charlie and Diego
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
     // wait for payment + folding update indices
-    alice.waitForUpdateIndex(alice_pubkey, alice_bob_chan_id, 2);
-    bob.waitForUpdateIndex(bob_pubkey, alice_bob_chan_id, 2);
-    bob.waitForUpdateIndex(bob_pubkey, bob_charlie_chan_id_2, 2);
-    charlie.waitForUpdateIndex(charlie_pubkey, bob_charlie_chan_id_2, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, alice_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, alice_charlie_chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, charlie_diego_chan_id_2, 2);
+    diego.waitForUpdateIndex(WK.Keys.D.address, charlie_diego_chan_id_2, 2);
 
-    assert(bob.beginCollaborativeClose(bob_pubkey, bob_charlie_chan_id_2).error
+    assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id_2).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.StartedCollaborativeClose);
-    auto close_tx = bob.getClosingTx(bob_pubkey, bob_charlie_chan_id_2);
+    auto close_tx = charlie.getClosingTx(WK.Keys.C.address, charlie_diego_chan_id_2);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
     assert(close_tx.outputs.count!(o => o.value == Amount(2000 - close_tx.sizeInBytes)) == 1);
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id_2,
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.Closed);
 
-    assert(alice.beginCollaborativeClose(alice_pubkey, alice_bob_chan_id).error
+    assert(alice.beginCollaborativeClose(WK.Keys.A.address, alice_charlie_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
-    close_tx = alice.getClosingTx(alice_pubkey, alice_bob_chan_id);
+    close_tx = alice.getClosingTx(WK.Keys.A.address, alice_charlie_chan_id);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
     assert(close_tx.outputs.count!(o => o.value == Amount(2010 - close_tx.sizeInBytes)) == 1);
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
 
-    assert(bob.beginCollaborativeClose(bob_pubkey, bob_charlie_chan_id).error
+    assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.StartedCollaborativeClose);
-    close_tx = bob.getClosingTx(bob_pubkey, bob_charlie_chan_id);
+    close_tx = charlie.getClosingTx(WK.Keys.C.address, charlie_diego_chan_id);
     assert(close_tx.outputs.length == 1); // No updates
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(bob_charlie_chan_id,
+    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.Closed);
     auto block14 = node_1.getBlocksFrom(14, 1)[0];
 }
@@ -1516,57 +1463,49 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
-    const bob_pk = bob_pair.V;
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create!BleedingEdgeFlashNode(alice_pair, address);
-    auto bob = factory.create(bob_pair, address);
+    auto alice = factory.create!BleedingEdgeFlashNode(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, address);
 
-    /+ OPEN ALICE => BOB CHANNEL +/
+    /+ OPEN ALICE => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_bob_chan_id_res = alice.openNewChannel(alice_pubkey,
-        alice_utxo, alice_utxo_hash, Amount(10_000), 0, bob_pk);
-    assert(alice_bob_chan_id_res.error == ErrorCode.None,
-        alice_bob_chan_id_res.message);
-    const alice_bob_chan_id = alice_bob_chan_id_res.value;
-    log.info("Alice bob channel ID: {}", alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        alice_utxo, alice_utxo_hash, Amount(10_000), 0, WK.Keys.C.address);
+    assert(alice_charlie_chan_id_res.error == ErrorCode.None,
+        alice_charlie_chan_id_res.message);
+    const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
+    log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
-    // await alice & bob channel funding transaction
-    network.expectTxExternalization(alice_bob_chan_id);
+    // await alice & charlie channel funding transaction
+    network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, alice_bob_chan_id);
-    bob.waitForChannelOpen(bob_pubkey, alice_bob_chan_id);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id, ChannelState.Open);
+    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // begin off-chain transactions
-    auto inv_1 = bob.createNewInvoice(bob_pubkey, Amount(2_000), time_t.max, "payment 1");
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(2_000), time_t.max, "payment 1");
 
-    // Bob will receive packets with a different version than it implements
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    // Charlie will receive packets with a different version than it implements
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
     Thread.sleep(1.seconds);
 
-    assert(bob.beginCollaborativeClose(bob_pubkey, alice_bob_chan_id).error
+    assert(charlie.beginCollaborativeClose(WK.Keys.C.address, alice_charlie_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
-    auto close_tx = bob.getClosingTx(bob_pubkey, alice_bob_chan_id);
+    auto close_tx = charlie.getClosingTx(WK.Keys.C.address, alice_charlie_chan_id);
     assert(close_tx.outputs.length == 1); // No updates
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(alice_bob_chan_id,
+    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
 }
 
@@ -1600,16 +1539,10 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address, DatabaseStorage.Static);
-    auto bob = factory.create(bob_pair, address, DatabaseStorage.Static);
+    auto alice = factory.create(WK.Keys.A, address, DatabaseStorage.Static);
+    auto charlie = factory.create(WK.Keys.C, address, DatabaseStorage.Static);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1617,8 +1550,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
@@ -1628,37 +1561,37 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, chan_id);
-    bob.waitForChannelOpen(bob_pubkey, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
-    auto update_tx = alice.getPublishUpdateIndex(alice_pubkey, chan_id, 0);
+    auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
     /* do some off-chain transactions */
-    auto inv_1 = bob.createNewInvoice(bob_pubkey, Amount(5_000), time_t.max, "payment 1");
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
-    alice.waitForUpdateIndex(alice_pubkey, chan_id, 2);
-    bob.waitForUpdateIndex(bob_pubkey, chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
-    auto inv_2 = bob.createNewInvoice(bob_pubkey, Amount(1_000), time_t.max, "payment 2");
-    alice.payInvoice(alice_pubkey, inv_2.value);
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
     // need to wait for invoices to be complete before we have the new balance
     // to send in the other direction
-    alice.waitForUpdateIndex(alice_pubkey, chan_id, 4);
-    bob.waitForUpdateIndex(bob_pubkey, chan_id, 4);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 4);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 4);
 
     // restart the two nodes
     factory.restart();
 
-    // note the reverse payment from bob to alice. Can use this for refunds too.
-    auto inv_3 = alice.createNewInvoice(alice_pubkey, Amount(2_000), time_t.max, "payment 3");
-    bob.payInvoice(bob_pubkey, inv_3.value);
+    // note the reverse payment from charlie to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(WK.Keys.A.address, Amount(2_000), time_t.max, "payment 3");
+    charlie.payInvoice(WK.Keys.C.address, inv_3.value);
 
     // next update index should be 6
-    alice.waitForUpdateIndex(alice_pubkey, chan_id, 6);
-    bob.waitForUpdateIndex(bob_pubkey, chan_id, 6);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 6);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 6);
 }
 
 /// test various error cases
@@ -1690,24 +1623,18 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
-    FlashConfig bob_conf = { enabled : true,
+    FlashConfig charlie_conf = { enabled : true,
         min_funding : Amount(1000),
         max_funding : Amount(100_000_000),
         min_settle_time : 10,
         max_settle_time : 100,
         max_retry_delay : 100.msecs,
     };
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create(bob_pair, bob_conf, address);
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, charlie_conf, address);
 
     const Settle_10_Blocks = 10;
 
@@ -1716,17 +1643,17 @@ unittest
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
 
     // error on mismatching genesis hash
-    ChannelConfig bad_conf = { funder_pk : alice_pair.V };
-    auto open_res = bob.openChannel(bob_pubkey, bad_conf, PublicNonce.init);
+    ChannelConfig bad_conf = { funder_pk : WK.Keys.A.address };
+    auto open_res = charlie.openChannel(WK.Keys.C.address, bad_conf, PublicNonce.init);
     assert(open_res.error == ErrorCode.InvalidGenesisHash, open_res.to!string);
 
     // error on non-managed key
-    open_res = bob.openChannel(alice_pubkey, bad_conf, PublicNonce.init);
+    open_res = charlie.openChannel(WK.Keys.A.address, bad_conf, PublicNonce.init);
     assert(open_res.error == ErrorCode.KeyNotRecognized, open_res.to!string);
 
     // error on capacity too low
-    auto res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(1), Settle_10_Blocks, bob_pair.V);
+    auto res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(1), Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
     auto error = factory.listener.waitUntilChannelState(res.value,
@@ -1734,12 +1661,12 @@ unittest
     assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
     // channel does not exist as it was rejected
-    assert(alice.beginCollaborativeClose(alice_pubkey, res.value).error
+    assert(alice.beginCollaborativeClose(WK.Keys.A.address, res.value).error
         == ErrorCode.InvalidChannelID);
 
     // error on capacity too high
-    res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, bob_pair.V);
+    res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
@@ -1747,8 +1674,8 @@ unittest
     assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
     // error on settle time too low
-    res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(10_000), 5, bob_pair.V);
+    res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
@@ -1756,30 +1683,30 @@ unittest
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     // error on not enough funds on funding UTXO
-    res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, bob_pair.V);
+    res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not enough funds on funding UTXO for TX fees
-    res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, bob_pair.V);
+    res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not own funding UTXO
-    res = bob.openNewChannel(bob_pubkey,
-        utxo, utxo_hash, Amount(10_000), 1000, alice_pair.V);
+    res = charlie.openNewChannel(WK.Keys.C.address,
+        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.A.address);
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
-    res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(10_000), 1000, bob_pair.V);
+    res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
     error = factory.listener.waitUntilChannelState(res.value,
-        ChannelState.Rejected, alice_pubkey);
+        ChannelState.Rejected, WK.Keys.A.address);
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
-    const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     factory.listener.waitUntilChannelState(res.value, ChannelState.WaitingForFunding);
     const chan_id = chan_id_res.value;
@@ -1788,69 +1715,69 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, chan_id);
-    bob.waitForChannelOpen(bob_pubkey, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
-    res = alice.openNewChannel(alice_pubkey, utxo, utxo_hash, Amount(10_000),
-        Settle_10_Blocks, bob_pair.V);
+    res = alice.openNewChannel(WK.Keys.A.address, utxo, utxo_hash, Amount(10_000),
+        Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.DuplicateChannelID, res.to!string);
 
     // test some update signer error cases
-    auto sig_res = alice.requestSettleSig(bob_pubkey, alice_pubkey, Hash.init, 0);
+    auto sig_res = alice.requestSettleSig(WK.Keys.C.address, WK.Keys.A.address, Hash.init, 0);
     assert(sig_res.error == ErrorCode.InvalidChannelID, sig_res.to!string);
 
-    auto up_sig_res = alice.requestUpdateSig(bob_pubkey, alice_pubkey, Hash.init, 0);
+    auto up_sig_res = alice.requestUpdateSig(WK.Keys.C.address, WK.Keys.A.address, Hash.init, 0);
     assert(up_sig_res.error == ErrorCode.InvalidChannelID, up_sig_res.to!string);
 
     /*** test invalid payment proposals ***/
 
     // mismatching version byte
     OnionPacket onion = { version_byte : ubyte.max };
-    auto pay_res = alice.proposePayment(bob_pubkey, alice_pubkey, Hash.init, 0, Hash.init, Amount.init,
+    auto pay_res = alice.proposePayment(WK.Keys.C.address, WK.Keys.A.address, Hash.init, 0, Hash.init, Amount.init,
         Height.init, onion, PublicNonce.init, Height.init);
     assert(pay_res.error == ErrorCode.VersionMismatch, pay_res.to!string);
 
     // invalid channel ID
     onion.version_byte = 0;
-    pay_res = alice.proposePayment(bob_pubkey, alice_pubkey, Hash.init, 0, Hash.init, Amount.init,
+    pay_res = alice.proposePayment(WK.Keys.C.address, WK.Keys.A.address, Hash.init, 0, Hash.init, Amount.init,
         Height.init, onion, PublicNonce.init, Height.init);
     assert(pay_res.error == ErrorCode.InvalidChannelID, pay_res.to!string);
 
     // ephemeral pk is invalid
-    pay_res = alice.proposePayment(bob_pubkey, alice_pubkey, chan_id, 0, Hash.init, Amount.init,
+    pay_res = alice.proposePayment(WK.Keys.C.address, WK.Keys.A.address, chan_id, 0, Hash.init, Amount.init,
         Height.init, onion, PublicNonce.init, Height.init);
     assert(pay_res.error == ErrorCode.InvalidOnionPacket, pay_res.to!string);
 
     // onion packet cannot be decrypted
     onion.ephemeral_pk = Scalar.random().toPoint();
-    pay_res = alice.proposePayment(bob_pubkey, alice_pubkey, chan_id, 0, Hash.init, Amount.init,
+    pay_res = alice.proposePayment(WK.Keys.C.address, WK.Keys.A.address, chan_id, 0, Hash.init, Amount.init,
         Height.init, onion, PublicNonce.init, Height.init);
     assert(pay_res.error == ErrorCode.InvalidOnionPacket, pay_res.to!string);
 
     // invalid next channel ID
     Hop[] path = [
-        Hop(Point(alice_pair.V[]), chan_id, Amount(10)),
+        Hop(Point(WK.Keys.A.address[]), chan_id, Amount(10)),
         Hop(Scalar.random().toPoint(), hashFull(2), Amount(10))];
     Amount total_amount;
     Height use_lock_height;
     Point[] shared_secrets;
     onion = createOnionPacket(hashFull(42), Amount(100), path,
         total_amount, use_lock_height, shared_secrets);
-    pay_res = alice.proposePayment(bob_pubkey, alice_pubkey, chan_id, 0, hashFull(42), total_amount,
+    pay_res = alice.proposePayment(WK.Keys.C.address, WK.Keys.A.address, chan_id, 0, hashFull(42), total_amount,
         use_lock_height, onion, PublicNonce.init, Height.init);
     assert(pay_res.error == ErrorCode.InvalidChannelID, pay_res.to!string);
 
     /*** test invalid update proposals ***/
 
     // invalid channel ID
-    auto upd_res = alice.proposeUpdate(bob_pubkey, alice_pubkey, Hash.init, 0, null, null,
+    auto upd_res = alice.proposeUpdate(WK.Keys.C.address, WK.Keys.A.address, Hash.init, 0, null, null,
         PublicNonce.init, Height.init);
     assert(upd_res.error == ErrorCode.InvalidChannelID, upd_res.to!string);
 
     // invalid height
-    upd_res = alice.proposeUpdate(bob_pubkey, alice_pubkey, chan_id, 0, null, null,
+    upd_res = alice.proposeUpdate(WK.Keys.C.address, WK.Keys.A.address, chan_id, 0, null, null,
         PublicNonce.init, Height(100));
     assert(upd_res.error == ErrorCode.MismatchingBlockHeight, upd_res.to!string);
 }
@@ -1904,10 +1831,6 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
@@ -1921,13 +1844,9 @@ unittest
         max_retry_delay : 10.msecs,
     };
 
-    auto alice = factory.create(alice_pair, alice_conf, address);
-    auto bob = factory.create!RejectingFlashNode(bob_pair, address);
-    auto charlie = factory.create(charlie_pair, address);
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-    const bob_pubkey = PublicKey(bob_pair.V);
-    const charlie_pubkey = PublicKey(charlie_pair.V);
+    auto alice = factory.create(WK.Keys.A, alice_conf, address);
+    auto charlie = factory.create!RejectingFlashNode(WK.Keys.C, address);
+    auto diego = factory.create(WK.Keys.D, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1935,8 +1854,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -1945,33 +1864,33 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(alice_pubkey, chan_id);
-    bob.waitForChannelOpen(bob_pubkey, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
-    auto update_tx = alice.getPublishUpdateIndex(alice_pubkey, chan_id, 0);
+    auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
     /* do some off-chain transactions */
-    auto inv_1 = bob.createNewInvoice(bob_pubkey, Amount(5_000), time_t.max,
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max,
         "payment 1");
-    alice.payInvoice(alice_pubkey, inv_1.value);
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
-    alice.waitForUpdateIndex(alice_pubkey, chan_id, 2);
-    bob.waitForUpdateIndex(bob_pubkey, chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
     auto res = factory.listener.waitUntilNotified(inv_1.value);
     assert(res == ErrorCode.None);  // should succeed
 
-    auto inv_2 = bob.createNewInvoice(bob_pubkey, Amount(1_000), time_t.max,
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max,
         "payment 2");
-    alice.payInvoice(alice_pubkey, inv_2.value);
+    alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
     res = factory.listener.waitUntilNotified(inv_2.value);
     assert(res != ErrorCode.None);  // should have failed
 
-    auto inv_3 = charlie.createNewInvoice(charlie_pubkey, Amount(1_000),
-        time_t.max, "charlie");
-    alice.payInvoice(alice_pubkey, inv_3.value);
+    auto inv_3 = diego.createNewInvoice(WK.Keys.D.address, Amount(1_000),
+        time_t.max, "diego");
+    alice.payInvoice(WK.Keys.A.address, inv_3.value);
 
     res = factory.listener.waitUntilNotified(inv_3.value);
     assert(res == ErrorCode.PathNotFound);
@@ -2017,12 +1936,6 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-    const charlie_pair = Pair(WK.Keys[2].secret, WK.Keys[2].secret.toPoint);
-
-    const alice_pubkey = PublicKey(alice_pair.V);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
 
@@ -2036,9 +1949,9 @@ unittest
         max_retry_delay : 10.msecs,
     };
 
-    auto alice = factory.create(alice_pair, alice_conf, address);
-    auto bob = factory.create(bob_pair, address);
-    auto charlie = factory.create(charlie_pair, address);
+    auto alice = factory.create(WK.Keys.A, alice_conf, address);
+    auto charlie = factory.create(WK.Keys.C, address);
+    auto diego = factory.create(WK.Keys.D, address);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -2046,8 +1959,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pubkey,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
 
@@ -2086,15 +1999,10 @@ unittest
     scope (exit) factory.shutdown();
     scope (failure) factory.printLogs();
 
-    const alice_pair = Pair(WK.Keys[0].secret, WK.Keys[0].secret.toPoint);
-    const bob_pair = Pair(WK.Keys[1].secret, WK.Keys[1].secret.toPoint);
-
     // workaround to get a handle to the node from another registry's thread
     const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(alice_pair, address);
-    auto bob = factory.create(bob_pair, address);
-    const alice_pk = PublicKey(alice_pair.V);
-    const bob_pk = PublicKey(bob_pair.V);
+    auto alice = factory.create(WK.Keys.A, address);
+    auto charlie = factory.create(WK.Keys.C, address);
 
     // 3 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 3;
@@ -2102,8 +2010,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(alice_pk,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, bob_pair.V);
+    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -2112,37 +2020,37 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(alice_pk, chan_id);
-    bob.waitForChannelOpen(bob_pk, chan_id);
+    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
     factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
-    auto inv_1 = bob.createNewInvoice(bob_pk, Amount(5_000), time_t.max, "payment 1");
-    alice.payInvoice(alice_pk, inv_1.value);
+    auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 2);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 2);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
-    auto inv_2 = bob.createNewInvoice(bob_pk, Amount(1_000), time_t.max, "payment 2");
-    alice.payInvoice(alice_pk, inv_2.value);
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max, "payment 2");
+    alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
     // need to wait for invoices to be complete before we have the new balance
     // to send in the other direction
-    alice.waitForUpdateIndex(alice_pk, chan_id, 4);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 4);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 4);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 4);
 
-    // note the reverse payment from bob to alice. Can use this for refunds too.
-    auto inv_3 = alice.createNewInvoice(alice_pk, Amount(2_000), time_t.max, "payment 3");
-    bob.payInvoice(bob_pk, inv_3.value);
+    // note the reverse payment from charlie to alice. Can use this for refunds too.
+    auto inv_3 = alice.createNewInvoice(WK.Keys.A.address, Amount(2_000), time_t.max, "payment 3");
+    charlie.payInvoice(WK.Keys.C.address, inv_3.value);
 
-    alice.waitForUpdateIndex(alice_pk, chan_id, 6);
-    bob.waitForUpdateIndex(bob_pk, chan_id, 6);
+    alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 6);
+    charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 6);
 
     // disallow nodes to publish TXs so that we can publish older updates
     alice.setPublishEnable(false);
-    bob.setPublishEnable(false);
+    charlie.setPublishEnable(false);
 
-    auto update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 0);
+    auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
     node_1.postTransaction(update_tx);
     network.expectTxExternalization(update_tx);
     factory.listener.waitUntilChannelState(chan_id,
@@ -2150,20 +2058,20 @@ unittest
 
 
     // publish an older update
-    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 2);
+    update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 2);
     node_1.postTransaction(update_tx);
     network.expectTxExternalization(update_tx);
 
     // an even older update can not be externalized anymore
-    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 1);
+    update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 1);
     node_1.postTransaction(update_tx);
     assertThrown!Exception(network.expectTxExternalization(update_tx));
 
     // allow normal node operation again
     alice.setPublishEnable(true);
-    bob.setPublishEnable(true);
+    charlie.setPublishEnable(true);
 
-    update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 4);
+    update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 4);
     network.expectTxExternalization(update_tx);
 
     iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
