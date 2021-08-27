@@ -142,8 +142,8 @@ private int main (string[] args)
             return Nullable!Config(parseConfigFile!Config(cmdln));
         catch (Exception ex)
         {
-            writefln("Failed to parse config file '%s'. Error: %s",
-                     cmdln.config_path, ex.message);
+            writefln("Failed to parse configuration file '%s'", cmdln.config_path);
+            writeln(ex);
             return Nullable!Config();
         }
     }();
