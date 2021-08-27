@@ -234,13 +234,7 @@ private struct Context
 /// Helper template for `staticMap` used for strict mode
 private template FieldToName (A)
 {
-    public template Pred (string FieldName)
-    {
-        static if (hasUDA!(FieldRef!(A, FieldName).Ref, Name))
-            enum Pred = getUDAs!(FieldRef!(A, FieldName).Ref, Name)[0].name;
-        else
-            enum Pred = FieldName;
-    }
+    alias Pred (string FieldName) = FieldRef!(A, FieldName).Name;
 }
 
 /// Parse a single mapping, recurse as needed
@@ -275,21 +269,13 @@ private T parseMapping (T)
     auto convert (string FName) ()
     {
         alias FR = FieldRef!(T, FName);
-        static if (hasUDA!(FR.Ref, Name))
-        {
-            static assert (getUDAs!(FR.Ref, Name).length == 1,
-                           "Field `" ~ fullyQualifiedName!(FR.Ref) ~
-                           "` cannot have more than one `Name` attribute");
-            enum NName = getUDAs!(FR.Ref, Name)[0].name;
+        static if (FR.Name != FR.FieldName)
             dbgWrite("Field name `%s` will use YAML field `%s`",
-                     FName.paint(Yellow), NName.paint(Green));
-        }
-        else
-            enum NName = FName;
+                     FR.FieldName.paint(Yellow), FR.Name.paint(Green));
         // Using exact type here matters: we could get a qualified type
         // (e.g. `immutable(string)`) if the field is qualified,
         // which causes problems.
-        FR.Type default_ = __traits(getMember, defaultValue, FName);
+        FR.Type default_ = __traits(getMember, defaultValue, FR.FieldName);
 
         // If this struct is disabled, do not attempt to parse anything besides
         // the `enabled` / `disabled` field.
@@ -311,7 +297,7 @@ private T parseMapping (T)
         if (auto ptr = FName in fieldDefaults)
         {
             dbgWrite("Found %s (%s.%s) in `fieldDefaults",
-                     NName.paint(Cyan), path.paint(Cyan), FName.paint(Cyan));
+                     FR.Name.paint(Cyan), path.paint(Cyan), FName.paint(Cyan));
 
             enforce(!ctx.strict || FName !in node);
             return (*ptr).parseField!(FR)(path.addPath(FName), default_, ctx)
@@ -319,19 +305,19 @@ private T parseMapping (T)
                              FName.paint(Cyan));
         }
 
-        if (auto ptr = NName in node)
+        if (auto ptr = FR.Name in node)
         {
             dbgWrite("%s: YAML field is %s in node%s",
-                     NName.paint(Cyan), "present".paint(Green),
-                     (FName == NName ? "" : " (note that field name is overriden)").paint(Yellow));
-            return (*ptr).parseField!(FR)(path.addPath(NName), default_, ctx)
+                     FR.Name.paint(Cyan), "present".paint(Green),
+                     (FR.Name == FR.FieldName ? "" : " (note that field name is overriden)").paint(Yellow));
+            return (*ptr).parseField!(FR)(path.addPath(FR.Name), default_, ctx)
                 .dbgWriteRet("Using value '%s' from YAML document for field '%s'",
-                             FName.paint(Cyan));
+                             FR.FieldName.paint(Cyan));
         }
 
         dbgWrite("%s: Field is %s from node%s",
-                 NName.paint(Cyan), "missing".paint(Red),
-                 (FName == NName ? "" : " (note that field name is overriden)").paint(Yellow));
+                 FR.Name.paint(Cyan), "missing".paint(Red),
+                 (FR.Name == FR.FieldName ? "" : " (note that field name is overriden)").paint(Yellow));
 
         // A field is considered optional if it has an initializer that is different
         // from its default value, or if it has the `Optional` UDA.
@@ -360,7 +346,7 @@ private T parseMapping (T)
                 "'{}' was not found in '{}', nor was it provided in command line arguments" :
                 // The extra `{}` is used to allow passing the same arguments to `ensure`
                 "'{}' was not found in document{}, nor was it provided in command line arguments";
-            ensure(false, fmt, NName, path);
+            ensure(false, fmt, FR.Name, path);
             assert(0);
         }
     }
@@ -583,11 +569,30 @@ private auto viaConverter (alias FR) (Node node)
 
 private template FieldRef (alias T, string name)
 {
+    // Import needed as `Name` is defined in this template but we also need
+    // to use that identifier in `getUDAs`.
+    import agora.common.ConfigAttributes : CAName = Name;
+
     /// The reference to the field
     public alias Ref = __traits(getMember, T, name);
 
     /// Type of the field
     public alias Type = typeof(Ref);
+
+    /// The name of the field in the struct itself
+    public alias FieldName = name;
+
+    /// The name used in the configuration field (taking `@Name` into account)
+    static if (hasUDA!(Ref, CAName))
+    {
+        static assert (getUDAs!(Ref, CAName).length == 1,
+                       "Field `" ~ fullyQualifiedName!(Ref) ~
+                       "` cannot have more than one `Name` attribute");
+
+        public immutable Name = getUDAs!(Ref, CAName)[0].name;
+    }
+    else
+        public immutable Name = FieldName;
 
     /// Default value of the field (may or may not be `Type.init`)
     public enum Default = __traits(getMember, T.init, name);
