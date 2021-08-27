@@ -381,7 +381,14 @@ private FR.Type parseField (alias FR)
     if (node.nodeID == NodeID.invalid)
         throw new Exception(format("Node type is invalid: %s", node));
 
-    static if (hasConverter!(FR.Ref))
+    // If we reached this, it means the field is set, so just recurse
+    // to peel the type
+    static if (is(FR.Type : SetInfo!FT, FT))
+        return FR.Type(
+            parseField!(FieldRef!(FR.Type, "value"))(node, path, defaultValue, ctx),
+            true);
+
+    else static if (hasConverter!(FR.Ref))
         return node.viaConverter!(FR);
 
     else static if (hasFromString!(FR.Type))
@@ -527,6 +534,7 @@ private enum FId (alias Field) = __traits(identifier, Field);
 /// (does not need to be present in the YAML document)
 private enum isOptional (alias FR) = hasUDA!(FR.Ref, Optional) ||
     is(immutable(FR.Type) == immutable(bool)) ||
+    is(FR.Type : SetInfo!FT, FT) ||
     (FR.Default != FR.Type.init);
 
 /// Evaluates to `true` if we should recurse into the struct via `parseDefaultMapping`
@@ -870,4 +878,50 @@ unittest
     assert(c1.nested.address.address == "Gangnam-gu");
     assert(c1.nested.address.city == "Also Seoul");
     assert(!c1.nested.address.accessible);
+}
+
+// Tests for SetInfo
+unittest
+{
+    static struct Address
+    {
+        string address;
+        string city;
+        bool accessible;
+    }
+
+    static struct Config
+    {
+        SetInfo!int value;
+        SetInfo!int answer = 42;
+        SetInfo!string name = "Lorene";
+
+        SetInfo!Address address;
+    }
+
+    auto c1 = parseConfigString!Config("value: 24", "/dev/null");
+    assert(c1.value == 24);
+    assert(c1.value.set);
+
+    assert(!c1.answer.set);
+    assert(c1.answer == 42);
+
+    assert(!c1.name.set);
+    assert(c1.name == "Lorene");
+
+    assert(!c1.address.set);
+
+    auto c2 = parseConfigString!Config(`
+name: Lorene
+address:
+  address: Somewhere
+  city:    Over the rainbow
+`, "/dev/null");
+
+    assert(!c2.value.set);
+    assert(c2.name == "Lorene");
+    assert(c2.name.set);
+    assert(c2.address.set);
+    assert(c2.address.address == "Somewhere");
+    assert(c2.address.city == "Over the rainbow");
 }

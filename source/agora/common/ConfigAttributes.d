@@ -114,6 +114,66 @@ public struct Name
 
 /*******************************************************************************
 
+    A field which carries informations about whether it was set or not
+
+    Some configurations may need to know which fields were set explicitly while
+    keeping defaults. An example of this is a `struct` where at least one field
+    needs to be set, such as the following:
+    ```
+    public struct ProtoDuration
+    {
+        public @Optional long weeks;
+        public @Optional long days;
+        public @Optional long hours;
+        public @Optional long minutes;
+        public           long seconds = 42;
+        public @Optional long msecs;
+        public @Optional long usecs;
+        public @Optional long hnsecs;
+        public @Optional long nsecs;
+    }
+    ```
+    In this case, it would be impossible to know if any field was explicitly
+    provided. Hence, the struct should be written as:
+    ```
+    public struct ProtoDuration
+    {
+        public SetInfo!long weeks;
+        public SetInfo!long days;
+        public SetInfo!long hours;
+        public SetInfo!long minutes;
+        public SetInfo!long seconds = 42;
+        public SetInfo!long msecs;
+        public SetInfo!long usecs;
+        public SetInfo!long hnsecs;
+        public SetInfo!long nsecs;
+    }
+    ```
+    Note that `SetInfo` implies `Optional`, and supports default values.
+
+*******************************************************************************/
+
+public struct SetInfo (T)
+{
+    /// Allow initialization as a field
+    public this (T initVal, bool isSet = false) @safe pure nothrow @nogc
+    {
+        this.value = initVal;
+        this.set = isSet;
+    }
+
+    /// Underlying data
+    public T value;
+
+    ///
+    alias value this;
+
+    /// Whether this field was set or not
+    public bool set;
+}
+
+/*******************************************************************************
+
     Provides a means to convert a field from a `string` to a complex type
 
     When filling the config, it might be useful to store types which are
