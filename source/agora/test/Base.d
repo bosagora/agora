@@ -260,6 +260,11 @@ private UnitTestResult customModuleUnitTester ()
         {
             import std.datetime.stopwatch : AutoStart, StopWatch;
 
+            // Clear the buffer otherwise we may end up printing messages
+            // from previous tests on failure
+            // For nodes this is node in `agora.utils.Log`
+            CircularAppender!()().clear();
+
             if (chatty)
             {
                 auto output = stdout.lockingTextWriter();

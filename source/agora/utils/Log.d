@@ -150,6 +150,13 @@ version (unittest)
         appender.layout(new AgoraLayout());
         Log.root.add(appender);
     }
+
+    // Since threads may be reused, we also need to clear the buffer
+    static ~this ()
+    {
+        auto appender = CircularAppender!()();
+        appender.clear();
+    }
 }
 
 /// Define options to configure a Logger
