@@ -130,15 +130,14 @@
 module agora.common.Config;
 
 public import agora.common.ConfigAttributes;
-import agora.common.Ensure;
 
+import dyaml.exception;
 import dyaml.node;
 import dyaml.loader;
 
 import std.algorithm;
 import std.conv;
 import std.datetime;
-import std.exception;
 import std.format;
 import std.range;
 import std.traits;
@@ -297,12 +296,14 @@ private T parseMapping (T)
         /// First, check that all the sections found in the mapping are present in the type
         /// If not, the user might have made a typo.
         immutable string[] fieldNames = [ staticMap!(FieldToName!(T).Pred, FieldNameTuple!T) ];
-        // The second message has '{}' which will not format to anything,
+        // The second message has '%s' which will not format to anything,
         // because `path` is empty. This allow us to call `ensure` with the same params.
-        const fmt = path.length ? "Unexpected key '{}' in section '{}'. Valid keys are: {}" :
-            "Unexpected key '{}' in document root{}. Valid keys are: {}";
+        const fmt = path.length ? "Unexpected key '%s' in section '%s'. There are %s valid keys: %-(%s, %)" :
+            "Unexpected key '%s' in document root%s. There are %s valid keys: %-(%s, %)";
         foreach (const ref Node key, const ref Node value; node)
-            ensure(fieldNames.canFind(key.as!string), fmt, key.as!string, path, fieldNames);
+            node.enforce(fieldNames.canFind(key.as!string),
+                         fmt, key.as!string.paint(Red), path.paint(Green),
+                         fieldNames.length.paint(Yellow), fieldNames.map!(f => f.paint(Green)));
     }
 
     const enabledState = node.isMappingEnabled!T(defaultValue);
@@ -343,7 +344,7 @@ private T parseMapping (T)
             dbgWrite("Found %s (%s.%s) in `fieldDefaults",
                      FR.Name.paint(Cyan), path.paint(Cyan), FName.paint(Cyan));
 
-            enforce(!ctx.strict || FName !in node);
+            node.enforce(!ctx.strict || FName !in node, "'Key' field '%s' is specified twice", path.paint(Yellow));
             return (*ptr).parseField!(FR)(path.addPath(FName), default_, ctx)
                 .dbgWriteRet("Using value '%s' from fieldDefaults for field '%s'",
                              FName.paint(Cyan));
@@ -387,10 +388,10 @@ private T parseMapping (T)
         else
         {
             const fmt = path.length ?
-                "'{}' was not found in '{}', nor was it provided in command line arguments" :
-                // The extra `{}` is used to allow passing the same arguments to `ensure`
-                "'{}' was not found in document{}, nor was it provided in command line arguments";
-            ensure(false, fmt, FR.Name, path);
+                "'%s' was not found in '%s', nor was it provided in command line arguments" :
+                // The extra `%s` is used to allow passing the same arguments to `enforce`
+                "'%s' was not found in document%s, nor was it provided in command line arguments";
+            node.enforce(false, fmt, FR.Name, path);
             assert(0);
         }
     }
@@ -446,8 +447,8 @@ private FR.Type parseField (alias FR)
 
     else static if (is(FR.Type == struct))
     {
-        ensure(node.nodeID == NodeID.mapping,
-               "Expected '{}' to be a mapping (object), not a {}",
+        node.enforce(node.nodeID == NodeID.mapping,
+               "Expected '%s' to be a mapping (object), not a %s",
                path, node.nodeTypeString());
         return node.parseMapping!(FR.Type)(path, defaultValue, ctx, null);
     }
@@ -466,8 +467,8 @@ private FR.Type parseField (alias FR)
     {
         static if (hasUDA!(FR.Ref, Key))
         {
-            ensure(node.nodeID == NodeID.mapping,
-                   "Expected '{}' to be a mapping (object), not a {}",
+            node.enforce(node.nodeID == NodeID.mapping,
+                   "Expected '%s' to be a mapping (object), not a %s",
                    path, node.nodeTypeString());
 
             static assert(getUDAs!(FR.Ref, Key).length == 1,
@@ -481,9 +482,9 @@ private FR.Type parseField (alias FR)
             string key = getUDAs!(FR.Ref, Key)[0].name;
             return node.mapping().map!(
                 (Node.Pair pair) {
-                    ensure(pair.value.nodeID == NodeID.mapping,
-                           "Field '{}' should be a sequence of mapping (array of objects), " ~
-                           "but it is a sequence of {}",
+                    node.enforce(pair.value.nodeID == NodeID.mapping,
+                           "Field '%s' should be a sequence of mapping (array of objects), " ~
+                           "but it is a sequence of %s",
                            path, pair.value.nodeTypeString());
 
                     return pair.value.parseMapping!E(
@@ -493,8 +494,8 @@ private FR.Type parseField (alias FR)
         }
         else
         {
-            ensure(node.nodeID == NodeID.sequence,
-                   "Expected '{}' to be a sequence (array), not a {}",
+            node.enforce(node.nodeID == NodeID.sequence,
+                   "Expected '%s' to be a sequence (array), not a %s",
                    path, node.nodeTypeString());
             return node.parseSequence!(FR.Type, E)(path, ctx);
         }
@@ -506,8 +507,8 @@ private FR.Type parseField (alias FR)
 /// Parse a node as a scalar
 private T parseScalar (T) (Node node, string path)
 {
-    ensure(node.nodeID == NodeID.scalar,
-           "Expected '{}' to be a scalar (value), not a {}",
+    node.enforce(node.nodeID == NodeID.scalar,
+           "Expected '%s' to be a scalar (value), not a %s",
            path, node.nodeTypeString());
     static if (is(T == enum))
         return node.as!string.to!(T);
@@ -534,8 +535,8 @@ private core.time.Duration parseDuration (alias FR)
             // We would get "Warning: Statement is not reachable" otherwise.
             enum hasMatch = true;
 
-            ensure(node.nodeID == NodeID.scalar,
-                   "Field '{}' expects an integer value (scalar), not a {}",
+            node.enforce(node.nodeID == NodeID.scalar,
+                   "Field '%s' expects an integer value (scalar), not a %s",
                    path, node.nodeTypeString());
             return core.time.dur!(Suffix[1 .. $])(node.as!long);
         }
@@ -543,9 +544,9 @@ private core.time.Duration parseDuration (alias FR)
     // First form, sum all possible fields
     static if (!is(typeof(hasMatch)))
     {
-        ensure(node.nodeID == NodeID.mapping,
-               "Field '{}' expects a mapping with fields, not a {}",
-               path, node.nodeTypeString());
+        node.enforce(node.nodeID == NodeID.mapping,
+               "Field '%s' is a %s, but expected a mapping with at least one of: %-(%s, %)",
+               path.paint(Cyan), node.nodeTypeString(), DurationSuffixes.map!(s => s[1 .. $].paint(Green)));
         auto result = node.parseMapping!DurationPseudoMapping(
             path, DurationPseudoMapping.init, ctx, null);
         bool hasOneSet;
@@ -558,7 +559,7 @@ private core.time.Duration parseDuration (alias FR)
             static if (isOptional!FR)
                 return defaultValue;
             else
-                ensure(false, "Field  '{}' expected one of its values to be set", path);
+                node.enforce(false, "Field  '%s' expected one of its values to be set", path);
         }
 
         return result.opCast!Duration();
@@ -638,7 +639,7 @@ private auto parseDefaultMapping (alias SFR) (
             return parseDefaultMapping!FR(npath, firstMissing, ctx);
         else
         {
-            ensure(false, "Field '{}' is not optional (first undefined: {})",
+            node.enforce(false, "Field '%s' is not optional (first undefined: %s)",
                    npath, firstMissing);
             return FR.Default;
         }
@@ -648,7 +649,7 @@ private auto parseDefaultMapping (alias SFR) (
         return SFR.Type(staticMap!(convert, FieldNameTuple!(SFR.Type)));
     else
     {
-        ensure(false, "Field '{}' is not optional (first undefined: {})",
+        node.enforce(false, "Field '%s' is not optional (first undefined: %s)",
                path, firstMissing);
         return SFR.Type.init; // Just so that the compiler doesn't get confused
     }
@@ -858,6 +859,104 @@ private string addPath (string opath, string newPart)
     return opath.length ? format("%s.%s", opath, newPart) : newPart;
 }
 
+/// Helper mixin for exception types
+private mixin template ExceptionCtor ()
+{
+    public this (string msg, Mark position,
+                 string file = __FILE__, size_t line = __LINE__)
+        @safe pure nothrow @nogc
+    {
+        super(msg, position, file, line);
+    }
+}
+
+/// Exception type thrown by the config parser
+public class ConfigException : Exception
+{
+    /// Position at which the error happened
+    public Mark yamlPosition;
+
+    /// Constructor
+    public this (string msg, Mark position,
+                 string file = __FILE__, size_t line = __LINE__)
+        @safe pure nothrow @nogc
+    {
+        super(msg, file, line);
+        this.yamlPosition = position;
+    }
+
+    /***************************************************************************
+
+        Overrides `Throwable.toString` sink overload
+
+        It is quite likely that errors from this module may be printed directly
+        to the end user, who might not have technical knowledge.
+
+        This format the error in a nicer format (with colors if possible),
+        and will additionally provide a stack-trace if the `ConfigFillerDebug`
+        `debug` version was provided.
+
+        Params:
+          sink = The sink to send the piece-meal string to
+
+    ***************************************************************************/
+
+    public override void toString (scope void delegate(in char[]) sink) const scope
+    {
+        import core.internal.string : unsignedToTempString;
+
+        char[20] buffer = void;
+
+        sink(Yellow);
+        sink(this.yamlPosition.name);
+        sink(Reset);
+
+        sink("(");
+        sink(Cyan);
+        sink(unsignedToTempString(this.yamlPosition.line, buffer));
+        sink(Reset);
+        sink(":");
+        sink(Cyan);
+        sink(unsignedToTempString(this.yamlPosition.column, buffer));
+        sink(Reset);
+        sink("): ");
+
+        sink(this.msg);
+
+        debug (ConfigFillerDebug)
+        {
+            sink("\n\tError originated from: ");
+            sink(this.file);
+            sink("(");
+            sink(unsignedToTempString(line, buffer));
+            sink(")");
+
+            if (!this.info)
+                return;
+
+            try
+            {
+                sink("\n----------------");
+                foreach (t; info)
+                {
+                    sink("\n"); sink(t);
+                }
+            }
+            // ignore more errors
+            catch (Throwable) {}
+        }
+    }
+}
+
+/// A convenience wrapper around `enforce` to throw a formatted exception
+private void enforce (E = ConfigException, Args...) (Node node, bool cond,
+                                string fmt, lazy Args args,
+                                string file = __FILE__, size_t line = __LINE__)
+{
+    if (!cond)
+        throw new E(format(fmt, args), node.startMark(), file, line);
+}
+
 /*******************************************************************************
 
     Debugging utility for config filler
@@ -896,41 +995,6 @@ debug (ConfigFillerDebug)
 
     /// Helper for indentation (who needs more than 16 levels of indent?)
     private immutable IndentChars = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-
-    /// Thin wrapper to simplify colorization
-    private struct Colored (T)
-    {
-        /// Color used
-        private string color;
-
-        /// Value to print
-        private T value;
-
-        /// Hook for `formattedWrite`
-        public void toString (scope void delegate (scope const char[]) @safe sink)
-        {
-            formattedWrite(sink, "%s%s%s", this.color, this.value, Reset);
-        }
-    }
-
-    /// Ditto
-    private Colored!T paint (T) (T arg, string color)
-    {
-        return Colored!T(color, arg);
-    }
-
-    /// Paint `arg` in color `ifTrue` if `cond` evaluates to `true`, use color `ifFalse` otherwise
-    private Colored!T paintIf (T) (T arg, bool cond, string ifTrue, string ifFalse)
-    {
-        return Colored!T(cond ? ifTrue : ifFalse, arg);
-    }
-
-    /// Paint a boolean in green if `true`, red otherwise, unless `reverse` is set to `true`,
-    /// in which case the colors are swapped
-    private Colored!bool paintBool (bool value, bool reverse = false)
-    {
-        return value.paintIf(reverse ^ value, Green, Red);
-    }
 }
 else
 {
@@ -938,19 +1002,45 @@ else
     private void dbgWrite (Args...) (string fmt, lazy Args args) {}
 
     /// Ditto
-    private int paint (T) (in T, string) { return 42; }
-
-    /// Ditto
-    private int paintBool (bool, bool = true) { return 42; }
-
-    /// Ditto
-    private int paintIf (T) (in T, bool, string, string) { return 42; }
-
-    /// Ditto
     private T dbgWriteRet (T, Args...) (auto ref T return_, string fmt, lazy Args args)
     {
         return return_;
     }
+}
+
+/// Thin wrapper to simplify colorization
+private struct Colored (T)
+{
+    /// Color used
+    private string color;
+
+    /// Value to print
+    private T value;
+
+    /// Hook for `formattedWrite`
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+    {
+        formattedWrite(sink, "%s%s%s", this.color, this.value, Reset);
+    }
+}
+
+/// Ditto
+private Colored!T paint (T) (T arg, string color)
+{
+    return Colored!T(color, arg);
+}
+
+/// Paint `arg` in color `ifTrue` if `cond` evaluates to `true`, use color `ifFalse` otherwise
+private Colored!T paintIf (T) (T arg, bool cond, string ifTrue, string ifFalse)
+{
+    return Colored!T(cond ? ifTrue : ifFalse, arg);
+}
+
+/// Paint a boolean in green if `true`, red otherwise, unless `reverse` is set to `true`,
+/// in which case the colors are swapped
+private Colored!bool paintBool (bool value, bool reverse = false)
+{
+    return value.paintIf(reverse ^ value, Green, Red);
 }
 
 /// Reset the foreground color used
