@@ -579,18 +579,13 @@ extern(D):
         if (this.nomination_timer is null)
             return;
 
-        // Outdated envelopes might contain block signatures which we want to add
-        // Hence, define a certain tolerance for us to accept those.
-        // See https://github.com/bosagora/agora/issues/1875
-        static immutable ConfirmTolerance = 10;
-
         const Block last_block = this.ledger.getLastBlock();
         // Don't use `height - tolerance` as it could underflow
-        if (envelope.statement.slotIndex + ConfirmTolerance < last_block.header.height)
+        if (envelope.statement.slotIndex <= last_block.header.height)
         {
             log.trace("receiveEnvelope: Ignoring envelope with slot id {} as ledger is at height {}",
                 envelope.statement.slotIndex, last_block.header.height.value);
-            return;  // slot was already externalized or envelope is too new
+            return;  // slot was already externalized
         }
 
         Hash utxo = this.getNodeUTXO(envelope.statement.slotIndex, envelope.statement.nodeID);
