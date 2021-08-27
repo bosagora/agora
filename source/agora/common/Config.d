@@ -23,7 +23,7 @@
 
     Converter:
       Because config structs may contain complex types such as
-      `core.time.Duration`, a user-defined `Amount`, or Vibe.d's `URL`,
+      a Phobos type, a user-defined `Amount`, or Vibe.d's `URL`,
       one may need to apply a converter to a struct's field.
       Converters are simply functions that take a `string` as argument
       and return a type that is implicitly convertible to the field type
@@ -46,6 +46,51 @@
       - Finally, the filler will attempt to deserialize all struct members
         one by one and pass them to the default constructor, if there is any.
       - If none of the above succeeded, a `static assert` will trigger.
+
+    Duration_parsing:
+      If the config field is of type `core.time.Duration`, special parsing rules
+      will apply. There are two possible forms in which a Duration field may
+      be expressed. In the first form, the YAML node should be a mapping,
+      and it will be checked for fields matching the supported units
+      in `core.time`: `weeks`, `days`, `hours`, `minutes`, `seconds`, `msecs`,
+      `usecs`, `hnsecs`, `nsecs`. Strict parsing option will be respected.
+      The values of the fields will then be added together, so the following
+      YAML usages are equivalent:
+      ```
+      sleepFor:
+          hours: 8
+          minutes: 30
+      ```
+      and:
+      ```
+      sleepFor:
+          minutes: 510
+      ```
+      Provided that the definition of the field is:
+      ```
+      public Duration sleepFor;
+      ```
+
+      In the second form, the field should have a suffix composed of an
+      underscore ('_'), followed by a unit name as defined in `core.time`.
+      This can be either the field name directly, or a name override.
+      The latter is recommended to avoid confusion when using the field in code.
+      In this form, the YAML node is expected to be a scalar.
+      So the previous example, using this form, would be expressed as:
+      ```
+      sleepFor_minutes: 510
+      ```
+      and the field definition should be one of those two:
+      ```
+      public @Name("sleepFor_minutes") Duration sleepFor; /// Prefer this
+      public Duration sleepFor_minutes; /// This works too
+      ```
+
+      Those forms are mutually exclusive, so a field with a unit suffix
+      will error out if a mapping is used. This prevents surprises and ensures
+      that the error message, if any, is consistent accross user input.
+
+      To disable or change this behavior, one may use a `Converter` instead.
 
     Strict_Parsing:
       When strict parsing is enabled, the config filler will also validate
@@ -100,6 +145,8 @@ import std.exception;
 import std.format;
 import std.range;
 import std.traits;
+
+static import core.time;
 
 /// Command-line arguments
 public struct CommandLine
@@ -397,6 +444,9 @@ private FR.Type parseField (alias FR)
     else static if (hasStringCtor!(FR.Type))
         return FR.Type(node.as!string);
 
+    else static if (is(immutable(FR.Type) == immutable(core.time.Duration)))
+        return parseDuration!(FR)(node, path, defaultValue, ctx);
+
     else static if (is(FR.Type == struct))
     {
         ensure(node.nodeID == NodeID.mapping,
@@ -466,6 +516,86 @@ private T parseScalar (T) (Node node, string path)
         return node.as!string.to!(T);
     else
         return node.as!(T);
+}
+
+/*******************************************************************************
+
+    Parse a `core.time : Duration` from the YAML
+
+*******************************************************************************/
+
+private core.time.Duration parseDuration (alias FR)
+    (Node node, string path, in core.time.Duration defaultValue, in Context ctx)
+{
+    // Try second form first as it convey the developer's intent explicitly
+    static foreach (Suffix; DurationSuffixes)
+    {
+        static if (FR.Name.endsWith(Suffix))
+        {
+            // Since we don't have flow control at CT, we have to rely on `is()`
+            // check to see if variables have been defined... Ugly but it works.
+            // We would get "Warning: Statement is not reachable" otherwise.
+            enum hasMatch = true;
+
+            ensure(node.nodeID == NodeID.scalar,
+                   "Field '{}' expects an integer value (scalar), not a {}",
+                   path, node.nodeTypeString());
+            return core.time.dur!(Suffix[1 .. $])(node.as!long);
+        }
+    }
+    // First form, sum all possible fields
+    static if (!is(typeof(hasMatch)))
+    {
+        ensure(node.nodeID == NodeID.mapping,
+               "Field '{}' expects a mapping with fields, not a {}",
+               path, node.nodeTypeString());
+        auto result = node.parseMapping!DurationPseudoMapping(
+            path, DurationPseudoMapping.init, ctx, null);
+        bool hasOneSet;
+    FOREACH: foreach (field; result.tupleof)
+            if ((hasOneSet = field.set) == true)
+                break FOREACH;
+
+        if (!hasOneSet)
+        {
+            static if (isOptional!FR)
+                return defaultValue;
+            else
+                ensure(false, "Field  '{}' expected one of its values to be set", path);
+        }
+
+        return result.opCast!Duration();
+    }
+}
+
+/// Supported suffix names
+private immutable DurationSuffixes = [
+    "_weeks", "_days", "_hours", "_minutes", "_seconds",
+    "_msecs", "_usecs", "_hnsecs", "_nsecs",
+];
+
+/// Allows us to reuse parseMapping and strict parsing
+private struct DurationPseudoMapping
+{
+    public SetInfo!long weeks;
+    public SetInfo!long days;
+    public SetInfo!long hours;
+    public SetInfo!long minutes;
+    public SetInfo!long seconds;
+    public SetInfo!long msecs;
+    public SetInfo!long usecs;
+    public SetInfo!long hnsecs;
+    public SetInfo!long nsecs;
+
+    ///  Allow conversion to a `Duration`
+    public Duration opCast (T : Duration) () const scope @safe pure nothrow @nogc
+    {
+        return core.time.weeks(this.weeks) + core.time.days(this.days) +
+            core.time.hours(this.hours) + core.time.minutes(this.minutes) +
+            core.time.seconds(this.seconds) + core.time.msecs(this.msecs) +
+            core.time.usecs(this.usecs) + core.time.hnsecs(this.hnsecs) +
+            core.time.nsecs(this.nsecs);
+    }
 }
 
 private T parseSequence (T : E[], E) (Node node, string path, in Context ctx)
