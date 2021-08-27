@@ -599,17 +599,14 @@ private class FlashListener : TestFlashListenerAPI
     }
 }
 
-version (unittest)
+private TestConf flashTestConf ()
 {
-    TestConf flashTestConf ()
-    {
-        TestConf conf;
-        conf.consensus.quorum_threshold = 100;
-        // TODO: remove this line when fees are handled
-        conf.consensus.min_fee = Amount(0);
-        conf.node.min_fee_pct = 0;
-        return conf;
-    }
+    TestConf conf;
+    conf.consensus.quorum_threshold = 100;
+    // TODO: remove this line when fees are handled
+    conf.consensus.min_fee = Amount(0);
+    conf.node.min_fee_pct = 0;
+    return conf;
 }
 
 /// Test unilateral non-collaborative close (funding + update* + settle)
