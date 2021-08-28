@@ -42,7 +42,7 @@ unittest
     only(1, 3, 4).each!((i) {
         txs.takeExactly(i).each!(tx =>
             network.clients.each!(node =>
-                node.putTransaction(tx)));
+                node.postTransaction(tx)));
         txs = txs.drop(i);
         height++;
         network.expectHeightAndPreImg(height, GenesisBlock.header, 5.seconds);

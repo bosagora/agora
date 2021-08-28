@@ -119,24 +119,19 @@ public interface API
     /***************************************************************************
 
         Returns:
-            Return true if the node has this transaction hash.
+            The local clock time of this node (not network-adjusted)
 
         API:
-            GET /has_transaction_hash
+            GET /local_time
+
+        Warning: this request should be protected via node-to-node encryption,
+        or else be signed with a unique challenge/response. Otherwise a
+        byzantine node can cache a node's older response and feed it to a
+        victim node (replay attack).
 
     ***************************************************************************/
 
-    @method(HTTPMethod.GET)
-    public bool hasTransactionHash (in Hash tx);
-
-    /***************************************************************************
-
-        API:
-            PUT /transaction
-
-    ***************************************************************************/
-
-    public void putTransaction (in Transaction tx);
+    public TimePoint getLocalTime ();
 
     /***************************************************************************
 
@@ -149,6 +144,24 @@ public interface API
     ***************************************************************************/
 
     public ulong getBlockHeight ();
+
+    /***************************************************************************
+
+        Expose blocks as a REST collection
+
+        API:
+            GET /blocks/:height
+
+        Params:
+            _height = The height of the block to return
+
+        Returns:
+            The block at height `_height`, or throw an `Exception` (404).
+
+    ***************************************************************************/
+
+    @path("/blocks/:height")
+    public const(Block) getBlock (ulong _height);
 
     /***************************************************************************
 
@@ -175,24 +188,6 @@ public interface API
 
     /***************************************************************************
 
-        Expose blocks as a REST collection
-
-        API:
-            GET /blocks/:height
-
-        Params:
-            _height = The height of the block to return
-
-        Returns:
-            The block at height `_height`, or throw an `Exception` (404).
-
-    ***************************************************************************/
-
-    @path("/blocks/:height")
-    public const(Block) getBlock (ulong _height);
-
-    /***************************************************************************
-
         Get the array of hashes which form the merkle path
 
         API:
@@ -211,35 +206,18 @@ public interface API
 
     /***************************************************************************
 
-        Enroll as a validator
-
         API:
-            POST /enroll_validator
+            GET /block_headers
 
         Params:
-            enroll = the Enrollment object, the information about an validator
-
-    ***************************************************************************/
-
-    public void enrollValidator (in Enrollment enroll);
-
-    /***************************************************************************
-
-        Get an enrollment data if the data exists in the enrollment pool
-
-        API:
-            GET /enrollment
-
-        Params:
-            enroll_hash = key for an enrollment data which is hash of frozen UTXO
+            heights = A set of block heights to fetch headers for
 
         Returns:
-            the enrollment data if exists, otherwise Enrollment.init
+            Block headers for requested heights
 
     ***************************************************************************/
 
-    @method(HTTPMethod.GET)
-    public Enrollment getEnrollment (in Hash enroll_hash);
+    public BlockHeader[] getBlockHeaders (Set!ulong heights);
 
     /***************************************************************************
 
@@ -281,34 +259,72 @@ public interface API
 
     /***************************************************************************
 
+        API:
+            GET /validators
+
+        Params:
+            height = Height at which the information is desired
+                     (default: current)
+
+    ***************************************************************************/
+
+    public ValidatorInfo[] getValidators (ulong height);
+
+    /// Ditto
+    public ValidatorInfo[] getValidators ();
+
+    /***************************************************************************
+
+        API:
+            POST /transaction
+
+    ***************************************************************************/
+
+    public void postTransaction (in Transaction tx);
+
+    /// Alias for backward compatibility with Faucet
+    public void putTransaction (in Transaction tx);
+
+    /***************************************************************************
+
         Reveals a pre-image
 
         API:
-            POST /receive_preimage
+            POST /preimage
 
         Params:
             preimage = a PreImageInfo object which contains a hash and a height
 
     ***************************************************************************/
 
-    public void receivePreimage (in PreImageInfo preimage);
+    public void postPreimage (in PreImageInfo preimage);
+
+    /***************************************************************************
+
+        Enroll as a validator
+
+        API:
+            POST /enrollment
+
+        Params:
+            enroll = the Enrollment object, the information about an validator
+
+    ***************************************************************************/
+
+    public void postEnrollment (in Enrollment enroll);
 
     /***************************************************************************
 
         Returns:
-            The local clock time of this node (not network-adjusted)
+            Return true if the node has this transaction hash.
 
         API:
-            GET /local_time
-
-        Warning: this request should be protected via node-to-node encryption,
-        or else be signed with a unique challenge/response. Otherwise a
-        byzantine node can cache a node's older response and feed it to a
-        victim node (replay attack).
+            GET /has_transaction_hash
 
     ***************************************************************************/
 
-    public TimePoint getLocalTime ();
+    @method(HTTPMethod.GET)
+    public bool hasTransactionHash (in Hash tx);
 
     /***************************************************************************
 
@@ -328,32 +344,19 @@ public interface API
 
     /***************************************************************************
 
+        Get an enrollment data if the data exists in the enrollment pool
+
         API:
-            GET /block_headers
+            GET /enrollment
 
         Params:
-            heights = A set of block heights to fetch headers for
+            enroll_hash = key for an enrollment data which is hash of frozen UTXO
 
         Returns:
-            Block headers for requested heights
+            the enrollment data if exists, otherwise Enrollment.init
 
     ***************************************************************************/
 
-    public BlockHeader[] getBlockHeaders (Set!ulong heights);
-
-    /***************************************************************************
-
-        API:
-            GET /validators
-
-        Params:
-            height = Height at which the information is desired
-                     (default: current)
-
-    ***************************************************************************/
-
-    public ValidatorInfo[] getValidators (ulong height);
-
-    /// Ditto
-    public ValidatorInfo[] getValidators ();
+    @method(HTTPMethod.GET)
+    public Enrollment getEnrollment (in Hash enroll_hash);
 }

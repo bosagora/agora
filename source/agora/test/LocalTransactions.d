@@ -108,7 +108,7 @@ unittest
                 &this.onAcceptedBlock);
         }
 
-        public override void putTransaction (in Transaction tx) @safe
+        public override void postTransaction (in Transaction tx) @safe
         {
             // Dont accept any incoming TXs
             log.info("Picky node ignoring TX {}", tx);
@@ -150,7 +150,7 @@ unittest
     assert(blocks.length == 1);
 
     auto txs = blocks[0].spendable().takeExactly(1).map!(txb => txb.sign());
-    txs.each!(tx => node.putTransaction(tx));
+    txs.each!(tx => node.postTransaction(tx));
     Thread.sleep(1.seconds);
     txs.each!(tx => assert(!picky_node.hasTransactionHash(tx.hashFull())));
 

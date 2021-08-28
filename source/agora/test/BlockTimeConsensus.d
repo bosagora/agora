@@ -42,7 +42,7 @@ unittest
     void checkHeight(Height height)
     {
         network.waitForPreimages(b0.header.enrollments, height);
-        nodes[0].putTransaction(txs[height.value]);
+        nodes[0].postTransaction(txs[height.value]);
         network.setTimeFor(height);
         network.assertSameBlocks(height);
         auto time_offset = nodes[0].getBlocksFrom(height, 1)[0].header.time_offset;

@@ -210,7 +210,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     assert(node_1.getQuorumConfig().threshold == 6); // We should need all 6 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 }
 
@@ -229,7 +229,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 }
 
@@ -248,7 +248,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 }
 
@@ -280,7 +280,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     assert(node_1.getQuorumConfig().threshold == 4); // We should need 4 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
     network.setTimeFor(Height(1));  // trigger consensus
     waitForCount(1, &network.envelope_type_counts.externalize_count, "externalize");
@@ -303,7 +303,7 @@ unittest
     auto node_1 = nodes[$ - 1];
     assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
     network.setTimeFor(Height(1));  // trigger consensus
     Thread.sleep(2.seconds);

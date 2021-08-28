@@ -129,7 +129,7 @@ unittest
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
 
     // block 1
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    txs.each!(tx => nodes[0].postTransaction(tx));
     // Exclude first node from the check as it is not sending pre-image
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1), network.blocks[0].header);
 }
@@ -179,6 +179,6 @@ unittest
     auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
 
     // try to make block 1
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    txs.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1), network.blocks[0].header);
 }

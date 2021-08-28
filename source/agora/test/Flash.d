@@ -325,10 +325,10 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     }
 
     ///
-    protected override void putTransaction (Transaction tx)
+    protected override void postTransaction (Transaction tx)
     {
         if (this.allow_publish)
-            super.putTransaction(tx);
+            super.postTransaction(tx);
         else
             log.info("Skipping publishing {}", tx);
     }
@@ -635,7 +635,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -735,7 +735,7 @@ unittest
 
     foreach (idx, tx; txs[0 .. 4])
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -811,13 +811,13 @@ unittest
 
     // at `Settle_4_Blocks` blocks need to be externalized before a settlement
     // can be attached to the update transaction
-    node_1.putTransaction(txs[4]);
+    node_1.postTransaction(txs[4]);
     network.expectHeightAndPreImg(Height(8), network.blocks[0].header);
-    node_1.putTransaction(txs[5]);
+    node_1.postTransaction(txs[5]);
     network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    node_1.putTransaction(txs[6]);
+    node_1.postTransaction(txs[6]);
     network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-    node_1.putTransaction(txs[7]);
+    node_1.postTransaction(txs[7]);
     network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
 
     // and then a settlement will be automatically published
@@ -861,7 +861,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -962,7 +962,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -1111,7 +1111,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -1282,7 +1282,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -1508,7 +1508,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -1592,7 +1592,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -1682,7 +1682,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -1896,7 +1896,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -2009,7 +2009,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -2078,7 +2078,7 @@ unittest
 
     foreach (idx, tx; txs)
     {
-        node_1.putTransaction(tx);
+        node_1.postTransaction(tx);
         network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
     }
 
@@ -2143,7 +2143,7 @@ unittest
     bob.setPublishEnable(false);
 
     auto update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 0);
-    node_1.putTransaction(update_tx);
+    node_1.postTransaction(update_tx);
     network.expectTxExternalization(update_tx);
     factory.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
@@ -2151,12 +2151,12 @@ unittest
 
     // publish an older update
     update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 2);
-    node_1.putTransaction(update_tx);
+    node_1.postTransaction(update_tx);
     network.expectTxExternalization(update_tx);
 
     // an even older update can not be externalized anymore
     update_tx = alice.getPublishUpdateIndex(alice_pk, chan_id, 1);
-    node_1.putTransaction(update_tx);
+    node_1.postTransaction(update_tx);
     assertThrown!Exception(network.expectTxExternalization(update_tx));
 
     // allow normal node operation again

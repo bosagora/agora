@@ -107,7 +107,7 @@ unittest
 
     // Block 1 with multiple consensus rounds
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => validator.putTransaction(tx));
+    txs.each!(tx => validator.postTransaction(tx));
 
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header, conf.node.timeout + 5.seconds);
     assert(CustomNominator.round_number >= 2,

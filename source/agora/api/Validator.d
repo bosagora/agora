@@ -98,11 +98,11 @@ public interface API : agora.api.FullNode.API
             envelope = Envelope to process (See Stellar_SCP)
 
         API:
-            POST /receive_envelope
+            POST /envelope
 
     ***************************************************************************/
 
-    public void receiveEnvelope (SCPEnvelope envelope);
+    public void postEnvelope (SCPEnvelope envelope);
 
    /***************************************************************************
 
@@ -115,9 +115,9 @@ public interface API : agora.api.FullNode.API
             block_sig = Signature to be added
 
         API:
-            PUT /receive_block_signature
+            POST /block_signature
 
     ***************************************************************************/
 
-    public void receiveBlockSignature (ValidatorBlockSig block_sig);
+    public void postBlockSignature (ValidatorBlockSig block_sig);
 }

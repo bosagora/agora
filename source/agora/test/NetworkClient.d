@@ -40,13 +40,13 @@ unittest
     node_1.filter!(node_1.getBlocksFrom);
 
     // reject inbound requests
-    nodes[1 .. $].each!(node => node.filter!(node.putTransaction));
+    nodes[1 .. $].each!(node => node.filter!(node.postTransaction));
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
 
     // node 1 will keep trying to send transactions up to
     // (max_retries * retry_delay) seconds (see Base.d)
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
 
     // clear filter after 100 msecs, the above requests will eventually be gossiped
     Thread.sleep(100.msecs);
@@ -78,7 +78,7 @@ unittest
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
 
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
 
     // node 1 will keep trying to send transactions up to
     // max_retries * (retry_delay + timeout) seconds (see Base.d),

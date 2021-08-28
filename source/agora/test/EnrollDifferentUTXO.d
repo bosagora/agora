@@ -57,7 +57,7 @@ private class SameKeyValidator : TestValidatorNode
 
         const new_enroll =
             this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight());
-        this.enrollValidator(new_enroll);
+        this.postEnrollment(new_enroll);
 
         return new_enroll;
     }
@@ -115,7 +115,7 @@ unittest
     txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
 
     // Block 17
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    txs.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeightAndPreImg(Height(17), network.blocks[0].header, 10.seconds);
 
     // Freeze builders
@@ -133,7 +133,7 @@ unittest
     assert(freeze_txs.length == 8);
 
     // Block 18
-    freeze_txs.each!(tx => nodes[0].putTransaction(tx));
+    freeze_txs.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeightAndPreImg(Height(18), network.blocks[0].header, 5.seconds);
 
     // Block 19
@@ -141,14 +141,14 @@ unittest
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 3], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => nodes[0].putTransaction(tx));
+    new_txs.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeightAndPreImg(Height(19), network.blocks[0].header, 5.seconds);
 
     // Now we re-enroll the first validator with a new UTXO but it will fail
     // because an enrollment with same public key of the first validator is
     // already present in the validator set.
     Enrollment new_enroll = nodes[0].setRecurringEnrollment(true);
-    Thread.sleep(3.seconds);  // enrollValidator() can take a while..
+    Thread.sleep(3.seconds);  // postEnrollment() can take a while..
     nodes.each!(node =>
         retryFor(node.getEnrollment(new_enroll.utxo_key) == Enrollment.init, 1.seconds));
 
@@ -165,13 +165,13 @@ unittest
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => nodes[0].putTransaction(tx));
+    new_txs.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeightAndPreImg(Height(20), network.blocks[0].header);
     auto b20 = nodes[0].getBlocksFrom(20, 2)[0];
     assert(b20.header.enrollments.length == 5);
 
     // Now we retry re-enrolling the first validator with the new UTXO
-    nodes[0].enrollValidator(new_enroll);
+    nodes[0].postEnrollment(new_enroll);
     nodes.each!(node =>
         retryFor(node.getEnrollment(new_enroll.utxo_key) == new_enroll, 5.seconds));
 
@@ -180,7 +180,7 @@ unittest
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => nodes[0].putTransaction(tx));
+    new_txs.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeightAndPreImg(Height(21), b20.header);
     auto b21 = nodes[0].getBlocksFrom(21, 2)[0];
     assert(b21.header.enrollments.length == 1);

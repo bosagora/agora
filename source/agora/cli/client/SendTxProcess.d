@@ -210,7 +210,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     auto node = api_maker(ip_address);
 
     // send the transaction
-    node.putTransaction(tx);
+    node.postTransaction(tx);
 
     return CLIENT_SUCCESS;
 }
@@ -227,7 +227,7 @@ unittest
         /// Contains the transaction cache
         private Transaction[Hash] tx_cache;
 
-        public override void putTransaction (in Transaction tx) @safe
+        public override void postTransaction (in Transaction tx) @safe
         {
             this.tx_cache[hashFull(tx)] = tx.serializeFull().deserializeFull!Transaction;
         }

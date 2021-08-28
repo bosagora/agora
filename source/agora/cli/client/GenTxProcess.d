@@ -153,7 +153,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
     // function to generate and send transactions
     void genTxs ()
     {
-        txs.each!(tx => node.putTransaction(tx));
+        txs.each!(tx => node.postTransaction(tx));
         writefln("%s transactions sent to %s.\nTransactions:",
             op.count, ip_address);
         txs.each!(tx => writeln(prettify(tx)));

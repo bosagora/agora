@@ -31,7 +31,7 @@ public class NoActivePINode : TestValidatorNode
 
     /// To be extra sure, we also disable receiving a pre-image
     /// so that the node may gossip them
-    public override void receivePreimage (in PreImageInfo preimage) @safe {}
+    public override void postPreimage (in PreImageInfo preimage) @safe {}
 }
 
 unittest
@@ -51,7 +51,7 @@ unittest
     // create and send txs to nodes
     auto nodes = network.clients;
     auto txs = network.blocks[$ - 1].spendable().map!(txb => txb.sign()).array;
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    txs.each!(tx => nodes[0].postTransaction(tx));
 
     // block should be created even though the validators didn't reveal their
     // preimages in advance, as preimage sharing is also done during SCP run

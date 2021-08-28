@@ -57,7 +57,7 @@ unittest
         Transaction[] txs = blocks[block_idx].spendable().map!(txb => txb.sign()).array;
 
         // send each tx to one node
-        txs.each!(tx => node_1.putTransaction(tx));
+        txs.each!(tx => node_1.postTransaction(tx));
         // wait for all nodes get the txs
         txs.each!(tx =>
             nodes.each!(node =>
@@ -105,14 +105,14 @@ unittest
     auto node_1 = nodes[0];
 
     // ignore transaction propagation and periodically retrieve blocks via getBlocksFrom
-    nodes[GenesisValidators .. $].each!(node => node.filter!(node.putTransaction));
+    nodes[GenesisValidators .. $].each!(node => node.filter!(node.postTransaction));
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 }
 
@@ -131,7 +131,7 @@ unittest
 
     auto gen_key_pair = WK.Keys.Genesis;
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
 
     Hash[] hashes;
     hashes.reserve(txs.length);
@@ -192,12 +192,12 @@ unittest
     auto node_1 = nodes[0];
 
     auto txs = network.blocks[0].spendable.map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
 
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
@@ -225,12 +225,12 @@ unittest
         }, Height(0),
         checker);
     assert(reason is null, reason);
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
 
     Thread.sleep(2.seconds);  // wait for propagation
     network.expectHeight(Height(2));  // no new block yet (1 rejected tx)
 
-    node_1.putTransaction(backup_tx);
+    node_1.postTransaction(backup_tx);
     network.expectHeightAndPreImg(Height(3), network.blocks[0].header);  // new block finally created
 }
 
@@ -256,7 +256,7 @@ unittest
         ).front;
 
     assert(tx.outputs.length == 2);
-    network.clients[0].putTransaction(tx);
+    network.clients[0].postTransaction(tx);
 
     // Wait for the block to be created
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
@@ -267,7 +267,7 @@ unittest
     auto tx2 = TxBuilder(b1.txs[0], 0).sign();
     assert(tx2.outputs.length == 1);
 
-    network.clients[0].putTransaction(tx2);
+    network.clients[0].postTransaction(tx2);
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     assert(network.clients[0].getBlock(2).txs.length == 1);
 }

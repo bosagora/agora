@@ -45,7 +45,7 @@ unittest
     nodes.take(GenesisValidators / 2).each!(node => node.filter!(API.getBlockHeight));
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
 
     nodes.take(GenesisValidators / 2).each!(node => node.clearFilter());
 
@@ -151,19 +151,19 @@ unittest
     // enable filtering first
     node_validators.each!(node => node.filter!(API.getBlocksFrom));
     node_bad.filter!(API.getBlocksFrom);
-    node_test.filter!(API.putTransaction);
+    node_test.filter!(API.postTransaction);
 
     Transaction[] last_txs;
 
     // create genesis block
     last_txs = genesisSpendable().map!(txb => txb.sign()).array();
-    last_txs.each!(tx => node_validators[0].putTransaction(tx));
+    last_txs.each!(tx => node_validators[0].postTransaction(tx));
     network.expectHeight(iota(GenesisValidators), Height(1));
 
     // create 1 additional block and enough `tx`es
     auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
     // send it to one node
-    txs.each!(tx => node_validators[0].putTransaction(tx));
+    txs.each!(tx => node_validators[0].postTransaction(tx));
     network.expectHeight(iota(GenesisValidators), Height(2));
     last_txs = txs;
 

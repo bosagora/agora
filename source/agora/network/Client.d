@@ -201,27 +201,27 @@ public class NetworkClient
         switch (event.type) with (GossipType)
         {
         case Tx:
-            this.attemptRequest!(API.putTransaction, Throw.No)(this.api,
+            this.attemptRequest!(API.postTransaction, Throw.No)(this.api,
                 event.tx);
             break;
 
         case Envelope:
-            this.attemptRequest!(API.receiveEnvelope, Throw.No)(this.api,
+            this.attemptRequest!(API.postEnvelope, Throw.No)(this.api,
                 event.envelope);
             break;
 
         case ValidatorBlockSig:
-            this.attemptRequest!(API.receiveBlockSignature, Throw.No)(this.api,
+            this.attemptRequest!(API.postBlockSignature, Throw.No)(this.api,
                 event.block_sig);
             break;
 
         case Enrollment:
-            this.attemptRequest!(API.enrollValidator, Throw.No)(this.api,
+            this.attemptRequest!(API.postEnrollment, Throw.No)(this.api,
                 event.enrollment);
             break;
 
         case Preimage:
-            this.attemptRequest!(API.receivePreimage, Throw.No)(this.api,
+            this.attemptRequest!(API.postPreimage, Throw.No)(this.api,
                 event.preimage);
             break;
 
@@ -565,7 +565,7 @@ public class NetworkClient
         If all requests fail and 'ex' is not null, throw the exception.
 
         Params:
-            endpoint = the API endpoint (e.g. `API.putTransaction`)
+            endpoint = the API endpoint (e.g. `API.postTransaction`)
             DT = whether to throw an exception if the request failed after
                  all attempted retries
             log_level = the logging level to use for logging failed requests
