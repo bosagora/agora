@@ -88,7 +88,9 @@ unittest
     {
         mixin ForwardCtor!();
 
-        public override bool acceptTransaction (in Transaction tx) @safe
+        public override bool acceptTransaction (in Transaction tx,
+            in ubyte double_spent_threshold_pct = 0,
+            in ubyte max_fee_undercut_pct = 100) @safe
         {
             // Dont accept any incoming TX
             log.info("Picky node ignoring TX {}", tx);
