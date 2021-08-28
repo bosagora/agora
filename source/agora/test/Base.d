@@ -45,7 +45,6 @@ import agora.consensus.PreImage;
 import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
-import agora.consensus.SCPEnvelopeStore;
 import agora.consensus.state.UTXOSet;
 import agora.crypto.Hash;
 import agora.crypto.Key;
