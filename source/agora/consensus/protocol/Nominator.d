@@ -21,14 +21,14 @@ import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
-import agora.consensus.protocol.Data;
 import agora.consensus.data.Params;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.SCPEnvelopeStore;
+import agora.consensus.protocol.Data;
+import agora.consensus.protocol.EnvelopeStore;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -119,7 +119,7 @@ public extern (C++) class Nominator : SCPDriver
     private ITimer nomination_timer;
 
     /// SCPEnvelopeStore instance
-    protected SCPEnvelopeStore scp_envelope_store;
+    protected SCPEnvelopeStore store;
 
     // Height => Point (UTXO hash) => Signature
     private Signature[Hash][Height] slot_sigs;
@@ -192,7 +192,7 @@ extern(D):
         this.taskman = taskman;
         this.ledger = ledger;
         this.enroll_man = enroll_man;
-        this.scp_envelope_store = new SCPEnvelopeStore(cacheDB);
+        this.store = new SCPEnvelopeStore(cacheDB);
         // Create and stop timer immediately
         this.envelope_timer = this.taskman.setTimer(EnvTaskDelay,
             &this.envelopeProcessTask, Periodic.No);
@@ -530,7 +530,7 @@ extern(D):
 
     protected void restoreSCPState () @trusted
     {
-        foreach (bool proc, const ref SCPEnvelope envelope; this.scp_envelope_store)
+        foreach (bool proc, const ref SCPEnvelope envelope; this.store)
         {
             if (!proc)
             {
@@ -702,20 +702,20 @@ extern(D):
             envelopes = this.scp.getExternalizingState(this.scp.getHighSlotIndex());
         }();
 
-        this.scp_envelope_store.lock();
-        scope (failure) this.scp_envelope_store.unlock(false);
-        scope (success) this.scp_envelope_store.unlock(true);
+        this.store.lock();
+        scope (failure) this.store.unlock(false);
+        scope (success) this.store.unlock(true);
 
         // Clean the previous envelopes from the DB
-        this.scp_envelope_store.removeAll();
+        this.store.removeAll();
 
         // Store the latest envelopes
         foreach (const ref env; envelopes)
-            this.scp_envelope_store.add(env, true);
+            this.store.add(env, true);
 
         // Store the queued envelopes
         foreach (const ref env; this.queued_envelopes[])
-            this.scp_envelope_store.add(env, false);
+            this.store.add(env, false);
     }
 
     /***************************************************************************
