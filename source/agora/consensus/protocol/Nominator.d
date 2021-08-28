@@ -702,8 +702,9 @@ extern(D):
             envelopes = this.scp.getExternalizingState(this.scp.getHighSlotIndex());
         }();
 
-        ManagedDatabase.beginBatch();
-        scope (failure) ManagedDatabase.rollback();
+        this.scp_envelope_store.lock();
+        scope (failure) this.scp_envelope_store.unlock(false);
+        scope (success) this.scp_envelope_store.unlock(true);
 
         // Clean the previous envelopes from the DB
         this.scp_envelope_store.removeAll();
@@ -715,8 +716,6 @@ extern(D):
         // Store the queued envelopes
         foreach (const ref env; this.queued_envelopes[])
             this.scp_envelope_store.add(env, false);
-
-        ManagedDatabase.commitBatch();
     }
 
     /***************************************************************************
