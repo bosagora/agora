@@ -58,6 +58,46 @@ public class SCPEnvelopeStore
 
     /***************************************************************************
 
+        Lock / Unlock the underlying database for updates
+
+        This store uses the cacheDB for storing the envelopes across restarts.
+        When performing an update, one needs to first lock the DB
+        to ensure that even in the case of a machine crash, the data will be
+        consistent.
+
+        Params:
+          commit = Whether this unlock should be a commit (true) or a rollback.
+
+    ***************************************************************************/
+
+    public void lock () @trusted nothrow
+    {
+        try
+            this.db.begin();
+        catch (Exception exc)
+            // This should only trigger if there was a code flow error
+            assert(0, "SQLite BEGIN statement failed: " ~ exc.message);
+    }
+
+    /// Ditto
+    public void unlock (bool commit) @trusted nothrow
+    {
+        try
+        {
+            if (commit)
+                this.db.commit();
+            else
+                this.db.rollback();
+        }
+        catch (Exception exc)
+            // This should only trigger if there was a code flow error
+            assert(0,
+                   (commit ? "SQLite COMMIT statement failed: " : "SQLite ROLLBACK statement failed: ") ~
+                   exc.message);
+    }
+
+    /***************************************************************************
+
         Store the envelope to the database.
 
         First, clean with 'removeAll' before Adding it in new envelopes.
