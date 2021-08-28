@@ -22,7 +22,6 @@ import agora.consensus.protocol.Nominator;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
-import agora.consensus.SCPEnvelopeStore;
 import agora.consensus.Ledger;
 import agora.node.Validator;
 import agora.network.Clock;
@@ -52,7 +51,7 @@ unittest
             // change between SCP releases)
             if (Checked)
             {
-                assert(this.scp_envelope_store.length > 0);
+                assert(this.store.length > 0);
                 Checked = false;
             }
             super.restoreSCPState();

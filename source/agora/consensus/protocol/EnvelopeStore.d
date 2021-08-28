@@ -12,7 +12,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.SCPEnvelopeStore;
+module agora.consensus.protocol.EnvelopeStore;
 
 import agora.common.ManagedDatabase;
 import agora.serialization.Serializer;
