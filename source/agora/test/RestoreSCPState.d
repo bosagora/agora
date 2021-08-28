@@ -110,7 +110,7 @@ unittest
 
     auto re_validator = network.clients[0];
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => re_validator.putTransaction(tx));
+    txes.each!(tx => re_validator.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     Checked = true;

@@ -103,7 +103,7 @@ public Listeners runNode (Config config)
         auto flash = new AgoraFlashNode(config.flash,
             config.node.data_dir, params.Genesis.hashFull(),
             result.node.getEngine(),
-            result.node.getTaskManager(), &result.node.putTransaction,
+            result.node.getTaskManager(), &result.node.postTransaction,
             result.node.getNetworkManager());
         router.registerRestInterface!FlashAPI(flash);
         result.flash = flash;

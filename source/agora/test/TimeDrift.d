@@ -88,7 +88,7 @@ unittest
         .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
         .array;
 
-    txs.take(2).each!(tx => nodes[0].putTransaction(tx));
+    txs.take(2).each!(tx => nodes[0].postTransaction(tx));
     // wait for propagation
     nodes.each!(node =>
        txs.take(2).each!(tx =>
@@ -115,7 +115,7 @@ unittest
     // Make sure nodes have revealed their preimage for height 2
     network.waitForPreimages(GenesisBlock.header.enrollments, Height(2));
 
-    txs.take(2).each!(tx => nodes[0].putTransaction(tx));
+    txs.take(2).each!(tx => nodes[0].postTransaction(tx));
     // wait for propagation
     nodes.each!(node =>
        txs.take(2).each!(tx =>

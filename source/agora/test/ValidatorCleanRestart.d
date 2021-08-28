@@ -62,7 +62,7 @@ version(none) unittest
     TxBuilder txb = TxBuilder(WK.Keys.AAA.address); // Refund
     utxos.each!(pair => txb.attach(pair.utxo.output, pair.hash));
     auto to_send = txb.draw(Amount.MinFreezeAmount, keys).sign(OutputType.Freeze);
-    set_a.each!(n => n.putTransaction(to_send));
+    set_a.each!(n => n.postTransaction(to_send));
 
     // wait for other nodes to get to same block height
     network.assertSameBlocks(Height(GenesisValidatorCycle - 1));
@@ -130,7 +130,7 @@ unittest
 
     // Create a block from the Genesis block
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // node_1 restarts and becomes unresponsive
@@ -139,12 +139,12 @@ unittest
 
     // Make 2 blocks
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_2.putTransaction(tx));
+    txs.each!(tx => node_2.postTransaction(tx));
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(2), network.blocks[0].header);
     network.expectHeight(iota(1, nodes.length), Height(2));
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_2.putTransaction(tx));
+    txs.each!(tx => node_2.postTransaction(tx));
     network.expectHeightAndPreImg(iota(1,nodes.length), Height(3), network.blocks[0].header);
 
     // Wait for node_1 to wake up
@@ -163,7 +163,7 @@ unittest
 
     // A new block is in the middle of a consensus.
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
 
     // The new block has been inserted to the ledger with the approval
     // of the node_1, although node_2 was shutdown.

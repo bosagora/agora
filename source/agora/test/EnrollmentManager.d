@@ -223,7 +223,7 @@ unittest
     // Make a block using Genesis
     genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys.A.address).sign())
-        .each!(tx => validator.putTransaction(tx));
+        .each!(tx => validator.postTransaction(tx));
     network.waitForPreimages(b0.header.enrollments, Height(1));
     network.setTimeFor(Height(1));  // trigger consensus
 

@@ -148,7 +148,7 @@ unittest
     auto last_node = nodes[$ - 1];
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
-    txes.each!(tx => last_node.putTransaction(tx));
+    txes.each!(tx => last_node.postTransaction(tx));
     // Trigger generation of block
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
     // Make sure the client we will check is in sync with others (except for byzantine)
@@ -171,7 +171,7 @@ unittest
     auto last_node = nodes[$ - 1];
     assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
     auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
-    txes.each!(tx => last_node.putTransaction(tx));
+    txes.each!(tx => last_node.postTransaction(tx));
     // Trigger generation of block
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
     // Make sure the client we will check is in sync with others (except for byzantine)

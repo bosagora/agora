@@ -178,7 +178,7 @@ public abstract class FlashNode : FlashControlAPI
 
         this.channels = Channel.loadChannels(this.conf, this.db,
             &this.getFlashClient, engine, taskman,
-            &this.putTransaction, &this.paymentRouter,
+            &this.postTransaction, &this.paymentRouter,
             &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete,
             &this.getFeeUTXOs);
@@ -591,7 +591,7 @@ public abstract class FlashNode : FlashControlAPI
         const key_pair = KeyPair.fromSeed(*secret_key);
         auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, peer_nonce, peer, this.engine, this.taskman,
-            &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
+            &this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete,  &this.getFeeUTXOs,
             this.db);
 
@@ -602,7 +602,7 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     /// Overriden by ThinFlashNode or FullNode
-    protected abstract void putTransaction (Transaction tx);
+    protected abstract void postTransaction (Transaction tx);
 
     /// See `FlashAPI.closeChannel`
     public override Result!Point closeChannel (PublicKey sender_pk,
@@ -1195,7 +1195,7 @@ public abstract class FlashNode : FlashControlAPI
 
         auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, result.value, peer, this.engine, this.taskman,
-            &this.putTransaction, &this.paymentRouter, &this.onChannelNotify,
+            &this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, &this.getFeeUTXOs, this.db);
         this.channels[reg_pk][chan_conf.chan_id] = channel;
     }
@@ -1476,9 +1476,9 @@ public abstract class ThinFlashNode : FlashNode
 
     ***************************************************************************/
 
-    protected override void putTransaction (Transaction tx)
+    protected override void postTransaction (Transaction tx)
     {
-        this.agora_node.putTransaction(tx);
+        this.agora_node.postTransaction(tx);
     }
 }
 
@@ -1486,7 +1486,7 @@ public abstract class ThinFlashNode : FlashNode
 public class AgoraFlashNode : FlashNode
 {
     /// Callback for sending transactions to the network
-    protected void delegate (in Transaction tx) putTransactionDg;
+    protected void delegate (in Transaction tx) postTransactionDg;
 
     /// Network manager
     protected NetworkManager network;
@@ -1507,18 +1507,18 @@ public class AgoraFlashNode : FlashNode
             genesis_hash = the hash of the genesis block to use
             engine = the execution engine to use
             taskman = the task manager ot use
-            putTransactionDg = callback for sending transactions to the network
+            postTransactionDg = callback for sending transactions to the network
             network = NetworkManager which contains the name registry
 
     ***************************************************************************/
 
     public this (FlashConfig conf, string data_dir, Hash genesis_hash,
         Engine engine, ITaskManager taskman,
-        void delegate (in Transaction tx) putTransactionDg,
+        void delegate (in Transaction tx) postTransactionDg,
         NetworkManager network)
     {
         const db_path = buildPath(data_dir, "flash.dat");
-        this.putTransactionDg = putTransactionDg;
+        this.postTransactionDg = postTransactionDg;
         this.network = network;
         super(conf, db_path, genesis_hash, engine, taskman);
     }
@@ -1639,9 +1639,9 @@ public class AgoraFlashNode : FlashNode
 
     ***************************************************************************/
 
-    protected override void putTransaction (Transaction tx)
+    protected override void postTransaction (Transaction tx)
     {
-        this.putTransactionDg(tx);
+        this.postTransactionDg(tx);
     }
 
     /***************************************************************************

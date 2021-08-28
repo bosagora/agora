@@ -37,7 +37,7 @@ unittest
         WK.Keys.Genesis.address.repeat.take(8)).sign()).array;
 
     // height 1, many Outputs
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     auto split_up = txs
@@ -52,31 +52,31 @@ unittest
     const uint UnlockAge_3 = 3;
     auto age_3_txs = split_up[3].map!(txb => txb.sign(OutputType.Payment, UnlockAge_3)).array();
 
-    age_3_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));  // rejected, wrong age
-    txs_0.each!(tx => nodes.each!(node => node.putTransaction(tx)));      // accepted
+    age_3_txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));  // rejected, wrong age
+    txs_0.each!(tx => nodes.each!(node => node.postTransaction(tx)));      // accepted
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     auto blocks = node_1.getBlocksFrom(2, 1);
     assert(blocks.length == 1);
     sort(txs_0);
     assert(blocks[0].txs == txs_0);
 
-    age_3_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));  // rejected again
-    txs_1.each!(tx => nodes.each!(node => node.putTransaction(tx)));      // accepted
+    age_3_txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));  // rejected again
+    txs_1.each!(tx => nodes.each!(node => node.postTransaction(tx)));      // accepted
     network.expectHeightAndPreImg(Height(3), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(3, 1);
     assert(blocks.length == 1);
     sort(txs_1);
     assert(blocks[0].txs == txs_1);
 
-    age_3_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));  // rejected again
-    txs_2.each!(tx => nodes.each!(node => node.putTransaction(tx)));      // accepted
+    age_3_txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));  // rejected again
+    txs_2.each!(tx => nodes.each!(node => node.postTransaction(tx)));      // accepted
     network.expectHeightAndPreImg(Height(4), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(4, 1);
     assert(blocks.length == 1);
     sort(txs_2);
     assert(blocks[0].txs == txs_2);
 
-    age_3_txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));  // finally accepted
+    age_3_txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));  // finally accepted
     network.expectHeightAndPreImg(Height(5), network.blocks[0].header);
     blocks = node_1.getBlocksFrom(5, 1);
     assert(blocks.length == 1);

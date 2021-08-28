@@ -34,7 +34,7 @@ unittest
 
     // height 1
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.putTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     const Height UnlockHeight_2 = Height(2);
@@ -49,10 +49,10 @@ unittest
 
     // these should all be rejected, or alternatively accepted by the pool but
     // not added to the block at height 2
-    unlock_3_txs.each!(tx => node_1.putTransaction(tx));
+    unlock_3_txs.each!(tx => node_1.postTransaction(tx));
 
     // should be accepted
-    unlock_2_txs.each!(tx => node_1.putTransaction(tx));
+    unlock_2_txs.each!(tx => node_1.postTransaction(tx));
 
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 

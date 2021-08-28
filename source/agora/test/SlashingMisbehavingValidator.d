@@ -78,7 +78,7 @@ unittest
     auto utxos = nodes[0].getUTXOs(bad_address);
     auto original_stake = utxos[0].utxo.output.value;
     // block 1
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    txs.each!(tx => nodes[0].postTransaction(tx));
     // Node index is 5 for bad node so we do not expect pre-image from it
     network.expectHeightAndPreImg(iota(0, 5), Height(1), network.blocks[0].header);
 
@@ -125,7 +125,7 @@ unittest
 
     // block 1 must not be created because all the validators do not
     // reveal any pre-images after their enrollments.
-    txs.each!(tx => nodes[0].putTransaction(tx));
+    txs.each!(tx => nodes[0].postTransaction(tx));
     Thread.sleep(2.seconds); // Give time before checking still height 0
     network.expectHeight(Height(0));
 

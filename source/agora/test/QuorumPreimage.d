@@ -105,7 +105,7 @@ unittest
     // prepare frozen outputs for outsider validators to enroll
     genesisSpendable().dropExactly(1).takeExactly(1)
         .map!(txb => txb.split(keys).sign(OutputType.Freeze))
-        .each!(tx => network.clients[0].putTransaction(tx));
+        .each!(tx => network.clients[0].postTransaction(tx));
 
     // block 19
     network.generateBlocks(Height(GenesisValidatorCycle - 1));

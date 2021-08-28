@@ -39,14 +39,14 @@ unittest
 
     auto send_txs = txs[0..$-1];
     // send it to tx to node
-    send_txs.each!(tx => node_1.putTransaction(tx));
+    send_txs.each!(tx => node_1.postTransaction(tx));
     // gossip was complete
     nodes.each!(node =>
        send_txs.each!(tx =>
            node.hasAcceptedTxHash(hashFull(tx)).retryFor(2.seconds)
     ));
     // When a block is created, the transaction is deleted from the transaction pool.
-    node_1.putTransaction(txs[$-1]);
+    node_1.postTransaction(txs[$-1]);
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     nodes.each!(node =>
@@ -75,7 +75,7 @@ unittest
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
     auto send_txs = txs[0 .. $ - 1];  // 1 short of making a block (don't start consensus)
-    send_txs.each!(tx => node_1.putTransaction(tx));
+    send_txs.each!(tx => node_1.postTransaction(tx));
     nodes.each!(node =>
        send_txs.each!(tx =>
            node.hasTransactionHash(hashFull(tx)).retryFor(5.seconds)

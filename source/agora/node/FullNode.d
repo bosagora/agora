@@ -937,14 +937,14 @@ public class FullNode : API
         Receive a transaction.
 
         API:
-            PUT /transaction
+            POST /transaction
 
         Params:
             tx = the received transaction
 
     ***************************************************************************/
 
-    public override void putTransaction (in Transaction tx) @safe
+    public override void postTransaction (in Transaction tx) @safe
     {
         this.recordReq("transaction");
         auto tx_hash = hashFull(tx);
@@ -963,6 +963,12 @@ public class FullNode : API
         this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         this.transaction_relayer.addTransaction(tx);
         this.pushTransaction(tx);
+    }
+
+    /// Ditto
+    public override void putTransaction (in Transaction tx) @safe
+    {
+        this.postTransaction(tx);
     }
 
     /// GET: /has_transaction_hash
@@ -1016,10 +1022,10 @@ public class FullNode : API
         return block.getMerklePath(index);
     }
 
-    /// PUT: /enroll_validator
-    public override void enrollValidator (in Enrollment enroll) @safe
+    /// POST /enrollment
+    public override void postEnrollment (in Enrollment enroll) @safe
     {
-        this.recordReq("enroll_validator");
+        this.recordReq("postEnrollment");
 
         UTXO utxo;
         this.utxo_set.peekUTXO(enroll.utxo_key, utxo);
@@ -1035,14 +1041,14 @@ public class FullNode : API
     /// GET: /enrollment
     public override Enrollment getEnrollment (in Hash enroll_hash) @safe
     {
-        this.recordReq("enrollment");
+        this.recordReq("getEnrollment");
         return this.enroll_man.getEnrollment(enroll_hash);
     }
 
-    /// PUT: /receive_preimage
-    public override void receivePreimage (in PreImageInfo preimage) @safe
+    /// POST /preimage
+    public override void postPreimage (in PreImageInfo preimage) @safe
     {
-        this.recordReq("receive_preimage");
+        this.recordReq("postPreimage");
         log.trace("Received Preimage: {}", prettify(preimage));
 
         if (this.ledger.addPreimage(preimage))
