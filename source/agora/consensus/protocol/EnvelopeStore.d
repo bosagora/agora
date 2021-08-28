@@ -12,7 +12,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.SCPEnvelopeStore;
+module agora.consensus.protocol.EnvelopeStore;
 
 import agora.common.ManagedDatabase;
 import agora.serialization.Serializer;
@@ -54,6 +54,46 @@ public class SCPEnvelopeStore
 
         this.db.execute("CREATE TABLE IF NOT EXISTS scp_envelopes " ~
             "(seq INTEGER PRIMARY KEY AUTOINCREMENT, envelope BLOB NOT NULL, processed INTEGER NOT NULL)");
+    }
+
+    /***************************************************************************
+
+        Lock / Unlock the underlying database for updates
+
+        This stores uses the cacheDB for storing the envelopes accross restart.
+        When performing an update, one needs to first lock the DB first
+        to ensure that even in the case of a machine crash, the data will be
+        consistent.
+
+        Params:
+          commit = Whether this unlock should be a commit (true) or a rollback.
+
+    ***************************************************************************/
+
+    public void lock () @trusted nothrow
+    {
+        try
+            this.db.begin();
+        catch (Exception exc)
+            // This should only trigger if there was a code flow error
+            assert(0, "SQLite BEGIN statement failed: " ~ exc.message);
+    }
+
+    /// Ditto
+    public void unlock (bool commit) @trusted nothrow
+    {
+        try
+        {
+            if (commit)
+                this.db.commit();
+            else
+                this.db.rollback();
+        }
+        catch (Exception exc)
+            // This should only trigger if there was a code flow error
+            assert(0,
+                   (commit ? "SQLite COMMIT statement failed: " : "SQLite ROLLBACK statement failed: ") ~
+                   exc.message);
     }
 
     /***************************************************************************
