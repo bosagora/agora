@@ -46,7 +46,7 @@ unittest
             .deduct(Amount.UnitPerCoin).sign()).array();
 
         // send them to all nodes
-        txs.each!(tx => nodes.each!(node => node.putTransaction(tx)));
+        txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 
@@ -129,7 +129,7 @@ unittest
         .deduct(Amount.UnitPerCoin).sign()).array();
 
     // send them to all valid nodes
-    txs.each!(tx => valid_nodes.each!(node => node.putTransaction(tx)));
+    txs.each!(tx => valid_nodes.each!(node => node.postTransaction(tx)));
 
     network.setTimeFor(Height(1));
     Thread.sleep(1.seconds);
@@ -191,7 +191,7 @@ unittest
             .deduct(Amount.UnitPerCoin).sign()).array();
 
         // send them to all valid nodes
-        txs.each!(tx => valid_nodes.each!(node => node.putTransaction(tx)));
+        txs.each!(tx => valid_nodes.each!(node => node.postTransaction(tx)));
 
         network.expectHeightAndPreImg(iota(1, GenesisValidators),
             new_height, blocks[0].header);

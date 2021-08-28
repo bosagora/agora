@@ -1075,7 +1075,7 @@ public class TestAPIManager
             {
                 // Send transaction to the first client
                 auto tx = spendables.takeExactly(1).map!(txb => txb.sign()).front;
-                first_client.putTransaction(tx);
+                first_client.postTransaction(tx);
                 // Wait for tx gossipping before setting time for block
                 client_idxs.each!(idx =>
                     retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
@@ -1201,7 +1201,7 @@ public class TestAPIManager
     /// Ensure that a transaction is accepted by a node (put in the tx pool)
     public void ensureTxInPool (Idxs) (in Transaction tx, Idxs indices)
     {
-        indices.each!(idx => this.clients[idx].putTransaction(tx));
+        indices.each!(idx => this.clients[idx].postTransaction(tx));
         this.ensureTxInPool(tx.hashFull(), indices);
     }
 
@@ -1649,9 +1649,9 @@ private mixin template TestNodeMixin ()
 
     ***************************************************************************/
 
-    public override void putTransaction (in Transaction tx) @safe
+    public override void postTransaction (in Transaction tx) @safe
     {
-        super.putTransaction(tx);
+        super.postTransaction(tx);
         const tx_hash = tx.hashFull();
         if (tx_hash !in this.accepted_txs &&
             this.pool.hasTransactionHash(tx_hash))
@@ -1786,13 +1786,13 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// FullNode does not implement this
-    public override void receiveEnvelope (SCPEnvelope envelope) @safe
+    public override void postEnvelope (SCPEnvelope envelope) @safe
     {
         assert(0);
     }
 
     /// ditto
-    public override void receiveBlockSignature (ValidatorBlockSig block_sig) @safe
+    public override void postBlockSignature (ValidatorBlockSig block_sig) @safe
     {
         assert(0);
     }

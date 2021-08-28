@@ -53,7 +53,7 @@ unittest
         txs = blocks[new_height - 1].spendable().map!(txb => txb.sign()).array();
 
         // send it to one node
-        txs.each!(tx => node_0.putTransaction(tx));
+        txs.each!(tx => node_0.postTransaction(tx));
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 
@@ -138,7 +138,7 @@ unittest
             .array();
 
         // send it to one node
-        txs.each!(tx => node_0.putTransaction(tx));
+        txs.each!(tx => node_0.postTransaction(tx));
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 

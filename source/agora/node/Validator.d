@@ -407,16 +407,16 @@ public class Validator : FullNode, API
         Receive an SCP envelope.
 
         API:
-            PUT /envelope
+            POST /envelope
 
         Params:
             envelope = the SCP envelope
 
     ***************************************************************************/
 
-    public override void receiveEnvelope (SCPEnvelope envelope) @safe
+    public override void postEnvelope (SCPEnvelope envelope) @safe
     {
-        this.recordReq("receive_envelope");
+        this.recordReq("postEnvelope");
         this.nominator.receiveEnvelope(envelope);
     }
 
@@ -425,16 +425,16 @@ public class Validator : FullNode, API
         Receive a block signature.
 
         API:
-            PUT /block_sig
+            POST /block_signature
 
         Params:
             block_sig = the block signature of a validator (part of multisig)
 
     ***************************************************************************/
 
-    public override void receiveBlockSignature (ValidatorBlockSig block_sig) @safe
+    public override void postBlockSignature (ValidatorBlockSig block_sig) @safe
     {
-        this.recordReq("receive_block_signature");
+        this.recordReq("postBlockSignature");
         this.nominator.receiveBlockSignature(block_sig);
     }
 

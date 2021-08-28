@@ -55,7 +55,7 @@ unittest
         txs = blocks[block_idx - 1].spendable().map!(txb => txb.sign()).array();
 
         // send it to one node
-        txs.each!(tx => node_1.putTransaction(tx));
+        txs.each!(tx => node_1.postTransaction(tx));
         network.expectHeightAndPreImg(Height(block_idx), blocks[0].header);
 
         // add next block
@@ -66,7 +66,7 @@ unittest
     {
         blocks[GenesisValidatorCycle - 1].spendable()
             .map!(txb => txb.sign())
-            .each!(tx => node_1.putTransaction(tx));
+            .each!(tx => node_1.postTransaction(tx));
 
         // try to add next block
          blocks ~= node_1.getBlocksFrom(GenesisValidatorCycle, 1);

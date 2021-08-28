@@ -57,7 +57,7 @@ unittest
     blocks[0].spendable().drop(1).takeExactly(1)
         .map!(txb => txb
             .split(keys).sign(OutputType.Freeze))
-            .each!(tx => set_a[0].putTransaction(tx));
+            .each!(tx => set_a[0].postTransaction(tx));
 
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 

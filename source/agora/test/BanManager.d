@@ -22,7 +22,7 @@ import agora.crypto.Hash;
 import agora.test.Base;
 import core.thread;
 
-/// test node banning after putTransaction fails a number of times
+/// test node banning after postTransaction fails a number of times
 unittest
 {
     TestConf conf =
@@ -71,7 +71,7 @@ unittest
          return txes;
     }
 
-    genBlockTransactions(1).each!(tx => nodes[0].putTransaction(tx));
+    genBlockTransactions(1).each!(tx => nodes[0].postTransaction(tx));
     // wait until the transactions were gossiped
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
@@ -82,7 +82,7 @@ unittest
     // full node will be banned if it cannot communicate
     // validators refuse to to send blocks
     nodes[0 .. GenesisValidators].each!(node => node.filter!(node.getBlocksFrom));
-    nodes[full_node_idx].filter!(nodes[full_node_idx].putTransaction); // full node won't receive transactions
+    nodes[full_node_idx].filter!(nodes[full_node_idx].postTransaction); // full node won't receive transactions
 
     // leftover txs which full node will reject due to its filter
     Transaction[] left_txs;
@@ -91,19 +91,19 @@ unittest
     {
         auto new_tx = genBlockTransactions(1);
         left_txs ~= new_tx;
-        new_tx.each!(tx => nodes[0].putTransaction(tx));
+        new_tx.each!(tx => nodes[0].postTransaction(tx));
         network.expectHeightAndPreImg(iota(0, 4), Height(1 + block_idx + 1), network.blocks[0].header);
         retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds,
             format!"Expected Full node height of exactly 1 not %s"(nodes[full_node_idx].getBlockHeight()));
     }
 
-    // wait for full node to be banned and all putTransaction requests to time-out
+    // wait for full node to be banned and all postTransaction requests to time-out
     Thread.sleep(2.seconds);
 
     // sanity check: block height should not be updated, full node is not a validator and cannot make new blocks,
     // it may only add to its ledger through the getBlocksFrom() API.
     nodes[full_node_idx].clearFilter();
-    left_txs.each!(tx => nodes[full_node_idx].putTransaction(tx));
+    left_txs.each!(tx => nodes[full_node_idx].postTransaction(tx));
     retryFor(nodes[full_node_idx].getBlockHeight() == 1, 1.seconds);
 
     // clear the filter
@@ -115,6 +115,6 @@ unittest
 
     auto new_tx = genBlockTransactions(1);
     left_txs ~= new_tx;
-    new_tx.each!(tx => nodes[0].putTransaction(tx));
+    new_tx.each!(tx => nodes[0].postTransaction(tx));
     network.expectHeight(Height(6));
 }

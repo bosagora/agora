@@ -276,10 +276,13 @@ public interface API
     /***************************************************************************
 
         API:
-            PUT /transaction
+            POST /transaction
 
     ***************************************************************************/
 
+    public void postTransaction (in Transaction tx);
+
+    /// Alias for backward compatibility with Faucet
     public void putTransaction (in Transaction tx);
 
     /***************************************************************************
@@ -287,28 +290,28 @@ public interface API
         Reveals a pre-image
 
         API:
-            POST /receive_preimage
+            POST /preimage
 
         Params:
             preimage = a PreImageInfo object which contains a hash and a height
 
     ***************************************************************************/
 
-    public void receivePreimage (in PreImageInfo preimage);
+    public void postPreimage (in PreImageInfo preimage);
 
     /***************************************************************************
 
         Enroll as a validator
 
         API:
-            POST /enroll_validator
+            POST /enrollment
 
         Params:
             enroll = the Enrollment object, the information about an validator
 
     ***************************************************************************/
 
-    public void enrollValidator (in Enrollment enroll);
+    public void postEnrollment (in Enrollment enroll);
 
     /***************************************************************************
 

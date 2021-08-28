@@ -49,20 +49,20 @@ unittest
         .sign()).array();
 
     // send the transaction with 10000 fee to node0
-    nodes[0].putTransaction(txs[0]);
+    nodes[0].postTransaction(txs[0]);
 
     // wait until the transaction propages to all nodes
     nodes.each!(node => node.hasTransactionHash(hashFull(txs[0])).retryFor(2.seconds));
 
     // send transactions with fee 10100, 10200, 11000 to node0
-    txs[1 .. 4].each!(tx => node0.putTransaction(tx));
+    txs[1 .. 4].each!(tx => node0.postTransaction(tx));
 
     // wait 2 seconds and make sure none of the nodes have those transactions
     Thread.sleep(2.seconds);
     txs[1 .. 4].each!(tx => nodes.each!(node => !node.hasTransactionHash(tx.hashFull())));
 
     // send a transaction with 13000s fee to node0
-    nodes[0].putTransaction(txs[4]);
+    nodes[0].postTransaction(txs[4]);
 
     // wait until the transaction propages to all nodes
     nodes.each!(node => node.hasTransactionHash(hashFull(txs[4])).retryFor(2.seconds));

@@ -60,7 +60,7 @@ unittest
     // Freeze outputs for outsiders
     genesisSpendable.drop(2).takeExactly(1)
         .map!(txb => txb.split(keys).sign(OutputType.Freeze))
-        .each!(tx => nodes[0].putTransaction(tx));
+        .each!(tx => nodes[0].postTransaction(tx));
 
     // at block height 19 the freeze tx's are available
     network.generateBlocks(Height(GenesisValidatorCycle - 1));

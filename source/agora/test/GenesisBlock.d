@@ -37,6 +37,6 @@ unittest
         .retryFor(2.seconds);
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 }

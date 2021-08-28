@@ -41,7 +41,7 @@ unittest
     genesisSpendable.map!(txb =>
         txb.sign())
         .chunks(2).enumerate.each!((en) {
-            en.value.each!(tx => node_1.putTransaction(tx));
+            en.value.each!(tx => node_1.postTransaction(tx));
             network.expectHeightAndPreImg(Height(en.index + 1));
         });
     assert(node_1.getNetworkTime() >= startTime + (4 * conf.consensus.block_interval_sec));

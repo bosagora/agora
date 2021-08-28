@@ -35,7 +35,7 @@ unittest
     auto node_1 = nodes[0];
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeight(Height(1));
 
     // Now shut down & restart one node
@@ -117,7 +117,7 @@ unittest
     auto node_1 = nodes[0];
 
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.putTransaction(tx));
+    txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // Now shut down & restart one node
