@@ -15,6 +15,7 @@ module agora.consensus.Fee;
 
 import agora.common.Types;
 import agora.common.Amount;
+import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
@@ -451,13 +452,13 @@ public class FeeManager
     public string getAdjustedTXFee (in Transaction tx, scope UTXOFinder peekUTXO,
         out Amount tot_fee) nothrow @safe
     {
-        Amount tot_data_fee;
-        const(Transaction)[1] txs = [tx];
+        try
+            tot_fee = tx.getFee(peekUTXO);
+        catch (Exception exc)
+            return "Exception happened while calling getAdjustedTXFee";
 
-        auto res = this.getTXSetFees(txs, peekUTXO, tot_fee, tot_data_fee);
         tot_fee.div(tx.sizeInBytes());
-
-        return res;
+        return null;
     }
 
     /***************************************************************************
@@ -481,24 +482,10 @@ public class FeeManager
         scope (failure) assert(0);
         foreach (const ref tx; tx_set)
         {
-            // Coinbase TXs are not subject to fees
-            if (tx.isCoinbase)
-                continue;
-
-            Amount tot_in, tot_out;
-            foreach (input; tx.inputs)
-            {
-                UTXO utxo;
-                if (!peekUTXO(input.utxo, utxo))
-                    return "Unable to find input for utxo";
-                tot_in += utxo.output.value;
-            }
-
-            if (!tx.getSumOutput(tot_out))
-                return "Transaction output value is invalid";
-            // sum(inputs) - sum(outputs)
-            tot_in -= tot_out;
-            tot_fee += tot_in;
+            try
+                tot_fee += tx.getFee(peekUTXO);
+            catch (Exception exc)
+                return "Error happened while calling getTXSetFees";
             tot_data_fee += this.getDataFee(tx.payload.length);
         }
         return null;
@@ -567,6 +554,42 @@ public class FeeManager
         // None wasted, none created
         assert(tot_fee == Amount(0));
     }
+}
+
+/*******************************************************************************
+
+    Returns the transaction fees (not including data fees) of a transaction
+
+    Transactions have two kinds of fee: regular fees are the difference between
+    the inputs and the outputs. On the other hand, "data" fees are used to pay
+    for `payload`, and are explicit (to the commons budget).
+
+    This function returns the transaction fee of `tx`. If `tx` is not a valid
+    transaction, this function will throw.
+
+    Params:
+      tx = The transaction to get the fee of
+      peekUTXO = A delegate to look up UTXOs (can have replay protection or not)
+
+*******************************************************************************/
+
+private Amount getFee (in Transaction tx, scope UTXOFinder peekUTXO) @safe
+{
+    // Coinbase TXs are not subject to fees
+    if (tx.isCoinbase)
+        return Amount(0);
+
+    Amount tot_in, tot_out;
+    foreach (input; tx.inputs)
+    {
+        UTXO utxo;
+        ensure(peekUTXO(input.utxo, utxo), "Unable to find input for UTXO: {}", input.utxo);
+        tot_in += utxo.output.value;
+    }
+
+    ensure(tx.getSumOutput(tot_out), "Transaction output value is invalid: {}", tx.outputs);
+    // sum(inputs) - sum(outputs)
+    return tot_in - tot_out;
 }
 
 unittest
