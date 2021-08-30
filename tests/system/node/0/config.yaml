@@ -14,11 +14,14 @@ node:
     seconds: 5
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
-  block_catchup_interval_seconds: 5
+  block_catchup_interval:
+    seconds: 5
   relay_tx_max_num : 0
-  relay_tx_interval_seconds : 0
+  relay_tx_interval:
+    seconds : 0
   relay_tx_min_fee : 0
-  relay_tx_cache_exp_seconds : 1200
+  relay_tx_cache_exp:
+    seconds : 1200
 
 interfaces:
   - type: http
