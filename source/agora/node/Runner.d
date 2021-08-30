@@ -104,7 +104,7 @@ public Listeners runNode (Config config)
             config.node.data_dir, params.Genesis.hashFull(),
             result.node.getEngine(),
             result.node.getTaskManager(), &result.node.postTransaction,
-            result.node.getNetworkManager());
+            &result.node.getBlock, result.node.getNetworkManager());
         router.registerRestInterface!FlashAPI(flash);
         result.flash = flash;
     }
