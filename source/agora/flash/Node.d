@@ -612,6 +612,9 @@ public abstract class FlashNode : FlashControlAPI
     /// Overriden by ThinFlashNode or FullNode
     protected abstract void postTransaction (Transaction tx);
 
+    /// Overriden by ThinFlashNode or FullNode
+    protected abstract const(Block) getBlock (ulong _height) @safe;
+
     /// See `FlashAPI.closeChannel`
     public override Result!Point closeChannel (PublicKey sender_pk,
         PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id,
@@ -1505,6 +1508,21 @@ public abstract class ThinFlashNode : FlashNode
     {
         this.agora_node.postTransaction(tx);
     }
+
+    /***************************************************************************
+
+        Params:
+            _height = The height of the block to return
+
+        Returns:
+            The block at height `_height`, or throw an `Exception` (404).
+
+    ***************************************************************************/
+
+    protected override const(Block) getBlock (ulong _height) @safe
+    {
+        return this.agora_node.getBlock(_height);
+    }
 }
 
 /// A FullNode / Validator should embed this class if they enabled Flash
@@ -1512,6 +1530,9 @@ public class AgoraFlashNode : FlashNode
 {
     /// Callback for sending transactions to the network
     protected void delegate (in Transaction tx) postTransactionDg;
+
+    /// Callback for fetching a block
+    protected const(Block) delegate (ulong _height) @safe getBlockDg;
 
     /// Network manager
     protected NetworkManager network;
@@ -1540,10 +1561,12 @@ public class AgoraFlashNode : FlashNode
     public this (FlashConfig conf, string data_dir, Hash genesis_hash,
         Engine engine, ITaskManager taskman,
         void delegate (in Transaction tx) postTransactionDg,
+        const(Block) delegate (ulong _height) @safe getBlockDg,
         NetworkManager network)
     {
         const db_path = buildPath(data_dir, "flash.dat");
         this.postTransactionDg = postTransactionDg;
+        this.getBlockDg = getBlockDg;
         this.network = network;
         super(conf, db_path, genesis_hash, engine, taskman);
     }
@@ -1667,6 +1690,21 @@ public class AgoraFlashNode : FlashNode
     protected override void postTransaction (Transaction tx)
     {
         this.postTransactionDg(tx);
+    }
+
+    /***************************************************************************
+
+        Params:
+            _height = The height of the block to return
+
+        Returns:
+            The block at height `_height`, or throw an `Exception` (404).
+
+    ***************************************************************************/
+
+    protected override const(Block) getBlock (ulong _height) @safe
+    {
+        return this.getBlockDg(_height);
     }
 
     /***************************************************************************
