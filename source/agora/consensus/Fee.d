@@ -510,12 +510,6 @@ public class FeeManager
         this(new ManagedDatabase(":memory:"), new immutable(ConsensusParams));
     }
 
-    /// For unittest
-    version (unittest) public ManagedDatabase getDB ()
-    {
-        return this.db;
-    }
-
     unittest
     {
         import agora.crypto.Hash;
@@ -612,7 +606,7 @@ unittest
     block.header.height = Height(1);
     fee_man.accumulateFees(block, [utxo], &utxo_set.peekUTXO);
 
-    auto fee_man_2 = new FeeManager(fee_man.getDB(), new immutable(ConsensusParams));
+    auto fee_man_2 = new FeeManager(fee_man.db, new immutable(ConsensusParams));
 
     // fee_man_2 should recover from DB
     assert(fee_man.getAccumulatedFees(Height(0)) ==
