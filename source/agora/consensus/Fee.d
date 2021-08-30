@@ -249,7 +249,7 @@ public class FeeManager
         if (!minimumFee.mul(tx.sizeInBytes()))
             return "Fee: Transaction size overflows fee cap";
         if (tx_fee < minimumFee)
-            return "Transaction: Fee is less than adjusted minimum fee";
+            return "Transaction: Fee rate is less than minimum";
 
         if (tx.payload.length == 0)
             return null;
@@ -435,29 +435,32 @@ public class FeeManager
 
     /***************************************************************************
 
-        Calculate the transaction fee and adjust the fee based on the
-        transaction's size measured in bytes.
+        Calculate the transaction fee rate.
 
-        The bigger the transaction size is, the smaller the the fee becomes.
+        This calculates the fee rate of the transaction, and can be used to
+        compare two transactions for inclusion in a block / pool eviction.
+        If the fee is not an exact multiplicator of the tx size,
+        the remainder will be ignored.
 
         Params:
-            tx = transaction for which we want to calculate the adjusted fee
-            peekUTXO = UTXO finder
-            tot_fee = adjusted fee
+            tx = transaction for which we want to calculate the fee rate
+            peekUTXO = UTXO finder (with or without replay protection)
+            rate = The effective fee rate of this transaction
 
         Returns: string describing the error, if an error happened, null otherwise
 
     ***************************************************************************/
 
-    public string getAdjustedTXFee (in Transaction tx, scope UTXOFinder peekUTXO,
-        out Amount tot_fee) nothrow @safe
+    public string getTxFeeRate (in Transaction tx, scope UTXOFinder peekUTXO,
+        out Amount rate) nothrow @safe
     {
         try
-            tot_fee = tx.getFee(peekUTXO);
+            // At this point, we get a fee, not a rate, but we divide it below.
+            rate = tx.getFee(peekUTXO);
         catch (Exception exc)
-            return "Exception happened while calling getAdjustedTXFee";
+            return "Exception happened while calling `getTxFeeRate`";
 
-        tot_fee.div(tx.sizeInBytes());
+        rate.div(tx.sizeInBytes());
         return null;
     }
 

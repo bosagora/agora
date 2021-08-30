@@ -769,11 +769,11 @@ unittest
         {
             return maxIndex!((a, b)
                 {
-                    Amount fee_a;
-                    Amount fee_b;
-                    fee_man.getAdjustedTXFee(a, &utxo_set.peekUTXO, fee_a);
-                    fee_man.getAdjustedTXFee(b, &utxo_set.peekUTXO, fee_b);
-                    return fee_a < fee_b;
+                    Amount rate_a;
+                    Amount rate_b;
+                    fee_man.getTxFeeRate(a, &utxo_set.peekUTXO, rate_a);
+                    fee_man.getTxFeeRate(b, &utxo_set.peekUTXO, rate_b);
+                    return rate_a < rate_b;
                 })(txs);
         };
     auto pool = new TransactionPool(new ManagedDatabase(":memory:"), selector);

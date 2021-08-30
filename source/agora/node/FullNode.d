@@ -261,6 +261,7 @@ public class FullNode : API
         this.utxo_set = this.makeUTXOSet();
         this.pool = this.makeTransactionPool();
         this.enroll_man = this.makeEnrollmentManager();
+        // Note: Needs to be instantiated after `fee_man` as it depends on it
         this.transaction_relayer = this.makeTransactionRelayer();
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
@@ -722,13 +723,9 @@ public class FullNode : API
 
     protected TransactionRelayer makeTransactionRelayer ()
     {
-        return new TransactionRelayerFeeImp(this.pool, this.config, &this.network.peers,
-            this.taskman, this.clock, &getAdjustedTXFee);
-    }
-
-    protected string getAdjustedTXFee (in Transaction tx, out Amount tot_fee) nothrow @safe
-    {
-        return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
+        return new TransactionRelayerFeeImp(
+            this.pool, this.config, &this.network.peers, this.taskman, this.clock,
+            (in Transaction tx, out Amount rate) => this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, rate));
     }
 
     /***************************************************************************
@@ -803,11 +800,11 @@ public class FullNode : API
     {
         return maxIndex!((a, b)
         {
-            Amount fee_a;
-            Amount fee_b;
-            fee_man.getAdjustedTXFee(a, &this.utxo_set.peekUTXO, fee_a);
-            fee_man.getAdjustedTXFee(b, &this.utxo_set.peekUTXO, fee_b);
-            return fee_a < fee_b;
+            Amount rate_a;
+            Amount rate_b;
+            this.fee_man.getTxFeeRate(a, &this.utxo_set.peekUTXO, rate_a);
+            this.fee_man.getTxFeeRate(b, &this.utxo_set.peekUTXO, rate_b);
+            return rate_a < rate_b;
         }
         )(txs);
     }

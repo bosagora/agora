@@ -58,8 +58,8 @@ private alias SafeSinkT = void delegate(scope const(char)[] v) @safe;
 ///
 private alias NodeConnInfo = NetworkManager.NodeConnInfo;
 
-/// Returns the total fee for a transaction adjusted to its size in bytes.
-public alias GetAdjustedFeeDg = string delegate(in Transaction tx, out Amount total_fee) nothrow @safe;
+/// Returns the fee rate for a transaction (total fees / tx size)
+public alias GetFeeRateDg = string delegate(in Transaction tx, out Amount rate) @safe nothrow;
 
 /// Transaction relayer interface, that accepts transactions and relays
 /// them to known network clients.
@@ -108,7 +108,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     private Clock clock;
 
     ///
-    private GetAdjustedFeeDg getAdjustedTXFee;
+    private GetFeeRateDg getTxFeeRate;
 
     /// Stores the transactions that needs to be relayed.
     private RedBlackTree!(TxHolder, TxHolder.cmpFeeLess, true) txs;
@@ -140,21 +140,21 @@ public class TransactionRelayerFeeImp : TransactionRelayer
             clients = network clients
             taskman = task manager
             clock = clock
-            getAdjustedTXFee = delegate calculating transaction fee
+            getTxFeeRate = delegate calculating transaction fee rate
             start_timers = controls whether the timers for relaying transactions
                 and cleaning relay queues are started
 
     ***************************************************************************/
 
     public this (TransactionPool pool, immutable Config config, DList!NodeConnInfo* clients,
-          ITaskManager taskman, Clock clock, GetAdjustedFeeDg getAdjustedTXFee, bool start_timers = true)
+          ITaskManager taskman, Clock clock, GetFeeRateDg getTxFeeRate, bool start_timers = true)
     {
         this.pool = pool;
         this.config = config;
         this.clients = clients;
         this.taskman = taskman;
         this.clock = clock;
-        this.getAdjustedTXFee = getAdjustedTXFee;
+        this.getTxFeeRate = getTxFeeRate;
         this.txs = new RedBlackTree!(TxHolder, TxHolder.cmpFeeLess, true)();
         this.log = Logger(__MODULE__);
         this.start_timers = start_timers;
@@ -256,16 +256,16 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         if (tx_hash in this.tx_hashes)
             return TransactionRelayError.TxAlreadyAdded;
 
-        Amount fee;
-        if (auto fee_err = this.getAdjustedTXFee(tx, fee))
+        Amount rate;
+        if (auto fee_err = this.getTxFeeRate(tx, rate))
             return fee_err;
-        else if (!fee.isValid())
+        else if (!rate.isValid())
             return TransactionRelayError.TxFeeInvalid;
 
-        if (fee < this.config.node.relay_tx_min_fee)
+        if (rate < this.config.node.relay_tx_min_fee)
             return TransactionRelayError.TxFeeTooLow;
 
-        this.txs.insert(TxHolder(fee, tx_hash,
+        this.txs.insert(TxHolder(rate, tx_hash,
             this.clock.networkTime() + this.config.node.relay_tx_cache_exp.total!"seconds"));
         this.tx_hashes.put(tx_hash);
 
@@ -368,12 +368,12 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         immutable params = new immutable(ConsensusParams)();
         auto fee_man = new FeeManager(stateDB, params);
         DList!NodeConnInfo clients;
-        GetAdjustedFeeDg getAdjustedTXFee = (in Transaction tx, out Amount tot_fee)
+        GetFeeRateDg getTxFeeRate = (in Transaction tx, out Amount rate)
         {
-            return fee_man.getAdjustedTXFee(tx, &utxo_set.peekUTXO, tot_fee);
+            return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate);
         };
 
-        this(new TransactionPool(cacheDB), config, &clients, null, new MockClock(0), getAdjustedTXFee, false);
+        this(new TransactionPool(cacheDB), config, &clients, null, new MockClock(0), getTxFeeRate, false);
     }
 
     /***************************************************************************
