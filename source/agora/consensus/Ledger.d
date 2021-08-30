@@ -1001,6 +1001,32 @@ public class Ledger
 
     /***************************************************************************
 
+        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
+
+    ***************************************************************************/
+
+    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
+    {
+        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, rate);
+    }
+
+    /***************************************************************************
+
+        Looks up transaction with hash `tx_hash`, then forwards to
+        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
+
+    ***************************************************************************/
+
+    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
+    {
+        auto tx = this.pool.getTransactionByHash(tx_hash);
+        if (tx == Transaction.init)
+            return InvalidConsensusDataReason.NotInPool;
+        return this.getTxFeeRate(tx, rate);
+    }
+
+    /***************************************************************************
+
         Calculate and accumulate fees that will be paid to Validators from this
         block
 
@@ -1450,32 +1476,6 @@ public class ValidatingLedger : Ledger
         }
         result.sort();
         return result;
-    }
-
-    /***************************************************************************
-
-        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
-
-    ***************************************************************************/
-
-    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
-    {
-        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, rate);
-    }
-
-    /***************************************************************************
-
-        Looks up transaction with hash `tx_hash`, then forwards to
-        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
-
-    ***************************************************************************/
-
-    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
-    {
-        auto tx = this.pool.getTransactionByHash(tx_hash);
-        if (tx == Transaction.init)
-            return InvalidConsensusDataReason.NotInPool;
-        return this.getTxFeeRate(tx, rate);
     }
 
     /***************************************************************************

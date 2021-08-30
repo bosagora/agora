@@ -261,12 +261,12 @@ public class FullNode : API
         this.utxo_set = this.makeUTXOSet();
         this.pool = this.makeTransactionPool();
         this.enroll_man = this.makeEnrollmentManager();
-        // Note: Needs to be instantiated after `fee_man` as it depends on it
-        this.transaction_relayer = this.makeTransactionRelayer();
         const ulong StackMaxTotalSize = 16_384;
         const ulong StackMaxItemSize = 512;
         this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
         this.ledger = this.makeLedger();
+        // Note: Needs to be instantiated after `ledger` as it depends on it
+        this.transaction_relayer = this.makeTransactionRelayer();
         // If we have handlers defined in the config
         if (config.event_handlers.length > 0)
         {
@@ -725,7 +725,7 @@ public class FullNode : API
     {
         return new TransactionRelayerFeeImp(
             this.pool, this.config, &this.network.peers, this.taskman, this.clock,
-            (in Transaction tx, out Amount rate) => this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, rate));
+            &this.ledger.getTxFeeRate);
     }
 
     /***************************************************************************
@@ -802,8 +802,8 @@ public class FullNode : API
         {
             Amount rate_a;
             Amount rate_b;
-            this.fee_man.getTxFeeRate(a, &this.utxo_set.peekUTXO, rate_a);
-            this.fee_man.getTxFeeRate(b, &this.utxo_set.peekUTXO, rate_b);
+            this.ledger.getTxFeeRate(a, rate_a);
+            this.ledger.getTxFeeRate(b, rate_b);
             return rate_a < rate_b;
         }
         )(txs);
