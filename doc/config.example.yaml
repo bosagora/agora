@@ -48,19 +48,19 @@ node:
     seconds: 20
   # The maximum number of transactions relayed in every batch.
   # Value 0 means no limit.
-  relay_tx_max_num : 100
+  relay_tx_max_num: 100
   # Transaction relay batch is triggered in every `relay_tx_interval`.
   # Value 0 means, the transaction will be relayed immediately.
   relay_tx_interval:
-    seconds : 30
+    seconds: 30
   # The minimum amount of fee a transaction has to have to be relayed.
   # The fee is adjusted by the transaction size:
   # adjusted fee = fee / transaction size in bytes.
-  relay_tx_min_fee : 0
+  relay_tx_min_fee: 0
   # Transaction put into the relay queue will expire, and will be removed
   # after `relay_tx_cache_exp`.
   relay_tx_cache_exp:
-    seconds : 1200
+    seconds: 1200
   # The percentage by which the double spend transaction's fee should be
   # increased in order to be added to the transaction pool
   double_spent_threshold_pct: 20
