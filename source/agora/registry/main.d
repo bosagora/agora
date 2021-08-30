@@ -86,9 +86,12 @@ private int main (string[] strargs)
     settings.bindAddresses = [config.http.address];
     listenHTTP(settings, router);
 
-    if (config.dns.enabled)
-        runTask(() => runDNSServer(config, registry));
+    if (!config.dns.enabled)
+        return runEventLoop();
 
+    runTask(() => runDNSServer(config, registry));
+    auto listener = listenTCP(config.dns.port, (conn) => conn.runTCPDNSServer(registry), config.dns.address);
+    scope (exit) listener.stopListening();
     return runEventLoop();
 }
 
@@ -149,5 +152,57 @@ private void runDNSServer (in Config config, NameRegistry registry) nothrow
         catch (Exception exc2)
             printf("Couldn't print message following fatal error in DNS!\n");
         assert(0);
+    }
+}
+
+/*******************************************************************************
+
+    Run the DNS server on TCP port 53
+
+    While regular requests are sent over UDP, some actions,
+    such as zone transfer, or retry when truncation is encountered,
+    are done of TCP.
+
+    For the `canThrow` function, see `runDNSServer`'s documentation.
+
+    Params:
+      conn = TCP connection for this request.
+      registry = The name registry to forward the queries to.
+
+*******************************************************************************/
+
+private void runTCPDNSServer (TCPConnection conn, NameRegistry registry) @trusted nothrow
+{
+    try
+        runTCPDNSServer_canThrow(conn, registry);
+    catch (Exception exc)
+    {
+        try
+            stderr.writeln("Fatal error while running the DNS server (TCP): ", exc);
+        catch (Exception exc2)
+            printf("Couldn't print message following fatal error in (TCP) DNS!\n");
+        assert(0);
+    }
+}
+
+/// Ditto
+private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry) @trusted
+{
+    ubyte[2048] buffer;
+    scope reader = (size_t size) @safe {
+        assert(size <= buffer.length);
+        conn.read(buffer[0 .. size]);
+        return buffer[0 .. size];
+    };
+
+    try
+    {
+        auto query = deserializeFull!Message(reader);
+        auto resp = registry.answerQuestions(query);
+        resp.serializePart(&conn.write);
+    }
+    catch (Exception exc)
+    {
+        stderr.writeln("Exception happened while handling TCP request: {}", exc);
     }
 }
