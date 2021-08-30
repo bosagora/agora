@@ -14,7 +14,7 @@
 
 *******************************************************************************/
 
-module agora.consensus.EnrollmentPool;
+module agora.consensus.pool.Enrollment;
 
 import agora.common.ManagedDatabase;
 import agora.common.Types;

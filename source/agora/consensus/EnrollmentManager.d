@@ -52,7 +52,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
-import agora.consensus.EnrollmentPool;
+import agora.consensus.pool.Enrollment;
 import agora.consensus.PreImage;
 import agora.consensus.validation;
 public import agora.consensus.state.ValidatorSet;
