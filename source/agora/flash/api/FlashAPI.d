@@ -32,6 +32,9 @@ import vibe.web.rest;
 /// Data associated with a channel open event
 public struct ChannelOpen
 {
+    /// Height of the funding TX externalization
+    public Height height;
+
     /// Config of the newly opened channel
     public ChannelConfig conf;
 

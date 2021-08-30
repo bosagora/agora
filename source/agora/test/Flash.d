@@ -227,7 +227,8 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
         if (this.known_channels.length > 0)
             peer.gossipChannelsOpen(this.channel_updates.byValue
                 .map!(updates => updates.byValue).joiner
-                .map!(update => ChannelOpen(this.known_channels[update.chan_id], update)).array);
+                .map!(update => ChannelOpen(this.known_channels[update.chan_id].height,
+                                            this.known_channels[update.chan_id].conf, update)).array);
 
         return peer;
     }
@@ -558,7 +559,7 @@ private class FlashListener : TestFlashListenerAPI
     }
 
     public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
-        ErrorCode error)
+        ErrorCode error, Height height = Height(0))
     {
         if (chan_id !in this.channel_state)
             this.channel_state[chan_id] = typeof(this.channel_state[chan_id]).init;

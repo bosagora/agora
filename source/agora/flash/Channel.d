@@ -94,7 +94,8 @@ public class Channel
 
     /// Called when the channel state has been changed
     private alias OnChannelNotify = void delegate (
-        PublicKey key, Hash chan_id, ChannelState state, ErrorCode error) @safe;
+        PublicKey key, Hash chan_id, ChannelState state, ErrorCode error,
+        Height height = Height(0)) @safe;
     /// Ditto
     private OnChannelNotify onChannelNotify;
 
@@ -656,7 +657,7 @@ LOuter: while (1)
             this.state = ChannelState.WaitingForFunding;
 
         this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
-            ErrorCode.None);
+            ErrorCode.None, this.funding_tx_externalized);
 
         if (this.state == ChannelState.Open)
             this.dump();
@@ -679,9 +680,10 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    private void onFundingTxExternalized (in Transaction tx)
+    private void onFundingTxExternalized (in Transaction tx, in Height height)
     {
         this.funding_tx_signed = tx.clone();
+        this.funding_tx_externalized = height;
         if (this.state == ChannelState.WaitingForFunding)
             this.state = ChannelState.Open;
 
@@ -692,7 +694,7 @@ LOuter: while (1)
 
         this.dump();
         this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
-            ErrorCode.None);
+            ErrorCode.None, this.funding_tx_externalized);
     }
 
     /***************************************************************************
@@ -1643,7 +1645,7 @@ LOuter: while (1)
             {
                 log.info("{}: Funding tx externalized({}) on height {}",
                     this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
-                this.onFundingTxExternalized(tx);
+                this.onFundingTxExternalized(tx, block.header.height);
             }
             else
             if (this.isClosingTx(tx)) // always check for closing TX before update TX
@@ -2402,6 +2404,9 @@ private mixin template ChannelMetadata ()
     /// Stored when the funding transaction is signed.
     /// For peers they receive this from the blockchain.
     public Transaction funding_tx_signed;
+
+    /// Stored when the funding transaction is externalized.
+    public Height funding_tx_externalized;
 
     /// The list of any off-chain updates which happened on this channel
     private UpdatePair[] channel_updates;
