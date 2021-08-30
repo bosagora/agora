@@ -474,7 +474,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public string getTXSetFees (in Transaction[] tx_set,
+    private string getTXSetFees (in Transaction[] tx_set,
         scope UTXOFinder peekUTXO, ref Amount tot_fee, ref Amount tot_data_fee)
         nothrow @safe
     {
