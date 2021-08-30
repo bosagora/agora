@@ -104,7 +104,7 @@ unittest
         {
             return new PickyLedger(this.params, this.engine,
                 this.utxo_set, this.storage, this.enroll_man, this.pool,
-                this.fee_man, this.clock, config.node.block_time_offset_tolerance,
+                this.stateDB, this.clock, config.node.block_time_offset_tolerance,
                 &this.onAcceptedBlock);
         }
 

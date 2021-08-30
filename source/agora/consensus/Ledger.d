@@ -124,7 +124,7 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             pool = the transaction pool
-            fee_man = the checker of data payload
+            stateDB = The state database
             clock = the clock instance
             block_time_offset_tolerance = the proposed block time_offset should be less
                 than curr_time_offset + block_time_offset_tolerance
@@ -136,7 +136,7 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        FeeManager fee_man, Clock clock,
+        ManagedDatabase stateDB, Clock clock,
         Duration block_time_offset_tolerance = 60.seconds,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
@@ -148,7 +148,7 @@ public class Ledger
         this.enroll_man = enroll_man;
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
-        this.fee_man = fee_man;
+        this.fee_man = new FeeManager(stateDB, params);
         this.clock = clock;
         this.block_time_offset_tolerance = block_time_offset_tolerance;
         this.storage.load(params.Genesis);
@@ -1314,11 +1314,11 @@ public class ValidatingLedger : Ledger
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        FeeManager fee_man, Clock clock,
+        ManagedDatabase stateDB, Clock clock,
         Duration block_timestamp_tolerance,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
-        super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
+        super(params, engine, utxo_set, storage, enroll_man, pool, stateDB,
             clock, block_timestamp_tolerance, onAcceptedBlock);
     }
 
@@ -1648,7 +1648,7 @@ version (unittest)
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(stateDB, cacheDB, key_pair, params, cycle),
                 new TransactionPool(cacheDB),
-                new FeeManager(stateDB, params),
+                stateDB,
                 mock_clock,
                 block_time_offset_tolerance_dur, null);
         }
@@ -1912,7 +1912,7 @@ unittest
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(stateDB, cacheDB, kp, params),
                 new TransactionPool(cacheDB),
-                new FeeManager(),
+                stateDB,
                 new MockClock(params.GenesisTimestamp +
                               (blocks.length * params.BlockInterval.total!"seconds")));
         }
