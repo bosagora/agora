@@ -53,11 +53,12 @@ public interface FlashListenerAPI
             state = the current state of the channel
             error = if state is rejected, it will contain any error stating the
                 reason why a channel was rejected
+            height = situational block height of the event
 
     ***************************************************************************/
 
     public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
-        ErrorCode error);
+        ErrorCode error, Height height = Height(0));
 
     /***************************************************************************
 

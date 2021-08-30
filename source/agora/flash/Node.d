@@ -89,9 +89,10 @@ private struct GossipEvent
         this.open = open;
     }
 
-    this (ChannelConfig config, ChannelUpdate update) @trusted nothrow
+    this (Height height, ChannelConfig config, ChannelUpdate update) @trusted nothrow
     {
         this.type = GossipType.Open;
+        this.open.height = height;
         this.open.conf = config;
         this.open.update = update;
     }
@@ -193,7 +194,7 @@ public abstract class FlashNode : FlashControlAPI
         this.network = new Network((Hash chan_id, Point from) {
             if (auto updates = chan_id in this.channel_updates)
             {
-                auto config = this.known_channels[chan_id];
+                auto config = this.known_channels[chan_id].conf;
                 auto dir = from == config.funder_pk ? PaymentDirection.TowardsPeer :
                     PaymentDirection.TowardsOwner;
                 if (auto dir_update = dir in *updates)
@@ -625,21 +626,21 @@ public abstract class FlashNode : FlashControlAPI
     }
 
     protected void onChannelNotify (PublicKey reg_pk, Hash chan_id,
-        ChannelState state, ErrorCode error) @safe
+        ChannelState state, ErrorCode error, Height height = Height(0)) @safe
     {
         // gossip to the network
         if (state == ChannelState.Open)  // todo: might not exist
-            this.onChannelOpen(reg_pk, this.channels[reg_pk][chan_id].conf);
+            this.onChannelOpen(reg_pk, this.channels[reg_pk][chan_id].conf, height);
 
         this.listener.onChannelNotify(reg_pk, chan_id, state, error);
     }
 
     ///
-    private void onChannelOpen (PublicKey reg_pk, ChannelConfig conf) @safe
+    private void onChannelOpen (PublicKey reg_pk, ChannelConfig conf, Height height) @safe
     {
         log.info("onChannelOpen() with channel {}", conf.chan_id);
 
-        this.known_channels[conf.chan_id] = conf;
+        this.known_channels[conf.chan_id] = KnownChannel(height, conf);
         this.network.addChannel(conf);
 
         const dir = reg_pk == conf.funder_pk ?
@@ -651,7 +652,7 @@ public abstract class FlashNode : FlashControlAPI
         this.channel_updates[conf.chan_id][dir] = update;
 
         // todo: should not gossip this to counterparty of the just opened channel
-        this.gossip_queue.insertBack(GossipEvent(conf, update));
+        this.gossip_queue.insertBack(GossipEvent(height, conf, update));
 
         this.dump();
     }
@@ -669,7 +670,7 @@ public abstract class FlashNode : FlashControlAPI
                         open.conf.chan_id.flashPrettify);
                 // todo: need to verify the blockchain actually contains the
                 // funding transaction, otherwise this becomes a point of DDoS.
-                this.known_channels[open.conf.chan_id] = open.conf;
+                this.known_channels[open.conf.chan_id] = KnownChannel(open.height, open.conf);
                 this.network.addChannel(open.conf);
             }
 
@@ -696,8 +697,9 @@ public abstract class FlashNode : FlashControlAPI
     ///
     private bool addUpdate (in ChannelUpdate update) @safe
     {
-        if (auto conf = update.chan_id in this.known_channels)
+        if (auto known_channel = update.chan_id in this.known_channels)
         {
+            auto conf = known_channel.conf;
             auto pk = update.direction == PaymentDirection.TowardsPeer ?
                                             conf.funder_pk : conf.peer_pk;
             if (auto chan_update = update.chan_id in this.channel_updates)
@@ -922,7 +924,7 @@ public abstract class FlashNode : FlashControlAPI
 
             // Get the PublicKey of the node we think is failing
             const failing_node_pk = (*path)[failing_hop_idx].pub_key;
-            const failing_chan = this.known_channels[deobfuscated.chan_id];
+            const failing_chan = this.known_channels[deobfuscated.chan_id].conf;
             // Check the failing node is a peer of the failing channel
             if (failing_chan.funder_pk != failing_node_pk &&
                 failing_chan.peer_pk != failing_node_pk)
@@ -1286,7 +1288,7 @@ public abstract class FlashNode : FlashControlAPI
         this.invoices[invoice.payment_hash] = invoice;
 
         // If suggested lock height is not enough, use settle_time + htlc_delta
-        auto first_conf = this.known_channels[path.front.chan_id];
+        auto first_conf = this.known_channels[path.front.chan_id].conf;
         auto first_update = this.channels[reg_pk][path.front.chan_id]
             .getChannelUpdate();
         use_lock_height = max(use_lock_height,
@@ -1323,6 +1325,16 @@ public abstract class FlashNode : FlashControlAPI
     }
 }
 
+/// Metadata associated with known channels
+struct KnownChannel
+{
+    /// Channel open confirmation height
+    public Height height;
+
+    /// Channel config
+    public ChannelConfig conf;
+}
+
 /// All the node metadata which we keep in the DB for storage
 private mixin template NodeMetadata ()
 {
@@ -1331,7 +1343,7 @@ private mixin template NodeMetadata ()
 
     /// These are the known channels of which we may not necessary be a
     /// counterparty of. With this information we can derive payment paths.
-    protected ChannelConfig[Hash] known_channels;
+    protected KnownChannel[Hash] known_channels;
 
     /// Most recent update received for this channel
     protected ChannelUpdate[PaymentDirection][Hash] channel_updates;
@@ -1713,7 +1725,8 @@ public class AgoraFlashNode : FlashNode
         if (this.known_channels.length > 0)
             peer.gossipChannelsOpen(this.channel_updates.byValue
                 .map!(updates => updates.byValue).joiner
-                .map!(update => ChannelOpen(this.known_channels[update.chan_id], update)).array);
+                .map!(update => ChannelOpen(this.known_channels[update.chan_id].height,
+                                            this.known_channels[update.chan_id].conf, update)).array);
 
         return peer;
     }
