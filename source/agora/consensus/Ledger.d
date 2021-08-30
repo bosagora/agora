@@ -869,7 +869,7 @@ public class Ledger
                 return "Block: Couldn't find commitment for this validator";
             }
             const preimage_info = this.enroll_man.validator_set.getPreimageAt(
-                this.enroll_man.validator_set.getEnrollmentForKey(block.header.height, K), block.header.height);
+                validator.utxo(), block.header.height);
             if (preimage_info.hash == Hash.init)
             {
                 log.error("Block#{}: Validator {} (idx: {}) Couldn't find pre-image for validator",
