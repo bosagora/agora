@@ -1138,7 +1138,7 @@ extern(D):
         /// Hash of the consensus data
         public Hash hash;
         /// The total amount of fees of the transactions in the consensus data
-        public Amount total_adjusted_fee;
+        public Amount total_rate;
 
         /// Comparison function, which sorts by
         /// 1. length of missing validators (smallest first), or if it ties
@@ -1153,9 +1153,9 @@ extern(D):
                      other.consensus_data.missing_validators.length)
                 return 1;
 
-            if (this.total_adjusted_fee > other.total_adjusted_fee)
+            if (this.total_rate > other.total_rate)
                 return -1;
-            else if (this.total_adjusted_fee < other.total_adjusted_fee)
+            else if (this.total_rate < other.total_rate)
                 return 1;
 
             if (this.consensus_data.tx_set.length > other.consensus_data.tx_set.length)
@@ -1194,11 +1194,11 @@ extern(D):
 
         // If multiple candidates have the same number of missing validators, then
         // the candidate with the higher adjusted fee is preferred.
-        candidate_holders[1].total_adjusted_fee = Amount(10);
+        candidate_holders[1].total_rate = Amount(10);
 
         candidate_holder.consensus_data.time_offset = 4;
         candidate_holder.consensus_data.missing_validators = [3, 4];
-        candidate_holder.total_adjusted_fee = Amount(12);
+        candidate_holder.total_rate = Amount(12);
         candidate_holders ~= candidate_holder;
 
         assert(candidate_holders.sort().front.consensus_data.time_offset == 4);
@@ -1242,23 +1242,23 @@ extern(D):
                     assert(0, format!"combineCandidates: Invalid consensus data: %s"(
                         msg));
 
-                Amount total_adjusted_fee;
+                Amount total_rate;
                 foreach (const ref tx_hash; data.tx_set)
                 {
-                    Amount adjusted_fee;
-                    auto errormsg = this.ledger.getAdjustedTXFee(tx_hash, adjusted_fee);
+                    Amount rate;
+                    auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
                     if (errormsg == Ledger.InvalidConsensusDataReason.NotInPool)
                         continue; // most likely a CoinBase Transaction
                     else if (errormsg)
                         assert(0);
-                    total_adjusted_fee += adjusted_fee;
+                    total_rate += rate;
                 }
 
                 CandidateHolder candidate_holder =
                 {
                     consensus_data: data,
                     hash: data.hashFull(),
-                    total_adjusted_fee = total_adjusted_fee,
+                    total_rate = total_rate,
                 };
                 candidate_holders ~= candidate_holder;
             }

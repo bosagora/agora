@@ -555,8 +555,8 @@ public class Ledger
     public bool isAcceptableDoubleSpent (in Transaction tx, ubyte threshold_pct) @safe
     {
 
-        Amount tx_fee;
-        if (fee_man.getAdjustedTXFee(tx, &utxo_set.peekUTXO, tx_fee) != null)
+        Amount rate;
+        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate).length)
             return false;
 
         // only consider a double spend transaction, if its fee is
@@ -569,7 +569,7 @@ public class Ledger
             fee_threshold.get().percentage(threshold_pct + 100);
 
         if (!fee_threshold.isNull() &&
-            (!tx_fee.isValid() || tx_fee < fee_threshold.get()))
+            (!rate.isValid() || rate < fee_threshold.get()))
             return false;
 
         return true;
@@ -1060,9 +1060,9 @@ public class Ledger
 
         return nullable(txs.map!((tx)
             {
-                Amount tot_fee;
-                fee_man.getAdjustedTXFee(tx, &utxo_set.peekUTXO, tot_fee);
-                return tot_fee;
+                Amount rate;
+                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate);
+                return rate;
             }).maxElement());
     }
 
@@ -1454,45 +1454,28 @@ public class ValidatingLedger : Ledger
 
     /***************************************************************************
 
-        Calculate the transaction fee and adjust the fee based on the
-        transaction's size measured in bytes.
-
-        The bigger the transaction size is, the smaller the adjusted fee becomes.
-
-        Params:
-            tx = transaction for which we want to calculate the adjusted fee
-            tot_fee = total adjusted fee
-
-        Returns: string describing the error, if an error happened, null otherwise
+        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
 
     ***************************************************************************/
 
-    public string getAdjustedTXFee (in Transaction tx, out Amount tot_fee) nothrow @safe
+    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
     {
-        return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
+        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, rate);
     }
 
     /***************************************************************************
 
-        Calculate the transaction fee and adjust the fee based on the
-        transaction's size measured in bytes.
-
-        The bigger the transaction size is, the smaller the adjusted fee becomes.
-
-        Params:
-            tx_hash = tx hash for which we want to calculate the adjusted fee
-            tot_fee = total adjusted fee
-
-        Returns: string describing the error, if an error happened, null otherwise
+        Looks up transaction with hash `tx_hash`, then forwards to
+        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
 
     ***************************************************************************/
 
-    public string getAdjustedTXFee (in Hash tx_hash, out Amount tot_fee) nothrow @safe
+    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
     {
         auto tx = this.pool.getTransactionByHash(tx_hash);
         if (tx == Transaction.init)
             return InvalidConsensusDataReason.NotInPool;
-        return this.fee_man.getAdjustedTXFee(tx, &this.utxo_set.peekUTXO, tot_fee);
+        return this.getTxFeeRate(tx, rate);
     }
 
     /***************************************************************************
