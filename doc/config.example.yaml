@@ -37,25 +37,30 @@ node:
   stats_listening_port: 9110
   # The new block time offset has to be greater than the previous block time offset
   # but less than current time + block_time_offset_tolerance
-  block_time_offset_tolerance_seconds: 60
+  block_time_offset_tolerance:
+    seconds: 60
   # The duration between requests for doing periodic network discovery
-  network_discovery_interval_seconds: 5
+  network_discovery_interval:
+    seconds: 5
   # The duration between requests for retrieving the latest blocks
   # from all other nodes
-  block_catchup_interval_seconds: 20
+  block_catchup_interval:
+    seconds: 20
   # The maximum number of transactions relayed in every batch.
   # Value 0 means no limit.
   relay_tx_max_num : 100
   # Transaction relay batch is triggered in every `relay_tx_interval`.
   # Value 0 means, the transaction will be relayed immediately.
-  relay_tx_interval_seconds : 30
+  relay_tx_interval:
+    seconds : 30
   # The minimum amount of fee a transaction has to have to be relayed.
   # The fee is adjusted by the transaction size:
   # adjusted fee = fee / transaction size in bytes.
   relay_tx_min_fee : 0
   # Transaction put into the relay queue will expire, and will be removed
   # after `relay_tx_cache_exp`.
-  relay_tx_cache_exp_seconds : 1200
+  relay_tx_cache_exp:
+    seconds : 1200
   # The percentage by which the double spend transaction's fee should be
   # increased in order to be added to the transaction pool
   double_spent_threshold_pct: 20

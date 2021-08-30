@@ -192,17 +192,14 @@ public struct NodeConfig
     public string data_dir = ".cache";
 
     /// The duration between requests for doing periodic network discovery
-    @Name("network_discovery_interval_seconds")
     public Duration network_discovery_interval = 5.seconds;
 
     /// The duration between requests for retrieving the latest blocks
     /// from all other nodes
-    @Name("block_catchup_interval_seconds")
     public Duration block_catchup_interval = 20.seconds;
 
     /// The new block time offset has to be greater than the previous block time offset,
     /// but less than current time + block_time_offset_tolerance
-    @Name("block_time_offset_tolerance_seconds")
     public Duration block_time_offset_tolerance = 60.seconds;
 
     // The percentage by which the double spend transaction's fee should be
@@ -215,7 +212,6 @@ public struct NodeConfig
 
     /// Transaction relay batch is triggered in every `relay_tx_interval`.
     /// Value 0 means, the transaction will be relayed immediately.
-    @Name("relay_tx_interval_seconds")
     public @Optional Duration relay_tx_interval;
 
     /// The minimum amount of fee a transaction has to have to be relayed.
@@ -225,7 +221,6 @@ public struct NodeConfig
 
     /// Transaction put into the relay queue will expire, and will be removed
     /// after `relay_tx_cache_exp`.
-    @Name("relay_tx_cache_exp_seconds")
     public @Optional Duration relay_tx_cache_exp;
 }
 
