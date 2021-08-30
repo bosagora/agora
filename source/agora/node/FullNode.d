@@ -36,10 +36,8 @@ import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
-import agora.consensus.Fee;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.EnrollmentManager;
-import agora.consensus.Fee;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Client;
@@ -129,9 +127,6 @@ public class FullNode : API
 
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
-
-    /// The checker of transaction data payload
-    protected FeeManager fee_man;
 
     /// Set of unspent transaction outputs
     protected UTXOSet utxo_set;
@@ -257,7 +252,6 @@ public class FullNode : API
         this.metadata = this.makeMetadata();
         this.network = this.makeNetworkManager(this.metadata, this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
-        this.fee_man = this.makeFeeManager();
         this.utxo_set = this.makeUTXOSet();
         this.pool = this.makeTransactionPool();
         this.enroll_man = this.makeEnrollmentManager();
@@ -625,7 +619,6 @@ public class FullNode : API
         this.pool = null;
         this.ledger = null;
         this.enroll_man = null;
-        this.fee_man = null;
         this.utxo_set = null;
         this.engine = null;
 
@@ -828,22 +821,6 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Returns a new instance of a FeeManager
-
-        Unittests can override this method.
-
-        Returns:
-            the FeeManager instance
-
-    ***************************************************************************/
-
-    protected FeeManager makeFeeManager ()
-    {
-        return new FeeManager(this.stateDB, this.params);
-    }
-
-    /***************************************************************************
-
         Reads the metadata from the provided disk path.
 
         Subclasses can override this method and return
@@ -918,7 +895,7 @@ public class FullNode : API
     protected Ledger makeLedger ()
     {
         return new Ledger(params, this.engine, this.utxo_set, this.storage,
-            this.enroll_man, this.pool, this.fee_man, this.clock,
+            this.enroll_man, this.pool, this.stateDB, this.clock,
             config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
     }
 
