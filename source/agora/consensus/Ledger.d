@@ -339,25 +339,19 @@ public class Ledger
 
     ***************************************************************************/
 
-    public bool acceptTransaction (in Transaction tx,
+    public string acceptTransaction (in Transaction tx,
         in ubyte double_spent_threshold_pct = 0,
         in ushort min_fee_pct = 0) @safe
     {
         const Height expected_height = this.getBlockHeight() + 1;
-        string reason;
         auto tx_hash = hashFull(tx);
 
         // If we were looking for this TX, stop
         this.unknown_txs.remove(tx_hash);
 
-        scope (exit)
-            if (reason)
-                log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
-                    reason, tx, tx_hash);
-
         if (tx.isCoinbase ||
             this.pool.hasTransactionHash(tx_hash))
-            return false;
+            return "Coinbase or existing TX";
 
         Amount fee_rate;
         auto checkAndSave = (in Transaction tx, Amount tx_fee)
@@ -368,10 +362,10 @@ public class Ledger
             return this.fee_man.check(tx, tx_fee);
         };
 
-        if ((reason = tx.isInvalidReason(this.engine,
+        if (auto reason = tx.isInvalidReason(this.engine,
                 this.utxo_set.getUTXOFinder(),
-                expected_height, checkAndSave)) !is null)
-            return false;
+                expected_height, checkAndSave))
+            return reason;
 
         auto min_fee = this.pool.getAverageFeeRate();
         if (!min_fee.percentage(min_fee_pct))
@@ -380,11 +374,10 @@ public class Ledger
         if (fee_rate < min_fee ||
             !this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
         {
-            reason = "Not enough fees";
-            return false;
+            return "Not enough fees";
         }
 
-        return this.pool.add(tx, fee_rate);
+        return this.pool.add(tx, fee_rate) ? null : "Rejected by storage";
     }
 
     /***************************************************************************
@@ -1615,7 +1608,7 @@ public class ValidatingLedger : Ledger
         }
 
         last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
-        last_txs.each!(tx => assert(this.acceptTransaction(tx)));
+        last_txs.each!(tx => assert(this.acceptTransaction(tx) is null));
         this.forceCreateBlock(txs);
         return last_txs;
     }
@@ -1822,7 +1815,7 @@ unittest
         auto txs = genesisSpendable().enumerate()
             .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
             .array();
-        txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
         ledger.simulatePreimages(ledger.getBlockHeight() + 1);
         return ledger;
     }
@@ -2057,7 +2050,7 @@ unittest
     auto txs = genesisSpendable().enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array;
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
 
@@ -2077,7 +2070,7 @@ unittest
               .payload(data)
               .sign())
               .array;
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 2);
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
@@ -2098,7 +2091,7 @@ unittest
               .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
               .sign())
               .array;
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 3);
     blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
@@ -2128,7 +2121,7 @@ unittest
     Transaction[] genGeneralBlock (Transaction[] txs)
     {
         auto new_txs = genTransactions(txs);
-        new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
         ledger.forceCreateBlock(Block.TxsInTestBlock);
         return new_txs;
     }
@@ -2139,7 +2132,7 @@ unittest
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign()).array;
     txs ~= genesis_txs[4 .. 8].enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign()).array;
-    txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
 
@@ -2151,7 +2144,7 @@ unittest
         .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address).sign())
         .array;
     new_txs ~= TxBuilder(txs[$ - 1]).split(WK.Keys[0].address.repeat(8)).sign();
-    new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 2);
 
@@ -2167,7 +2160,7 @@ unittest
         .map!(en => TxBuilder(new_txs[$ - 1], cast(uint)en.index)
             .refund(WK.Keys[en.index].address).sign())
         .array;
-    new_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 3);
 
@@ -2213,7 +2206,7 @@ unittest
 
     // check missing validators not revealing pre-images.
     auto temp_txs = genTransactions(new_txs);
-    temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    temp_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
     // Add preimages for validators at height 22 but skip for a couple
     uint[] skip_indexes = [ 1, 3 ];
@@ -2237,7 +2230,7 @@ unittest
     // after revealing preimages
     temp_txs.each!(tx => ledger.pool.remove(tx));
     temp_txs = genTransactions(new_txs);
-    temp_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    temp_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     assert(data.missing_validators.length == 0);
@@ -2264,7 +2257,7 @@ unittest
 
     // Block with no fee
     auto no_fee_txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
-    no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+    no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
     ConsensusData data;
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
@@ -2314,7 +2307,7 @@ unittest
     foreach (height; 1..11)
     {
         auto txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
-        txs.each!(tx => assert(ledger.acceptTransaction(tx)));
+        txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
         // The txs are all the same size so each set will be same fees at each height so we just calculate at height 1
         if (height == 1)
         {
@@ -2393,17 +2386,17 @@ unittest
     ushort min_fee_pct = 80;
 
     auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
-    assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct));
+    assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct) is null);
 
     // switch to a different input, with low fees this should be rejected because of average of fees in the pool
     auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
-    assert(!ledger.acceptTransaction(different_tx, 0, min_fee_pct));
+    assert(ledger.acceptTransaction(different_tx, 0, min_fee_pct) !is null);
 
     // lower than average, but enough
     auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
-    assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct));
+    assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct) is null);
 
     // overwrite the old TX
     auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
-    assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct));
+    assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
 }
