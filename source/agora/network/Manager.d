@@ -31,10 +31,13 @@ import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Block;
+import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorBlockSig;
+import agora.consensus.EnrollmentManager;
+import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Clock;
@@ -1046,6 +1049,29 @@ public class NetworkManager
             log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
         }
         return headers_updated;
+    }
+
+    /// Retrieve any missing enrollments
+    public void getEnrollments (Height height, EnrollmentManager enroll_man,
+        scope UTXOFinder finder) @safe nothrow
+    {
+        auto this_enrolls = enroll_man.enroll_pool.getEnrollments(height);
+        Set!uint exclude_indices;
+        enroll_man.getEnrollmentIndices(height, exclude_indices);
+
+        foreach (peer; this.peers)
+        {
+            auto peer_enrolls = peer.client.getEnrollments(height, exclude_indices);
+            foreach (enroll ; peer_enrolls)
+            {
+                if (this_enrolls.canFind(enroll))
+                    continue;
+
+                if (enroll_man.enroll_pool.add(enroll, height, finder,
+                        enroll_man.getEnrollmentFinder()))
+                    this_enrolls ~= enroll;
+            }
+        }
     }
 
     /// Shut down timers & dump the metadata
