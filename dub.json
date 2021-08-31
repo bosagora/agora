@@ -86,7 +86,7 @@
                 "source/agora/cli/multi/*",
                 "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*",
-                "source/agora/registry/main.d",
+                "source/agora/registry/*.d",
                 "source/agora/test/*",
                 "source/agora/utils/gc/*"
             ]
