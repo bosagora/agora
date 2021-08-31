@@ -51,7 +51,7 @@ static this ()
 /// Application entry point
 private int main (string[] args)
 {
-    CommandLine cmdln;
+    AgoraCLIArgs cmdln;
 
     stAssertError = new AssertError("You should not see this");
     assertHandler = &handleAssertion;

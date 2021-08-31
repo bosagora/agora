@@ -39,6 +39,28 @@ import core.time;
 /// Path to the import file containing the version information
 public immutable VersionFileName = "VERSION";
 
+/// Agora-specific command line arguments
+public struct AgoraCLIArgs
+{
+    /// Base command line arguments
+    public CLIArgs base;
+
+    ///
+    public alias base this;
+
+    /// If non-`null`, what address to bind the setup interface to
+    public string initialize;
+
+    /// check state of config file and exit early
+    public bool config_check;
+
+    /// Do not output anything
+    public bool quiet;
+
+    /// Print the version information
+    public bool version_;
+}
+
 /// Main config
 public struct Config
 {
@@ -313,31 +335,25 @@ public struct EventHandlerConfig
 }
 
 /// Parse the command-line arguments and return a GetoptResult
-public GetoptResult parseCommandLine (ref CommandLine cmdline, string[] args)
+public GetoptResult parseCommandLine (ref AgoraCLIArgs cmdline, string[] args)
 {
+    auto intermediate = cmdline.base.parse(args);
+    if (intermediate.helpWanted)
+        return intermediate;
+
     return getopt(
         args,
         "initialize",
             "The address at which to offer a web-based configuration interface",
             &cmdline.initialize,
 
-        "config|c",
-            "Path to the config file. Defaults to: " ~ CommandLine.init.config_path,
-            &cmdline.config_path,
-
         "config-check",
             "Check the state of the config and exit",
             &cmdline.config_check,
 
         "quiet|q",
-           "Do not output anything (currently only affects `--config-check`)",
+            "Do not output anything (currently only affects `--config-check`)",
             &cmdline.quiet,
-
-        "override|O",
-            "Override a config file value\n" ~
-            "Example: ./agora -O node.validator=true -o dns=1.1.1.1 -o dns=2.2.2.2\n" ~
-            "Array values are additive, other items are set to the last override",
-            &cmdline.overridesHandler,
 
         "version",
             "Print Agora's version and build informations, then exit",
