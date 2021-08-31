@@ -954,9 +954,11 @@ public class FullNode : API
         this.recordReq("transaction");
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
 
-        if (!this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct,
+        if (auto reason = this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct,
             config.node.min_fee_pct))
         {
+            log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
+                reason, tx, hashFull(tx));
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return;
         }

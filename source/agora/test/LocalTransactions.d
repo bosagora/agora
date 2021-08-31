@@ -88,12 +88,12 @@ unittest
     {
         mixin ForwardCtor!();
 
-        public override bool acceptTransaction (in Transaction tx,
+        public override string acceptTransaction (in Transaction tx,
             in ubyte double_spent_threshold_pct = 0, in ushort min_fee_pct = 0) @safe
         {
             // Dont accept any incoming TX
             log.info("Picky node ignoring TX {}", tx);
-            return false;
+            return "Nah";
         }
     }
 
