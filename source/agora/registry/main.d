@@ -13,12 +13,14 @@
 
 module agora.registry.main;
 
+import agora.common.Config;
 import agora.common.DNS;
 import agora.registry.API;
 import agora.registry.Config;
 import agora.registry.Server;
 import agora.serialization.Serializer;
 import agora.stats.Server;
+import agora.utils.Log;
 
 import vibe.core.core;
 import vibe.core.net;
@@ -28,12 +30,12 @@ import vibe.web.rest;
 
 import std.getopt;
 import std.stdio;
+import std.typecons : Nullable;
 
 ///
 private int main (string[] strargs)
 {
-    import vibe.core.log;
-    CLIArgs args;
+    RegistryCLIArgs args;
     try
     {
         auto help = args.parseCommandLine(strargs);
@@ -49,24 +51,43 @@ private int main (string[] strargs)
         return -1;
     }
 
-    if (args.verbose)
-        setLogLevel(LogLevel.verbose3);
+    Nullable!Config configN = () {
+        try
+            return Nullable!Config(parseConfigFile!Config(args.base));
+        catch (Exception ex)
+        {
+            writefln("Failed to parse configuration file '%s'", args.base.config_path);
+            writeln(ex);
+            return Nullable!Config();
+        }
+    }();
+    if (configN.isNull)
+        return 1;
+
+    auto config = configN.get();
+    // Also in `agora.node.Runner`
+    foreach (const ref settings; config.logging)
+    {
+        if (settings.name.length == 0 || settings.name == "vibe")
+            setVibeLogLevel(settings.level);
+        configureLogger(settings, true);
+    }
 
     StatsServer stats_server;
-    if (args.stats_port != 0)
-        stats_server = new StatsServer(args.stats_port);
+    if (config.http.stats_port != 0)
+        stats_server = new StatsServer(config.http.stats_port);
 
     auto router = new URLRouter();
     auto registry = new NameRegistry();
     router.registerRestInterface(registry);
 
     auto settings = new HTTPServerSettings;
-    settings.port = args.bind_port;
-    settings.bindAddresses = [args.bind_address];
+    settings.port = config.http.port;
+    settings.bindAddresses = [config.http.address];
     listenHTTP(settings, router);
 
-    if (!args.nodns)
-        runTask(() => runDNSServer(registry));
+    if (config.dns.enabled)
+        runTask(() => runDNSServer(config, registry));
 
     return runEventLoop();
 }
@@ -84,16 +105,17 @@ private int main (string[] strargs)
     so client connections should not lead to `Exception` escaping this function.
 
     Params:
+      config = Registry configuration
       registry = The name registry to forward the queries to.
 
 *******************************************************************************/
 
-private void runDNSServer_canThrow (NameRegistry registry)
+private void runDNSServer_canThrow (in Config config, NameRegistry registry)
 {
     // The `listenUDP` needs to be in the `runTask` otherwise we get
     // a fatal error due to a bug in vibe-core (see comment #2):
     /// https://github.com/vibe-d/vibe-core/issues/289
-    auto udp = listenUDP(53);
+    auto udp = listenUDP(config.dns.port, config.dns.address);
     // Otherwise `recv` allocates 65k per call (!!!)
     ubyte[2048] buffer;
     // `recv` will store the peer address here so we can respond
@@ -116,10 +138,10 @@ private void runDNSServer_canThrow (NameRegistry registry)
 }
 
 /// Ditto
-private void runDNSServer (NameRegistry registry) nothrow
+private void runDNSServer (in Config config, NameRegistry registry) nothrow
 {
     try
-        runDNSServer_canThrow(registry);
+        runDNSServer_canThrow(config, registry);
     catch (Exception exc)
     {
         try

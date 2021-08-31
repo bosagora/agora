@@ -16,7 +16,6 @@
 module agora.cli.configdump;
 
 import agora.common.Config;
-import agora.node.Config;
 
 import std.getopt;
 import std.stdio;
@@ -61,6 +60,13 @@ public int main (string[] args)
     switch (cmdln.type)
     {
     case "agora":
+        import agora.node.Config;
+        auto config = parseConfigFile!(Config)(cmdln);
+        writeln("Configuration for ", cmdln.type, " successfully parsed:");
+        writeln(config);
+        return 0;
+    case "registry":
+        import agora.registry.Config;
         auto config = parseConfigFile!(Config)(cmdln);
         writeln("Configuration for ", cmdln.type, " successfully parsed:");
         writeln(config);
