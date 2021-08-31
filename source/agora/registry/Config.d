@@ -15,46 +15,78 @@
 
 module agora.registry.Config;
 
+import agora.common.Config;
+import agora.utils.Log;
+
 import std.conv;
 import std.getopt;
 
 ///
-public struct CLIArgs
+public struct RegistryCLIArgs
 {
-    /// Network interface to bind to
-    public string bind_address = "0.0.0.0";
+    /// Base command line arguments
+    public CLIArgs base;
 
-    /// TCP port to bind to
-    public ushort bind_port = 3003;
-
-    /// Port on which to offer the stats interface - disabled by default
-    public ushort stats_port = 0;
-
-    /// Be extra verbose (enable `Trace` level and Vibe.d debug)
-    public bool verbose = false;
-
-    /// Disable the DNS server
-    public bool nodns = false;
+    ///
+    public alias base this;
 }
 
 /// Parse the command-line arguments and return a GetoptResult
-public GetoptResult parseCommandLine (ref CLIArgs args, string[] strargs)
+public GetoptResult parseCommandLine (ref RegistryCLIArgs args, string[] strargs)
 {
-    return getopt(
-        strargs,
-        "bind-host|h",
-            "Address to bind the HTTP server to, defaults to: " ~ CLIArgs.init.bind_address,
-            &args.bind_address,
-        "bind-port|p",
-            "Port to bind the HTTP server to, defaults to: " ~ CLIArgs.init.bind_port.to!string,
-            &args.bind_port,
-        "stats-port",
-            "Port to bind the stats server to (0 to disable), defaults to: " ~ CLIArgs.init.stats_port.to!string,
-            &args.stats_port,
-        "no-dns",
-            "Disable the registry's DNS server",
-            &args.nodns,
-        "verbose",
-            &args.verbose,
-        );
+    return args.base.parse(strargs, false);
+}
+
+/// Configuration for the name registry
+public struct Config
+{
+    /// DNS server configuration
+    public DNSConfig dns;
+
+    /// HTTP server configuration
+    public HTTPConfig http;
+
+    /// Logging configuration
+    @Key("name")
+    public LoggerConfig[] logging = [ {
+        name: null,
+        level: LogLevel.Info,
+        propagate: true,
+        console: true,
+        additive: true,
+    } ];
+}
+
+///
+public struct DNSConfig
+{
+    /// Whether the DNS server is enabled at all
+    public bool enabled = true;
+
+    /***************************************************************************
+
+        The address to bind to - All interfaces by default
+
+        You might want to set this to your public IP address so it doesn't bind
+        to the local interface, which might be already used by systemd-resolvd.
+
+    ***************************************************************************/
+
+    public string address = "0.0.0.0";
+
+    /// The port to bind to - Default to the standard DNS port (53)
+    public ushort port = 53;
+}
+
+///
+public struct HTTPConfig
+{
+    /// Network interface to bind to
+    public string address = "0.0.0.0";
+
+    /// TCP port to bind to
+    public ushort port = 3003;
+
+    /// Port on which to offer the stats interface - disabled by default
+    public ushort stats_port = 0;
 }
