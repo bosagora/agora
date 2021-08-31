@@ -591,7 +591,8 @@ extern(D):
         Hash utxo = this.getNodeUTXO(envelope.statement.slotIndex, envelope.statement.nodeID);
         if (utxo == Hash.init)
         {
-            log.trace("utxo is Hash.init", envelope.statement.slotIndex);
+            log.trace("No UTXO for the nodeID {} at the slot {}",
+                envelope.statement.nodeID, envelope.statement.slotIndex);
             return;
         }
 
@@ -1119,12 +1120,6 @@ extern(D):
 
         if (validators.length > index)
             utxo = validators[index].utxo;
-
-        if (utxo == Hash.init)
-        {
-            log.trace("utxo is Hash.init", slot_index);
-            assert(0, "utxo is Hash.init");
-        }
 
         return StellarHash(utxo[][0 .. StellarHash.sizeof]);
     }
