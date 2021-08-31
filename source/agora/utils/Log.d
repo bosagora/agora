@@ -513,3 +513,46 @@ private extern(C++, "agora") int getLogLevel (const(char)* logger)
     assert(log !is null);
     return log.level();
 }
+
+/*******************************************************************************
+
+    Set Vibe.d log level according to the configuration's log level
+
+    This is used to ensure we get the right amount of information from Vibe.d
+    Since a log level is the "minimum accepted" level, some level values might
+    not match. For example, if we want Vibe.d's "diagnostic" to be part of
+    the output when we set the loglevel to info, then that's what we must pass
+    to Vibe's `setLogLevel` (and since diagnostic < info, it will include the
+    latter too).
+
+    Params:
+        level = The level at which we want to set the logger
+
+*******************************************************************************/
+
+public void setVibeLogLevel (Ocean.Level level) @safe
+{
+    import vibe.core.log : LogLevel, setLogLevel;
+
+    final switch (level)
+    {
+    case Ocean.Level.Trace:
+        setLogLevel(LogLevel.trace);
+        break;
+    case Ocean.Level.Info:
+        setLogLevel(LogLevel.diagnostic);
+        break;
+    case Ocean.Level.Warn:
+        setLogLevel(LogLevel.warn);
+        break;
+    case Ocean.Level.Error:
+        setLogLevel(LogLevel.error);
+        break;
+    case Ocean.Level.Fatal:
+        setLogLevel(LogLevel.critical);
+        break;
+    case Ocean.Level.None:
+        setLogLevel(LogLevel.none);
+        break;
+    }
+}
