@@ -76,6 +76,7 @@ private int main (string[] strargs)
     StatsServer stats_server;
     if (config.http.stats_port != 0)
         stats_server = new StatsServer(config.http.stats_port);
+    scope (exit) if (stats_server !is null) stats_server.shutdown();
 
     auto router = new URLRouter();
     auto registry = new NameRegistry();
@@ -84,14 +85,19 @@ private int main (string[] strargs)
     auto settings = new HTTPServerSettings;
     settings.port = config.http.port;
     settings.bindAddresses = [config.http.address];
-    listenHTTP(settings, router);
+    auto httplistener = listenHTTP(settings, router);
+    scope (exit) httplistener.stopListening();
 
     if (!config.dns.enabled)
         return runEventLoop();
 
-    runTask(() => runDNSServer(config, registry));
-    auto listener = listenTCP(config.dns.port, (conn) => conn.runTCPDNSServer(registry), config.dns.address);
-    scope (exit) listener.stopListening();
+    auto dnstask = runTask(() => runDNSServer(config, registry));
+    // Here, we might need to interrupt the task to correctly shut down,
+    // however this throws an exception in the task that needs to be explicitly
+    // handled. And it doesn't help with the error messages printed by Vibe.d.
+    //scope (exit) dnstask.interrupt();
+    auto tcplistener = listenTCP(config.dns.port, (conn) => conn.runTCPDNSServer(registry), config.dns.address);
+    scope (exit) tcplistener.stopListening();
     return runEventLoop();
 }
 
@@ -119,6 +125,7 @@ private void runDNSServer_canThrow (in Config config, NameRegistry registry)
     // a fatal error due to a bug in vibe-core (see comment #2):
     /// https://github.com/vibe-d/vibe-core/issues/289
     auto udp = listenUDP(config.dns.port, config.dns.address);
+    scope (exit) udp.close();
     // Otherwise `recv` allocates 65k per call (!!!)
     ubyte[2048] buffer;
     // `recv` will store the peer address here so we can respond
