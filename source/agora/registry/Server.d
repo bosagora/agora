@@ -126,7 +126,7 @@ public final class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    public Message answerQuestions (in Message query)
+    public Message answerQuestions (in Message query) @safe
     {
         Message reply;
         reply.header.RA = false; // TODO: Implement
@@ -173,7 +173,7 @@ public final class NameRegistry: NameRegistryAPI
     ***************************************************************************/
 
     private Header.RCode getValidatorDNSRecord (
-        in Question question, ref ResourceRecord answer)
+        const ref Question question, ref ResourceRecord answer) @safe
     {
         const public_key = parsePublicKeyFromDomain(question.qname);
         if (public_key is PublicKey.init)
