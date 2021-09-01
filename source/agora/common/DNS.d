@@ -168,7 +168,7 @@ public struct Message
 
     ***************************************************************************/
 
-    public ref Message fill (in Header query) return
+    public ref Message fill (in Header query) return @safe pure nothrow @nogc
     {
         this.header.ID = query.ID;
         this.header.QR = true;
