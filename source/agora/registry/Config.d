@@ -88,5 +88,5 @@ public struct HTTPConfig
     public ushort port = 3003;
 
     /// Port on which to offer the stats interface - disabled by default
-    public ushort stats_port = 0;
+    public @Optional ushort stats_port = 0;
 }
