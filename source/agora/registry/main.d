@@ -79,7 +79,7 @@ private int main (string[] strargs)
     scope (exit) if (stats_server !is null) stats_server.shutdown();
 
     auto router = new URLRouter();
-    auto registry = new NameRegistry();
+    auto registry = new NameRegistry(config);
     router.registerRestInterface(registry);
 
     auto settings = new HTTPServerSettings;

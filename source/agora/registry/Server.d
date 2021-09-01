@@ -19,14 +19,18 @@ import agora.common.Types;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.registry.API;
+import agora.registry.Config;
 import agora.serialization.Serializer;
 import agora.stats.Registry;
 import agora.stats.Utils;
 import agora.utils.Log;
 
+import std.algorithm.comparison : equal;
 import std.algorithm.iteration : splitter;
 import std.algorithm.searching : endsWith;
+import std.range : zip;
 import std.socket;
+static import std.uni;
 
 /// Implementation of `NameRegistryAPI` using associative arrays
 public final class NameRegistry: NameRegistryAPI
@@ -35,14 +39,18 @@ public final class NameRegistry: NameRegistryAPI
     protected Logger log;
 
     ///
+    protected Config config;
+
+    ///
     private RegistryPayload[PublicKey] registry_map;
 
     /// Validator count stats
     private RegistryStats registry_stats;
 
     ///
-    public this ()
+    public this (Config config)
     {
+        this.config = config;
         this.log = Logger(__MODULE__);
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
     }
@@ -178,7 +186,8 @@ public final class NameRegistry: NameRegistryAPI
     private Header.RCode getValidatorDNSRecord (
         const ref Question question, ref ResourceRecord answer) @safe
     {
-        const public_key = parsePublicKeyFromDomain(question.qname);
+        const public_key = question.qname
+            .parsePublicKeyFromDomain(this.config.dns.authoritative);
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
@@ -198,35 +207,155 @@ public final class NameRegistry: NameRegistryAPI
 
         return Header.RCode.NoError;
     }
-
 }
 
-/// Simplistic parsing function for domain name
-/// This should be made configurable so that the registry can live under different
-/// addresses, e.g. one for the validator and one for flash.
-private PublicKey parsePublicKeyFromDomain (scope const(char)[] domain)
-    @safe nothrow
-{
-    immutable string[2] ends = [
-        ".net.bosagora.io",
-        ".net.bosagora.io.",
-    ];
+/***************************************************************************
 
-    // TODO: Improve code and support uppercase queries
-    scope odomain = domain;
-    foreach (e; ends)
-        if (domain.endsWith(e))
+    Parse a PublicKey from a domain name
+
+    Our server is authoritative for 'realms', but it still receives UTF-8
+    data, hence we need to iterate the string from beginning to end,
+    and can't do arbitrary lookups.
+
+    Start by checking that the first component has the correct length,
+    then check that the other components are for domain we are
+    authoritative for. If not, the caller will either reject or recurse.
+
+    Params:
+      domain = The full domain name to parse
+      authoritative = The list of domain for which we are authoritative
+
+    Returns:
+      A valid `PublicKey` that `domain` points to, or `PublicKey.init`
+
+    ***************************************************************************/
+
+private PublicKey parsePublicKeyFromDomain (in char[] domain,
+    in string[] authoritative) @safe
+{
+    auto range = domain.splitter('.');
+    if (range.empty)
+        return PublicKey.init;
+
+    enum PublicKeyStringLength = 63;
+    enum NoHRPPublicKeyStringLength = 63 - "boa1".length;
+    // In the future, we may allow things like:
+    // `admin.$PUBKEY.domain`, but for the moment, restrict it to
+    // `$PUBKEY.domain`, and a public key is 63 chars with HRP,
+    // 59 chars otherwise.
+    const(char)[] keyWithHRP;
+    if (range.front.length == PublicKeyStringLength)
+        keyWithHRP = range.front;
+    else if (range.front.length == NoHRPPublicKeyStringLength)
+        keyWithHRP = "boa1" ~ range.front;
+    else
+        return PublicKey.init;
+
+    range.popFront();
+    if (range.empty) return PublicKey.init;
+
+    // Now check that the pubkey is under a domain we know about
+NEXT_DOMAIN:
+    foreach (idx, ad; authoritative)
+    {
+        // We can't use `std.algorithm.comparison : equal` here,
+        // as we may have an empty label at the end,
+        // either for the authoritative domains or the requested one
+        // We can't use a `std.range: {zip,lockstep}` + `foreach` approach either,
+        // as it implicitly saves the range. So make a save of the `domain` range
+        // (as we might be iterating multiple times over it), and do it manually.
+        auto auth_domain_range = ad.splitter('.');
+        auto domain_range = range.save();
+        while (true)
         {
-            domain = domain[0 .. $ - e.length];
-            break;
+            // Pop empty label(s)
+            if (!auth_domain_range.empty && auth_domain_range.front.length == 0)
+                // Note: Should be empty after this, if the caller properly
+                // validated its input to us.
+                auth_domain_range.popFront();
+            if (!domain_range.empty && domain_range.front.length == 0)
+            {
+                domain_range.popFront();
+                // It means we have something like `a..b.com` which is not valid
+                if (!domain_range.empty)
+                    return PublicKey.init;
+            }
+
+            // Different length means they can't be equal
+            if (auth_domain_range.empty != domain_range.empty)
+                continue NEXT_DOMAIN;
+
+            // Found a match
+            if (domain_range.empty)
+                break;
+
+            if (std.uni.sicmp(domain_range.front, auth_domain_range.front))
+                continue NEXT_DOMAIN; // `sicmp` returns `0` on match
+
+            domain_range.popFront();
+            auth_domain_range.popFront();
         }
 
-    // Not something we know about
-    if (odomain.length == domain.length)
-        return PublicKey.init;
+        try
+            return PublicKey.fromString(keyWithHRP);
+        catch (Exception exc)
+            return PublicKey.init;
+    }
+    return PublicKey.init;
+}
 
-    try
-        return PublicKey.fromString(domain);
-    catch (Exception exc)
-        return PublicKey.init;
+// Check domain comparison
+unittest
+{
+    import agora.utils.Test;
+
+    const AStr = WK.Keys.A.address.toString();
+
+    // Most likely case
+    assert((AStr ~ ".net.bosagora.io")
+           .parsePublicKeyFromDomain(["net.bosagora.io"]) == WK.Keys.A.address);
+
+    // Technically, request may end with the null label (a dot), and the user
+    // might also specify it, so test for it.
+    assert((AStr ~ ".net.bosagora.io.")
+           .parsePublicKeyFromDomain(["net.bosagora.io"]) == WK.Keys.A.address);
+    assert((AStr ~ ".net.bosagora.io")
+           .parsePublicKeyFromDomain(["net.bosagora.io."]) == WK.Keys.A.address);
+    assert((AStr ~ ".net.bosagora.io.")
+           .parsePublicKeyFromDomain(["net.bosagora.io."]) == WK.Keys.A.address);
+
+    // Without the HRP
+    assert((AStr["boa1".length .. $] ~ ".net.bosagora.io")
+           .parsePublicKeyFromDomain(["net.bosagora.io"]) == WK.Keys.A.address);
+
+    // Multiple domains
+    assert((AStr ~ ".net.bosagora.io")
+           .parsePublicKeyFromDomain(["net.bosagora.io", "foo.com"]) == WK.Keys.A.address);
+    assert((AStr ~ ".net.bosagora.io")
+           .parsePublicKeyFromDomain(["foo.com", "net.bosagora.io", "bar.foo"]) == WK.Keys.A.address);
+
+    // Only gTLD
+    assert((AStr ~ ".bosagora")
+           .parsePublicKeyFromDomain(["net.foo", ".bosagora", "far.fetched"]) == WK.Keys.A.address);
+
+    // Uppercase / lowercase doesn't matter, except for the key
+    assert((AStr ~ ".BOSAGORA")
+           .parsePublicKeyFromDomain(["net.foo", ".bosagora", "far.fetched"]) == WK.Keys.A.address);
+    assert((AStr ~ ".BoSAGorA")
+           .parsePublicKeyFromDomain(["net.foo", ".bosagora", "far.fetched"]) == WK.Keys.A.address);
+    assert((AStr ~ ".BOSAGORA")
+           .parsePublicKeyFromDomain(["net.foo", ".BoSAgOrA", "far.fetched"]) == WK.Keys.A.address);
+
+    // Rejection tests
+    assert((AStr[1 .. $] ~ ".boa")
+           .parsePublicKeyFromDomain([".boa"]) is PublicKey.init);
+    auto invalid = AStr.dup;
+    invalid[0] = 'c';
+    assert((invalid ~ ".boa")
+           .parsePublicKeyFromDomain(["boa"]) is PublicKey.init);
+
+    assert((AStr ~ ".boa")
+           .parsePublicKeyFromDomain(["boap", "foo.bar"]) is PublicKey.init);
+    assert((AStr ~ ".boa")
+           .parsePublicKeyFromDomain(["boap", "foo.bar", "boa."]) == WK.Keys.A.address);
 }
