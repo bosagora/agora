@@ -858,7 +858,9 @@ public class TestAPIManager
 
     public void createNameRegistry ()
     {
-        auto registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistry();
+        static import agora.registry.Config;
+        auto registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistry(
+            agora.registry.Config.Config.init);
         this.nreg.register("name.registry", registry.ctrl.listener());
     }
 
