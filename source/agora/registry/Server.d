@@ -47,6 +47,9 @@ public final class NameRegistry: NameRegistryAPI
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
     }
 
+    ///
+    mixin DefineCollectorForStats!("registry_stats", "collectRegistryStats");
+
     /***************************************************************************
 
         Get network addresses corresponding to a public key
@@ -196,8 +199,6 @@ public final class NameRegistry: NameRegistryAPI
         return Header.RCode.NoError;
     }
 
-    ///
-    mixin DefineCollectorForStats!("registry_stats", "collectRegistryStats");
 }
 
 /// Simplistic parsing function for domain name
