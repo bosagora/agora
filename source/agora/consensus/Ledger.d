@@ -338,7 +338,8 @@ public class Ledger
             min_fee_pct = See `Config.node.min_fee_pct`
 
         Returns:
-            true if the transaction is valid and was added to the pool
+            reason why invalid or null if the transaction is valid and was added
+            to the pool
 
     ***************************************************************************/
 
@@ -352,9 +353,10 @@ public class Ledger
         // If we were looking for this TX, stop
         this.unknown_txs.remove(tx_hash);
 
-        if (tx.isCoinbase ||
-            this.pool.hasTransactionHash(tx_hash))
-            return "Coinbase or existing TX";
+        if (tx.isCoinbase)
+            return "Coinbase transaction";
+        if (this.pool.hasTransactionHash(tx_hash))
+            return "Transaction already in the pool";
 
         Amount fee_rate;
         auto checkAndSave = (in Transaction tx, Amount tx_fee)
