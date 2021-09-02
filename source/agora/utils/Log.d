@@ -198,7 +198,8 @@ public struct LoggerConfig
 
 public void configureLogger (in LoggerConfig settings, bool clear)
 {
-	auto log = settings.name ? Log.lookup(settings.name) : Log.root;
+	auto log = (settings.name && settings.name != "root") ?
+        Log.lookup(settings.name) : Log.root;
 
     if (clear)
         log.clear();
