@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Tests behavior of `block_interval_sec`
+    Tests behavior of `ConsensusConfig.block_interval`
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -27,7 +27,7 @@ import std.algorithm;
 unittest
 {
     TestConf conf;
-    conf.consensus.block_interval_sec = 10;
+    conf.consensus.block_interval = 10.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -44,5 +44,5 @@ unittest
             en.value.each!(tx => node_1.postTransaction(tx));
             network.expectHeightAndPreImg(Height(en.index + 1));
         });
-    assert(node_1.getNetworkTime() >= startTime + (4 * conf.consensus.block_interval_sec));
+    assert(node_1.getNetworkTime() >= startTime + (4 * conf.consensus.block_interval.total!"seconds"));
 }

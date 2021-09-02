@@ -24,7 +24,7 @@ import agora.test.Base;
 unittest
 {
     TestConf conf;
-    conf.consensus.block_interval_sec = 2;
+    conf.consensus.block_interval = 2.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.setTimeFor(Height(0));
     network.start();
@@ -46,7 +46,7 @@ unittest
         network.setTimeFor(height);
         network.assertSameBlocks(height);
         auto time_offset = nodes[0].getBlocksFrom(height, 1)[0].header.time_offset;
-        assert(time_offset == conf.consensus.block_interval_sec * height);
+        assert(time_offset == conf.consensus.block_interval.total!"seconds" * height);
     }
 
     // Check for adding blocks 1 to 4

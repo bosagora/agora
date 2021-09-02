@@ -50,9 +50,6 @@ public immutable class ConsensusParams
     /// The Genesis block of the chain
     public Block Genesis;
 
-    /// How often blocks should be created
-    public Duration BlockInterval;
-
     /// The address of commons budget
     public PublicKey CommonsBudgetAddress;
 
@@ -62,6 +59,7 @@ public immutable class ConsensusParams
     /// The amount of a penalty for slashed validators
     public Amount SlashPenaltyAmount = 10_000.coins;
 
+    mixin ROProperty!("BlockInterval", "block_interval");
     mixin ROProperty!("ValidatorCycle", "validator_cycle");
     mixin ROProperty!("MaxQuorumNodes", "max_quorum_nodes");
     mixin ROProperty!("QuorumThreshold", "quorum_threshold");
@@ -81,7 +79,6 @@ public immutable class ConsensusParams
             genesis = Genesis block to use for this chain
             commons_budget_address = Address of the 'Commons' budget
             config = The (potentially) user-configured consensus parameters
-            block_interval = How often blocks are expected to be created
 
     ***************************************************************************/
 
@@ -91,7 +88,6 @@ public immutable class ConsensusParams
     {
         this.Genesis = genesis;
         this.CommonsBudgetAddress = commons_budget_address;
-        this.BlockInterval = config.block_interval_sec.seconds;
         this.data = config;
     }
 
@@ -149,7 +145,7 @@ public struct ConsensusConfig
     public Amount min_fee = Amount(700);
 
     /// How often a block should be created
-    public uint block_interval_sec = 600;
+    public Duration block_interval = 10.minutes;
 }
 
 /// Inserts properties functions aliasing `ConsensusConfig`
