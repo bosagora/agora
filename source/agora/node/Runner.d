@@ -130,7 +130,7 @@ public Listeners runNode (Config config)
     if (config.registry.enabled)
     {
         import agora.registry.API;
-        result.registry = new NameRegistry(config.registry);
+        result.registry = new NameRegistry(config.registry, result.node);
         router.registerRestInterface!(NameRegistryAPI)(result.registry);
         if (config.registry.dns.enabled)
         {

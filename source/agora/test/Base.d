@@ -603,7 +603,6 @@ public class TestAPIManager
         this.initial_time = test_start_time;
         this.reg.initialize();
         this.nreg.initialize();
-        this.createNameRegistry();
     }
 
 
@@ -2241,6 +2240,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp, eArgs);
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
+    net.createNameRegistry();
 
     return net;
 }
