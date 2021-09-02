@@ -52,6 +52,9 @@ public final class NameRegistry: NameRegistryAPI
     {
         this.config = config;
         this.log = Logger(__MODULE__);
+        if (this.config.dns.enabled)
+            this.log.info("Starting authoritative DNS server for zones: {}",
+                          this.config.dns.authoritative);
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
     }
 
