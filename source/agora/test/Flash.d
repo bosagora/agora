@@ -605,7 +605,9 @@ version (unittest)
     {
         TestConf conf;
         conf.consensus.quorum_threshold = 100;
-        conf.consensus.min_fee = Amount(0); // TODO: remove this line when fees are handled
+        // TODO: remove this line when fees are handled
+        conf.consensus.min_fee = Amount(0);
+        conf.node.min_fee_pct = 0;
         return conf;
     }
 }
