@@ -228,8 +228,32 @@ public struct NodeConfig
     // increased in order to be added to the transaction pool
     public ubyte double_spent_threshold_pct = 20;
 
-    // The minimum percentage of average fee in the pool which the incoming
-    // transaction should include
+    /***************************************************************************
+
+        Minimum fee percentage for transactions to be added to the pool
+
+        When accepting incoming transactions, only accept transactions where the
+        fee is at least `min_fee_pct` percent of the current transaction pool.
+        This setting can be tuned to prevent DoS attack.
+
+        Setting this to 0 sets the mempool to be unlimited in size.
+
+        Example:
+        The transaction pool has two transactions, `TxA` which is 1000 bytes and
+        has a fee of 15_000_000 (fee rate: 15_000) and another one which is 200
+        bytes and comes with a fee of 1_000_000 (fee rate: 5_000).
+        Hence, the average fee rate of the transaction pool is 10_000 / byte.
+        (Fees are currently not weighted).
+
+        If this is set to 110, and a transaction of 100 bytes arrives,
+        the transaction would need to have at least `(1.1 * (10_000 * 100))`,
+        or 1_100_000 in fees, to make it to the pool.
+
+        On the other hand, if this is set to 50, then the transaction will only
+        need to come with 500_000 of fees (`0.5 * (10_000 * 100)`).
+
+    ***************************************************************************/
+
     public ushort min_fee_pct = 80;
 
     /// The maximum number of transactions relayed in every batch.

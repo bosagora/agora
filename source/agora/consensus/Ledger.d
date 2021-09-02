@@ -333,6 +333,9 @@ public class Ledger
 
         Params:
             tx = the received transaction
+            double_spent_threshold_pct =
+                          See `Config.node.double_spent_threshold_pct`
+            min_fee_pct = See `Config.node.min_fee_pct`
 
         Returns:
             true if the transaction is valid and was added to the pool
