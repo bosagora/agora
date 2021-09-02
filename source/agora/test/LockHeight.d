@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.api.Validator;
 import agora.consensus.data.Transaction;
+import agora.crypto.Hash;
 import agora.test.Base;
 
 /// Ditto
@@ -35,6 +36,7 @@ unittest
     // height 1
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => node_1.postTransaction(tx));
+    txs.each!(tx => network.ensureTxInPool(tx.hashFull()));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     const Height UnlockHeight_2 = Height(2);
@@ -53,6 +55,7 @@ unittest
 
     // should be accepted
     unlock_2_txs.each!(tx => node_1.postTransaction(tx));
+    unlock_2_txs.each!(tx => network.ensureTxInPool(tx.hashFull()));
 
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
