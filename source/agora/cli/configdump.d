@@ -40,7 +40,7 @@ private struct AppCLIArgs
         return getopt(
             args,
             "type|t",
-               "Type of config to parse (agora, registry). Default to: " ~ this.type,
+               "Type of config to parse. Default to: " ~ this.type,
                 &this.type,
         );
     }
@@ -61,12 +61,6 @@ public int main (string[] args)
     {
     case "agora":
         import agora.node.Config;
-        auto config = parseConfigFile!(Config)(cmdln);
-        writeln("Configuration for ", cmdln.type, " successfully parsed:");
-        writeln(config);
-        return 0;
-    case "registry":
-        import agora.registry.Config;
         auto config = parseConfigFile!(Config)(cmdln);
         writeln("Configuration for ", cmdln.type, " successfully parsed:");
         writeln(config);

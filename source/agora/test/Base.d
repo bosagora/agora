@@ -850,6 +850,18 @@ public class TestAPIManager
         return api;
     }
 
+    private static class TestNameRegistry : NameRegistry
+    {
+        import agora.registry.Config;
+
+        public this (RegistryConfig config, string agora_addr, Duration timeout, Registry!TestAPI* reg)
+        {
+            auto listener = reg.locate(agora_addr);
+            assert(listener != typeof(listener).init);
+            super(config, new RemoteAPI!TestAPI(listener, timeout));
+        }
+    }
+
     /***************************************************************************
 
         Create a new name registry
@@ -859,8 +871,8 @@ public class TestAPIManager
     public void createNameRegistry ()
     {
         static import agora.registry.Config;
-        auto registry = RemoteAPI!NameRegistryAPI.spawn!NameRegistry(
-            agora.registry.Config.Config.init);
+        auto registry = RemoteAPI!NameRegistryAPI.spawn!TestNameRegistry(
+            agora.registry.Config.RegistryConfig.init, this.nodes[0].address, 5.seconds, &this.reg);
         this.nreg.register("name.registry", registry.ctrl.listener());
     }
 

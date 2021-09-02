@@ -33,13 +33,13 @@ import std.socket;
 static import std.uni;
 
 /// Implementation of `NameRegistryAPI` using associative arrays
-public final class NameRegistry: NameRegistryAPI
+public class NameRegistry: NameRegistryAPI
 {
     /// Logger instance
     protected Logger log;
 
     ///
-    protected Config config;
+    protected RegistryConfig config;
 
     ///
     private RegistryPayload[PublicKey] registry_map;
@@ -48,7 +48,7 @@ public final class NameRegistry: NameRegistryAPI
     private RegistryStats registry_stats;
 
     ///
-    public this (Config config)
+    public this (RegistryConfig config)
     {
         this.config = config;
         this.log = Logger(__MODULE__);

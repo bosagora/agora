@@ -24,6 +24,7 @@ import agora.consensus.data.Params;
 import agora.crypto.Key;
 import agora.flash.Config;
 import agora.utils.Log;
+import agora.registry.Config;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
@@ -93,6 +94,9 @@ public struct Config
 
     /// The administrator interface config
     public AdminConfig admin;
+
+    /// Name registry configuration
+    public RegistryConfig registry;
 
     /// The list of IPs for use with network discovery
     public @Optional immutable string[] network;

@@ -51,17 +51,7 @@
             "sourceFiles-windows": [
                 "build/TracyClient.obj"
             ],
-            "excludedSourceFiles": ["source/agora/cli/*", "source/agora/registry/main.d"]
-        },
-        {
-            "name": "name-registry",
-            "targetName": "name-registry",
-            "mainSourceFile": "source/agora/registry/main.d",
-            "excludedSourceFiles": [
-                "source/agora/cli/*",
-                "source/agora/node/main.d",
-                "source/agora/utils/gc/*"
-            ]
+            "excludedSourceFiles": ["source/agora/cli/*",]
         },
         {
             "name": "client",

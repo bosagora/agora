@@ -24,40 +24,14 @@ import std.exception;
 import std.format;
 import std.getopt;
 
-///
-public struct RegistryCLIArgs
-{
-    /// Base command line arguments
-    public CLIArgs base;
-
-    ///
-    public alias base this;
-}
-
-/// Parse the command-line arguments and return a GetoptResult
-public GetoptResult parseCommandLine (ref RegistryCLIArgs args, string[] strargs)
-{
-    return args.base.parse(strargs, false);
-}
-
 /// Configuration for the name registry
-public struct Config
+public struct RegistryConfig
 {
+    /// If this node should also act as a registry
+    public bool enabled;
+
     /// DNS server configuration
     public DNSConfig dns;
-
-    /// HTTP server configuration
-    public HTTPConfig http;
-
-    /// Logging configuration
-    @Key("name")
-    public LoggerConfig[] logging = [ {
-        name: null,
-        level: LogLevel.Info,
-        propagate: true,
-        console: true,
-        additive: true,
-    } ];
 
     /// Validate the semantic of the user-provided configuration
     public void validate () const
@@ -96,9 +70,6 @@ public struct Config
                 } while (!rng.empty);
             }
         }
-
-        enforce(this.http.address.length, "Missing http.address field");
-        enforce(this.http.port > 0, "http.port: 0 is not a valid value");
     }
 }
 
@@ -123,18 +94,5 @@ public struct DNSConfig
     public ushort port = 53;
 
     /// Which zones this server is authoritative for
-    public string[] authoritative;
-}
-
-///
-public struct HTTPConfig
-{
-    /// Network interface to bind to
-    public string address = "0.0.0.0";
-
-    /// TCP port to bind to
-    public ushort port = 3003;
-
-    /// Port on which to offer the stats interface - disabled by default
-    public @Optional ushort stats_port = 0;
+    public immutable(string[]) authoritative;
 }
