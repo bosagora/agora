@@ -374,11 +374,10 @@ public class Ledger
         if (!min_fee.percentage(min_fee_pct))
             assert(0);
 
-        if (fee_rate < min_fee ||
-            !this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
-        {
-            return "Not enough fees";
-        }
+        if (fee_rate < min_fee)
+            return "Fee rate is lower than this node's configured relative threshold (min_fee_pct)";
+        if (!this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
+            return "Double spend comes with a less-than-acceptable fee increase";
 
         return this.pool.add(tx, fee_rate) ? null : "Rejected by storage";
     }
