@@ -1211,6 +1211,12 @@ public class TestAPIManager
     {
         retryFor(indices.each!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
     }
+
+    /// Ditto
+    public void ensureTxInPool (in Hash hash)
+    {
+        this.ensureTxInPool(hash, iota(this.clients.length));
+    }
 }
 
 /*******************************************************************************
