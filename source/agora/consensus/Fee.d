@@ -1,6 +1,10 @@
 /*******************************************************************************
 
-    Contains the function to calculate the fees used to store the data
+    Contains the function to calculate the fees and stores the results in a db.
+
+    Fees are the sum of output values minus the sum of input values.
+    We store the calculated fees after each block is externalized as we have all
+    the inputs available in the UTXO set at that time.
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -28,6 +32,7 @@ import agora.crypto.Key;
 import std.math;
 import std.algorithm;
 import std.array;
+import std.range;
 
 /// Delegate to check data payload
 public alias FeeChecker = string delegate (in Transaction tx,
@@ -189,16 +194,19 @@ public class FeeManager
 
     /***************************************************************************
 
-        Accumulated fee per public key
+        Accumulated fee per public key and payout height
 
         Note that while we usually use UTXO hashes to refer to validators
         instead of public keys (as two validators could be using the same public
         key, although that is not recommended), the public key is what is used
         to generated the UTXO, hence why it is used as index.
+        The `coinbase_height` is the height of the block with the `Coinbase`
+        transaction to pay what is due from the payout period preceding the one
+        just completed.
 
     ***************************************************************************/
 
-    private Amount[PublicKey] accumulated_fees;
+    private Amount[PublicKey][Height] accumulated_fees;
 
     /// Ctor
     public this (ManagedDatabase db, immutable(ConsensusParams) params)
@@ -212,16 +220,17 @@ public class FeeManager
     private void init ()
     {
         this.db.execute("CREATE TABLE IF NOT EXISTS accumulated_fees " ~
-            "(public_key TEXT PRIMARY KEY, fee INTEGER)");
+            "(public_key TEXT PRIMARY KEY, fee INTEGER, coinbase_height INTEGER)");
 
-        auto results = this.db.execute("SELECT public_key, fee " ~
+        auto results = this.db.execute("SELECT public_key, fee, coinbase_height " ~
             " FROM accumulated_fees");
 
         foreach (ref row; results)
         {
             const key = PublicKey.fromString(row.peek!(char[])(0));
             const fee = Amount(row.peek!(ulong)(1));
-            this.accumulated_fees[key] = fee;
+            const height = Height(row.peek!(ulong)(2));
+            this.accumulated_fees[height][key] = fee;
         }
     }
 
@@ -330,7 +339,6 @@ public class FeeManager
 
         Params:
             tot_fee = Total amount of fees
-            tot_data_fee = Total amount of data fees
             validators = Enrolled Validators
 
         Return:
@@ -338,11 +346,8 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount getCommonsBudgetFee (Amount tot_fee, Amount tot_data_fee,
-        ValidatorInfo[] validators) nothrow @safe
+    private Amount getCommonsBudgetFee (Amount tot_fee, in Amount[] validator_fees) nothrow @safe
     {
-        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, validators);
-
         scope (failure) assert(0);
         Amount total_val_fee;
         validator_fees.each!(fee => total_val_fee += fee);
@@ -368,40 +373,47 @@ public class FeeManager
     public void accumulateFees (in Block block, ValidatorInfo[] validators,
         scope UTXOFinder peekUTXO) @trusted
     {
+        assert(block.header.height > 0); // No fees for Genesis Block
+
+        // Filter out the missing validators as they will not get paid fees for this block
+        auto vals_to_pay = validators.enumerate.filter!(en => !block.header.missing_validators.canFind(en.index)).map!(en => en.value).array;
+
+        // Height in the future which will be the block with the Coinbase transaction to include this block's payouts
+        auto coinbase_height = Height(block.header.height
+            - (block.header.height % this.params.PayoutPeriod)
+            + 2 * this.params.PayoutPeriod);
         Amount tot_fee, tot_data_fee;
         this.getTXSetFees(block.txs, peekUTXO, tot_fee, tot_data_fee);
 
-        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, validators);
+        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, vals_to_pay);
 
-        const commons_fees = this.getCommonsBudgetFee(tot_fee, tot_data_fee, validators);
+        const commons_fees = this.getCommonsBudgetFee(tot_fee, validator_fees);
 
-        foreach (idx, validator; validators)
+        foreach (idx, validator; vals_to_pay)
         {
-            if (!block.header.missing_validators.canFind(idx))
-            {
-                this.accumulated_fees.update(validator.address,
-                    { return validator_fees[idx]; },
-                    (ref Amount so_far) {
-                        so_far += validator_fees[idx];
-                        return so_far;
-                    }
-                );
-
-                this.db.execute(
-                    "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                    this.accumulated_fees[validator.address].tupleof[0], validator.address);
-            }
-        }
-        this.accumulated_fees.update(this.params.CommonsBudgetAddress,
-                { return commons_fees; },
+            this.accumulated_fees.require(coinbase_height).update(validator.address,
+                { return validator_fees[idx]; },
                 (ref Amount so_far) {
-                    so_far += commons_fees;
+                    so_far += validator_fees[idx];
                     return so_far;
                 }
             );
+
+            this.db.execute(
+                "REPLACE INTO accumulated_fees (fee, public_key, coinbase_height) VALUES (?,?,?)",
+                this.accumulated_fees[coinbase_height][validator.address].tupleof[0], validator.address, coinbase_height);
+        }
+        this.accumulated_fees.require(coinbase_height).update(this.params.CommonsBudgetAddress,
+            { return commons_fees; },
+            (ref Amount so_far) {
+                so_far += commons_fees;
+                return so_far;
+            }
+        );
         this.db.execute(
-                "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                this.accumulated_fees[this.params.CommonsBudgetAddress].tupleof[0], this.params.CommonsBudgetAddress);
+                "REPLACE INTO accumulated_fees (fee, public_key, coinbase_height) VALUES (?,?,?)",
+                this.accumulated_fees[coinbase_height][this.params.CommonsBudgetAddress].tupleof[0],
+                this.params.CommonsBudgetAddress, coinbase_height);
     }
 
     /***************************************************************************
@@ -410,25 +422,42 @@ public class FeeManager
         height
 
         Params:
-            height = requested height
+            height = height of block to add Coinbase transaction for payouts
 
         Return:
-            `Amount` of fees that should be paid to each Validator
+            `Amount` of fees that should be paid to each Validator and Commons Budget
 
     ***************************************************************************/
 
     public Amount[PublicKey] getAccumulatedFees (in Height height) nothrow @safe
     {
-        return height % this.params.PayoutPeriod == 0 ? this.accumulated_fees : null;
+        assert(height >= 2 * this.params.PayoutPeriod
+            && height % this.params.PayoutPeriod == 0);
+
+        return this.accumulated_fees[height];
     }
 
-    /// Clears the accumulated fees
-    public void clearAccumulatedFees () nothrow @trusted
+    /***************************************************************************
+
+        Clear any accumulated fees for the specified coinbase payout height
+
+        This removes the records from the database and also the
+        `this.accumulated_fees` map in memory
+
+        Params:
+            height = height of block which contained the Coinbase transaction
+            for the payouts
+
+    ***************************************************************************/
+
+    public void clearAccumulatedFees (in Height height) nothrow @trusted
     {
+        assert(height >= 2 * this.params.PayoutPeriod
+            && height % this.params.PayoutPeriod == 0);
         try
         {
-            this.db.execute("DELETE FROM accumulated_fees");
-            this.accumulated_fees.clear();
+            this.db.execute("DELETE FROM accumulated_fees where coinbase_height <= ?", height);
+            this.accumulated_fees.remove(height);
         } catch (Exception e)
         {
             assert(0, e.msg); // Should never happen
@@ -550,8 +579,7 @@ public class FeeManager
         Amount tot_fee = Amount.UnitPerCoin; assert(tot_fee.mul(2));
         auto w_data_fees = man.getValidatorFees(tot_fee,
             Amount.UnitPerCoin, validators);
-        auto commons_fee = man.getCommonsBudgetFee(tot_fee,
-            Amount.UnitPerCoin, validators);
+        auto commons_fee = man.getCommonsBudgetFee(tot_fee, w_data_fees);
 
         tot_fee -= commons_fee;
         foreach (fee; w_data_fees)
@@ -633,9 +661,15 @@ unittest
     auto valInfo = ValidatorInfo(Height(1), utxo.output.address, utxo.output.value);
     fee_man.accumulateFees(block, [ valInfo ] , &utxo_set.peekUTXO);
 
-    auto fee_man_2 = new FeeManager(fee_man.db, new immutable(ConsensusParams));
+    immutable Params = new immutable(ConsensusParams);
+    auto fee_man_2 = new FeeManager(fee_man.db, Params);
+
+    auto fees = fee_man.getAccumulatedFees(Height(288));
+    assert(fees.length == 2);
+    assert(fees[WK.Keys.NODE2.address] > Amount(0));
+    assert(fees[Params.CommonsBudgetAddress] > Amount(0));
 
     // fee_man_2 should recover from DB
-    assert(fee_man.getAccumulatedFees(Height(0)) ==
-        fee_man_2.getAccumulatedFees(Height(0)));
+    assert(fee_man.getAccumulatedFees(Height(288)) ==
+        fee_man_2.getAccumulatedFees(Height(288)));
 }

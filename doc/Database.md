@@ -56,12 +56,12 @@ This table should be removed in favor of querying `validator` directly.
 
 ### `accumulated_fee` table
 
-Note sure why we need this.
+Keep track of fees as blocks are externalized (when the UTXO set has all the inputs still)
 
 | Field name | SQL Type | D type     | Attributes  | Comment             |
 |------------|----------|------------|-------------|---------------------|
 | public_key | TEXT     | PublicKey  | PRIMARY KEY |                     |
-| fee        | TEXT     | INTEGER    |             |                     |
+| fee        | INTEGER  | Amount     |             |                     |
 
 ## Cache DB
 

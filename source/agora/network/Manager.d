@@ -1001,7 +1001,7 @@ public class NetworkManager
 
         try
         {
-            auto start_height = ledger.getLastPaymentBlock();
+            auto start_height = ledger.getLastPaidHeight();
             auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
             size_t[Height] enrolled_validators = headers.map!(header =>
                 tuple(header.height, header.validators.count)).assocArray;
