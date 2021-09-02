@@ -211,7 +211,7 @@ public class FeeManager
     private void init ()
     {
         this.db.execute("CREATE TABLE IF NOT EXISTS accumulated_fees " ~
-            "(public_key TEXT PRIMARY KEY, fee TEXT)");
+            "(public_key TEXT PRIMARY KEY, fee INTEGER)");
 
         auto results = this.db.execute("SELECT public_key, fee " ~
             " FROM accumulated_fees");
@@ -219,7 +219,7 @@ public class FeeManager
         foreach (ref row; results)
         {
             const key = PublicKey.fromString(row.peek!(char[])(0));
-            const fee = Amount.fromString(row.peek!(char[])(1));
+            const fee = Amount(row.peek!(ulong)(1));
             this.accumulated_fees[key] = fee;
         }
     }
@@ -388,7 +388,7 @@ public class FeeManager
 
             this.db.execute(
                 "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                this.accumulated_fees[stake.output.address], stake.output.address);
+                this.accumulated_fees[stake.output.address].tupleof[0], stake.output.address);
         }
         this.accumulated_fees.update(this.params.CommonsBudgetAddress,
                 { return commons_fees; },
@@ -399,7 +399,7 @@ public class FeeManager
             );
         this.db.execute(
                 "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                this.accumulated_fees[this.params.CommonsBudgetAddress], this.params.CommonsBudgetAddress);
+                this.accumulated_fees[this.params.CommonsBudgetAddress].tupleof[0], this.params.CommonsBudgetAddress);
     }
 
     /***************************************************************************

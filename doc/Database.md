@@ -60,7 +60,7 @@ Note sure why we need this.
 | Field name | SQL Type | D type     | Attributes  | Comment             |
 |------------|----------|------------|-------------|---------------------|
 | public_key | TEXT     | PublicKey  | PRIMARY KEY |                     |
-| fee        | TEXT     | Enrollment |             | Should be `INTEGER` |
+| fee        | INTEGER  | Amount     |             |                     |
 
 ## Cache DB
 
