@@ -734,7 +734,7 @@ private auto viaConverter (alias FR) (Node node)
 
     static assert(Converters.length == 1,
                   "Field `" ~ FId!(FR.Ref) ~ "` cannot have more than one `Converter`");
-    return Converters[0].converter(node.as!string);
+    return Converters[0].converter(node);
 }
 
 /*******************************************************************************

@@ -174,7 +174,7 @@ public struct SetInfo (T)
 
 /*******************************************************************************
 
-    Provides a means to convert a field from a `string` to a complex type
+    Provides a means to convert a field from a `Node` to a complex type
 
     When filling the config, it might be useful to store types which are
     not only simple `string` and integer, such as `URL`, `BigInt`, or any other
@@ -182,7 +182,7 @@ public struct SetInfo (T)
 
     To allow reading those values from the config file, a `Converter` may
     be used. The converter will tell the `ConfigFiller` how to convert from
-    `string` to the desired type `T`.
+    `Node` to the desired type `T`.
 
     If the type is under the user's control, one can also add a constructor
     accepting a single string, or define the `fromString` method, both of which
@@ -212,10 +212,15 @@ public struct SetInfo (T)
     public struct Person
     {
         ///
-        @Converter!Age((string value) => Age.parse(value))
+        @Converter!Age((Node value) => Age.parse(value.as!string))
         public Age age;
     }
     ```
+
+    Note that some fields may also be of multiple YAML types, such as DUB's
+    `dependencies`, which is either a simple string (`"vibe-d": "~>1.0 "`),
+    or an in its complex form (`"vibe-d": { "version": "~>1.0" }`).
+    For those use cases, a `Converter` is the best approach.
 
     To avoid repeating the field type, a convenience function is provided:
     ```
@@ -231,7 +236,7 @@ public struct SetInfo (T)
     {
         /// Here `converter` will deduct the type from the delegate argument,
         /// and return an instance  of `Converter`. Mind the case.
-        @converter((string value) => Age.parse(value))
+        @converter((Node value) => Age.parse(value.as!string))
         public Age age;
     }
     ```
@@ -240,8 +245,10 @@ public struct SetInfo (T)
 
 public struct Converter (T)
 {
+    import dyaml.node;
+
     ///
-    public alias ConverterFunc = T function (string input);
+    public alias ConverterFunc = T function (Node input);
 
     ///
     public ConverterFunc converter;
