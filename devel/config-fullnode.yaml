@@ -21,7 +21,8 @@ interfaces:
     port:    2826
 
 consensus:
-  block_interval_sec: 20
+  block_interval:
+    seconds: 20
   validator_cycle: 20
 
 validator:
