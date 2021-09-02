@@ -15,6 +15,7 @@ module agora.node.Runner;
 
 import agora.api.FullNode;
 import agora.api.Validator;
+import agora.common.DNS;
 import agora.common.Task : Periodic;
 import agora.flash.api.FlashAPI;
 import agora.flash.Node;
@@ -22,7 +23,11 @@ import agora.node.admin.AdminInterface;
 import agora.node.Config;
 import agora.node.FullNode;
 import agora.node.Validator;
+import agora.serialization.Serializer;
 import agora.utils.Log;
+
+import agora.registry.Config;
+import agora.registry.Server;
 
 import ocean.util.log.ILogger;
 
@@ -37,6 +42,7 @@ import std.algorithm : filter;
 import std.file;
 import std.format;
 import std.typecons : Tuple, tuple;
+import std.stdio;
 
 import core.time;
 
@@ -45,6 +51,7 @@ public alias Listeners = Tuple!(
     FullNode, "node",
     AdminInterface, "admin",
     AgoraFlashNode, "flash",
+    NameRegistry, "registry",
     HTTPListener[], "http"
  );
 
@@ -107,6 +114,30 @@ public Listeners runNode (Config config)
             &result.node.getBlock, result.node.getNetworkManager());
         router.registerRestInterface!FlashAPI(flash);
         result.flash = flash;
+    }
+
+    TCPListener dnstcplistener;
+    scope (exit)
+        if (config.registry.enabled && config.registry.dns.enabled)
+        {
+            // Here, we might need to interrupt the task to correctly shut down,
+            // however this throws an exception in the task that needs to be explicitly
+            // handled. And it doesn't help with the error messages printed by Vibe.d.
+            //dnstask.interrupt();
+            dnstcplistener.stopListening();
+        }
+
+    if (config.registry.enabled)
+    {
+        import agora.registry.API;
+        result.registry = new NameRegistry(config.registry);
+        router.registerRestInterface!(NameRegistryAPI)(result.registry);
+        if (config.registry.dns.enabled)
+        {
+            /* auto dnstask = */ runTask(() => runDNSServer(config.registry, result.registry));
+            dnstcplistener = listenTCP(config.registry.dns.port, (conn) => conn.runTCPDNSServer(result.registry),
+                config.registry.dns.address);
+        }
     }
 
     bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
@@ -234,4 +265,117 @@ private TLSContext getTLSContext (out string user_help_message)
     }
 
     return ctx;
+}
+
+/*******************************************************************************
+
+    Starts the DNS server using the provided registry
+
+    This listens to UDP port 53 for DNS queries, which are then forwarded
+    to the registry to be answered.
+
+    The `canThrow` function is wrapped by a higher level `nothrow` one,
+    which handles the `try` / `catch` in case of fatal error.
+    Throwing from the `canThrow`function is a fatal error,
+    so client connections should not lead to `Exception` escaping this function.
+
+    Params:
+      config = Registry configuration
+      registry = The name registry to forward the queries to.
+
+*******************************************************************************/
+
+private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry registry)
+{
+    // The `listenUDP` needs to be in the `runTask` otherwise we get
+    // a fatal error due to a bug in vibe-core (see comment #2):
+    /// https://github.com/vibe-d/vibe-core/issues/289
+    auto udp = listenUDP(config.dns.port, config.dns.address);
+    scope (exit) udp.close();
+    // Otherwise `recv` allocates 65k per call (!!!)
+    ubyte[2048] buffer;
+    // `recv` will store the peer address here so we can respond
+    NetworkAddress peer;
+    while (true)
+    {
+        try
+        {
+            auto pack = udp.recv(buffer, &peer);
+            auto query = deserializeFull!Message(pack);
+            auto resp = registry.answerQuestions(query);
+            udp.send(serializeFull(resp), &peer);
+        }
+        catch (Exception exc)
+        {
+            scope (failure) assert(0);
+            stderr.writeln("Exception thrown while handling query: ", exc);
+        }
+    }
+}
+
+/// Ditto
+private void runDNSServer (in RegistryConfig config, NameRegistry registry) nothrow
+{
+    try
+        runDNSServer_canThrow(config, registry);
+    catch (Exception exc)
+    {
+        try
+            stderr.writeln("Fatal error while running the DNS server: ", exc);
+        catch (Exception exc2)
+            printf("Couldn't print message following fatal error in DNS!\n");
+        assert(0);
+    }
+}
+
+/*******************************************************************************
+
+    Run the DNS server on TCP port 53
+
+    While regular requests are sent over UDP, some actions,
+    such as zone transfer, or retry when truncation is encountered,
+    are done of TCP.
+
+    For the `canThrow` function, see `runDNSServer`'s documentation.
+
+    Params:
+      conn = TCP connection for this request.
+      registry = The name registry to forward the queries to.
+
+*******************************************************************************/
+
+private void runTCPDNSServer (TCPConnection conn, NameRegistry registry) @trusted nothrow
+{
+    try
+        runTCPDNSServer_canThrow(conn, registry);
+    catch (Exception exc)
+    {
+        try
+            stderr.writeln("Fatal error while running the DNS server (TCP): ", exc);
+        catch (Exception exc2)
+            printf("Couldn't print message following fatal error in (TCP) DNS!\n");
+        assert(0);
+    }
+}
+
+/// Ditto
+private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry) @trusted
+{
+    ubyte[2048] buffer;
+    scope reader = (size_t size) @safe {
+        assert(size <= buffer.length);
+        conn.read(buffer[0 .. size]);
+        return buffer[0 .. size];
+    };
+
+    try
+    {
+        auto query = deserializeFull!Message(reader);
+        auto resp = registry.answerQuestions(query);
+        resp.serializePart(&conn.write);
+    }
+    catch (Exception exc)
+    {
+        stderr.writeln("Exception happened while handling TCP request: {}", exc);
+    }
 }

@@ -269,3 +269,21 @@ event_handlers:
   TransactionReceived:
     addresses:
       - http://127.0.0.1:3836/transaction_received
+
+################################################################################
+##                             Registry configuration                         ##
+## Configuration for the name registry.                                       ##
+##                                                                            ##
+################################################################################
+registry:
+  # If this node should also act as a registry
+  enabled: true
+
+  # DNS server configuration
+  dns:
+    enabled: true
+    address: 0.0.0.0
+    port: 53
+    authoritative:
+    - "validators.bosagora.io"
+    - "flash.bosagora.io"
