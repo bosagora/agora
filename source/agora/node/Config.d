@@ -257,7 +257,7 @@ public struct ValidatorConfig
     public bool enabled;
 
     /// The seed to use for the keypair of this node
-    @Converter!KeyPair((string value) => KeyPair.fromSeed(SecretKey.fromString(value)))
+    @Converter!KeyPair((value) => KeyPair.fromSeed(SecretKey.fromString(value.as!string)))
     public @Name("seed") immutable KeyPair key_pair;
 
     /// The seed of PreImageCycle which is not parsed from the configuraton file
