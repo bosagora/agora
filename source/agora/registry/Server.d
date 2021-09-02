@@ -13,9 +13,11 @@
 
 module agora.registry.Server;
 
+import agora.api.FullNode : FullNodeAPI = API;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.Types;
+import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.registry.API;
@@ -48,13 +50,23 @@ public class NameRegistry: NameRegistryAPI
     private RegistryStats registry_stats;
 
     ///
-    public this (RegistryConfig config)
+    private FullNodeAPI agora_node;
+
+    ///
+    private Height validator_info_height;
+
+    ///
+    private ValidatorInfo[] validator_info;
+
+    ///
+    public this (RegistryConfig config, FullNodeAPI agora_node)
     {
         this.config = config;
         this.log = Logger(__MODULE__);
         if (this.config.dns.enabled)
             this.log.info("Starting authoritative DNS server for zones: {}",
                           this.config.dns.authoritative);
+        this.agora_node = agora_node;
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
     }
 
@@ -107,6 +119,8 @@ public class NameRegistry: NameRegistryAPI
 
     public override void putValidator (RegistryPayload registry_payload)
     {
+        import std.algorithm;
+
         // verify signature
         ensure(registry_payload.verifySignature(registry_payload.data.public_key),
                 "Incorrect signature for payload");
@@ -115,6 +129,15 @@ public class NameRegistry: NameRegistryAPI
         if (auto previous = registry_payload.data.public_key in registry_map)
             ensure(previous.data.seq <= registry_payload.data.seq,
                 "registry already has a more up-to-date version of the data");
+
+        auto last_height = this.agora_node.getBlockHeight() + 1;
+        if (last_height > this.validator_info_height || this.validator_info.length == 0)
+        {
+            this.validator_info = this.agora_node.getValidators(last_height);
+            this.validator_info_height = last_height;
+        }
+        ensure(this.validator_info.map!(info => info.address)
+            .canFind(registry_payload.data.public_key), "Not an enrolled validator");
 
         // register data
         log.info("Registering network addresses: {} for public key: {}", registry_payload.data.addresses,
