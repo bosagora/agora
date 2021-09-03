@@ -47,6 +47,7 @@ version (unittest)
         enrollment = The enrollment of the target to be verified
         findUTXO = delegate to find the referenced unspent UTXOs with
         height = The `Height` that this `Enrollment` is proposed at
+        stake = an output param for the staked `Amount` for this enroll
 
     Returns:
         `null` if the validator's UTXO is valid, otherwise a string
@@ -58,12 +59,23 @@ public string isInvalidReason (in Enrollment enrollment,
     scope UTXOFinder findUTXO, in Height height,
     scope EnrollmentFinder findEnrollment) nothrow @safe
 {
+    Amount stake; // The stake is not always needed by the caller, hence this overload
+    return isInvalidReason(enrollment, findUTXO, height, findEnrollment, stake);
+}
+
+/// Ditto
+public string isInvalidReason (in Enrollment enrollment,
+    scope UTXOFinder findUTXO, in Height height,
+    scope EnrollmentFinder findEnrollment, out Amount stake) nothrow @safe
+{
     UTXO utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
         return "Enrollment: UTXO not found";
 
     if (utxo_set_value.output.type != OutputType.Freeze)
         return "Enrollment: UTXO is not frozen";
+
+    stake = utxo_set_value.output.value;
 
     Point address = utxo_set_value.output.address;
 

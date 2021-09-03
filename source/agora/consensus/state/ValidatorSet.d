@@ -15,6 +15,7 @@
 
 module agora.consensus.state.ValidatorSet;
 
+import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -91,7 +92,7 @@ public class ValidatorSet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator " ~
             "(key TEXT, public_key TEXT, " ~
             "cycle_length INTEGER, enrolled_height INTEGER, " ~
-            "nonce TEXT, slashed_height INTEGER,
+            "nonce TEXT, slashed_height INTEGER, stake INTEGER,
             PRIMARY KEY (key, enrolled_height))");
 
         // create the table for preimages if it doesn't exist yet
@@ -120,9 +121,10 @@ public class ValidatorSet
     {
         import agora.consensus.validation.Enrollment : isInvalidReason;
 
-        // check validaty of the enrollment data
-        if (auto reason = isInvalidReason(enroll, finder,
-                                    height, &this.findRecentEnrollment))
+        Amount stake;
+        // check validaty of the enrollment data and fetch stake `Amount`
+        if (auto reason = isInvalidReason(enroll, finder, height,
+            &this.findRecentEnrollment, stake))
             return reason;
 
         // check if already exists
@@ -142,12 +144,14 @@ public class ValidatorSet
                     enroll.utxo_key, height.value,
                     enroll.commitment);
                 this.db.execute("INSERT INTO validator " ~
-                    "(key, public_key, cycle_length, enrolled_height, nonce) " ~
-                    "VALUES (?, ?, ?, ?, ?)",
+                    "(key, public_key, cycle_length, enrolled_height, nonce, stake) " ~
+                    "VALUES (?, ?, ?, ?, ?, ?)",
                     enroll.utxo_key,
                     pubkey,
-                    enroll.cycle_length, height.value,
-                    enroll.enroll_sig.R);
+                    enroll.cycle_length,
+                    height.value,
+                    enroll.enroll_sig.R,
+                    stake);
             }();
         }
         catch (Exception ex)
@@ -324,8 +328,9 @@ public class ValidatorSet
     public ValidatorInfo[] getValidators (in Height height) @trusted
     {
         auto results = this.db.execute(
-            "SELECT enrolled_height, public_key, validator.key, preimages.preimage," ~
-            "preimages.height FROM validator " ~
+            "SELECT enrolled_height, public_key, stake, validator.key,
+            preimages.preimage, preimages.height " ~
+            "FROM validator " ~
             "INNER JOIN preimages on preimages.key = validator.key " ~
             "WHERE enrolled_height >= ? AND enrolled_height < ? " ~
             "AND (slashed_height is null OR slashed_height >= ?) " ~
@@ -337,10 +342,11 @@ public class ValidatorSet
             ret ~= ValidatorInfo(
                 /* enrolled: */ Height(row.peek!(ulong)(0)),
                 /* address:  */ PublicKey.fromString(row.peek!(char[], PeekMode.slice)(1)),
+                /* stake:    */ Amount(row.peek!(ulong)(2)),
                 /* preimage: */ PreImageInfo(
-                /*     utxo:   */ Hash(row.peek!(const(char)[], PeekMode.slice)(2)),
-                /*     hash:   */ Hash(row.peek!(const(char)[], PeekMode.slice)(3)),
-                /*     height: */ Height(row.peek!(ulong)(4)),
+                /*     utxo:   */ Hash(row.peek!(const(char)[], PeekMode.slice)(3)),
+                /*     hash:   */ Hash(row.peek!(const(char)[], PeekMode.slice)(4)),
+                /*     height: */ Height(row.peek!(ulong)(5)),
                     ),
                 );
 
@@ -634,46 +640,6 @@ public class ValidatorSet
         }
 
         return false;
-    }
-
-    /***************************************************************************
-
-        Query stakes of active Validators
-
-        Params:
-            height = block height
-            peekUTXO = A delegate to query UTXOs
-            utxos = Array to save the stakes
-
-        Returns:
-            Staked UTXOs of existing Validators
-
-    ***************************************************************************/
-
-    public UTXO[] getValidatorStakes (in Height height, UTXOFinder peekUTXO, ref UTXO[] utxos,
-        const ref uint[] missing_validators) @trusted nothrow
-    {
-        import std.algorithm;
-        import std.range;
-        utxos.length = 0;
-        assumeSafeAppend(utxos);
-
-        Hash[] keys;
-        if (!this.getEnrolledUTXOs(height, keys) || keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
-
-        keys.enumerate.each!((idx, key) {
-            if (missing_validators.canFind(idx))
-                return;
-            UTXO utxo;
-            assert(peekUTXO(key, utxo), "Missing enroll UTXO");
-            utxos ~= utxo;
-        });
-
-        return utxos;
     }
 
     /***************************************************************************

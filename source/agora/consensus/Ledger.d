@@ -213,7 +213,7 @@ public class Ledger
         Expose the list of validators at a given height
 
         The `ValidatorInfo` struct contains the validator's UTXO hash, address,
-        and currently highest known pre-image.
+        stake and currently highest known pre-image.
         It always returns valid historical data (although the pre-image might
         be the current one).
 
@@ -1060,10 +1060,7 @@ public class Ledger
             return;
         }
 
-        UTXO[] stakes;
-        this.enroll_man.getValidatorStakes(block.header.height, &this.utxo_set.peekUTXO, stakes,
-            block.header.missing_validators);
-        this.fee_man.accumulateFees(block, stakes, &this.utxo_set.peekUTXO);
+        this.fee_man.accumulateFees(block, this.getValidators(block.header.height), &this.utxo_set.peekUTXO);
     }
 
     /***************************************************************************
