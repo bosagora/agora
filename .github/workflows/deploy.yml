@@ -20,8 +20,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set ${{ github.event.inputs.tag }} as latest
+      - name: "Agora: Set ${{ github.event.inputs.tag }} as latest"
         uses: akhilerm/tag-push-action@v1.1.0
         with:
           src: docker.io/bosagora/agora:${{ github.event.inputs.tag }}
           dst: docker.io/bosagora/agora:latest
+
+      - name: "Registry: Set ${{ github.event.inputs.tag }} as latest"
+        uses: akhilerm/tag-push-action@v1.1.0
+        with:
+          src: docker.io/bosagora/registry:${{ github.event.inputs.tag }}
+          dst: docker.io/bosagora/registry:latest
