@@ -352,7 +352,7 @@ private T parseMapping (T)
         const fmt = path.length ? "Unexpected key '%s' in section '%s'. There are %s valid keys: %-(%s, %)" :
             "Unexpected key '%s' in document root%s. There are %s valid keys: %-(%s, %)";
         foreach (const ref Node key, const ref Node value; node)
-            node.enforce(fieldNames.canFind(key.as!string),
+            key.enforce(fieldNames.canFind(key.as!string),
                          fmt, key.as!string.paint(Red), path.paint(Green),
                          fieldNames.length.paint(Yellow), fieldNames.map!(f => f.paint(Green)));
     }
