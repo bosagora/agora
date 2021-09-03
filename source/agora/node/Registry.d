@@ -59,7 +59,7 @@ public class NameRegistry: NameRegistryAPI
     private SOA[] zones;
 
     ///
-    private TypedPayload[PublicKey] registry_map;
+    private TypedPayload[PublicKey] validator_map;
 
     /// Validator count stats
     private RegistryStats registry_stats;
@@ -125,7 +125,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
-        if (auto ptr = public_key in registry_map)
+        if (auto ptr = public_key in validator_map)
         {
             log.trace("Successfull GET /validator: {} => {}", public_key, *ptr);
             return (*ptr).payload;
@@ -160,7 +160,7 @@ public class NameRegistry: NameRegistryAPI
                 "Incorrect signature for payload");
 
         // check if we received stale data
-        if (auto previous = registry_payload.data.public_key in registry_map)
+        if (auto previous = registry_payload.data.public_key in validator_map)
             ensure(previous.payload.data.seq <= registry_payload.data.seq,
                 "registry already has a more up-to-date version of the data");
 
@@ -192,9 +192,9 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering addresses {}: {} for public key: {}", payload_type,
                  registry_payload.data.addresses, registry_payload.data.public_key);
-        registry_map[registry_payload.data.public_key] =
+        validator_map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-        this.registry_stats.setMetricTo!"registry_record_count"(registry_map.length);
+        this.registry_stats.setMetricTo!"registry_record_count"(validator_map.length);
     }
 
     /***************************************************************************
@@ -289,7 +289,7 @@ public class NameRegistry: NameRegistryAPI
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
-        auto ptr = public_key in registry_map;
+        auto ptr = public_key in validator_map;
         // We are authoritative, so we can set `NameError`
         if (!ptr || !(*ptr).payload.data.addresses.length)
             return Header.RCode.NameError;
