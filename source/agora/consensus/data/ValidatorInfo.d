@@ -13,6 +13,7 @@
 
 module agora.consensus.data.ValidatorInfo;
 
+import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.PreImageInfo;
 import agora.crypto.Key;
@@ -31,6 +32,10 @@ public struct ValidatorInfo
 
     /// Public key associated with the UTXO
     public PublicKey address;
+
+    /// Value of frozen UTXO this validator has staked to enroll
+    /// This will be used to determine the share of fees and rewards paid for each signed block
+    public Amount stake;
 
     /// The most up-to-date pre-image
     public PreImageInfo preimage;

@@ -379,6 +379,8 @@ components:
           type: string
         address:
           type: string
+        stake:
+          type: string
         preimage:
           $ref: '#/components/schemas/PreImage'
 
