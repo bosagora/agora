@@ -282,9 +282,6 @@ public interface API
 
     public void postTransaction (in Transaction tx);
 
-    /// Alias for backward compatibility with Faucet
-    public void putTransaction (in Transaction tx);
-
     /***************************************************************************
 
         Reveals a pre-image
