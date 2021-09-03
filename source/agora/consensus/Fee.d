@@ -18,9 +18,10 @@ import agora.common.Amount;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.consensus.data.Block;
+import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
-import agora.consensus.data.Params;
+import agora.consensus.data.ValidatorInfo;
 import agora.consensus.state.UTXOCache;
 import agora.crypto.Key;
 
@@ -278,7 +279,7 @@ public class FeeManager
         Params:
             tot_fee = Total amount of fees
             tot_data_fee = Total amount of data fees
-            stakes = Staked UTXO of each Validator
+            validators = Enrolled Validators
 
         Return:
             `Amount` of fees that should be paid to each Validator
@@ -286,11 +287,11 @@ public class FeeManager
     ***************************************************************************/
 
     private Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
-        UTXO[] stakes) nothrow @safe
+        ValidatorInfo[] validators) nothrow @safe
     {
         import std.numeric : gcd;
         // no stakes, no fees
-        if (stakes.length == 0)
+        if (validators.length == 0)
             return [];
 
         // tx_fees = (tot_fee - tot_data_fee) * (ValidatorTXFeeCut / 100)
@@ -304,7 +305,7 @@ public class FeeManager
         Amount share_stake = Amount.MinFreezeAmount;
         share_stake.div(100);
         // this will ignore any remaning part of the stake that is not worth a share
-        auto shares = stakes.map!(utxo => utxo.output.value.count(share_stake));
+        auto shares = validators.map!(val => val.stake.count(share_stake));
         auto shares_gcd = shares.fold!((a, b) => gcd(a,b));
         auto normalized_shares = shares.map!(share => share / shares_gcd);
 
@@ -330,7 +331,7 @@ public class FeeManager
         Params:
             tot_fee = Total amount of fees
             tot_data_fee = Total amount of data fees
-            stakes = Staked UTXO of each Validator
+            validators = Enrolled Validators
 
         Return:
             `Amount` of fees that should be paid to `CommonsBudgetAddress`
@@ -338,10 +339,9 @@ public class FeeManager
     ***************************************************************************/
 
     public Amount getCommonsBudgetFee (Amount tot_fee, Amount tot_data_fee,
-        UTXO[] stakes) nothrow @safe
+        ValidatorInfo[] validators) nothrow @safe
     {
-        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee,
-            stakes);
+        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, validators);
 
         scope (failure) assert(0);
         Amount total_val_fee;
@@ -357,7 +357,7 @@ public class FeeManager
 
         Params:
             block = Block to calculate the fees
-            stakes = Staked UTXO of each Validator
+            validators = Enrolled Validators
             peekUTXO = delegate to find the UTXOs
 
         Return:
@@ -365,30 +365,32 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public void accumulateFees (in Block block, UTXO[] stakes,
+    public void accumulateFees (in Block block, ValidatorInfo[] validators,
         scope UTXOFinder peekUTXO) @trusted
     {
         Amount tot_fee, tot_data_fee;
         this.getTXSetFees(block.txs, peekUTXO, tot_fee, tot_data_fee);
 
-        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee,
-            stakes);
+        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, validators);
 
-        const commons_fees = this.getCommonsBudgetFee(tot_fee, tot_data_fee, stakes);
+        const commons_fees = this.getCommonsBudgetFee(tot_fee, tot_data_fee, validators);
 
-        foreach (idx, stake; stakes)
+        foreach (idx, validator; validators)
         {
-            this.accumulated_fees.update(stake.output.address,
-                { return validator_fees[idx]; },
-                (ref Amount so_far) {
-                    so_far += validator_fees[idx];
-                    return so_far;
-                }
-            );
+            if (!block.header.missing_validators.canFind(idx))
+            {
+                this.accumulated_fees.update(validator.address,
+                    { return validator_fees[idx]; },
+                    (ref Amount so_far) {
+                        so_far += validator_fees[idx];
+                        return so_far;
+                    }
+                );
 
-            this.db.execute(
-                "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                this.accumulated_fees[stake.output.address].tupleof[0], stake.output.address);
+                this.db.execute(
+                    "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
+                    this.accumulated_fees[validator.address].tupleof[0], validator.address);
+            }
         }
         this.accumulated_fees.update(this.params.CommonsBudgetAddress,
                 { return commons_fees; },
@@ -522,21 +524,21 @@ public class FeeManager
         frozen_txs.each!(tx => utxoset.put(tx));
         auto keys = frozen_txs.map!(tx => UTXO.getHash(tx.hashFull(), 0));
 
-        UTXO[] stakes;
+        ValidatorInfo[] validators;
         foreach (key; keys)
         {
             UTXO utxo;
             assert(utxoset.peekUTXO(key, utxo));
-            stakes ~= utxo;
+            validators ~= ValidatorInfo(Height(1), utxo.output.address, utxo.output.value);
         }
 
         // When stakes are equal they should receive the same amount
         assert(man.getValidatorFees(Amount.UnitPerCoin, Amount(0),
-            stakes[0..$-1]).uniq.array.length == 1);
+            validators[0..$-1]).uniq.array.length == 1);
 
         // 1 2X stake, 2 1X stakes
-        auto fees = man.getValidatorFees(Amount.UnitPerCoin, Amount(0), stakes);
-        assert(fees.length == stakes.length);
+        auto fees = man.getValidatorFees(Amount.UnitPerCoin, Amount(0), validators);
+        assert(fees.length == validators.length);
 
         fees = fees.uniq.array;
         assert(fees.length == 2);
@@ -547,9 +549,9 @@ public class FeeManager
         // With some data fee
         Amount tot_fee = Amount.UnitPerCoin; assert(tot_fee.mul(2));
         auto w_data_fees = man.getValidatorFees(tot_fee,
-            Amount.UnitPerCoin, stakes);
+            Amount.UnitPerCoin, validators);
         auto commons_fee = man.getCommonsBudgetFee(tot_fee,
-            Amount.UnitPerCoin, stakes);
+            Amount.UnitPerCoin, validators);
 
         tot_fee -= commons_fee;
         foreach (fee; w_data_fees)
@@ -627,10 +629,9 @@ unittest
     Block block;
     block.txs ~= spend_tx;
 
-    fee_man.accumulateFees(block, [utxo], &utxo_set.peekUTXO);
-
     block.header.height = Height(1);
-    fee_man.accumulateFees(block, [utxo], &utxo_set.peekUTXO);
+    auto valInfo = ValidatorInfo(Height(1), utxo.output.address, utxo.output.value);
+    fee_man.accumulateFees(block, [ valInfo ] , &utxo_set.peekUTXO);
 
     auto fee_man_2 = new FeeManager(fee_man.db, new immutable(ConsensusParams));
 

@@ -32,6 +32,7 @@ Should be cleaned up and make readable. Once `utxo` is usable, both can be used 
 | enrolled_height | INTEGER  | Height           | PRIMARY KEY (with `key`)             |                                                    |
 | nonce           | TEXT     | Point            |                                      | The `R` used to sign the `Enrollment`              |
 | slashed_height  | INTEGER  | Height           |                                      | Height at which a validator is slashed or null     |
+| stake           | INTEGER  | Amount           |                                      | Frozen Amount staked when enrolling                |
 
 ### `preimages` table
 

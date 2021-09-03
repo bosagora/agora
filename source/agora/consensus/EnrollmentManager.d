@@ -748,27 +748,6 @@ public class EnrollmentManager
     {
         return &this.validator_set.findRecentEnrollment;
     }
-
-    /***************************************************************************
-
-        Query stakes of active Validators
-
-        Params:
-            height = block height
-            peekUTXO = A delegate to query UTXOs
-            utxos = Array to save the stakes
-
-        Returns:
-            Staked UTXOs of existing Validators
-
-    ***************************************************************************/
-
-    public UTXO[] getValidatorStakes (in Height height, scope UTXOFinder peekUTXO, ref UTXO[] utxos,
-        in uint[] missing_validators) @trusted nothrow
-    {
-        return this.validator_set.getValidatorStakes(height, peekUTXO, utxos,
-            missing_validators);
-    }
 }
 
 /// tests for member functions of EnrollmentManager
