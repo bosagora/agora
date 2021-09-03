@@ -969,12 +969,6 @@ public class FullNode : API
         this.pushTransaction(tx);
     }
 
-    /// Ditto
-    public override void putTransaction (in Transaction tx) @safe
-    {
-        this.postTransaction(tx);
-    }
-
     /// GET: /has_transaction_hash
     public override bool hasTransactionHash (in Hash tx) @safe
     {
