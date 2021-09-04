@@ -220,11 +220,6 @@ public class NameRegistry: NameRegistryAPI
         reply.header.RA = false; // TODO: Implement
         reply.header.AA = true;  // TODO: Make configurable
 
-        ResourceRecord answer;
-        answer.type = TYPE.A;
-        answer.class_ = CLASS.IN;
-        answer.ttl = 600;
-
         // Note: Since DNS has some fields which apply to the full response but
         // should actually be in `answers`, most resolvers will not ask unrelated
         // questions / will only ask one question at a time.
@@ -235,13 +230,13 @@ public class NameRegistry: NameRegistryAPI
                 log.trace("DNS: Ignoring question with unknown QCLASS: {}", q);
                 continue;
             }
-            auto rcode = this.getValidatorDNSRecord(q, answer);
+
+            auto rcode = this.getValidatorDNSRecord(q, reply);
             if (rcode != Header.RCode.NoError)
             {
                 reply.header.RCODE = rcode;
                 break;
             }
-            reply.answers ~= answer;
         }
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
@@ -259,7 +254,7 @@ public class NameRegistry: NameRegistryAPI
 
         Params:
           question = The question being asked (contains the hostname)
-          answer = A struct to fill with the addresses
+          reply = A struct to fill the `answers` section with the addresses
 
         Returns:
           A code corresponding to the result of the lookup.
@@ -269,7 +264,7 @@ public class NameRegistry: NameRegistryAPI
     ***************************************************************************/
 
     private Header.RCode getValidatorDNSRecord (
-        const ref Question question, ref ResourceRecord answer) @safe
+        const ref Question question, ref Message reply) @safe
     {
         const public_key = question.qname
             .parsePublicKeyFromDomain(this.zones.map!(z => z.mname.value));
@@ -281,6 +276,10 @@ public class NameRegistry: NameRegistryAPI
         if (!ptr)
             return Header.RCode.NameError;
 
+        ResourceRecord answer;
+        answer.type = TYPE.A;
+        answer.class_ = CLASS.IN; // Validated by the caller
+        answer.ttl = 600;
         answer.name = question.qname;
         foreach (idx, const ref addr; (*ptr).payload.data.addresses)
         {
@@ -290,6 +289,7 @@ public class NameRegistry: NameRegistryAPI
             answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
         }
 
+        reply.answers ~= answer;
         return Header.RCode.NoError;
     }
 }
