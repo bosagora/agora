@@ -174,6 +174,9 @@ public class NameRegistry: NameRegistryAPI
         answer.class_ = CLASS.IN;
         answer.ttl = 600;
 
+        // Note: Since DNS has some fields which apply to the full response but
+        // should actually be in `answers`, most resolvers will not ask unrelated
+        // questions / will only ask one question at a time.
         foreach (const ref q; query.questions)
         {
             auto rcode = this.getValidatorDNSRecord(q, answer);
