@@ -179,6 +179,11 @@ public class NameRegistry: NameRegistryAPI
         // questions / will only ask one question at a time.
         foreach (const ref q; query.questions)
         {
+            if (q.qclass != QCLASS.ANY && q.qclass != QCLASS.IN)
+            {
+                log.trace("DNS: Ignoring question with unknown QCLASS: {}", q);
+                continue;
+            }
             auto rcode = this.getValidatorDNSRecord(q, answer);
             if (rcode != Header.RCode.NoError)
             {
