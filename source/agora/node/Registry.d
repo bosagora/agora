@@ -27,7 +27,7 @@ import agora.stats.Registry;
 import agora.stats.Utils;
 import agora.utils.Log;
 
-import std.algorithm.comparison : equal;
+import std.algorithm.comparison : among, equal;
 import std.algorithm.iteration : map, splitter;
 import std.algorithm.searching : endsWith;
 import std.array : replace;
@@ -231,12 +231,17 @@ public class NameRegistry: NameRegistryAPI
                 continue;
             }
 
-            auto rcode = this.getValidatorDNSRecord(q, reply);
-            if (rcode != Header.RCode.NoError)
+            if (q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
             {
-                reply.header.RCODE = rcode;
-                break;
+                auto rcode = this.getValidatorDNSRecord(q, reply);
+                if (rcode != Header.RCode.NoError)
+                {
+                    reply.header.RCODE = rcode;
+                    break;
+                }
             }
+            else
+                log.warn("Question for unknown QTYPE: {}", q);
         }
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
@@ -251,6 +256,10 @@ public class NameRegistry: NameRegistryAPI
         Queries sent to the server may attempt to look up multiple validators,
         which is handled by `answerQuestions`. This method looks up a single
         host name and return all associated addresses.
+
+        Since we might have multiple addresses registered for a single
+        validator, we first attempt to find an IP address (`TYPE.A`) or
+        IPv6 (`TYPE.AAAA`). If not, we return a `CNAME` (`TYPE.CNAME`).
 
         Params:
           question = The question being asked (contains the hostname)
@@ -273,21 +282,48 @@ public class NameRegistry: NameRegistryAPI
 
         auto ptr = public_key in registry_map;
         // We are authoritative, so we can set `NameError`
-        if (!ptr)
+        if (!ptr || !(*ptr).payload.data.addresses.length)
             return Header.RCode.NameError;
 
         ResourceRecord answer;
-        answer.type = TYPE.A;
         answer.class_ = CLASS.IN; // Validated by the caller
-        answer.ttl = 600;
-        answer.name = question.qname;
-        foreach (idx, const ref addr; (*ptr).payload.data.addresses)
+        answer.type = ptr.type;
+
+        if (ptr.type == TYPE.CNAME)
         {
-            uint ip4addr = InternetAddress.parse(addr);
-            if (ip4addr == InternetAddress.ADDR_NONE)
-                continue;
-            answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
+            /* RFC1034: 4.3.2. Algorithm
+             *
+             * If the data at the node is a CNAME, and QTYPE doesn't
+             * match CNAME, copy the CNAME RR into the answer section
+             * of the response, change QNAME to the canonical name in
+             * the CNAME RR, and go back to step 1.
+             *
+             * Otherwise, copy all RRs which match QTYPE into the
+             * answer section and go to step 6.
+             */
+            assert(ptr.payload.data.addresses.length == 1);
+            answer.name = ptr.payload.data.addresses[0];
+            answer.rdata = answer.name.serializeFull();
+            // We don't provide recursion yet, so just return this
+            // and let the caller figure it out.
         }
+        else if (ptr.type == TYPE.A)
+        {
+            foreach (idx, addr; ptr.payload.data.addresses)
+            {
+                uint ip4addr = InternetAddress.parse(addr);
+                if (ip4addr == InternetAddress.ADDR_NONE)
+                {
+                    log.error("DNS: {} record '{}' (index: {}) is not an A record",
+                              public_key, addr, idx);
+                    return Header.RCode.ServerFailure;
+                }
+                answer.name = question.qname;
+                answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
+            }
+        }
+        else
+            ensure(0, "Unknown type: {} - {}", ptr.type, *ptr);
 
         reply.answers ~= answer;
         return Header.RCode.NoError;
