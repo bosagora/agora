@@ -393,3 +393,89 @@ unittest
     assert((AStr ~ ".boa")
            .parsePublicKeyFromDomain(["boap", "foo.bar", "boa."]) == WK.Keys.A.address);
 }
+
+/*******************************************************************************
+
+    Returns the type of address that is stored in a payload
+
+    The `RegistryPayload` struct only contains strings, however they may be
+    either domain names (CNAME), IPv4 addresses (A), or IPv6 (AAAA).
+
+    This function implements a few heuristics to guess which one it is.
+    By default, we consider that an address is a CNAME.
+
+    Note that there can only be one `CNAME` record for a given key, given that
+    CNAME stands for canonical name.
+
+*******************************************************************************/
+
+private TYPE guessAddressType (in char[] address) @safe pure
+{
+    import std.algorithm.searching : canFind;
+
+    // TODO: Implement support for IPv6 (need definitions in agora.common.DNS)
+    version (none)
+    {
+        if (address.canFind(':'))
+            return TYPE.AAAA;
+    }
+    if (address.length > "255.255.255.255".length || address.length < "1.2.3.4".length)
+        return TYPE.CNAME;
+
+    size_t index = 0;
+    uint piece;
+    foreach (part; 0 .. 4)
+    {
+        const dotAllowed = (part < 3);
+
+        const char leadDigit = address[index++];
+        if (leadDigit < '0' || leadDigit > '9')
+            return TYPE.CNAME;
+
+        piece = (leadDigit - '0');
+        if (index >= address.length)
+            return part == 3 ? TYPE.A : TYPE.CNAME;
+
+        const char secondDigit = address[index++];
+        if (dotAllowed && secondDigit == '.')
+            continue;
+        if (secondDigit < '0' || secondDigit > '9')
+            return TYPE.CNAME;
+        piece *= 10; // Value is [10; 90]
+        piece += (secondDigit - '0');
+        if (index >= address.length)
+            return part == 3 ? TYPE.A : TYPE.CNAME;
+
+        const char lastDigit = address[index++];
+        if (dotAllowed && lastDigit == '.')
+            continue;
+        if (secondDigit < '0' || secondDigit > '9')
+            return TYPE.CNAME;
+        piece *= 10;
+        piece += (lastDigit - '0');
+
+        if (piece > 255)
+            return TYPE.CNAME;
+        if (dotAllowed &&
+            ((index + 1) >= address.length || address[index++] != '.'))
+            return TYPE.CNAME;
+
+    }
+    return TYPE.A;
+}
+
+unittest
+{
+    assert("1.0.0.0".guessAddressType == TYPE.A);
+    assert("1.2.3.4".guessAddressType == TYPE.A);
+    assert("255.255.255.255".guessAddressType == TYPE.A);
+
+    // Rejects anything that is > 255
+    assert("256.2.3.4".guessAddressType == TYPE.CNAME);
+    assert("2.256.3.4".guessAddressType == TYPE.CNAME);
+    assert("2.2.300.4".guessAddressType == TYPE.CNAME);
+    assert("2.2.3.420".guessAddressType == TYPE.CNAME);
+
+    assert("v4.bosagora.io".guessAddressType == TYPE.CNAME);
+    assert("bosagora".guessAddressType == TYPE.CNAME);
+}
