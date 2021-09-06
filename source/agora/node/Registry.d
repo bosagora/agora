@@ -308,7 +308,20 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            if (q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
+            if (q.qtype == QTYPE.AXFR)
+            {
+                if (this.validators.matches(q.qname))
+                    this.doAXFR(this.validators, reply);
+                else if (this.flash.matches(q.qname))
+                    this.doAXFR(this.flash, reply);
+                else
+                {
+                    log.warn("Refusing AXFR for unknown zone: {}", q.qname);
+                    reply.header.RCODE = Header.RCode.Refused;
+                    break;
+                }
+            }
+            else if (q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
             {
                 auto rcode = this.getValidatorDNSRecord(q, reply);
                 if (rcode != Header.RCode.NoError)
@@ -328,6 +341,33 @@ public class NameRegistry: NameRegistryAPI
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
                   query, reply);
         sender(reply);
+    }
+
+    /***************************************************************************
+
+        Perform an AXFR for a given `zone`
+
+        Allow servers to synchronize with one another using this standard DNS
+        query. Note that there are better ways to do synchronization,
+        but AXFR was in the original specification.
+        See RFC1034 "4.3.5. Zone maintenance and transfers".
+
+        Params:
+          zone = The zone to transfer
+          reply = The `Message` to write to
+
+    ***************************************************************************/
+
+    private void doAXFR (in ZoneData zone, ref Message reply) @safe
+    {
+        log.info("Performing AXFR for {} ({} entries)",
+                 zone.soa.mname, zone.map.length);
+        auto soa = zone.toRR();
+        reply.answers ~= soa;
+        foreach (const ref key, const ref value; zone.map)
+            reply.answers ~= this.convertPayload(value, key.toString());
+        reply.answers ~= soa;
+        reply.header.RCODE = Header.RCode.NoError;
     }
 
     /***************************************************************************
@@ -366,11 +406,19 @@ public class NameRegistry: NameRegistryAPI
         if (!ptr || !(*ptr).payload.data.addresses.length)
             return Header.RCode.NameError;
 
+        reply.answers ~= this.convertPayload(*ptr, question.qname);
+        return Header.RCode.NoError;
+    }
+
+    private ResourceRecord convertPayload (
+        in TypedPayload tp, lazy const char[] qname)
+        const @safe
+    {
         ResourceRecord answer;
         answer.class_ = CLASS.IN; // Validated by the caller
-        answer.type = ptr.type;
+        answer.type = tp.type;
 
-        if (ptr.type == TYPE.CNAME)
+        if (tp.type == TYPE.CNAME)
         {
             /* RFC1034: 4.3.2. Algorithm
              *
@@ -382,32 +430,28 @@ public class NameRegistry: NameRegistryAPI
              * Otherwise, copy all RRs which match QTYPE into the
              * answer section and go to step 6.
              */
-            assert(ptr.payload.data.addresses.length == 1);
-            answer.name = ptr.payload.data.addresses[0];
+            assert(tp.payload.data.addresses.length == 1);
+            answer.name = tp.payload.data.addresses[0];
             answer.rdata = answer.name.serializeFull();
             // We don't provide recursion yet, so just return this
             // and let the caller figure it out.
         }
-        else if (ptr.type == TYPE.A)
+        else if (tp.type == TYPE.A)
         {
-            foreach (idx, addr; ptr.payload.data.addresses)
+            foreach (idx, addr; tp.payload.data.addresses)
             {
                 uint ip4addr = InternetAddress.parse(addr);
-                if (ip4addr == InternetAddress.ADDR_NONE)
-                {
-                    log.error("DNS: {} record '{}' (index: {}) is not an A record",
-                              public_key, addr, idx);
-                    return Header.RCode.ServerFailure;
-                }
-                answer.name = question.qname;
+                ensure(ip4addr != InternetAddress.ADDR_NONE,
+                       "DNS: Address '{}' (index: {}) is not an A record (record: {})",
+                       addr, idx, tp);
+                answer.name = qname;
                 answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
             }
         }
         else
-            ensure(0, "Unknown type: {} - {}", ptr.type, *ptr);
+            ensure(0, "Unknown type: {} - {}", tp.type, tp);
 
-        reply.answers ~= answer;
-        return Header.RCode.NoError;
+        return answer;
     }
 }
 
