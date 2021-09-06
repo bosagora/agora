@@ -43,8 +43,18 @@ public class NameRegistry: NameRegistryAPI
     ///
     protected RegistryConfig config;
 
+    /// Associate a `RegistryPayload` with internal data
+    static private struct TypedPayload
+    {
+        /// The DNS RR TYPE
+        public TYPE type;
+
+        /// The payload itself
+        public RegistryPayload payload;
+    }
+
     ///
-    private RegistryPayload[PublicKey] registry_map;
+    private TypedPayload[PublicKey] registry_map;
 
     /// Validator count stats
     private RegistryStats registry_stats;
@@ -91,10 +101,10 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
-        if (auto payload = public_key in registry_map)
+        if (auto ptr = public_key in registry_map)
         {
-            log.trace("Successfull GET /validator: {} => {}", public_key, *payload);
-            return *payload;
+            log.trace("Successfull GET /validator: {} => {}", public_key, *ptr);
+            return (*ptr).payload;
         }
         log.trace("Unsuccessfull GET /validators: {}", public_key);
         return RegistryPayload.init;
@@ -127,9 +137,25 @@ public class NameRegistry: NameRegistryAPI
 
         // check if we received stale data
         if (auto previous = registry_payload.data.public_key in registry_map)
-            ensure(previous.data.seq <= registry_payload.data.seq,
+            ensure(previous.payload.data.seq <= registry_payload.data.seq,
                 "registry already has a more up-to-date version of the data");
 
+        ensure(registry_payload.data.addresses.length > 0,
+                "Payload for '{}' should have addresses but have 0",
+                registry_payload.data.public_key);
+
+        // Check that there's either one CNAME, or multiple IPs
+        TYPE payload_type;
+        foreach (idx, const ref addr; registry_payload.data.addresses)
+        {
+            const this_type = addr.guessAddressType();
+            ensure(this_type != TYPE.CNAME || registry_payload.data.addresses.length == 1,
+                    "Can only have one domain name (CNAME) for payload, not: {}",
+                    registry_payload);
+            payload_type = this_type;
+        }
+
+        // Last step is to check the state of the chain
         auto last_height = this.agora_node.getBlockHeight() + 1;
         if (last_height > this.validator_info_height || this.validator_info.length == 0)
         {
@@ -140,9 +166,10 @@ public class NameRegistry: NameRegistryAPI
             .canFind(registry_payload.data.public_key), "Not an enrolled validator");
 
         // register data
-        log.info("Registering network addresses: {} for public key: {}", registry_payload.data.addresses,
-            registry_payload.data.public_key.toString());
-        registry_map[registry_payload.data.public_key] = registry_payload;
+        log.info("Registering addresses {}: {} for public key: {}", payload_type,
+                 registry_payload.data.addresses, registry_payload.data.public_key);
+        registry_map[registry_payload.data.public_key] =
+            TypedPayload(payload_type, registry_payload);
         this.registry_stats.setMetricTo!"registry_record_count"(registry_map.length);
     }
 
@@ -225,13 +252,13 @@ public class NameRegistry: NameRegistryAPI
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
-        auto payload = public_key in registry_map;
+        auto ptr = public_key in registry_map;
         // We are authoritative, so we can set `NameError`
-        if (!payload)
+        if (!ptr)
             return Header.RCode.NameError;
 
         answer.name = question.qname;
-        foreach (idx, const ref addr; (*payload).data.addresses)
+        foreach (idx, const ref addr; (*ptr).payload.data.addresses)
         {
             uint ip4addr = InternetAddress.parse(addr);
             if (ip4addr == InternetAddress.ADDR_NONE)
