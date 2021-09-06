@@ -543,60 +543,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Get validator's pre-image for the given block height from the
-        validator set
-
-        Params:
-            enroll_key = The key for the enrollment in which the pre-image is
-                contained.
-            height = the desired preimage block height. If it's older than
-                     the preimage's current block height, the preimage will
-                     be hashed until the older preimage is retrieved.
-                     Otherwise PreImageInfo.init is returned.
-
-        Returns:
-            the PreImageInfo of the enrolled key if it exists,
-            otherwise PreImageInfo.init
-
-    ***************************************************************************/
-
-    public PreImageInfo getPreimageAt (in Hash enroll_key, in Height height)
-        @trusted nothrow
-    {
-        try
-        {
-            auto results = this.db.execute(
-                "SELECT preimage, height " ~
-                "FROM preimages WHERE key = ? " ~
-                "AND height >= ?",
-                enroll_key, height.value);
-
-            if (!results.empty && results.oneValue!(byte[]).length != 0)
-            {
-                auto row = results.front;
-                Hash preimage = Hash(row.peek!(char[])(0));
-                auto preimage_height = Height(row.peek!ulong(1));
-
-                auto pi = PreImageInfo(enroll_key, preimage, preimage_height);
-                assert(preimage_height >= height); // The query should ensure this
-                return PreImageInfo(pi.utxo, pi[height], height);
-            }
-            else
-            {
-                log.trace("No preimage found for utxo {} at height {}", enroll_key, height.value);
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Exception occured in getPreimageAt: {}, " ~
-                "Key for enrollment: {}", ex.msg, enroll_key);
-        }
-
-        return PreImageInfo.init;
-    }
-
-    /***************************************************************************
-
         Add a pre-image information to a validator data
 
         Params:
@@ -831,13 +777,6 @@ unittest
     auto preimage_11 = PreImageInfo(utxos[0], cache[SecondEnrollHeight + 2], SecondEnrollHeight + 2);
     assert(set.addPreimage(preimage_11));
     assert(set.getPreimage(utxos[0]) == preimage_11);
-    assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 3) is  // N/A: not revealed yet!
-        PreImageInfo.init);
-    assert(set.getPreimageAt(utxos[0], FirstEnrollHeight + 1) ==
-        PreImageInfo(enroll.utxo_key, cache[FirstEnrollHeight + 1], FirstEnrollHeight + 1));
-    assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 2) == preimage_11);
-    assert(set.getPreimageAt(utxos[0], SecondEnrollHeight + 1) ==
-        PreImageInfo(utxos[0], hashFull(preimage_11.hash), Height(preimage_11.height - 1)));
 
     // test for clear up expired validators
     getCycleSeed(WK.Keys[3], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);

@@ -887,15 +887,9 @@ public class Ledger
                           block.header.height, K, idx);
                 return "Block: Couldn't find commitment for this validator";
             }
-            const preimage_info = this.enroll_man.validator_set.getPreimageAt(
-                validator.utxo(), block.header.height);
-            if (preimage_info.hash == Hash.init)
-            {
-                log.error("Block#{}: Validator {} (idx: {}) Couldn't find pre-image for validator",
-                          block.header.height, K, idx);
-                return "Block: Couldn't find pre-image for validator";
-            }
-            Point R = CR + Scalar(preimage_info.hash).toPoint();
+            assert(validator.preimage.height >= block.header.height);
+            const hash = validator.preimage[block.header.height];
+            Point R = CR + Scalar(hash).toPoint();
             sum_K = sum_K + K;
             sum_R = sum_R + R;
         }
