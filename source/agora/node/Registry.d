@@ -28,8 +28,10 @@ import agora.stats.Utils;
 import agora.utils.Log;
 
 import std.algorithm.comparison : equal;
-import std.algorithm.iteration : splitter;
+import std.algorithm.iteration : map, splitter;
 import std.algorithm.searching : endsWith;
+import std.array : replace;
+import std.datetime;
 import std.range : zip;
 import std.socket;
 static import std.uni;
@@ -53,6 +55,9 @@ public class NameRegistry: NameRegistryAPI
         public RegistryPayload payload;
     }
 
+    /// This server's SOA records, one for each authoritative zone
+    private SOA[] zones;
+
     ///
     private TypedPayload[PublicKey] registry_map;
 
@@ -73,11 +78,30 @@ public class NameRegistry: NameRegistryAPI
     {
         this.config = config;
         this.log = Logger(__MODULE__);
-        if (this.config.dns.enabled)
-            this.log.info("Starting authoritative DNS server for zones: {}",
-                          this.config.dns.authoritative);
         this.agora_node = agora_node;
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
+
+        if (this.config.dns.enabled)
+        {
+            this.log.info("Starting authoritative DNS server for zones: {}",
+                          this.config.dns.authoritative.map!(z => z.name));
+
+            auto currTime = Clock.currTime(UTC());
+            foreach (const ref zone; config.dns.authoritative)
+            {
+                SOA soa;
+                soa.mname = zone.name;
+                soa.rname = zone.email.replace('@', '.');
+                // This value wraps so the case is safe
+                soa.serial = cast(uint) currTime.toUnixTime();
+                // Casts are safe as the values are validated during config parsing
+                soa.refresh = cast(int) zone.refresh.total!"seconds";
+                soa.retry = cast(int) zone.retry.total!"seconds";
+                soa.expire = cast(int) zone.expire.total!"seconds";
+                soa.minimum = cast(uint) zone.minimum.total!"seconds";
+                this.zones ~= soa;
+            }
+        }
     }
 
     ///
@@ -248,7 +272,7 @@ public class NameRegistry: NameRegistryAPI
         const ref Question question, ref ResourceRecord answer) @safe
     {
         const public_key = question.qname
-            .parsePublicKeyFromDomain(this.config.dns.authoritative);
+            .parsePublicKeyFromDomain(this.zones.map!(z => z.mname.value));
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
@@ -291,8 +315,8 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-private PublicKey parsePublicKeyFromDomain (in char[] domain,
-    in string[] authoritative) @safe
+private PublicKey parsePublicKeyFromDomain (StrRange) (in char[] domain,
+    StrRange authoritative) @safe
 {
     auto range = domain.splitter('.');
     if (range.empty)
@@ -317,7 +341,7 @@ private PublicKey parsePublicKeyFromDomain (in char[] domain,
 
     // Now check that the pubkey is under a domain we know about
 NEXT_DOMAIN:
-    foreach (idx, ad; authoritative)
+    foreach (ad; authoritative)
     {
         // We can't use `std.algorithm.comparison : equal` here,
         // as we may have an empty label at the end,

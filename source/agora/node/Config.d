@@ -408,13 +408,13 @@ public struct RegistryConfig
             ensure(this.dns.port > 0, "dns.port: 0 is not a valid value");
             ensure(this.dns.authoritative.length > 0, "No authoritative zones provided");
 
-            foreach (idx, domain; this.dns.authoritative)
+            foreach (idx, zone; this.dns.authoritative)
             {
-                auto rng = domain.splitter('.');
+                auto rng = zone.name.splitter('.');
                 ensure(!rng.empty, "dns.authoritative: Empty array entry at index {}", idx);
                 ensure(rng.front.length > 0,
                        "dns.authoritative: Value '{}' at index '{}' starts with a dot ('.')," ~
-                       " which is not allowed. Remove it.", domain, idx);
+                       " which is not allowed. Remove it.", zone.name, idx);
 
                 do {
                     // It might be the empty label, in which case it needs to be last
@@ -424,15 +424,37 @@ public struct RegistryConfig
                         ensure(rng.empty,
                                "dns.authoritative: Value '{}' at index '{}' contains" ~
                                " an empty label, which is not allowed. Remove the double dot.",
-                               domain, idx);
+                               zone.name, idx);
                         break;
                     }
                     ensure(rng.front.length <= 63,
                            "dns.authoritative: Value '{}' at index '{}' contains a label ('{}') " ~
                            "which is longer than 63 characters ({} characters), which is not allowed.",
-                           domain, idx, rng.front, rng.front.length);
+                           zone.name, idx, rng.front, rng.front.length);
                     rng.popFront();
                 } while (!rng.empty);
+
+                // Now validate the durations are consistent with one another
+                ensure(zone.refresh <= zone.expire,
+                       "dns.authoritative: Zone '{}' field 'refresh' ({}) should be lower than field 'expire' ({})",
+                       zone.name, zone.refresh, zone.expire);
+                // The other ones could actually be set to very low values to
+                // avoid clients caching data, so don't validate them besides
+                // checking they fit in an `int`.
+                const intMaxSecs = int.max.seconds;
+                const uintMaxSecs = uint.max.seconds;
+                ensure(zone.refresh <= intMaxSecs,
+                       "dns.authoritative: Zone '{}' field 'refresh' ({}) should be at most {}",
+                       zone.name, zone.refresh, intMaxSecs);
+                ensure(zone.retry <= intMaxSecs,
+                       "dns.authoritative: Zone '%s' field 'retry' ({}) should be at most {}",
+                       zone.name, zone.retry, intMaxSecs);
+                ensure(zone.expire <= intMaxSecs,
+                       "dns.authoritative: Zone '%s' field 'expire' ({}) should be at most {}",
+                       zone.name, zone.expire, intMaxSecs);
+                ensure(zone.minimum <= intMaxSecs,
+                       "dns.authoritative: Zone '%s' field 'minimum' ({}) should be at most {}",
+                       zone.name, zone.minimum, uintMaxSecs);
             }
         }
     }
@@ -459,7 +481,52 @@ public struct DNSConfig
     public ushort port = 53;
 
     /// Which zones this server is authoritative for
-    public immutable(string[]) authoritative;
+    public @Key("name") immutable(ZoneConfig[]) authoritative;
+}
+
+/// Configuration for a DNS zone
+/// All `Duration` values are precise to the second
+public struct ZoneConfig
+{
+    /// The zone name
+    public string name;
+
+    /// Email address of the person responsible for the zone
+    public string email;
+
+    /// How often secondary servers should refresh this zone
+    /// Default to 9 minutes, slightly lower than the block interval
+    public Duration refresh = 9.minutes;
+
+    /// How much time should elapse before a request should be retried
+    public Duration retry = 10.seconds;
+
+    /***************************************************************************
+
+        How much time should elapse before the zone is no longer authoritative
+
+        This value should be higher than `refresh` so that a client attempt to
+        refresh its zone data before completely discarding it.
+
+        Default to 10 blocks, or 100 minutes.
+
+    ***************************************************************************/
+
+    public Duration expire = 100.minutes;
+
+    /***************************************************************************
+
+        The minimum value to TTL for any record in the zone
+
+        The TTL define the amount of time (expressed in second in the record)
+        that a record is valid for. With a minimum of 2 minutes, the clients
+        will cache DNS queries for at least 2 minutes before querying us again.
+
+        This value needs to be lower than the block interval.
+
+    ***************************************************************************/
+
+    public Duration minimum = 2.minutes;
 }
 
 //

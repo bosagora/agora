@@ -285,5 +285,15 @@ registry:
     address: 0.0.0.0
     port: 53
     authoritative:
-    - "validators.bosagora.io"
-    - "flash.bosagora.io"
+      validators.bosagora.io:
+        email: dns@validators.bosaagora.io
+      flash.bosagora.io:
+        email: dns.flash.bosagora.io
+        refresh:
+          minutes: 1
+        retry:
+          seconds: 30
+        expire:
+          minutes: 10
+        minimum:
+          minutes: 1
