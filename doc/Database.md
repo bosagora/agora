@@ -54,13 +54,13 @@ This table should be removed in favor of querying `validator` directly.
 | val        | TEXT     | Hash   | NOT NULL    | In both case a hash, but the node could just query `ValidatorSet` |
 
 
-### `accumulated_fee` table
+### `block_fees` table
 
 Keep track of fees as blocks are externalized (when the UTXO set has all the inputs still)
 
 | Field name | SQL Type | D type     | Attributes  | Comment             |
 |------------|----------|------------|-------------|---------------------|
-| public_key | TEXT     | PublicKey  | PRIMARY KEY |                     |
+| height     | INTEGER  | Height     | PRIMARY KEY |                     |
 | fee        | INTEGER  | Amount     |             |                     |
 
 ## Cache DB
