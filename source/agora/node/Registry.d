@@ -225,7 +225,14 @@ public class NameRegistry: NameRegistryAPI
         // questions / will only ask one question at a time.
         foreach (const ref q; query.questions)
         {
-            if (q.qclass != QCLASS.ANY && q.qclass != QCLASS.IN)
+            // RFC1034: 3.7.1. Standard queries
+            // Since a particular name server may not know all of
+            // the classes available in the domain system, it can never know if it is
+            // authoritative for all classes. Hence responses to QCLASS=* queries can
+            // never be authoritative.
+            if (q.qclass == QCLASS.ANY)
+                reply.header.AA = false;
+            else if (q.qclass != QCLASS.IN)
             {
                 log.trace("DNS: Ignoring question with unknown QCLASS: {}", q);
                 continue;
