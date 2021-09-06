@@ -46,6 +46,10 @@ node:
   # from all other nodes
   block_catchup_interval:
     seconds: 20
+  # The duration between requests for retrieving the missing enrollments
+  # from all other nodes
+  enrollment_catchup_interval:
+    seconds: 40
   # The maximum number of transactions relayed in every batch.
   # Value 0 means no limit.
   relay_tx_max_num: 100

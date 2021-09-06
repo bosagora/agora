@@ -231,6 +231,9 @@ public struct NodeConfig
     /// from all other nodes
     public Duration block_catchup_interval = 20.seconds;
 
+    /// The duration between requests for retrieving the missing enrollments
+    public Duration enrollment_catchup_interval = 40.seconds;
+
     /// The new block time offset has to be greater than the previous block time offset,
     /// but less than current time + block_time_offset_tolerance
     public Duration block_time_offset_tolerance = 60.seconds;
@@ -641,12 +644,15 @@ unittest
 node:
   data_dir: .cache
   commons_budget_address: boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s
+  enrollment_catchup_interval:
+    seconds: 60
 network:
  - "something"
 `;
     auto config = parseConfigString!Config(conf_example, "/dev/null");
     assert(config.node.min_listeners == 2);
     assert(config.node.max_listeners == 10);
+    assert(config.node.enrollment_catchup_interval == 60.seconds);
     assert(config.node.data_dir == ".cache");
     assert(config.node.commons_budget_address.toString() == "boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s");
 }
