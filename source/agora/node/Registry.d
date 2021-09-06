@@ -208,13 +208,15 @@ public class NameRegistry: NameRegistryAPI
 
         Params:
           query = The query received by the server
-
-        Returns:
-          An answer that matches the query
+          sender = A delegate that allows to send a `Message` to the client.
+                   A server may send multiple `Message`s as a response to a
+                   single query, e.g. when doing zone transfer.
 
     ***************************************************************************/
 
-    public Message answerQuestions (in Message query) @safe
+    public void answerQuestions (
+        in Message query, scope void delegate (in Message) @safe sender)
+        @safe
     {
         Message reply;
         reply.header.RA = false; // TODO: Implement
@@ -253,7 +255,7 @@ public class NameRegistry: NameRegistryAPI
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
                   query, reply);
-        return reply.fill(query.header);
+        sender(reply.fill(query.header));
     }
 
     /***************************************************************************

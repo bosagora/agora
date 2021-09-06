@@ -294,14 +294,17 @@ private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry regis
     ubyte[2048] buffer;
     // `recv` will store the peer address here so we can respond
     NetworkAddress peer;
+    scope ppeer = &peer;
     while (true)
     {
         try
         {
-            auto pack = udp.recv(buffer, &peer);
+            auto pack = udp.recv(buffer, ppeer);
             auto query = deserializeFull!Message(pack);
-            auto resp = registry.answerQuestions(query);
-            udp.send(serializeFull(resp), &peer);
+            registry.answerQuestions(
+                query,
+                (in Message msg) @safe => udp.send(msg.serializeFull(), ppeer));
+
         }
         catch (Exception exc)
         {
@@ -369,8 +372,10 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
     try
     {
         auto query = deserializeFull!Message(reader);
-        auto resp = registry.answerQuestions(query);
-        resp.serializePart(&conn.write);
+        registry.answerQuestions(
+            query,
+            (in Message msg) @safe => msg.serializePart(&conn.write));
+
     }
     catch (Exception exc)
     {
