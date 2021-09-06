@@ -58,6 +58,8 @@ public interface FlashAPI
             chan_conf = contains all the static configuration for this channel.
             peer_nonce = the nonce pair that will be used for signing the
                 initial settlement & trigger transactions.
+            funder_address = network address of the funder node to bootstrap
+                the communication
 
         Returns:
             the nonce pair for the initial settle & trigger transactions,
@@ -65,8 +67,8 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!PublicNonce openChannel (
-        /* in */ ChannelConfig chan_conf, /* in */ PublicNonce peer_nonce);
+    public Result!PublicNonce openChannel (/* in */ ChannelConfig chan_conf,
+        /* in */ PublicNonce peer_nonce, /* in */ string funder_address);
 
     /***************************************************************************
 
