@@ -123,6 +123,10 @@ public struct SOA
     /// the time interval that can elapse before the zone is no
     /// longer authoritative.
     public int expire;
+
+    /// The unsigned 32 bit minimum TTL field that should be
+    /// exported with any RR from this zone.
+    public uint minimum;
 }
 
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
