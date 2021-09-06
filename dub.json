@@ -64,6 +64,7 @@
                 "source/agora/consensus/Quorum.d",
                 "source/agora/network/Client.d",
                 "source/agora/network/Manager.d",
+                "source/agora/api/Registry.d",
                 "source/agora/node/*",
                 "source/agora/flash/*",
                 "source/agora/utils/SCPPrettyPrinter.d",
