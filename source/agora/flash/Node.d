@@ -672,7 +672,10 @@ public abstract class FlashNode : FlashControlAPI
                 log.info("gossipChannelsOpen(): Discovered: {}",
                         open.conf.chan_id.flashPrettify);
 
-                if (!this.isValidChannelOpen(open))
+                try
+                    if (!isValidChannelOpen(open.conf, this.getBlock(open.height)))
+                        continue;
+                catch (Exception e)
                     continue;
 
                 this.known_channels[open.conf.chan_id] = KnownChannel(open.height, open.conf);
@@ -1328,27 +1331,22 @@ public abstract class FlashNode : FlashControlAPI
             utxos.total_value = Amount(0);
         return utxos;
     }
+}
 
-    ///
-    protected bool isValidChannelOpen (in ChannelOpen open) @safe nothrow
-    {
-        auto conf = open.conf;
-        if (!conf.funder_pk.isValid() ||
-            !conf.peer_pk.isValid() ||
-            conf.pair_pk != conf.funder_pk + conf.peer_pk ||
-            conf.funding_tx.hashFull() != conf.funding_tx_hash ||
-            conf.funding_tx.outputs.length <= conf.funding_utxo_idx)
-            return false;
-        auto utxo = conf.funding_tx.outputs[conf.funding_utxo_idx];
-        if (utxo.address != conf.pair_pk ||
-            utxo.value != conf.capacity)
-            return false;
-
-        try
-            return this.getBlock(open.height).txs.canFind!(tx => tx.hashFull() == conf.funding_tx_hash);
-        catch (Exception e)
-            return false;
-    }
+///
+public bool isValidChannelOpen (in ChannelConfig conf, in Block block) @safe nothrow
+{
+    if (!conf.funder_pk.isValid() ||
+        !conf.peer_pk.isValid() ||
+        conf.pair_pk != conf.funder_pk + conf.peer_pk ||
+        conf.funding_tx.hashFull() != conf.funding_tx_hash ||
+        conf.funding_tx.outputs.length <= conf.funding_utxo_idx)
+        return false;
+    auto utxo = conf.funding_tx.outputs[conf.funding_utxo_idx];
+    if (utxo.address != conf.pair_pk ||
+        utxo.value != conf.capacity)
+        return false;
+    return block.txs.canFind!(tx => tx.hashFull() == conf.funding_tx_hash);
 }
 
 /// Metadata associated with known channels
