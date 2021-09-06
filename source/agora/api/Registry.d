@@ -17,6 +17,7 @@ import agora.common.Types;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
+import agora.flash.Node : KnownChannel;
 
 import vibe.http.common;
 import vibe.web.rest;
@@ -97,4 +98,40 @@ public interface NameRegistryAPI
     ***************************************************************************/
 
     public void putValidator (RegistryPayload registry_payload);
+
+    /***************************************************************************
+
+        Get network addresses corresponding to a flash node that is controlling
+        given public_key
+
+        Params:
+            public_key = the public key that was used to register
+                         the network addresses
+
+        Returns:
+            Network addresses associated with the `public_key`
+
+        API:
+            GET /flash_node
+
+    ***************************************************************************/
+
+    public const(RegistryPayload) getFlashNode (PublicKey public_key);
+
+    /***************************************************************************
+
+        Register network addresses corresponding to a public key
+
+        Params:
+            registry_payload =
+                the data we want to register with the name registry server
+            channel =
+                a known channel of the registering public key
+
+        API:
+            PUT /flash_node
+
+    ***************************************************************************/
+
+    public void putFlashNode (RegistryPayload registry_payload, KnownChannel channel);
 }

@@ -22,6 +22,7 @@ import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.node.Config;
+import agora.flash.Node;
 import agora.serialization.Serializer;
 import agora.stats.Registry;
 import agora.stats.Utils;
@@ -60,6 +61,9 @@ public class NameRegistry: NameRegistryAPI
 
     ///
     private TypedPayload[PublicKey] validator_map;
+
+    ///
+    private TypedPayload[PublicKey] flash_map;
 
     /// Validator count stats
     private RegistryStats registry_stats;
@@ -106,6 +110,24 @@ public class NameRegistry: NameRegistryAPI
 
     ///
     mixin DefineCollectorForStats!("registry_stats", "collectRegistryStats");
+
+    /// Returns: throws if payload is not valid
+    protected void ensureValidPayload (in RegistryPayload registry_payload,
+        TypedPayload[PublicKey] map) @safe
+    {
+        // verify signature
+        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
+                "Incorrect signature for payload");
+
+        // check if we received stale data
+        if (auto previous = registry_payload.data.public_key in map)
+            ensure(previous.payload.data.seq <= registry_payload.data.seq,
+                "registry already has a more up-to-date version of the data");
+
+        ensure(registry_payload.data.addresses.length > 0,
+                "Payload for '{}' should have addresses but have 0",
+                registry_payload.data.public_key);
+    }
 
     /***************************************************************************
 
@@ -155,29 +177,10 @@ public class NameRegistry: NameRegistryAPI
     {
         import std.algorithm;
 
-        // verify signature
-        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
-                "Incorrect signature for payload");
-
-        // check if we received stale data
-        if (auto previous = registry_payload.data.public_key in validator_map)
-            ensure(previous.payload.data.seq <= registry_payload.data.seq,
-                "registry already has a more up-to-date version of the data");
-
-        ensure(registry_payload.data.addresses.length > 0,
-                "Payload for '{}' should have addresses but have 0",
-                registry_payload.data.public_key);
+        ensureValidPayload(registry_payload, this.validator_map);
 
         // Check that there's either one CNAME, or multiple IPs
-        TYPE payload_type;
-        foreach (idx, const ref addr; registry_payload.data.addresses)
-        {
-            const this_type = addr.guessAddressType();
-            ensure(this_type != TYPE.CNAME || registry_payload.data.addresses.length == 1,
-                    "Can only have one domain name (CNAME) for payload, not: {}",
-                    registry_payload);
-            payload_type = this_type;
-        }
+        TYPE payload_type = this.getPayloadType(registry_payload);
 
         // Last step is to check the state of the chain
         auto last_height = this.agora_node.getBlockHeight() + 1;
@@ -194,7 +197,84 @@ public class NameRegistry: NameRegistryAPI
                  registry_payload.data.addresses, registry_payload.data.public_key);
         validator_map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-        this.registry_stats.setMetricTo!"registry_record_count"(validator_map.length);
+        this.registry_stats.setMetricTo!"registry_record_count"(validator_map.length + flash_map.length);
+    }
+
+    /***************************************************************************
+
+        Get network addresses corresponding to a flash node that is controlling
+        given public_key
+
+        Params:
+            public_key = the public key that was used to register
+                         the network addresses
+
+        Returns:
+            Network addresses associated with the `public_key`
+
+        API:
+            GET /flash_node
+
+    ***************************************************************************/
+
+    public override const(RegistryPayload) getFlashNode (PublicKey public_key)
+    {
+        if (auto ptr = public_key in flash_map)
+        {
+            log.trace("Successfull GET /flash_node: {} => {}", public_key, *ptr);
+            return (*ptr).payload;
+        }
+        log.trace("Unsuccessfull GET /flash_node: {}", public_key);
+        return RegistryPayload.init;
+    }
+
+    /***************************************************************************
+
+        Register network addresses corresponding to a public key
+
+        Params:
+            registry_payload =
+                the data we want to register with the name registry server
+            channel =
+                a known channel of the registering public key
+
+        API:
+            PUT /flash_node
+
+    ***************************************************************************/
+
+    public override void putFlashNode (RegistryPayload registry_payload, KnownChannel channel)
+    {
+        ensureValidPayload(registry_payload, this.flash_map);
+
+        ensure(isValidChannelOpen(channel.conf, this.agora_node.getBlock(channel.height)),
+            "Not a valid channel");
+
+        // Check that there's either one CNAME, or multiple IPs
+        TYPE payload_type = this.getPayloadType(registry_payload);
+
+        // register data
+        log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
+            registry_payload.data.public_key.toString());
+        flash_map[registry_payload.data.public_key] =
+            TypedPayload(payload_type, registry_payload);
+        this.registry_stats.setMetricTo!"registry_record_count"(validator_map.length + flash_map.length);
+    }
+
+    ///
+    protected TYPE getPayloadType (in RegistryPayload payload) @safe
+    {
+        // Check that there's either one CNAME, or multiple IPs
+        TYPE payload_type;
+        foreach (idx, const ref addr; payload.data.addresses)
+        {
+            const this_type = addr.guessAddressType();
+            ensure(this_type != TYPE.CNAME || payload.data.addresses.length == 1,
+                    "Can only have one domain name (CNAME) for payload, not: {}",
+                    payload);
+            payload_type = this_type;
+        }
+        return payload_type;
     }
 
     /***************************************************************************

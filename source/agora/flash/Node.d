@@ -1350,7 +1350,7 @@ public bool isValidChannelOpen (in ChannelConfig conf, in Block block) @safe not
 }
 
 /// Metadata associated with known channels
-struct KnownChannel
+public struct KnownChannel
 {
     /// Channel open confirmation height
     public Height height;
