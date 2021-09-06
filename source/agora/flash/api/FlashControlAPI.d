@@ -101,6 +101,8 @@ public interface FlashControlAPI : FlashAPI
             settle_time = closing settle time in number of blocks since last
                 setup / update tx was published on the blockchain
             peer_pk = the public key of the counter-party flash node
+            peer_address = network address of the peer to bootstrap the communication
+                in case the peer is not registered in the name registry
 
         Returns:
             The channel ID, or an error if this funding UTXO is
@@ -111,7 +113,7 @@ public interface FlashControlAPI : FlashAPI
     public Result!Hash openNewChannel (PublicKey reg_pk,
         /* in */ UTXO funding_utxo, /* in */ Hash funding_utxo_hash,
         /* in */ Amount capacity, /* in */ uint settle_time,
-        /* in */ Point peer_pk);
+        /* in */ Point peer_pk, /* in */ string peer_address);
 
     /***************************************************************************
 

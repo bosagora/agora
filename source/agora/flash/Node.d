@@ -105,7 +105,7 @@ private struct GossipEvent
 }
 
 /// Ditto
-public abstract class FlashNode : FlashControlAPI
+public class FlashNode : FlashControlAPI
 {
     /// Logger instance
     protected Logger log;
@@ -137,11 +137,26 @@ public abstract class FlashNode : FlashControlAPI
     /// Timer used for opening new channels
     private ITimer open_chan_timer;
 
+    /// Periodic name registry timer
+    protected ITimer periodic_timer;
+
+    /// monitor timer
+    protected ITimer monitor_timer;
+
+    /// Registry client
+    private NameRegistryAPI registry_client;
+
     /// Flash network topology
     protected Network network;
 
+    private static struct PendingChannel
+    {
+        ChannelConfig conf;
+        string peer_addr;
+    }
+
     /// List of channels which are pending to be opened
-    protected DList!ChannelConfig[PublicKey] pending_channels;
+    protected DList!PendingChannel[PublicKey] pending_channels;
 
     /// All channels which we are the participants of (open / pending / closed)
     protected Channel[Hash][PublicKey] channels;
@@ -154,6 +169,15 @@ public abstract class FlashNode : FlashControlAPI
 
     /// Metadata database
     private ManagedDatabase db;
+
+    /// Callback for sending transactions to the network
+    protected void delegate (in Transaction tx) postTransaction;
+
+    /// Callback for fetching a block
+    protected const(Block) delegate (ulong _height) @safe getBlock;
+
+    ///
+    protected NameRegistryAPI delegate (Address address, Duration timeout) getNameRegistryClient;
 
     /***************************************************************************
 
@@ -172,7 +196,9 @@ public abstract class FlashNode : FlashControlAPI
     ***************************************************************************/
 
     public this (FlashConfig conf, string db_path, Hash genesis_hash,
-        Engine engine, ITaskManager taskman)
+        Engine engine, ITaskManager taskman, void delegate (in Transaction tx) postTransaction,
+        const(Block) delegate (ulong _height) @safe getBlock,
+        NameRegistryAPI delegate (Address address, Duration timeout) getNameRegistryClient)
     {
         this.conf = conf;
         this.genesis_hash = genesis_hash;
@@ -182,11 +208,15 @@ public abstract class FlashNode : FlashControlAPI
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
         this.db = this.getManagedDatabase(db_path);
+        this.postTransaction = postTransaction;
+        this.getBlock = getBlock;
+        this.getNameRegistryClient = getNameRegistryClient;
+
         this.load();
 
         this.channels = Channel.loadChannels(this.conf, this.db,
             &this.getFlashClient, engine, taskman,
-            &this.postTransaction, &this.paymentRouter,
+            this.postTransaction, &this.paymentRouter,
             &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete,
             &this.getFeeUTXOs);
@@ -227,6 +257,51 @@ public abstract class FlashNode : FlashControlAPI
             &this.gossipTask, Periodic.Yes);
         this.open_chan_timer = this.taskman.setTimer(100.msecs,
             &this.channelOpenTask, Periodic.Yes);
+        this.onRegisterName();  // avoid delay
+        this.periodic_timer = this.taskman.setTimer(2.minutes,
+            &this.onRegisterName, Periodic.Yes);
+        // todo: should additionally register as pushBlock() listener
+        this.monitor_timer = this.taskman.setTimer(100.msecs,
+            &this.monitorBlockchain, Periodic.Yes);
+    }
+
+    /// register network addresses into the name registry
+    private void onRegisterName ()
+    {
+        if (this.registry_client is null)  // try to get the client
+            this.registry_client = this.getNameRegistryClient(
+                this.conf.registry_address, 10.seconds);
+
+        if (this.registry_client is null)
+            return;  // failed, try again later
+
+        foreach (pair; this.getManagedKeys())
+        {
+            RegistryPayload payload =
+            {
+                data:
+                {
+                    public_key : pair.key,
+                    addresses : this.conf.addresses_to_register,
+                    seq : time(null)
+                }
+            };
+
+            const key_pair = KeyPair.fromSeed(pair.value);
+            payload.signPayload(key_pair);
+
+            // find a channel with this public key
+            auto known_chan = this.known_channels.byValue.find!(chan =>
+                chan.conf.funder_pk == pair.key || chan.conf.peer_pk == pair.key);
+            if (known_chan.empty())
+                continue;
+
+            try
+                this.registry_client.postFlashNode(payload, known_chan.front());
+            catch (Exception ex)
+                log.info("Couldn't register our address: {}. Trying again later..",
+                    ex);
+        }
     }
 
     /***************************************************************************
@@ -330,6 +405,8 @@ public abstract class FlashNode : FlashControlAPI
     {
         this.gossip_timer.stop();
         this.open_chan_timer.stop();
+        this.periodic_timer.stop();
+        this.monitor_timer.stop();
 
         try this.dump();
         catch (Exception exc)
@@ -391,9 +468,8 @@ public abstract class FlashNode : FlashControlAPI
         {
             while (!pending.empty)
             {
-                auto chan_conf = pending.front;
                 scope (exit) pending.removeFront();
-                this.handleOpenNewChannel(PublicKey(reg_pk), chan_conf);
+                this.handleOpenNewChannel(PublicKey(reg_pk), pending.front);
                 this.taskman.wait(1.msecs);  // yield
             }
         }
@@ -521,38 +597,78 @@ public abstract class FlashNode : FlashControlAPI
     /***************************************************************************
 
         Get an instance of a Flash client for the given public key.
+        The name registry is consulted to look up the IP for the given key.
+
+        The client is cached internally.
 
         Params:
             peer_pk = the public key of the Flash node.
             timeout = the timeout duration to use for requests.
+            address = address provided by the peer
 
         Returns:
-            the Flash client
+            the Flash client, or null if none was found
 
     ***************************************************************************/
 
-    protected abstract FlashAPI getFlashClient (in PublicKey peer_pk,
-        Duration timeout) @trusted;
+    protected FlashAPI getFlashClient (in PublicKey peer_pk,
+        Duration timeout, string address = null) @trusted
+    {
+        if (auto peer = peer_pk in this.known_peers)
+            return *peer;
 
-    /***************************************************************************
+        log.info("getFlashClient searching peer: {}", peer_pk);
 
-        Get an instance of a FlashListenerAPI client for the given address.
+        if (address.length == 0)
+        {
+            auto payload = this.registry_client.getFlashNode(peer_pk);
+            if (payload == RegistryPayload.init)
+            {
+                log.warn("Could not find mapping in registry for key {}", peer_pk);
+                return null;
+            }
 
-        Params:
-            peer_pk = the public key of the Flash node.
-            timeout = the timeout duration to use for requests.
+            if (!payload.verifySignature(peer_pk))
+            {
+                log.warn("RegistryPayload signature is incorrect for {}", peer_pk);
+                return null;
+            }
 
-        Returns:
-            the FlashListenerAPI client
+            if (payload.data.addresses.length == 0)
+                return null;
 
-    ***************************************************************************/
+            address = payload.data.addresses[0];
+        }
 
-    protected abstract FlashListenerAPI getFlashListenerClient (string address,
-        Duration timeout) @trusted;
+        auto peer = this.createFlashClient(address, timeout);
+        this.known_peers[peer_pk] = peer;
+        if (this.known_channels.length > 0)
+            peer.gossipChannelsOpen(this.channel_updates.byValue
+                .map!(updates => updates.byValue).joiner
+                .map!(update => ChannelOpen(this.known_channels[update.chan_id].height,
+                                            this.known_channels[update.chan_id].conf, update)).array);
+        return peer;
+    }
+
+    /// Ditto
+    protected FlashAPI createFlashClient (in string address, in Duration timeout) @trusted
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        // todo: this is obviously wrong, need proper connection handling later
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!FlashAPI(settings);
+    }
 
     /// See `FlashAPI.openChannel`
     public override Result!PublicNonce openChannel (
-        /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
+        /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce,
+        /* in */ string funder_address) @trusted
     {
         log.info("openChannel()");
 
@@ -612,7 +728,7 @@ public abstract class FlashNode : FlashControlAPI
             chan_conf))
             return Result!PublicNonce(ErrorCode.UserRejectedChannel, error);
 
-        auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout);
+        auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout, funder_address);
         if (peer is null)
             return Result!PublicNonce(ErrorCode.AddressNotFound,
                 format("Cannot find address of flash node in registry for the key %s",
@@ -622,7 +738,7 @@ public abstract class FlashNode : FlashControlAPI
         const key_pair = KeyPair.fromSeed(*secret_key);
         auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, peer_nonce, peer, this.engine, this.taskman,
-            &this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
+            this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete,  &this.getFeeUTXOs,
             this.db);
 
@@ -631,12 +747,6 @@ public abstract class FlashNode : FlashControlAPI
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
         return Result!PublicNonce(pub_nonce);
     }
-
-    /// Overriden by ThinFlashNode or FullNode
-    protected abstract void postTransaction (Transaction tx);
-
-    /// Overriden by ThinFlashNode or FullNode
-    protected abstract const(Block) getBlock (ulong _height) @safe;
 
     /// See `FlashAPI.closeChannel`
     public override Result!Point closeChannel (PublicKey sender_pk,
@@ -1142,7 +1252,8 @@ public abstract class FlashNode : FlashControlAPI
     ///
     public override Result!Hash openNewChannel (PublicKey reg_pk,
         /* in */ UTXO funding_utxo, /* in */ Hash funding_utxo_hash,
-        /* in */ Amount capacity, /* in */ uint settle_time, /* in */ Point recv_pk)
+        /* in */ Amount capacity, /* in */ uint settle_time, /* in */ Point recv_pk,
+        /* in */ string peer_address)
     {
         log.info("openNewChannel({}, {}, {})",
                  capacity, settle_time, recv_pk.flashPrettify);
@@ -1177,8 +1288,9 @@ public abstract class FlashNode : FlashControlAPI
         const funding_tx_hash = hashFull(funding_tx);
         const Hash chan_id = funding_tx_hash;
 
-        auto all_funding_utxos = this.pending_channels[reg_pk][].chain(
-                this.channels[reg_pk].byValue.map!(chan => chan.conf))
+        auto all_funding_utxos = this.pending_channels[reg_pk][]
+            .map!(pending => pending.conf)
+            .chain(this.channels[reg_pk].byValue.map!(chan => chan.conf))
             .map!(conf => conf.funding_tx_hash);
 
         // this channel is already being set up (or duplicate funding UTXO used)
@@ -1206,15 +1318,15 @@ public abstract class FlashNode : FlashControlAPI
             capacity        : capacity,
             settle_time     : settle_time,
         };
-        this.pending_channels[reg_pk].insertBack(chan_conf);
-
+        this.pending_channels[reg_pk].insertBack(PendingChannel(chan_conf, peer_address));
         return Result!Hash(chan_id);
     }
 
     /// Handle opening new channels
-    private void handleOpenNewChannel (PublicKey reg_pk, ChannelConfig chan_conf)
+    private void handleOpenNewChannel (PublicKey reg_pk, PendingChannel pending_channel)
     {
-        auto peer = this.getFlashClient(chan_conf.peer_pk, this.conf.timeout);
+        auto chan_conf = pending_channel.conf;
+        auto peer = this.getFlashClient(chan_conf.peer_pk, this.conf.timeout, pending_channel.peer_addr);
         if (peer is null)
         {
             this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
@@ -1225,7 +1337,8 @@ public abstract class FlashNode : FlashControlAPI
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto result = peer.openChannel(chan_conf, pub_nonce);
+        auto result = peer.openChannel(chan_conf, pub_nonce,
+            this.conf.addresses_to_register[0]);
         if (result.error != ErrorCode.None)
         {
             log.error("Peer ({}) rejected channel open with error: {}",
@@ -1243,7 +1356,7 @@ public abstract class FlashNode : FlashControlAPI
 
         auto channel = new Channel(this.conf, chan_conf, key_pair,
             priv_nonce, result.value, peer, this.engine, this.taskman,
-            &this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
+            this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, &this.getFeeUTXOs, this.db);
         this.channels[reg_pk][chan_conf.chan_id] = channel;
     }
@@ -1356,6 +1469,101 @@ public abstract class FlashNode : FlashControlAPI
             utxos.total_value = Amount(0);
         return utxos;
     }
+
+    /***************************************************************************
+
+        Start listening for requests
+
+        Begins asynchronous tasks for the Flash ControlAPI interface
+
+    ***************************************************************************/
+
+    public HTTPListener startControlInterface ()
+    {
+        this.start();
+
+        if (!this.conf.enabled)
+            assert(0, "Flash interface is not enabled in config settings.");
+
+        auto settings = new HTTPServerSettings(this.conf.control_address);
+        settings.port = this.conf.control_port;
+
+        auto router = new URLRouter();
+        router.registerRestInterface!FlashControlAPI(this);
+
+        return listenHTTP(settings, router);
+    }
+
+    /// Called by a FullNode once a block has been externalized
+    public void onExternalizedBlock (const ref Block block) @safe
+    {
+        this.last_height = block.header.height;
+
+        foreach (reg_pk, chans; this.channels)
+            foreach (channel; chans)
+                channel.onBlockExternalized(block);
+    }
+
+    /***************************************************************************
+
+        Monitors the blockchain for any new externalized blocks.
+
+        If a funding / closing / trigger / update / settlement transaction
+        belong to a channel is detected, it will trigger that channel's
+        handler for this event.
+
+        This enables changing the channel's state from open to closed.
+
+    ***************************************************************************/
+
+    protected void monitorBlockchain ()
+    {
+        try
+        {
+            while (true)
+            {
+                auto block = this.getBlock(this.last_height);
+                if (block.header.height != this.last_height)
+                    break;
+                this.onExternalizedBlock(block);
+                log.info("Block #{} is externalized...", block.header.height);
+                this.last_height++;
+                this.dump();
+            }
+        }
+        catch (Exception ex)
+        {
+            // connection might be dropped or 404 from getBlock
+        }
+    }
+
+
+    /***************************************************************************
+
+        Get an instance of a FlashListenerAPI client for the given address.
+
+        Params:
+            address = the IP to use
+            timeout = the timeout duration to use for requests
+
+        Returns:
+            the FlashListenerAPI client
+
+    ***************************************************************************/
+
+    protected FlashListenerAPI getFlashListenerClient (
+        string address, Duration timeout) @trusted
+    {
+        import vibe.http.client;
+
+        auto settings = new RestInterfaceSettings;
+        settings.baseURL = URL(address);
+        settings.httpClientSettings = new HTTPClientSettings;
+        settings.httpClientSettings.connectTimeout = timeout;
+        settings.httpClientSettings.readTimeout = timeout;
+
+        return new RestInterfaceClient!FlashListenerAPI(settings);
+    }
 }
 
 ///
@@ -1417,428 +1625,4 @@ private mixin template NodeMetadata ()
 
     /// hash of secret => Invoice
     private Invoice[Hash] invoices;
-}
-
-/// A thin Flash node which itself is not a FullNode / Validator but instead
-/// interacts with another FullNode / Validator for queries to the blockchain.
-public abstract class ThinFlashNode : FlashNode
-{
-    /// random agora node (for sending tx's)
-    protected FullNodeAPI agora_node;
-
-    /// monitor timer
-    protected ITimer monitor_timer;
-
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            conf = Flash configuration
-            db_path = path to the database (or in-memory if set to ":memory:")
-            genesis_hash = the hash of the genesis block to use
-            engine = the execution engine to use
-            taskman = the task manager ot use
-            agora_address = IP address of an Agora node to monitor the
-                blockchain and publish new on-chain transactions to it.
-
-    ***************************************************************************/
-
-    public this (FlashConfig conf, string db_path, Hash genesis_hash,
-        Engine engine, ITaskManager taskman, string agora_address)
-    {
-        this.agora_node = this.getAgoraClient(agora_address, conf.timeout);
-        super(conf, db_path, genesis_hash, engine, taskman);
-    }
-
-    /***************************************************************************
-
-        Start monitoring the blockchain for any new externalized blocks.
-
-    ***************************************************************************/
-
-    public override void start () @trusted
-    {
-        // todo: 20 msecs is ok only in tests
-        // todo: should additionally register as pushBlock() listener
-        this.monitor_timer = this.taskman.setTimer(20.msecs,
-            &this.monitorBlockchain, Periodic.Yes);
-        super.start();
-    }
-
-    /***************************************************************************
-
-        Shut down any timers and store latest data to the database
-
-    ***************************************************************************/
-
-    public override void shutdown ()
-    {
-        super.shutdown();
-        if (this.monitor_timer !is null)
-            this.monitor_timer.stop();
-    }
-
-    /***************************************************************************
-
-        Monitors the blockchain for any new externalized blocks.
-
-        If a funding / closing / trigger / update / settlement transaction
-        belong to a channel is detected, it will trigger that channel's
-        handler for this event.
-
-        This enables changing the channel's state from open to closed.
-
-    ***************************************************************************/
-
-    protected void monitorBlockchain ()
-    {
-        try
-        {
-            auto latest_height = this.agora_node.getBlockHeight();
-            if (this.last_height < latest_height)
-            {
-                auto next_block = this.agora_node.getBlocksFrom(
-                    this.last_height + 1, 1)[0];
-
-                foreach (reg_pk, chans; this.channels)
-                    foreach (channel; chans)
-                        channel.onBlockExternalized(next_block);
-
-                this.last_height++;
-                this.dump();
-            }
-        }
-        catch (Exception ex)
-        {
-            // connection might be dropped
-        }
-    }
-
-    /***************************************************************************
-
-        Get an instance of an Agora client.
-
-        Params:
-            address = The address (IPv4, IPv6, hostname) of the Agora node.
-            timeout = the timeout duration to use for requests.
-
-        Returns:
-            the Agora FullNode client
-
-    ***************************************************************************/
-
-    protected FullNodeAPI getAgoraClient (Address address, Duration timeout)
-    {
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-
-        return new RestInterfaceClient!FullNodeAPI(settings);
-    }
-
-    /***************************************************************************
-
-        Send the transaction via the connected agora node.
-
-        Params:
-            tx = the transaction to send
-
-    ***************************************************************************/
-
-    protected override void postTransaction (Transaction tx)
-    {
-        this.agora_node.postTransaction(tx);
-    }
-
-    /***************************************************************************
-
-        Params:
-            _height = The height of the block to return
-
-        Returns:
-            The block at height `_height`, or throw an `Exception` (404).
-
-    ***************************************************************************/
-
-    protected override const(Block) getBlock (ulong _height) @safe
-    {
-        return this.agora_node.getBlock(_height);
-    }
-}
-
-/// A FullNode / Validator should embed this class if they enabled Flash
-public class AgoraFlashNode : FlashNode
-{
-    /// Callback for sending transactions to the network
-    protected void delegate (in Transaction tx) postTransactionDg;
-
-    /// Callback for fetching a block
-    protected const(Block) delegate (ulong _height) @safe getBlockDg;
-
-    /// Network manager
-    protected NetworkManager network;
-
-    /// Periodic name registry timer
-    protected ITimer periodic_timer;
-
-    /// Registry client
-    private NameRegistryAPI registry_client;
-
-    /***************************************************************************
-
-        Constructor
-
-        Params:
-            conf = Flash configuration
-            data_dir = path to the data directory
-            genesis_hash = the hash of the genesis block to use
-            engine = the execution engine to use
-            taskman = the task manager ot use
-            postTransactionDg = callback for sending transactions to the network
-            network = NetworkManager which contains the name registry
-
-    ***************************************************************************/
-
-    public this (FlashConfig conf, string data_dir, Hash genesis_hash,
-        Engine engine, ITaskManager taskman,
-        void delegate (in Transaction tx) postTransactionDg,
-        const(Block) delegate (ulong _height) @safe getBlockDg,
-        NetworkManager network)
-    {
-        const db_path = buildPath(data_dir, "flash.dat");
-        this.postTransactionDg = postTransactionDg;
-        this.getBlockDg = getBlockDg;
-        this.network = network;
-        super(conf, db_path, genesis_hash, engine, taskman);
-    }
-
-    /***************************************************************************
-
-        Start timers and register with the name registry.
-
-    ***************************************************************************/
-
-    public override void start () @trusted
-    {
-        super.start();
-        this.startNameRegistry();
-    }
-
-    /***************************************************************************
-
-        Shutdown all timers.
-
-    ***************************************************************************/
-
-    public override void shutdown ()
-    {
-        super.shutdown();
-        this.periodic_timer.stop();
-    }
-
-    /***************************************************************************
-
-        Start listening for requests
-
-        Begins asynchronous tasks for the Flash ControlAPI interface
-
-    ***************************************************************************/
-
-    public HTTPListener startControlInterface ()
-    {
-        this.start();
-
-        if (!this.conf.enabled)
-            assert(0, "Flash interface is not enabled in config settings.");
-
-        auto settings = new HTTPServerSettings(this.conf.control_address);
-        settings.port = this.conf.control_port;
-
-        auto router = new URLRouter();
-        router.registerRestInterface!FlashControlAPI(this);
-
-        return listenHTTP(settings, router);
-    }
-
-    /// Called by a FullNode once a block has been externalized
-    public void onExternalizedBlock (const ref Block block) @safe
-    {
-        this.last_height = block.header.height;
-
-        foreach (reg_pk, chans; this.channels)
-            foreach (channel; chans)
-                channel.onBlockExternalized(block);
-    }
-
-    // start the periodic name registry routine
-    private void startNameRegistry ()
-    {
-        this.onRegisterName();  // avoid delay
-        this.periodic_timer = this.taskman.setTimer(2.minutes,
-            &this.onRegisterName, Periodic.Yes);
-    }
-
-    /// register network addresses into the name registry
-    private void onRegisterName ()
-    {
-        if (this.registry_client is null)  // try to get the client
-            this.registry_client = this.network.getNameRegistryClient(
-                this.conf.registry_address, 10.seconds);
-
-        if (this.registry_client is null)
-            return;  // failed, try again later
-
-        const(Address)[] addresses = this.conf.addresses_to_register;
-        if (!addresses.length)
-            addresses = InetUtils.getPublicIPs();
-
-        foreach (pair; this.getManagedKeys())
-        {
-            RegistryPayload payload =
-            {
-                data:
-                {
-                    public_key : pair.key,
-                    addresses : addresses,
-                    seq : time(null)
-                }
-            };
-
-            const key_pair = KeyPair.fromSeed(pair.value);
-            payload.signPayload(key_pair);
-
-            try
-            {
-                this.registry_client.postValidator(payload);
-            }
-            catch (Exception ex)
-            {
-                log.info("Couldn't register our address: {}. Trying again later..",
-                    ex);
-            }
-        }
-    }
-
-    /***************************************************************************
-
-        Send the transaction via the connected agora node.
-
-        Params:
-            tx = the transaction to send
-
-    ***************************************************************************/
-
-    protected override void postTransaction (Transaction tx)
-    {
-        this.postTransactionDg(tx);
-    }
-
-    /***************************************************************************
-
-        Params:
-            _height = The height of the block to return
-
-        Returns:
-            The block at height `_height`, or throw an `Exception` (404).
-
-    ***************************************************************************/
-
-    protected override const(Block) getBlock (ulong _height) @safe
-    {
-        return this.getBlockDg(_height);
-    }
-
-    /***************************************************************************
-
-        Get an instance of a Flash client for the given public key.
-        The name registry is consulted to look up the IP for the given key.
-
-        The client is cached internally.
-
-        Params:
-            peer_pk = the public key of the Flash node.
-            timeout = the timeout duration to use for requests.
-
-        Returns:
-            the Flash client, or null if none was found
-
-    ***************************************************************************/
-
-    protected override FlashAPI getFlashClient (in PublicKey peer_pk,
-        Duration timeout) @trusted
-    {
-        if (auto peer = peer_pk in this.known_peers)
-            return *peer;
-
-        log.info("getFlashClient searching peer: {}", peer_pk);
-
-        auto payload = this.registry_client.getValidator(peer_pk);
-        if (payload == RegistryPayload.init)
-        {
-            log.warn("Could not find mapping in registry for key {}", peer_pk);
-            return null;
-        }
-
-        if (!payload.verifySignature(peer_pk))
-        {
-            log.warn("RegistryPayload signature is incorrect for {}", peer_pk);
-            return null;
-        }
-
-        if (payload.data.addresses.length == 0)
-            return null;
-
-        string ip = payload.data.addresses[0];
-
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        // todo: this is obviously wrong, need proper connection handling later
-        settings.baseURL = URL(ip);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-
-        auto peer = new RestInterfaceClient!FlashAPI(settings);
-        this.known_peers[peer_pk] = peer;
-        if (this.known_channels.length > 0)
-            peer.gossipChannelsOpen(this.channel_updates.byValue
-                .map!(updates => updates.byValue).joiner
-                .map!(update => ChannelOpen(this.known_channels[update.chan_id].height,
-                                            this.known_channels[update.chan_id].conf, update)).array);
-
-        return peer;
-    }
-
-    /***************************************************************************
-
-        Get an instance of a FlashListenerAPI client for the given address.
-
-        Params:
-            address = the IP to use
-            timeout = the timeout duration to use for requests
-
-        Returns:
-            the FlashListenerAPI client
-
-    ***************************************************************************/
-
-    protected override FlashListenerAPI getFlashListenerClient (
-        string address, Duration timeout) @trusted
-    {
-        import vibe.http.client;
-
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
-
-        return new RestInterfaceClient!FlashListenerAPI(settings);
-    }
 }

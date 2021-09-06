@@ -49,7 +49,7 @@ import core.time;
 public alias Listeners = Tuple!(
     FullNode, "node",
     AdminInterface, "admin",
-    AgoraFlashNode, "flash",
+    FlashNode, "flash",
     NameRegistry, "registry",
     HTTPListener[], "http"
  );
@@ -106,11 +106,11 @@ public Listeners runNode (Config config)
 
         log.trace("Started Flash node...");
         const params = FullNode.makeConsensusParams(config);
-        auto flash = new AgoraFlashNode(config.flash,
+        auto flash = new FlashNode(config.flash,
             config.node.data_dir, params.Genesis.hashFull(),
             result.node.getEngine(),
             result.node.getTaskManager(), &result.node.postTransaction,
-            &result.node.getBlock, result.node.getNetworkManager());
+            &result.node.getBlock, &result.node.getNetworkManager().getNameRegistryClient);
         router.registerRestInterface!FlashAPI(flash);
         result.flash = flash;
     }

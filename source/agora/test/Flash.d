@@ -16,6 +16,7 @@ module agora.test.Flash;
 version (unittest):
 
 import agora.api.FullNode : FullNodeAPI = API;
+import agora.api.Registry;
 import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Task;
@@ -125,7 +126,7 @@ enum DatabaseStorage : string
 }
 
 /// A thin localrest flash node which itself is not a FullNode / Validator
-public class TestFlashNode : ThinFlashNode, TestFlashAPI
+public class TestFlashNode : FlashNode, TestFlashAPI
 {
     ///
     protected Registry!TestAPI* agora_registry;
@@ -137,24 +138,34 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     protected Registry!TestFlashListenerAPI* listener_registry;
 
     ///
+    protected Registry!NameRegistryAPI* nreg_registry;
+
+    ///
+    protected FullNodeAPI agora_node;
+
+    ///
     protected bool allow_publish;
 
     ///
     public this (FlashConfig conf, Registry!TestAPI* agora_registry,
         string agora_address, DatabaseStorage storage,
         Registry!TestFlashAPI* flash_registry,
-        Registry!TestFlashListenerAPI* listener_registry)
+        Registry!TestFlashListenerAPI* listener_registry,
+        Registry!NameRegistryAPI* nreg_registry, Duration timeout)
     {
         this.agora_registry = agora_registry;
         this.flash_registry = flash_registry;
         this.listener_registry = listener_registry;
+        this.nreg_registry = nreg_registry;
         const genesis_hash = hashFull(GenesisBlock);
         const TestStackMaxTotalSize = 16_384;
         const TestStackMaxItemSize = 512;
-        this.allow_publish = true;
         auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+        this.allow_publish = true;
+
+        this.agora_node = this.getAgoraClient(agora_address, timeout);
         super(conf, storage, genesis_hash, engine, new LocalRestTaskManager(),
-            agora_address);
+            &this.postTransaction, &agora_node.getBlock, &this.getNameRegistryClient);
     }
 
     /***************************************************************************
@@ -191,7 +202,7 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     }
 
     ///
-    protected override FullNodeAPI getAgoraClient (Address address,
+    protected FullNodeAPI getAgoraClient (Address address,
         Duration timeout)
     {
         auto tid = this.agora_registry.locate(address);
@@ -200,21 +211,13 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     }
 
     ///
-    protected override TestFlashAPI getFlashClient (in PublicKey peer_pk,
-        Duration timeout) @trusted
+    protected override FlashAPI createFlashClient (in string address, in Duration timeout) @trusted
     {
-        if (auto peer = peer_pk in this.known_peers)
-        {
-            auto control_api = cast(TestFlashAPI)*peer;
-            assert(control_api !is null);  // something's wrong
-            return control_api;
-        }
-
         // give some time to the other node to wake up and register
         Listener!TestFlashAPI tid;
         foreach (i; 0 .. 5)
         {
-            tid = this.flash_registry.locate(peer_pk.to!string);
+            tid = this.flash_registry.locate(address);
             if (tid != typeof(tid).init)
                 break;
 
@@ -223,23 +226,25 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
 
         assert(tid != typeof(tid).init, "Flash node not initialized");
 
-        auto peer = new RemoteAPI!TestFlashAPI(tid, timeout);
-        this.known_peers[peer_pk] = peer;
-        if (this.known_channels.length > 0)
-            peer.gossipChannelsOpen(this.channel_updates.byValue
-                .map!(updates => updates.byValue).joiner
-                .map!(update => ChannelOpen(this.known_channels[update.chan_id].height,
-                                            this.known_channels[update.chan_id].conf, update)).array);
-
-        return peer;
+        return new RemoteAPI!TestFlashAPI(tid, timeout);
     }
 
+    ///
     protected override TestFlashListenerAPI getFlashListenerClient (
         string address, Duration timeout) @trusted
     {
         auto tid = this.listener_registry.locate(address);
         assert(tid != typeof(tid).init);
         return new RemoteAPI!TestFlashListenerAPI(tid, timeout);
+    }
+
+    ///
+    public NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
+    {
+        auto tid = this.nreg_registry.locate(address);
+        assert(tid != typeof(tid).init, "Trying to access name registry at address '" ~ address ~
+               "' without first creating it");
+        return new RemoteAPI!NameRegistryAPI(tid, timeout);
     }
 
     ///
@@ -325,10 +330,10 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
     }
 
     ///
-    protected override void postTransaction (Transaction tx)
+    private void postTransaction (in Transaction tx)
     {
         if (this.allow_publish)
-            super.postTransaction(tx);
+            this.agora_node.postTransaction(tx);
         else
             log.info("Skipping publishing {}", tx);
     }
@@ -388,7 +393,9 @@ public class FlashNodeFactory : TestAPIManager
             max_settle_time : 100,
             max_retry_time : 4.seconds,
             max_retry_delay : 100.msecs,
-            listener_address : ListenerAddress, };
+            listener_address : ListenerAddress,
+            registry_address : "name.registry",
+            addresses_to_register : [to!string(kp.address)]};
         return this.createFlashNode!FlashNodeImpl(kp, conf, storage);
     }
 
@@ -398,7 +405,7 @@ public class FlashNodeFactory : TestAPIManager
     {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             conf, &this.reg, this.nodes[0].address, storage,
-            &this.flash_registry, &this.listener_registry,
+            &this.flash_registry, &this.listener_registry, &this.nreg,
             10.seconds);  // timeout from main thread
 
         this.addresses ~= kp.address;
@@ -641,7 +648,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -719,7 +726,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -817,7 +824,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -903,7 +910,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -927,7 +934,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo, charlie_utxo_hash, Amount(3_000), Settle_1_Blocks, WK.Keys.D.address);
+        charlie_utxo, charlie_utxo_hash, Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1037,7 +1044,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1060,7 +1067,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address);
+        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1083,7 +1090,7 @@ unittest
     const diego_utxo = UTXO(0, txs[2].outputs[0]);
     const diego_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const diego_alice_chan_id_res = diego.openNewChannel(WK.Keys.D.address,
-        diego_utxo, diego_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.A.address);
+        diego_utxo, diego_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.A.address, to!string(WK.Keys.A.address));
     assert(diego_alice_chan_id_res.error == ErrorCode.None,
         diego_alice_chan_id_res.message);
     const diego_alice_chan_id = diego_alice_chan_id_res.value;
@@ -1172,7 +1179,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1195,7 +1202,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[2].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address);
+        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1223,7 +1230,7 @@ unittest
     const charlie_utxo_2 = UTXO(0, txs[3].outputs[0]);
     const charlie_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
     const charlie_diego_chan_id_2_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo_2, charlie_utxo_hash_2, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address);
+        charlie_utxo_2, charlie_utxo_hash_2, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_2_res.error == ErrorCode.None,
         charlie_diego_chan_id_2_res.message);
     const charlie_diego_chan_id_2 = charlie_diego_chan_id_2_res.value;
@@ -1369,7 +1376,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), 0, WK.Keys.C.address);
+        alice_utxo, alice_utxo_hash, Amount(10_000), 0, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1433,7 +1440,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
@@ -1512,17 +1519,17 @@ unittest
 
     // error on mismatching genesis hash
     ChannelConfig bad_conf = { funder_pk : WK.Keys.A.address, peer_pk : WK.Keys.C.address};
-    auto open_res = charlie.openChannel(bad_conf, PublicNonce.init);
+    auto open_res = charlie.openChannel(bad_conf, PublicNonce.init, bad_conf.funder_pk.to!string());
     assert(open_res.error == ErrorCode.InvalidGenesisHash, open_res.to!string);
 
     bad_conf.peer_pk = PublicKey.init;
     // error on non-managed key
-    open_res = charlie.openChannel(bad_conf, PublicNonce.init);
+    open_res = charlie.openChannel(bad_conf, PublicNonce.init, bad_conf.funder_pk.to!string());
     assert(open_res.error == ErrorCode.KeyNotRecognized, open_res.to!string);
 
     // error on capacity too low
     auto res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(1), Settle_10_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(1), Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     auto error = network.listener.waitUntilChannelState(res.value,
@@ -1535,7 +1542,7 @@ unittest
 
     // error on capacity too high
     res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1544,7 +1551,7 @@ unittest
 
     // error on settle time too low
     res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1553,21 +1560,21 @@ unittest
 
     // error on not enough funds on funding UTXO
     res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not enough funds on funding UTXO for TX fees
     res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not own funding UTXO
     res = charlie.openNewChannel(WK.Keys.C.address,
-        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.A.address);
+        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.A.address, to!string(WK.Keys.A.address));
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1575,7 +1582,7 @@ unittest
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     network.listener.waitUntilChannelState(res.value, ChannelState.WaitingForFunding);
     const chan_id = chan_id_res.value;
@@ -1590,7 +1597,7 @@ unittest
 
     // test what happens trying to open a new channel with the same funding tx
     res = alice.openNewChannel(WK.Keys.A.address, utxo, utxo_hash, Amount(10_000),
-        Settle_10_Blocks, WK.Keys.C.address);
+        Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.DuplicateChannelID, res.to!string);
 
     // test some update signer error cases
@@ -1711,7 +1718,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -1803,7 +1810,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
 
@@ -1841,7 +1848,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
+        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
