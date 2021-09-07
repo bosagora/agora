@@ -302,7 +302,7 @@ public class Validator : FullNode, API
         foreach (preimages; query)
         {
             preimages.each!((PreImageInfo pi) {
-                if (this.ledger.addPreimage(pi))
+                if (this.addPreImageSafe(pi))
                 {
                     try this.pushPreImage(pi);
                     catch (Exception exc) {}

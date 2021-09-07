@@ -64,6 +64,9 @@ node:
   # The percentage by which the double spend transaction's fee should be
   # increased in order to be added to the transaction pool
   double_spent_threshold_pct: 20
+  # The maximum distance from the current ledger a gossipped pre-image can
+  # be to be considered for inclusion.
+  preimage_tolerance: 100
   # The minimum percentage of average fee in the pool which the incoming
   # transaction should include
   min_fee_pct: 80

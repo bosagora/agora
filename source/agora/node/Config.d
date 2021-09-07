@@ -235,6 +235,26 @@ public struct NodeConfig
 
     /***************************************************************************
 
+        The maximum distance from the current Ledger a pre-image can be
+
+        Pre-image received through the node interface contains both a hash and
+        a height (along with the owner). In order to verify their validity,
+        they need to be hashed to ensure they match the registered commitment,
+        provided during enrollment.
+        However, nodes cannot accept arbitrarily distant pre-images:
+        If they did, a client (or other node) could just send a bunch of values
+        far into the future, forcing us to hash a lot for nothing.
+
+        For this reason, pre-images received through the network need to be
+        within `preimage_tolerance` of the current ledger height to be
+        considered.
+
+    ***************************************************************************/
+
+    public uint preimage_tolerance = 100;
+
+    /***************************************************************************
+
         Minimum fee percentage for transactions to be added to the pool
 
         When accepting incoming transactions, only accept transactions where the

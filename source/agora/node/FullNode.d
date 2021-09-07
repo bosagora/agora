@@ -527,7 +527,7 @@ public class FullNode : API
             // A) We already have a duplicate preimage
             // B) The preimage is for a newer enrollment which is in one of the
             //    `blocks` which we haven't read from yet
-            preimages.each!(pi => this.ledger.addPreimage(pi));
+            preimages.each!(pi => this.addPreImageSafe(pi));
             // A block might have been externalized in the meantime,
             // so just skip older heights
             if (block.header.height <= this.ledger.getBlockHeight())
@@ -574,6 +574,39 @@ public class FullNode : API
         // We return if height in ledger is reached for this block to prevent fetching again
         return this.ledger.getBlockHeight() >= block.header.height ? null
             : format!"Ledger is already at height %s"(block.header.height);
+    }
+
+    /***************************************************************************
+
+        Add pre-image to the Ledger that were received from the network
+
+        This performs a basic check on the pre-image height to avoid DoS attacks
+        if the remote node sends us a pre-image far into the future.
+
+        Params:
+            pi = The `PreImageInfo` to add
+
+    ***************************************************************************/
+
+    protected bool addPreImageSafe (in PreImageInfo pi) @safe nothrow
+    {
+        const current = this.ledger.getBlockHeight();
+
+        // If the height is below the block height, we let the ledger check it,
+        // as there can be no DoS attack: the validator it refers to will either
+        // be slashed, or we'll have an up-to-date pre-image.
+        if (pi.height <= current)
+            return this.ledger.addPreimage(pi);
+
+        // The previous check means that this substraction is safe (can't underflow)
+        if ((pi.height - current) > this.config.node.preimage_tolerance)
+        {
+            log.warn("Ignoring pre-image at height {} as ledger is at height {} (Tolerance: {})",
+                     pi.height, current, this.config.node.preimage_tolerance);
+            return false;
+        }
+
+        return this.ledger.addPreimage(pi);
     }
 
     /***************************************************************************
@@ -1049,7 +1082,7 @@ public class FullNode : API
         this.recordReq("postPreimage");
         log.trace("Received Preimage: {}", prettify(preimage));
 
-        if (this.ledger.addPreimage(preimage))
+        if (this.addPreImageSafe(preimage))
         {
             log.info("Accepted preimage: {}", prettify(preimage));
             this.network.peers.each!(p => p.client.sendPreimage(preimage));
