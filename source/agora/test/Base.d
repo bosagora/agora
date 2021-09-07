@@ -1210,26 +1210,26 @@ public class TestAPIManager
     /// Post a transaction to clients and ensure it is accepted by them (put in the tx pool)
     public void postAndEnsureTxInPool (in Transaction tx)
     {
-        this.postAndEnsureTxInPool(tx, iota(this.clients.length));
+        this.postAndEnsureTxInPool(iota(this.clients.length), tx);
     }
 
     /// Ditto
-    public void postAndEnsureTxInPool (Idxs) (in Transaction tx, Idxs indices)
+    public void postAndEnsureTxInPool (Idxs) (Idxs clients_idxs, in Transaction tx)
     {
-        indices.each!(idx => this.clients[idx].postTransaction(tx));
-        this.ensureTxInPool(tx.hashFull(), indices);
+        clients_idxs.each!(idx => this.clients[idx].postTransaction(tx));
+        this.ensureTxInPool(clients_idxs, tx.hashFull());
     }
 
     /// Ensure that a transaction has been put in the tx pools of the client indices
-    public void ensureTxInPool (Idxs) (in Hash hash, Idxs indices)
+    public void ensureTxInPool (Idxs) (Idxs clients_idxs, in Hash hash)
     {
-        retryFor(indices.each!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
+        retryFor(clients_idxs.each!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
     }
 
     /// Ditto
     public void ensureTxInPool (in Hash hash)
     {
-        this.ensureTxInPool(hash, iota(this.clients.length));
+        this.ensureTxInPool(iota(this.clients.length), hash);
     }
 }
 
