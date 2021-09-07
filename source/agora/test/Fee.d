@@ -55,7 +55,8 @@ unittest
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
         // Regular block
-        if (blocks[$-1].header.height % conf.consensus.payout_period)
+        if (blocks[$-1].header.height < 2 * conf.consensus.payout_period
+            || blocks[$-1].header.height % conf.consensus.payout_period)
             assert(cb_txs.length == 0);
         else // Payout block
         {
@@ -201,7 +202,8 @@ unittest
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
         // Regular block
-        if (blocks[$-1].header.height % conf.consensus.payout_period)
+        if (blocks[$-1].header.height < 2 * conf.consensus.payout_period
+            || blocks[$-1].header.height % conf.consensus.payout_period)
             assert(cb_txs.length == 0);
         else // Payout block
         {
@@ -212,12 +214,12 @@ unittest
     }
 
     // create GenesisValidatorCycle - 1 blocks
-    foreach (block_idx; 1 .. conf.consensus.payout_period + 1)
+    foreach (block_idx; 1 .. 2 * conf.consensus.payout_period + 1)
     {
         createAndExpectNewBlock(Height(block_idx));
     }
 
     // Node with the different config should not accept payout block
     auto bad_node = nodes[0];
-    assert(bad_node.getBlockHeight() == Height(conf.consensus.payout_period - 1));
+    assert(bad_node.getBlockHeight() == Height(2 * conf.consensus.payout_period - 1));
 }
