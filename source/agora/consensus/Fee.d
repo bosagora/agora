@@ -1,6 +1,10 @@
 /*******************************************************************************
 
-    Contains the function to calculate the fees used to store the data
+    Contains the function to calculate the fees and stores the results in a db.
+
+    Fees are the sum of output values minus the sum of input values.
+    We store the calculated fees after each block is externalized as we have all
+    the inputs available in the UTXO set at that time.
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -188,18 +192,11 @@ public class FeeManager
     /// Parameters for consensus-critical constants
     public immutable(ConsensusParams) params;
 
-    /***************************************************************************
+    /// Block fees at each height
+    private Amount[Height] block_fees;
 
-        Accumulated fee per public key
-
-        Note that while we usually use UTXO hashes to refer to validators
-        instead of public keys (as two validators could be using the same public
-        key, although that is not recommended), the public key is what is used
-        to generated the UTXO, hence why it is used as index.
-
-    ***************************************************************************/
-
-    private Amount[PublicKey] accumulated_fees;
+    /// Block data fees at each height
+    private Amount[Height] block_data_fees;
 
     /// Ctor
     public this (ManagedDatabase db, immutable(ConsensusParams) params)
@@ -212,17 +209,18 @@ public class FeeManager
     /// Init DB and rebuild the in-memory state
     private void init ()
     {
-        this.db.execute("CREATE TABLE IF NOT EXISTS accumulated_fees " ~
-            "(public_key TEXT PRIMARY KEY, fee INTEGER)");
+        this.db.execute("CREATE TABLE IF NOT EXISTS block_fees " ~
+            "(height INTEGER, fee INTEGER, data_fee INTEGER)");
 
-        auto results = this.db.execute("SELECT public_key, fee " ~
-            " FROM accumulated_fees");
+        auto results = this.db.execute("SELECT height, fee, data_fee FROM block_fees");
 
         foreach (ref row; results)
         {
-            const key = PublicKey.fromString(row.peek!(char[])(0));
+            const height = Height(row.peek!(ulong)(0));
             const fee = Amount(row.peek!(ulong)(1));
-            this.accumulated_fees[key] = fee;
+            const data_fee = Amount(row.peek!(ulong)(2));
+            this.block_fees[height] = fee;
+            this.block_data_fees[height] = data_fee;
         }
     }
 
@@ -287,7 +285,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    private Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
+    public Amount[] getValidatorFees (Amount tot_fee, Amount tot_data_fee,
         ValidatorInfo[] validators) nothrow @safe
     {
         import std.numeric : gcd;
@@ -323,7 +321,6 @@ public class FeeManager
         return validator_fees;
     }
 
-
     /***************************************************************************
 
         Calculate the `Amount` of fees that should be paid to
@@ -331,7 +328,6 @@ public class FeeManager
 
         Params:
             tot_fee = Total amount of fees
-            tot_data_fee = Total amount of data fees
             validators = Enrolled Validators
 
         Return:
@@ -339,11 +335,8 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount getCommonsBudgetFee (Amount tot_fee, Amount tot_data_fee,
-        ValidatorInfo[] validators) nothrow @safe
+    public Amount getCommonsBudgetFee (Amount tot_fee, in Amount[] validator_fees) nothrow @safe
     {
-        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, validators);
-
         scope (failure) assert(0);
         Amount total_val_fee;
         validator_fees.each!(fee => total_val_fee += fee);
@@ -353,12 +346,10 @@ public class FeeManager
 
     /***************************************************************************
 
-        Calculate and accumulates the `Amount` of fees that should be paid to
-        each Validator
+        Calculate the `Amount` of fees included in a block's transaction set
 
         Params:
             block = Block to calculate the fees
-            validators = Enrolled Validators
             peekUTXO = delegate to find the UTXOs
 
         Return:
@@ -366,72 +357,90 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public void accumulateFees (in Block block, ValidatorInfo[] validators,
-        scope UTXOFinder peekUTXO) @trusted
+    public void storeBlockFees (in Block block, scope UTXOFinder peekUTXO)
+    @trusted
     {
-        Amount tot_fee, tot_data_fee;
-        this.getTXSetFees(block.txs, peekUTXO, tot_fee, tot_data_fee);
+        if (block.header.height == 0) // No fees for Genesis Block
+            return;
 
-        // Filter out the missing validators as they will not get paid fees for this block
-        auto vals_to_pay = validators.enumerate.filter!(en =>
-            !block.header.missing_validators.canFind(en.index)).map!(en => en.value).array;
+        Amount txs_fees;
+        Amount txs_data_fees;
+        this.getTXSetFees(block.txs, peekUTXO, txs_fees, txs_data_fees);
 
-        const validator_fees = this.getValidatorFees(tot_fee, tot_data_fee, vals_to_pay);
-
-        const commons_fees = this.getCommonsBudgetFee(tot_fee, tot_data_fee, vals_to_pay);
-
-        foreach (idx, validator; vals_to_pay)
-        {
-            this.accumulated_fees.update(validator.address,
-                { return validator_fees[idx]; },
-                (ref Amount so_far) {
-                    so_far += validator_fees[idx];
-                    return so_far;
-                }
-            );
-
-            this.db.execute(
-                "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                this.accumulated_fees[validator.address].tupleof[0], validator.address);
-        }
-        this.accumulated_fees.update(this.params.CommonsBudgetAddress,
-                { return commons_fees; },
-                (ref Amount so_far) {
-                    so_far += commons_fees;
-                    return so_far;
-                }
-            );
+        this.block_fees[block.header.height] = txs_fees;
+        this.block_data_fees[block.header.height] = txs_data_fees;
         this.db.execute(
-                "REPLACE INTO accumulated_fees (fee, public_key) VALUES (?,?)",
-                this.accumulated_fees[this.params.CommonsBudgetAddress].tupleof[0], this.params.CommonsBudgetAddress);
+                "REPLACE INTO block_fees (height, fee, data_fee) VALUES (?, ?, ?)",
+                block.header.height, txs_fees, txs_data_fees);
     }
 
     /***************************************************************************
 
-        Returns the accumulated `Amount` of fees that should be paid on given
-        height
+        Returns the total `Amount` of fees in the transaction set of a block
+
+        This includes any `data_fees` which are based on the size of the
+        `payload` in a `Transaction`.
+        The transaction fee rate is calculated after the data fee is subtracted
+        from the total fees, which is `sum of transactions input values`
+        minus `sum of output values`.
 
         Params:
-            height = requested height
+            height = height of block
 
         Return:
-            `Amount` of fees that should be paid to each Validator
+            `Amount` of fees included at given height
 
     ***************************************************************************/
 
-    public Amount[PublicKey] getAccumulatedFees (in Height height) nothrow @safe
+    public Amount getBlockFees (in Height height) @safe
     {
-        return height % this.params.PayoutPeriod == 0 ? this.accumulated_fees : null;
+        return this.block_fees.get(height, 0.coins);
     }
 
-    /// Clears the accumulated fees
-    public void clearAccumulatedFees () nothrow @trusted
+    /***************************************************************************
+
+        Returns the `Amount` of data fees included in the transaction set of a
+        block
+
+        Params:
+            height = height of block
+
+        Return:
+            `Amount` of data fees required at given height
+
+    ***************************************************************************/
+
+    public Amount getBlockDataFees (in Height height) @safe
+    {
+        return this.block_data_fees.get(height, 0.coins);
+    }
+
+    /***************************************************************************
+
+        Clear stored fees for heights already paid
+
+        This removes the records from the database and also `this.block_fees`
+
+        Params:
+            height = height of last block in the paid out period
+
+    ***************************************************************************/
+
+    public void clearBlockFeesBefore (in Height height) nothrow @trusted
     {
         try
         {
-            this.db.execute("DELETE FROM accumulated_fees");
-            this.accumulated_fees.clear();
-        } catch (Exception e)
+            const firstHeight = height - this.params.PayoutPeriod;
+            this.db.execute("DELETE FROM block_fees where height <= ?", height);
+            iota(firstHeight, height + 1)
+                .map!(h => Height(h)).each!((Height h)
+                    {
+                        this.block_fees.remove(h);
+                        this.block_data_fees.remove(h);
+                    }
+                );
+        }
+        catch (Exception e)
         {
             assert(0, e.msg); // Should never happen
         }
@@ -552,8 +561,7 @@ public class FeeManager
         Amount tot_fee = Amount.UnitPerCoin; assert(tot_fee.mul(2));
         auto w_data_fees = man.getValidatorFees(tot_fee,
             Amount.UnitPerCoin, validators);
-        auto commons_fee = man.getCommonsBudgetFee(tot_fee,
-            Amount.UnitPerCoin, validators);
+        auto commons_fee = man.getCommonsBudgetFee(tot_fee, w_data_fees);
 
         tot_fee -= commons_fee;
         foreach (fee; w_data_fees)
@@ -632,12 +640,15 @@ unittest
     block.txs ~= spend_tx;
 
     block.header.height = Height(1);
-    auto valInfo = ValidatorInfo(Height(1), utxo.output.address, utxo.output.value);
-    fee_man.accumulateFees(block, [ valInfo ] , &utxo_set.peekUTXO);
+    fee_man.storeBlockFees(block , &utxo_set.peekUTXO);
 
-    auto fee_man_2 = new FeeManager(fee_man.db, new immutable(ConsensusParams));
+    immutable Params = new immutable(ConsensusParams);
+    auto fee_man_2 = new FeeManager(fee_man.db, Params);
+
+    auto fees = fee_man.getBlockFees(Height(1));
+    assert(fees > Amount(0));
 
     // fee_man_2 should recover from DB
-    assert(fee_man.getAccumulatedFees(Height(0)) ==
-        fee_man_2.getAccumulatedFees(Height(0)));
+    assert(fee_man.getBlockFees(Height(1)) ==
+        fee_man_2.getBlockFees(Height(1)));
 }
