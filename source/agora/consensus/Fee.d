@@ -281,7 +281,7 @@ public class FeeManager
 
     /***************************************************************************
 
-        Calculate the `Amount` of fees that should be paid to each
+        Calculate the `Amount` of fees and rewards that should be paid to each
         Validator for the given block height
 
         The actual payment height which contains the Coinbase tx will be the
@@ -289,6 +289,7 @@ public class FeeManager
 
         Params:
             height = reward and fees are for this block height
+            rewards = block rewards for `Commons Budget` and `Validators`
             validators = enrolled Validators who signed the block
 
         Return:
@@ -296,7 +297,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount[] getValidatorPayouts (Height height, ValidatorInfo[] validators) @safe
+    public Amount[] getValidatorPayouts (in Height height, in BlockRewards rewards, in ValidatorInfo[] validators) @safe
     {
         import std.numeric : gcd;
         // no stakes, no fees
@@ -308,12 +309,16 @@ public class FeeManager
         tx_fees -= this.block_data_fees.get(height, 0.coins);
         tx_fees.percentage(this.params.ValidatorTXFeeCut);
 
+        // Add the block rewards to the Validator payouts
+        if (!tx_fees.add(rewards.validator_rewards))
+            assert(0, "getValidatorPayouts: Overflow when adding validator rewards to tx fees");
+
         // A Validator with MinFreezeAmount of coins staked will get 100 "shares"
         // this fixes the stake amount that is needed to get a share
         Amount share_stake = Amount.MinFreezeAmount;
         share_stake.div(100);
         // this will ignore any remaning part of the stake that is not worth a share
-        auto shares = validators.map!(val => val.stake.count(share_stake));
+        auto shares = validators.map!((ValidatorInfo val) => val.stake.count(share_stake));
         auto shares_gcd = shares.fold!((a, b) => gcd(a,b));
         auto normalized_shares = shares.map!(share => share / shares_gcd);
 
@@ -344,6 +349,7 @@ public class FeeManager
 
         Params:
             height = reward and fees are for this block height
+            rewards = block rewards for `Commons Budget` and `Validators`
             validator_payouts = payouts to Validators for given height
 
         Return:
@@ -351,10 +357,18 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount getCommonsBudgetPayout (Height height, in Amount[] validator_payouts) @safe
+    public Amount getCommonsBudgetPayout (in Height height, in BlockRewards rewards, in Amount[] validator_payouts) @safe
     {
-        // Initailize total with block fees
-        Amount total_payout = this.block_fees.get(height, 0.coins);
+        // Initailize total with rewards for validators
+        Amount total_payout = rewards.validator_rewards;
+
+        // Add the rewards for Commons Budget
+        if (!total_payout.add(rewards.commons_budget_rewards))
+            assert(0, "getCommonsBudgetPayout: Failed to add rewards for Commons Budget");
+
+        // Add the total fees (inputs - outputs)
+        if (!total_payout.add(this.block_fees.get(height, 0.coins)))
+            assert(0, "getCommonsBudgetPayout: Failed to add total fees");
 
         // Subtract each validator payout
         validator_payouts.each!((payout)
@@ -532,6 +546,7 @@ public class FeeManager
     {
         import agora.crypto.Hash;
         import agora.utils.Test;
+        import agora.consensus.data.genesis.Test;
 
         auto man = new FeeManager();
         auto utxoset = new TestUTXOSet();
@@ -578,11 +593,13 @@ public class FeeManager
         man.storeBlockFees(block, &utxoset.peekUTXO);
 
         // When stakes are equal they should receive the same amount
-        assert(man.getValidatorPayouts(Height(1), validators[0..$-1])
+        BlockRewards rewards = BlockRewards(10_000.coins, 50_000.coins);
+
+        assert(man.getValidatorPayouts(Height(1), rewards, validators[0..$-1])
             .uniq.array.length == 1);
 
         // 1 2X stake, 2 1X stakes
-        auto val_payouts = man.getValidatorPayouts(Height(1), validators);
+        auto val_payouts = man.getValidatorPayouts(Height(1), rewards, validators);
         assert(val_payouts.length == validators.length);
 
         auto fees = val_payouts.uniq.array;
@@ -612,9 +629,13 @@ public class FeeManager
         assert(tot_fee > 0.coins);
 
         // get the payouts for the validators
-        auto w_data_fees = man.getValidatorPayouts(Height(2), validators);
+        auto w_data_fees = man.getValidatorPayouts(Height(2), rewards, validators);
         // get the payout for the Commons Budget
-        auto commons_fee = man.getCommonsBudgetPayout(Height(2), w_data_fees);
+        auto commons_fee = man.getCommonsBudgetPayout(Height(2), rewards, w_data_fees);
+
+        // Add the Block rewards
+        tot_fee += rewards.validator_rewards;
+        tot_fee += rewards.commons_budget_rewards;
 
         // Subtract the fees paid to the commons budget
         tot_fee -= commons_fee;
