@@ -261,8 +261,7 @@ public class FlashNode : FlashControlAPI
         this.onRegisterName();  // avoid delay
         this.periodic_timer = this.taskman.setTimer(2.minutes,
             &this.onRegisterName, Periodic.Yes);
-        // todo: should additionally register as pushBlock() listener
-        this.monitor_timer = this.taskman.setTimer(1.seconds,
+        this.monitor_timer = this.taskman.setTimer(2.minutes,
             &this.monitorBlockchain, Periodic.Yes);
     }
 

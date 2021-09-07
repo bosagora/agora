@@ -380,6 +380,7 @@ public class FlashNodeFactory : TestAPIManager
     {
         this.listener = this.createFlashListener!Listener(ListenerAddress);
         super.start();
+        this.flash_nodes.each!(fn => fn.start());
     }
 
     /// Create a new flash node user
@@ -403,6 +404,8 @@ public class FlashNodeFactory : TestAPIManager
     public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
         (const KeyPair kp, FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local)
     {
+        import agora.api.Handlers;
+
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             conf, &this.reg, this.nodes[0].address, storage,
             &this.flash_registry, &this.listener_registry, &this.nreg,
@@ -411,7 +414,7 @@ public class FlashNodeFactory : TestAPIManager
         this.addresses ~= kp.address;
         this.flash_nodes ~= api;
         this.flash_registry.register(kp.address.to!string, api.listener());
-        api.start();
+        this.bh_registry.register(kp.address.to!string, cast(Listener!BlockExternalizedHandler) api.listener());
         api.registerKey(kp.secret);
 
         return api;
@@ -610,11 +613,18 @@ private class FlashListener : TestFlashListenerAPI
 
 private TestConf flashTestConf ()
 {
+    import agora.node.Config;
+
     TestConf conf;
     conf.consensus.quorum_threshold = 100;
     // TODO: remove this line when fees are handled
     conf.consensus.min_fee = Amount(0);
     conf.node.min_fee_pct = 0;
+    conf.event_handlers = [
+        EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.A.address.to!string()]),
+        EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.C.address.to!string()]),
+        EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.D.address.to!string()])
+    ];
     return conf;
 }
 
@@ -624,9 +634,13 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -636,9 +650,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 3;
@@ -703,9 +714,13 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -715,9 +730,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C);
 
     // 4 blocks settle time after trigger tx is published
     const Settle_4_Blocks = 4;
@@ -800,9 +812,13 @@ unittest
 
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode!RejectingCloseNode(WK.Keys.C);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -812,9 +828,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode!RejectingCloseNode(WK.Keys.C);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -883,9 +896,14 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -895,10 +913,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C);
-    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1007,18 +1021,8 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
-    network.waitForDiscovery();
-
-    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
-    auto txs = genesisSpendable().take(8).enumerate()
-        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
-        .array();
-
-    txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1028,11 +1032,24 @@ unittest
         listener_address : network.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 100.msecs,
+        registry_address : "name.registry",
+        addresses_to_register : [to!string(WK.Keys.A.address)]
     };
 
     auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
     auto charlie = network.createFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
+
+    network.start();
+    network.waitForDiscovery();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1152,9 +1169,14 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[3]
@@ -1164,10 +1186,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C);
-    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1354,9 +1372,13 @@ unittest
 
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode!BleedingEdgeFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -1366,9 +1388,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode!BleedingEdgeFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C);
 
     /+ OPEN ALICE => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -1417,9 +1436,13 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A, DatabaseStorage.Static);
+    auto charlie = network.createFlashNode(WK.Keys.C, DatabaseStorage.Static);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -1429,9 +1452,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A, DatabaseStorage.Static);
-    auto charlie = network.createFlashNode(WK.Keys.C, DatabaseStorage.Static);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1488,9 +1508,22 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    FlashConfig charlie_conf = { enabled : true,
+        min_funding : Amount(1000),
+        max_funding : Amount(100_000_000),
+        min_settle_time : 10,
+        max_settle_time : 100,
+        max_retry_delay : 100.msecs,
+        registry_address : "name.registry",
+        addresses_to_register : [to!string(WK.Keys.C.address)]
+    };
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C, charlie_conf);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -1501,15 +1534,6 @@ unittest
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    FlashConfig charlie_conf = { enabled : true,
-        min_funding : Amount(1000),
-        max_funding : Amount(100_000_000),
-        min_settle_time : 10,
-        max_settle_time : 100,
-        max_retry_delay : 100.msecs,
-    };
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C, charlie_conf);
 
     const Settle_10_Blocks = 10;
 
@@ -1684,18 +1708,8 @@ unittest
 
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
-    network.waitForDiscovery();
-
-    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
-    auto txs = genesisSpendable().take(8).enumerate()
-        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
-        .array();
-
-    txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1705,11 +1719,24 @@ unittest
         listener_address : network.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
+        registry_address : "name.registry",
+        addresses_to_register : [to!string(WK.Keys.A.address)]
     };
 
     auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
     auto charlie = network.createFlashNode!RejectingFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
+
+    network.start();
+    network.waitForDiscovery();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1776,18 +1803,8 @@ unittest
 
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start!RejectingFlashListener();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
-    network.waitForDiscovery();
-
-    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
-    auto txs = genesisSpendable().take(8).enumerate()
-        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
-        .array();
-
-    txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1797,11 +1814,24 @@ unittest
         listener_address : network.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
+        registry_address : "name.registry",
+        addresses_to_register : [to!string(WK.Keys.A.address)]
     };
 
     auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
     auto charlie = network.createFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
+
+    network.start!RejectingFlashListener();
+    network.waitForDiscovery();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1825,9 +1855,13 @@ unittest
 {
     auto conf = flashTestConf();
     auto network = makeTestNetwork!FlashNodeFactory(conf);
-    network.start();
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+
+    network.start();
     network.waitForDiscovery();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
@@ -1837,9 +1871,6 @@ unittest
 
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-
-    auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C);
 
     // 3 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 3;
