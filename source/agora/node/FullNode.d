@@ -261,33 +261,6 @@ public class FullNode : API
         this.ledger = this.makeLedger();
         // Note: Needs to be instantiated after `ledger` as it depends on it
         this.transaction_relayer = this.makeTransactionRelayer();
-        // If we have handlers defined in the config
-        if (config.event_handlers.length > 0)
-        {
-            // Make `BlockExternalizedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.BlockExternalized)
-                .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.block_handlers[address] = this.network.getBlockExternalizedHandler(address)));
-
-            // Make `BlockHeaderUpdatedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.BlockHeaderUpdated)
-                .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.block_header_handlers[address] = this.network.getBlockHeaderUpdatedHandler(address)));
-
-            // Make `PreImageReceivedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.PreimageReceived)
-                .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.preimage_handlers[address] = this.network.getPreImageReceivedHandler(address)));
-
-            // Make `TransactionReceivedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.TransactionReceived)
-                .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.transaction_handlers[address] = this.network.getTransactionReceivedHandler(address)));
-        }
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
@@ -401,6 +374,34 @@ public class FullNode : API
 
     public void start ()
     {
+        // If we have handlers defined in the config
+        if (config.event_handlers.length > 0)
+        {
+            // Make `BlockExternalizedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.BlockExternalized)
+                .each!(handler => handler.addresses
+                    .each!((string address) =>
+                        this.block_handlers[address] = this.network.getBlockExternalizedHandler(address)));
+
+            // Make `BlockHeaderUpdatedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.BlockHeaderUpdated)
+                .each!(handler => handler.addresses
+                    .each!((string address) =>
+                        this.block_header_handlers[address] = this.network.getBlockHeaderUpdatedHandler(address)));
+
+            // Make `PreImageReceivedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.PreimageReceived)
+                .each!(handler => handler.addresses
+                    .each!((string address) =>
+                        this.preimage_handlers[address] = this.network.getPreImageReceivedHandler(address)));
+
+            // Make `TransactionReceivedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.TransactionReceived)
+                .each!(handler => handler.addresses
+                    .each!((string address) =>
+                        this.transaction_handlers[address] = this.network.getTransactionReceivedHandler(address)));
+        }
+
         if (config.node.stats_listening_port != 0)
             this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
