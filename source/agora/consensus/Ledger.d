@@ -35,6 +35,7 @@ import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.consensus.pool.Transaction;
 import agora.consensus.protocol.Data;
+import agora.consensus.Reward;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.validation;
 import agora.consensus.validation.Block : validateBlockTimeOffset;
@@ -109,6 +110,9 @@ public class Ledger
     /// The checker of transaction data payload
     private FeeManager fee_man;
 
+    /// Block rewards calculator
+    private Reward rewards;
+
     /// The new block time_offset has to be greater than the previous block time_offset,
     /// but less than current time + block_time_offset_tolerance
     public Duration block_time_offset_tolerance;
@@ -152,6 +156,7 @@ public class Ledger
         this.clock = clock;
         this.block_time_offset_tolerance = block_time_offset_tolerance;
         this.storage.load(params.Genesis);
+        this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
 
         // ensure latest checksum can be read
         this.last_block = this.storage.readLastBlock();
@@ -641,11 +646,13 @@ public class Ledger
                         ValidatorInfo[] validators = this.getValidators(header.height)
                             .enumerate.filter!(en => header.validators[en.index]).map!(en => en.value).array;
 
-                        auto fees = this.fee_man.getBlockFees(header.height);
-                        auto data_fees = this.fee_man.getBlockDataFees(header.height);
+                        // Calculate the block rewards using the percentage of validators who signed
+                        auto rewards = this.rewards.calculateBlockRewards(Height(height - this.params.PayoutPeriod),
+                            header.validators.percentage());
 
-                        // Divide up the validator fees based on stakes
-                        Amount[] val_payouts = this.fee_man.getValidatorPayouts(header.height, validators);
+                        // Divide up the validator fees and rewards based on stakes
+                        Amount[] val_payouts = this.fee_man.getValidatorPayouts(header.height, rewards, validators);
+
                         // Update the payouts that will be included in the Coinbase tx for each validator
                         validators.enumerate.each!((idx, val)
                             {
@@ -657,7 +664,7 @@ public class Ledger
                                         return so_far;
                                     });
                             });
-                        auto commons_payout = this.fee_man.getCommonsBudgetPayout(header.height, val_payouts);
+                        auto commons_payout = this.fee_man.getCommonsBudgetPayout(header.height, rewards, val_payouts);
                         payouts.update(this.params.CommonsBudgetAddress,
                             { return commons_payout; },
                                 (ref Amount so_far)
@@ -1208,7 +1215,7 @@ public class Ledger
         {
             auto coinbase_tx = this.getCoinbaseTX(expect_height);
             auto coinbase_tx_hash = coinbase_tx.hashFull();
-            log.trace("getValidTXSet: Coinbase hash={}", coinbase_tx_hash);
+            log.info("getValidTXSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
             assert(coinbase_tx.outputs.length > 0);
 
             // Because CB TXs are never in the pool, they will always end up in
@@ -1443,8 +1450,9 @@ public class ValidatingLedger : Ledger
         if (next_height >= 2 * this.params.PayoutPeriod
             && next_height % this.params.PayoutPeriod == 0)   // This is a Coinbase payout block
             {
-                auto coinbase_hash = this.getCoinbaseTX(next_height).hashFull();
-                log.trace("prepareNominatingSet: Coinbase hash={}", coinbase_hash);
+                auto coinbase_tx = this.getCoinbaseTX(next_height);
+                auto coinbase_hash = coinbase_tx.hashFull();
+                log.info("prepareNominatingSet: Coinbase hash={}, tx={}", coinbase_hash, coinbase_tx.prettify);
                 data.tx_set ~= coinbase_hash;
             }
     }
@@ -2341,6 +2349,13 @@ unittest
 
     ledger.simulatePreimages(Height(params.ValidatorCycle), skip_indexes);
 
+    assert(ledger.params.BlockInterval.total!"seconds" == 600);
+    Amount allocated_validator_rewards = Amount.UnitPerCoin * 27 * (600 / 5);
+    assert(allocated_validator_rewards == 3_240.coins);
+    Amount commons_reward = Amount.UnitPerCoin * 50 * (600 / 5);
+    assert(commons_reward == 6_000.coins);
+    Amount total_rewards = (allocated_validator_rewards + commons_reward) * testPayoutPeriod;
+
     auto tx_set_fees = Amount(0);
     auto total_fees = Amount(0);
     auto next_payout_total = Amount(0);
@@ -2368,7 +2383,7 @@ unittest
 
         if (height % testPayoutPeriod == 0)
         {
-            next_payout_total = total_fees;
+            next_payout_total = total_fees + total_rewards;
             total_fees = Amount(0);
         }
 
