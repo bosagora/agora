@@ -54,8 +54,7 @@ unittest
     unlock_3_txs.each!(tx => node_1.postTransaction(tx));
 
     // should be accepted
-    unlock_2_txs.each!(tx => node_1.postTransaction(tx));
-    unlock_2_txs.each!(tx => network.ensureTxInPool(tx.hashFull()));
+    unlock_2_txs.each!(tx => network.postAndEnsureTxInPool(tx));
 
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
