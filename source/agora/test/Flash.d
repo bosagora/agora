@@ -20,6 +20,7 @@ import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Task;
 import agora.consensus.data.genesis.Test;
+import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
@@ -334,11 +335,8 @@ public class TestFlashNode : ThinFlashNode, TestFlashAPI
 }
 
 /// Is in charge of spawning the flash nodes
-public class FlashNodeFactory (FlashListenerType = FlashListener)
+public class FlashNodeFactory : TestAPIManager
 {
-    /// Registry of nodes
-    private Registry!TestAPI* agora_registry;
-
     /// we keep a separate LocalRest registry of the flash "nodes"
     private Registry!TestFlashAPI flash_registry;
 
@@ -352,7 +350,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     private string[] listener_addresses;
 
     /// list of flash nodes
-    private RemoteAPI!TestFlashAPI[] nodes;
+    private RemoteAPI!TestFlashAPI[] flash_nodes;
 
     /// list of FlashListenerAPI nodes
     private RemoteAPI!TestFlashListenerAPI[] listener_nodes;
@@ -364,20 +362,24 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     public TestFlashListenerAPI listener;
 
     /// Ctor
-    public this (Registry!TestAPI* agora_registry)
+    public this (immutable(Block)[] blocks, TestConf test_conf,
+        TimePoint test_start_time)
     {
-        this.agora_registry = agora_registry;
+        super(blocks, test_conf, test_start_time);
         this.flash_registry.initialize();
         this.listener_registry.initialize();
+    }
 
-        this.listener = this.createFlashListener!FlashListenerType(
-            ListenerAddress);
+    ///
+    public void start (Listener : TestFlashListenerAPI = FlashListener) ()
+    {
+        this.listener = this.createFlashListener!Listener(ListenerAddress);
+        super.start();
     }
 
     /// Create a new flash node user
-    public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
-        (const KeyPair kp, string agora_address,
-         DatabaseStorage storage = DatabaseStorage.Local)
+    public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
+        (const KeyPair kp, DatabaseStorage storage = DatabaseStorage.Local)
     {
         FlashConfig conf = { enabled : true,
             min_funding : Amount(1000),
@@ -387,21 +389,20 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
             max_retry_time : 4.seconds,
             max_retry_delay : 100.msecs,
             listener_address : ListenerAddress, };
-        return this.create!FlashNodeImpl(kp, conf, agora_address, storage);
+        return this.createFlashNode!FlashNodeImpl(kp, conf, storage);
     }
 
     /// ditto
-    public RemoteAPI!TestFlashAPI create (FlashNodeImpl = TestFlashNode)
-        (const KeyPair kp, FlashConfig conf, string agora_address,
-         DatabaseStorage storage = DatabaseStorage.Local)
+    public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
+        (const KeyPair kp, FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local)
     {
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
-            conf, this.agora_registry, agora_address, storage,
+            conf, &this.reg, this.nodes[0].address, storage,
             &this.flash_registry, &this.listener_registry,
             10.seconds);  // timeout from main thread
 
         this.addresses ~= kp.address;
-        this.nodes ~= api;
+        this.flash_nodes ~= api;
         this.flash_registry.register(kp.address.to!string, api.listener());
         api.start();
         api.registerKey(kp.secret);
@@ -413,9 +414,8 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     public RemoteAPI!TestFlashListenerAPI createFlashListener (
         Listener : TestFlashListenerAPI)(string address)
     {
-        const string agora_address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
         RemoteAPI!TestFlashListenerAPI api
-            = RemoteAPI!TestFlashListenerAPI.spawn!Listener(this.agora_registry, agora_address, 5.seconds);
+            = RemoteAPI!TestFlashListenerAPI.spawn!Listener(&this.reg, this.nodes[0].address, 5.seconds);
         this.listener_registry.register(address, api.listener());
         this.listener_addresses ~= address;
         this.listener_nodes ~= api;
@@ -428,13 +428,13 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
 
     ***************************************************************************/
 
-    public void printLogs (string file = __FILE__, int line = __LINE__)
+    public override void printLogs (string file = __FILE__, int line = __LINE__)
     {
         synchronized  // make sure logging output is not interleaved
         {
             writeln("---------------------------- START OF LOGS ----------------------------");
             writefln("%s(%s): Flash node logs:\n", file, line);
-            foreach (node; this.nodes)
+            foreach (node; this.flash_nodes)
             {
                 try
                 {
@@ -456,18 +456,20 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     }
 
     /// Shut down all the nodes
-    public void shutdown ()
+    public override void shutdown (bool printLogs = false)
     {
+        super.shutdown();
+
         foreach (address; this.addresses)
             enforce(this.flash_registry.unregister(address.to!string));
 
         foreach (address; this.listener_addresses)
             enforce(this.listener_registry.unregister(address));
 
-        foreach (node; this.nodes)
+        foreach (node; this.flash_nodes)
             node.shutdownNode();
 
-        foreach (node; this.nodes)
+        foreach (node; this.flash_nodes)
             node.ctrl.shutdown();
 
         foreach (node; this.listener_nodes)
@@ -479,7 +481,7 @@ public class FlashNodeFactory (FlashListenerType = FlashListener)
     /// Shut down & restart all nodes
     public void restart ()
     {
-        foreach (node; this.nodes)
+        foreach (node; this.flash_nodes)
         {
             node.ctrl.restart((Object node) { (cast(TestFlashNode)node).shutdownNode(); });
             node.ctrl.withTimeout(0.msecs, (scope FlashControlAPI api) { api.start(); });
@@ -614,35 +616,22 @@ private TestConf flashTestConf ()
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 3;
@@ -655,7 +644,7 @@ unittest
         utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
     network.expectTxExternalization(chan_id);
@@ -663,11 +652,10 @@ unittest
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
-    /* do some off-chain transactions */
     auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
     alice.payInvoice(WK.Keys.A.address, inv_1.value);
 
@@ -692,15 +680,13 @@ unittest
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
     network.expectTxExternalization(update_tx);
-    factory.listener.waitUntilChannelState(chan_id,
+    network.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
     // at this point charlie will automatically publish the latest update tx
-    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
-
     // and then a settlement will be published (but only after time lock expires)
     iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
 /// Test the settlement timeout branch for the
@@ -709,35 +695,22 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs[0 .. 4])
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
 
     // 4 blocks settle time after trigger tx is published
     const Settle_4_Blocks = 4;
@@ -749,7 +722,7 @@ unittest
         utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
     network.expectTxExternalization(chan_id);
@@ -757,7 +730,7 @@ unittest
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
@@ -789,26 +762,15 @@ unittest
     // alice is acting bad
     log.info("Alice unilaterally closing the channel..");
     network.expectTxExternalization(update_tx);
-    factory.listener.waitUntilChannelState(chan_id,
+    network.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
     // at this point charlie will automatically publish the latest update tx
-    network.expectHeightAndPreImg(Height(7), network.blocks[0].header);
-
     // at `Settle_4_Blocks` blocks need to be externalized before a settlement
     // can be attached to the update transaction
-    node_1.postTransaction(txs[4]);
-    network.expectHeightAndPreImg(Height(8), network.blocks[0].header);
-    node_1.postTransaction(txs[5]);
-    network.expectHeightAndPreImg(Height(9), network.blocks[0].header);
-    node_1.postTransaction(txs[6]);
-    network.expectHeightAndPreImg(Height(10), network.blocks[0].header);
-    node_1.postTransaction(txs[7]);
-    network.expectHeightAndPreImg(Height(11), network.blocks[0].header);
-
     // and then a settlement will be automatically published
-    iota(Settle_4_Blocks * 2).each!(idx => network.addBlock(true));
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
+    iota(Settle_4_Blocks * 2 + 5).each!(idx => network.addBlock(true));
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
 /// Test attempted collaborative close with a non-collaborative counter-party,
@@ -830,35 +792,22 @@ unittest
     }
 
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create!RejectingCloseNode(WK.Keys.C, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode!RejectingCloseNode(WK.Keys.C);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -871,7 +820,7 @@ unittest
         utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
     network.expectTxExternalization(chan_id);
@@ -879,7 +828,7 @@ unittest
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
     auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
@@ -907,18 +856,18 @@ unittest
     auto error = alice.beginCollaborativeClose(WK.Keys.A.address, chan_id).error;
     assert(error == ErrorCode.None, error.to!string);
     // note: not checking for StartedUnilateralClose due to timing
-    factory.listener.waitUntilChannelState(chan_id,
+    network.listener.waitUntilChannelState(chan_id,
         ChannelState.RejectedCollaborativeClose);
 
     log.info("Alice unilaterally closing the channel..");
     error = alice.beginUnilateralClose(WK.Keys.A.address, chan_id).error;
     assert(error == ErrorCode.None, error.to!string);
-    factory.listener.waitUntilChannelState(chan_id,
+    network.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
     // trigger tx & latest update tx & latest settle tx
     iota(4).each!(idx => network.addBlock(true));
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
 /// Test indirect channel payments
@@ -926,36 +875,23 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, address);
-    auto diego = factory.create(WK.Keys.D, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -972,7 +908,7 @@ unittest
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
     log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
     // await alice & charlie channel funding transaction
@@ -981,7 +917,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
 
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -996,7 +932,7 @@ unittest
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
     log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.WaitingForFunding);
 
     // await charlie & charlie channel funding transaction
@@ -1005,7 +941,7 @@ unittest
     // wait for the parties to detect the funding tx
     charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
     diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
@@ -1020,7 +956,7 @@ unittest
     // e.g. QR code. Alice scans it and proposes the payment.
     // it has a direct channel to charlie so it uses it.
     alice.payInvoice(WK.Keys.A.address, inv_1.value);
-    auto inv_res = factory.listener.waitUntilNotified(inv_1.value);
+    auto inv_res = network.listener.waitUntilNotified(inv_1.value);
     assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
 
     // wait for payment + folding update indices
@@ -1033,13 +969,13 @@ unittest
     log.info("Beginning charlie => diego collaborative close..");
     assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.StartedCollaborativeClose);
     auto close_tx = charlie.getClosingTx(WK.Keys.C.address,
         charlie_diego_chan_id);
     network.expectTxExternalization(close_tx);
     log.info("charlie closing tx: {}", close_tx);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.Closed);
 
     // can't close twice
@@ -1049,13 +985,13 @@ unittest
     log.info("Beginning alice => charlie collaborative close..");
     assert(alice.beginCollaborativeClose(WK.Keys.A.address,
         alice_charlie_chan_id).error == ErrorCode.None);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
     close_tx = alice.getClosingTx(WK.Keys.A.address,
         alice_charlie_chan_id);
     network.expectTxExternalization(close_tx);
     log.info("alice closing tx: {}", close_tx);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
 }
 
@@ -1063,47 +999,33 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
-
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
         max_funding : Amount(100_000_000),
         min_settle_time : 0,
         max_settle_time : 100,
-        listener_address : factory.ListenerAddress,
+        listener_address : network.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 100.msecs,
     };
 
-    auto alice = factory.create(WK.Keys.A, alice_conf, address);
-    auto charlie = factory.create(WK.Keys.C, address);
-    auto diego = factory.create(WK.Keys.D, address);
+    auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1120,7 +1042,7 @@ unittest
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
     log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
     // await alice & charlie channel funding transaction
@@ -1129,7 +1051,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN CHARLIE => DIEGO CHANNEL +/
@@ -1143,7 +1065,7 @@ unittest
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
     log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.WaitingForFunding);
 
     // await charlie & charlie channel funding transaction
@@ -1152,7 +1074,7 @@ unittest
     // wait for the parties to detect the funding tx
     charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
     diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN DIEGO => ALICE CHANNEL +/
@@ -1166,7 +1088,7 @@ unittest
         diego_alice_chan_id_res.message);
     const diego_alice_chan_id = diego_alice_chan_id_res.value;
     log.info("Diego Alice channel ID: {}", diego_alice_chan_id);
-    factory.listener.waitUntilChannelState(diego_alice_chan_id,
+    network.listener.waitUntilChannelState(diego_alice_chan_id,
         ChannelState.WaitingForFunding);
 
     // await charlie & charlie channel funding transaction
@@ -1175,7 +1097,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, diego_alice_chan_id);
     diego.waitForChannelOpen(WK.Keys.D.address, diego_alice_chan_id);
-    factory.listener.waitUntilChannelState(diego_alice_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(diego_alice_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // also wait for all parties to discover other channels on the network
@@ -1193,10 +1115,10 @@ unittest
     // to complete the payment in that direction. Alice will first naively try
     // that route and fail. In the second try, alice will route the payment through charlie.
     alice.payInvoice(WK.Keys.A.address, inv_1.value);
-    auto res1 = factory.listener.waitUntilNotified(inv_1.value);
+    auto res1 = network.listener.waitUntilNotified(inv_1.value);
     assert(res1 != ErrorCode.None);  // should fail at first
     alice.payInvoice(WK.Keys.A.address, inv_1.value);
-    auto res2 = factory.listener.waitUntilNotified(inv_1.value);
+    auto res2 = network.listener.waitUntilNotified(inv_1.value);
     assert(res2 == ErrorCode.None);  // should succeed the second time
 
     charlie.waitForUpdateIndex(WK.Keys.C.address, charlie_diego_chan_id, 2);
@@ -1222,36 +1144,23 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[3]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index / 2].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, address);
-    auto diego = factory.create(WK.Keys.D, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1268,7 +1177,7 @@ unittest
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
     log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
     // await alice & charlie channel funding transaction
@@ -1277,7 +1186,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     /+ OPEN CHARLIE => DIEGO CHANNEL +/
@@ -1291,7 +1200,7 @@ unittest
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
     log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.WaitingForFunding);
 
     // await charlie & charlie channel funding transaction
@@ -1300,7 +1209,7 @@ unittest
     // wait for the parties to detect the funding tx
     charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
     diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     alice.waitForChannelDiscovery(charlie_diego_chan_id);  // also alice (so it can detect fees)
 
     charlie.changeFees(WK.Keys.C.address, charlie_diego_chan_id, Amount(100), Amount(1));
@@ -1319,7 +1228,7 @@ unittest
         charlie_diego_chan_id_2_res.message);
     const charlie_diego_chan_id_2 = charlie_diego_chan_id_2_res.value;
     log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id_2);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.SettingUp, WK.Keys.C.address);
 
     auto chans = charlie.getManagedChannels(null);
@@ -1349,7 +1258,7 @@ unittest
     // wait for the parties to detect the funding tx
     charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id_2);
     diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id_2);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2, ChannelState.Open);
+    network.listener.waitUntilChannelState(charlie_diego_chan_id_2, ChannelState.Open);
 
     // check if info is different now
     infos = charlie.getChannelInfo([charlie_diego_chan_id_2]);
@@ -1385,38 +1294,37 @@ unittest
 
     assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id_2).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.StartedCollaborativeClose);
     auto close_tx = charlie.getClosingTx(WK.Keys.C.address, charlie_diego_chan_id_2);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
     assert(close_tx.outputs.count!(o => o.value == Amount(2000 - close_tx.sizeInBytes)) == 1);
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id_2,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.Closed);
 
     assert(alice.beginCollaborativeClose(WK.Keys.A.address, alice_charlie_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
     close_tx = alice.getClosingTx(WK.Keys.A.address, alice_charlie_chan_id);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
     assert(close_tx.outputs.count!(o => o.value == Amount(2010 - close_tx.sizeInBytes)) == 1);
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
 
     assert(charlie.beginCollaborativeClose(WK.Keys.C.address, charlie_diego_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.StartedCollaborativeClose);
     close_tx = charlie.getClosingTx(WK.Keys.C.address, charlie_diego_chan_id);
     assert(close_tx.outputs.length == 1); // No updates
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(charlie_diego_chan_id,
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
         ChannelState.Closed);
-    auto block14 = node_1.getBlocksFrom(14, 1)[0];
 }
 
 unittest
@@ -1438,33 +1346,22 @@ unittest
     }
 
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create!BleedingEdgeFlashNode(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, address);
+    auto alice = network.createFlashNode!BleedingEdgeFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
 
     /+ OPEN ALICE => CHARLIE CHANNEL +/
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -1477,7 +1374,7 @@ unittest
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
     log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.WaitingForFunding);
 
     // await alice & charlie channel funding transaction
@@ -1486,7 +1383,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
     // begin off-chain transactions
@@ -1498,12 +1395,12 @@ unittest
 
     assert(charlie.beginCollaborativeClose(WK.Keys.C.address, alice_charlie_chan_id).error
         == ErrorCode.None);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
     auto close_tx = charlie.getClosingTx(WK.Keys.C.address, alice_charlie_chan_id);
     assert(close_tx.outputs.length == 1); // No updates
     network.expectTxExternalization(close_tx);
-    factory.listener.waitUntilChannelState(alice_charlie_chan_id,
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
 }
 
@@ -1512,35 +1409,22 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address, DatabaseStorage.Static);
-    auto charlie = factory.create(WK.Keys.C, address, DatabaseStorage.Static);
+    auto alice = network.createFlashNode(WK.Keys.A, DatabaseStorage.Static);
+    auto charlie = network.createFlashNode(WK.Keys.C, DatabaseStorage.Static);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1553,7 +1437,7 @@ unittest
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
     network.expectTxExternalization(chan_id);
@@ -1561,7 +1445,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
@@ -1581,7 +1465,7 @@ unittest
     charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 4);
 
     // restart the two nodes
-    factory.restart();
+    network.restart();
 
     // note the reverse payment from charlie to alice. Can use this for refunds too.
     auto inv_3 = alice.createNewInvoice(WK.Keys.A.address, Amount(2_000), time_t.max, "payment 3");
@@ -1596,33 +1480,19 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
-
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig charlie_conf = { enabled : true,
         min_funding : Amount(1000),
@@ -1631,8 +1501,8 @@ unittest
         max_settle_time : 100,
         max_retry_delay : 100.msecs,
     };
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, charlie_conf, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C, charlie_conf);
 
     const Settle_10_Blocks = 10;
 
@@ -1654,7 +1524,7 @@ unittest
         utxo, utxo_hash, Amount(1), Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
-    auto error = factory.listener.waitUntilChannelState(res.value,
+    auto error = network.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected);
     assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
@@ -1667,7 +1537,7 @@ unittest
         utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
-    error = factory.listener.waitUntilChannelState(res.value,
+    error = network.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected);
     assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
@@ -1676,7 +1546,7 @@ unittest
         utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
-    error = factory.listener.waitUntilChannelState(res.value,
+    error = network.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected);
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
@@ -1699,14 +1569,14 @@ unittest
         utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address);
     assert(res.error == ErrorCode.None);
 
-    error = factory.listener.waitUntilChannelState(res.value,
+    error = network.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected, WK.Keys.A.address);
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
         utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
-    factory.listener.waitUntilChannelState(res.value, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(res.value, ChannelState.WaitingForFunding);
     const chan_id = chan_id_res.value;
 
     // await funding transaction
@@ -1715,7 +1585,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
     res = alice.openNewChannel(WK.Keys.A.address, utxo, utxo_hash, Amount(10_000),
@@ -1805,46 +1675,33 @@ unittest
     }
 
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
-
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
         max_funding : Amount(100_000_000),
         min_settle_time : 0,
         max_settle_time : 100,
-        listener_address : factory.ListenerAddress,
+        listener_address : network.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
     };
 
-    auto alice = factory.create(WK.Keys.A, alice_conf, address);
-    auto charlie = factory.create!RejectingFlashNode(WK.Keys.C, address);
-    auto diego = factory.create(WK.Keys.D, address);
+    auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
+    auto charlie = network.createFlashNode!RejectingFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1856,7 +1713,7 @@ unittest
         utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
     network.expectTxExternalization(chan_id);
@@ -1864,7 +1721,7 @@ unittest
     // wait for the parties to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
 
@@ -1876,21 +1733,21 @@ unittest
     alice.waitForUpdateIndex(WK.Keys.A.address, chan_id, 2);
     charlie.waitForUpdateIndex(WK.Keys.C.address, chan_id, 2);
 
-    auto res = factory.listener.waitUntilNotified(inv_1.value);
+    auto res = network.listener.waitUntilNotified(inv_1.value);
     assert(res == ErrorCode.None);  // should succeed
 
     auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000), time_t.max,
         "payment 2");
     alice.payInvoice(WK.Keys.A.address, inv_2.value);
 
-    res = factory.listener.waitUntilNotified(inv_2.value);
+    res = network.listener.waitUntilNotified(inv_2.value);
     assert(res != ErrorCode.None);  // should have failed
 
     auto inv_3 = diego.createNewInvoice(WK.Keys.D.address, Amount(1_000),
         time_t.max, "diego");
     alice.payInvoice(WK.Keys.A.address, inv_3.value);
 
-    res = factory.listener.waitUntilNotified(inv_3.value);
+    res = network.listener.waitUntilNotified(inv_3.value);
     assert(res == ErrorCode.PathNotFound);
 }
 
@@ -1910,46 +1767,33 @@ unittest
     }
 
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
-    network.start();
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
+    network.start!RejectingFlashListener();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
-
-    auto factory = new FlashNodeFactory!RejectingFlashListener(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     FlashConfig alice_conf = { enabled : true,
         min_funding : Amount(1000),
         max_funding : Amount(100_000_000),
         min_settle_time : 0,
         max_settle_time : 100,
-        listener_address : factory.ListenerAddress,
+        listener_address : network.ListenerAddress,
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
     };
 
-    auto alice = factory.create(WK.Keys.A, alice_conf, address);
-    auto charlie = factory.create(WK.Keys.C, address);
-    auto diego = factory.create(WK.Keys.D, address);
+    auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
 
     // 0 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 0;
@@ -1962,7 +1806,7 @@ unittest
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
 
-    auto error = factory.listener.waitUntilChannelState(chan_id,
+    auto error = network.listener.waitUntilChannelState(chan_id,
         ChannelState.Rejected);
     assert(error == ErrorCode.UserRejectedChannel);
 }
@@ -1972,35 +1816,22 @@ unittest
 unittest
 {
     auto conf = flashTestConf();
-    auto network = makeTestNetwork!TestAPIManager(conf);
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
     network.start();
     scope (exit) network.shutdown();
-    //scope (failure) network.printLogs();
+    scope (failure) network.printLogs();
     network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    scope (failure) node_1.printLog();
 
     // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
     auto txs = genesisSpendable().take(8).enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
         .array();
 
-    foreach (idx, tx; txs)
-    {
-        node_1.postTransaction(tx);
-        network.expectHeightAndPreImg(Height(idx + 1), network.blocks[0].header);
-    }
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    auto factory = new FlashNodeFactory!()(network.getRegistry());
-    scope (exit) factory.shutdown();
-    scope (failure) factory.printLogs();
-
-    // workaround to get a handle to the node from another registry's thread
-    const string address = format("Validator #%s (%s)", 0, genesis_validator_keys[0].address);
-    auto alice = factory.create(WK.Keys.A, address);
-    auto charlie = factory.create(WK.Keys.C, address);
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
 
     // 3 blocks settle time after trigger tx is published (unsafe)
     const Settle_1_Blocks = 3;
@@ -2012,7 +1843,7 @@ unittest
         utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
 
     // await funding transaction
     network.expectTxExternalization(chan_id);
@@ -2020,7 +1851,7 @@ unittest
     // wait for the parties & listener to detect the funding tx
     alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
     charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
-    factory.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
     auto inv_1 = charlie.createNewInvoice(WK.Keys.C.address, Amount(5_000), time_t.max, "payment 1");
@@ -2049,20 +1880,20 @@ unittest
     charlie.setPublishEnable(false);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
-    node_1.postTransaction(update_tx);
+    network.postAndEnsureTxInPool(update_tx);
     network.expectTxExternalization(update_tx);
-    factory.listener.waitUntilChannelState(chan_id,
+    network.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
 
     // publish an older update
     update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 2);
-    node_1.postTransaction(update_tx);
+    network.postAndEnsureTxInPool(update_tx);
     network.expectTxExternalization(update_tx);
 
     // an even older update can not be externalized anymore
     update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 1);
-    node_1.postTransaction(update_tx);
+    network.postAndEnsureTxInPool(update_tx);
     assertThrown!Exception(network.expectTxExternalization(update_tx));
 
     // allow normal node operation again
@@ -2073,6 +1904,6 @@ unittest
     network.expectTxExternalization(update_tx);
 
     iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
-    factory.listener.waitUntilChannelState(chan_id,
+    network.listener.waitUntilChannelState(chan_id,
         ChannelState.Closed);
 }
