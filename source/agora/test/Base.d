@@ -1207,14 +1207,20 @@ public class TestAPIManager
         throw new Exception(format!"TX (%s) was not externalized in %d blocks!"(tx_hash, n_blocks));
     }
 
-    /// Ensure that a transaction is accepted by a node (put in the tx pool)
-    public void ensureTxInPool (Idxs) (in Transaction tx, Idxs indices)
+    /// Post a transaction to clients and ensure it is accepted by them (put in the tx pool)
+    public void postAndEnsureTxInPool (in Transaction tx)
+    {
+        this.postAndEnsureTxInPool(tx, iota(this.clients.length));
+    }
+
+    /// Ditto
+    public void postAndEnsureTxInPool (Idxs) (in Transaction tx, Idxs indices)
     {
         indices.each!(idx => this.clients[idx].postTransaction(tx));
         this.ensureTxInPool(tx.hashFull(), indices);
     }
 
-    /// Ditto
+    /// Ensure that a transaction has been put in the tx pools of the client indices
     public void ensureTxInPool (Idxs) (in Hash hash, Idxs indices)
     {
         retryFor(indices.each!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
