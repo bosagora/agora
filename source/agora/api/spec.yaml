@@ -118,7 +118,7 @@ paths:
           description: Unexpected error
   /blocks_from:
     get:
-      summary: validators' pre-image information
+      summary: fetch blocks
       parameters:
         - in: query
           name: height
@@ -134,7 +134,7 @@ paths:
             format: uint64
       responses:
         '200':
-          description: validators' pre-image information
+          description: blocks
           content:
             application/json:
               schema:
