@@ -625,7 +625,7 @@ public class Ledger
             if (pair.value > Amount(0))
                 coinbase_tx_outputs ~= Output(pair.value, pair.key, OutputType.Coinbase);
             else
-                log.error("Zero valued Coinbase output for key %s", pair.key);
+                log.error("Zero valued Coinbase output for key {}", pair.key);
         }
         coinbase_tx_outputs.sort;
         return Transaction([Input(height)], coinbase_tx_outputs);
