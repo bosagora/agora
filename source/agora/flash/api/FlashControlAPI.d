@@ -14,6 +14,7 @@
 
 module agora.flash.api.FlashControlAPI;
 
+import agora.api.Handlers;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.crypto.ECC;
@@ -28,7 +29,7 @@ import agora.consensus.data.UTXO;
 import core.stdc.time;
 
 /// Ditto
-public interface FlashControlAPI : FlashAPI
+public interface FlashControlAPI : FlashAPI, BlockExternalizedHandler
 {
 @safe:
     /***************************************************************************

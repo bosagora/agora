@@ -14,6 +14,7 @@
 module agora.flash.Node;
 
 import agora.api.FullNode : FullNodeAPI = API;
+import agora.api.Handlers;
 import agora.api.Registry;
 import agora.common.Amount;
 import agora.common.Ensure;
@@ -261,7 +262,7 @@ public class FlashNode : FlashControlAPI
         this.periodic_timer = this.taskman.setTimer(2.minutes,
             &this.onRegisterName, Periodic.Yes);
         // todo: should additionally register as pushBlock() listener
-        this.monitor_timer = this.taskman.setTimer(100.msecs,
+        this.monitor_timer = this.taskman.setTimer(1.seconds,
             &this.monitorBlockchain, Periodic.Yes);
     }
 
@@ -1495,13 +1496,17 @@ public class FlashNode : FlashControlAPI
     }
 
     /// Called by a FullNode once a block has been externalized
-    public void onExternalizedBlock (const ref Block block) @safe
+    public void pushBlock (const Block block)
     {
-        this.last_height = block.header.height;
+        if (this.last_height != block.header.height)
+            return;
 
+        log.info("Block #{} is externalized...", block.header.height);
+        this.last_height++;
         foreach (reg_pk, chans; this.channels)
             foreach (channel; chans)
                 channel.onBlockExternalized(block);
+        this.dump();
     }
 
     /***************************************************************************
@@ -1525,10 +1530,7 @@ public class FlashNode : FlashControlAPI
                 auto block = this.getBlock(this.last_height);
                 if (block.header.height != this.last_height)
                     break;
-                this.onExternalizedBlock(block);
-                log.info("Block #{} is externalized...", block.header.height);
-                this.last_height++;
-                this.dump();
+                this.pushBlock(block);
             }
         }
         catch (Exception ex)
