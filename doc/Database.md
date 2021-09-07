@@ -54,14 +54,16 @@ This table should be removed in favor of querying `validator` directly.
 | val        | TEXT     | Hash   | NOT NULL    | In both case a hash, but the node could just query `ValidatorSet` |
 
 
-### `accumulated_fee` table
+### `block_fees` table
 
-Note sure why we need this.
+Keep track of fees as blocks are externalized.
+Otherwise if the inputs are consumed in later blocks before the payout block it will not be possible to calculate them.
 
 | Field name | SQL Type | D type     | Attributes  | Comment             |
 |------------|----------|------------|-------------|---------------------|
-| public_key | TEXT     | PublicKey  | PRIMARY KEY |                     |
+| height     | INTEGER  | Height     | PRIMARY KEY |                     |
 | fee        | INTEGER  | Amount     |             |                     |
+| data_fee   | INTEGER  | Amount     |             |                     |
 
 ## Cache DB
 
