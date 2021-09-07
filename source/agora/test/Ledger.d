@@ -267,7 +267,7 @@ unittest
     auto tx2 = TxBuilder(b1.txs[0], 0).sign();
     assert(tx2.outputs.length == 1);
 
-    network.clients[0].postTransaction(tx2);
+    network.postAndEnsureTxInPool(tx2); // Make sure it makes it into the block
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
     assert(network.clients[0].getBlock(2).txs.length == 1);
 }
