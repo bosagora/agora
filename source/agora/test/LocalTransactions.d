@@ -74,7 +74,7 @@ unittest
     // Distribute them to different clients
     txs.takeExactly(6).enumerate.each!(
         (idx, tx) {
-            network.ensureTxInPool(tx, (idx % network.clients.length).only);
+            network.postAndEnsureTxInPool(tx, (idx % network.clients.length).only);
         });
     network.expectHeightAndPreImg(Height(1));
     network.assertSameBlocks(Height(1));
