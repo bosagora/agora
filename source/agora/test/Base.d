@@ -25,6 +25,7 @@ version (unittest):
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Registry;
 import agora.api.Validator : ValidatorAPI = API, Identity;
+import agora.api.Handlers;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitMask;
@@ -594,6 +595,9 @@ public class TestAPIManager
     protected Registry!NameRegistryAPI nreg;
 
     ///
+    protected Registry!BlockExternalizedHandler bh_registry;
+
+    ///
     public this (immutable(Block)[] blocks, TestConf test_conf,
         TimePoint test_start_time)
     {
@@ -603,6 +607,7 @@ public class TestAPIManager
         this.initial_time = test_start_time;
         this.reg.initialize();
         this.nreg.initialize();
+        this.bh_registry.initialize();
     }
 
 
@@ -838,7 +843,7 @@ public class TestAPIManager
     {
         auto time = new shared(TimePoint)(this.initial_time);
         auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg, &this.nreg,
-            this.blocks, this.test_conf, time, eArgs,
+            &this.bh_registry, this.blocks, this.test_conf, time, eArgs,
             conf.node.timeout, file, line);
 
         foreach (ref interf; conf.interfaces)
@@ -1292,13 +1297,18 @@ public class TestNetworkManager : NetworkManager
     ///
     public Registry!NameRegistryAPI* nregistry;
 
+    ///
+    protected Registry!BlockExternalizedHandler* bh_registry;
+
     /// Constructor
     public this (Parameters!(NetworkManager.__ctor) args, string address,
-                 Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg)
+                 Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
+                 Registry!BlockExternalizedHandler* bh_registry)
     {
         super(args);
         this.registry = reg;
         this.nregistry = nreg;
+        this.bh_registry = bh_registry;
         this.address = address;
     }
 
@@ -1354,7 +1364,11 @@ public class TestNetworkManager : NetworkManager
     protected final override BlockExternalizedHandler getBlockExternalizedHandler
         (Address address)
     {
-        assert(0, "Not supported");
+        import std.typecons : BlackHole;
+        auto tid = this.bh_registry.locate(address);
+        if (tid != typeof(tid).init)
+            return new RemoteAPI!BlockExternalizedHandler(tid, 5.seconds);
+        return new BlackHole!BlockExternalizedHandler();
     }
 
     ///
@@ -1564,6 +1578,8 @@ private mixin template TestNodeMixin ()
     protected Registry!TestAPI* registry;
     ///
     protected Registry!NameRegistryAPI* nregistry;
+    ///
+    protected Registry!BlockExternalizedHandler* bh_registry;
 
     /// pointer to the unittests-adjusted clock time
     protected shared(TimePoint)* cur_time;
@@ -1630,8 +1646,8 @@ private mixin template TestNodeMixin ()
     {
         assert(taskman !is null);
         return new TestNetworkManager(
-            this.config, metadata, taskman, clock,
-            this.config.interfaces[0].address, this.registry, this.nregistry);
+            this.config, metadata, taskman, clock, this.config.interfaces[0].address,
+            this.registry, this.nregistry, this.bh_registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1767,10 +1783,12 @@ public class TestFullNode : FullNode, TestAPI
 
     ///
     public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
-        immutable(Block)[] blocks, in TestConf test_conf, shared(TimePoint)* cur_time)
+        Registry!BlockExternalizedHandler* bh_registry, immutable(Block)[] blocks,
+        in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
         this.nregistry = nreg;
+        this.bh_registry = bh_registry;
         this.blocks = blocks;
         this.cur_time = cur_time;
 
@@ -1839,10 +1857,12 @@ public class TestValidatorNode : Validator, TestAPI
 
     ///
     public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
-        immutable(Block)[] blocks, in TestConf test_conf, shared(TimePoint)* cur_time)
+        Registry!BlockExternalizedHandler* bh_registry, immutable(Block)[] blocks, in TestConf test_conf,
+        shared(TimePoint)* cur_time)
     {
         this.registry = reg;
         this.nregistry = nreg;
+        this.bh_registry = bh_registry;
         this.blocks = blocks;
         this.cur_time = cur_time;
 
@@ -2050,6 +2070,9 @@ public struct TestConf
         ---
     */
     public immutable(LoggerConfig)[] logging;
+
+    /// Event handler config
+    public immutable(EventHandlerConfig)[] event_handlers;
 }
 
 /*******************************************************************************
@@ -2167,6 +2190,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             validator : validator,
             network : makeNetworkConfig(idx, addresses),
             logging: test_conf.logging,
+            event_handlers : test_conf.event_handlers,
         };
 
         return conf;
@@ -2183,6 +2207,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             consensus: makeConsensusConfig(),
             network : makeNetworkConfig(idx, addresses),
             logging: test_conf.logging,
+            event_handlers : test_conf.event_handlers,
         };
 
         return conf;
