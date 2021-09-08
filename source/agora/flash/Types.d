@@ -302,9 +302,9 @@ private struct WKName
 }
 
 private static immutable WKName[] pk_keys = [
-    { "Alice",   WK.Keys[0].address, },
-    { "Bob",     WK.Keys[1].address, },
-    { "Charlie", WK.Keys[2].address, },
+    { "Alice",   WK.Keys.A.address, },
+    { "Diego",   WK.Keys.D.address, },
+    { "Charlie", WK.Keys.C.address, },
 ];
 
 /// Helper routine
