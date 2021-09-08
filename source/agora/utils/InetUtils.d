@@ -56,7 +56,6 @@ struct InetUtils
         version (linux)
         {
             import core.sys.linux.ifaddrs;
-            import core.sys.posix.netdb;
         }
 
         string[] ips;
@@ -98,7 +97,6 @@ struct InetUtils
         import core.sys.windows.windef;
         import core.sys.windows.winsock2;
         import core.stdc.stdlib: malloc, free;
-        import core.stdc.string: strlen;
 
         public static string[] getAllIPs()
         {
