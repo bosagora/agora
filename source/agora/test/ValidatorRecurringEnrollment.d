@@ -162,6 +162,7 @@ unittest
 // create another enrollment request for the next block
 unittest
 {
+    import std.algorithm.mutation : reverse;
     static class SocialDistancingNominator : Nominator
     {
         mixin ForwardCtor!();
@@ -207,11 +208,12 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    network.generateBlocks(Height(GenesisValidatorCycle + 1));
-    blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 2);
-    assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 1));
-    assert(blocks[$ - 1].header.enrollments.length == 3);
-    assert(blocks[$ - 2].header.enrollments.length == 3);
+    network.generateBlocks(Height(GenesisValidatorCycle + 2));
+    blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
+    assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 2));
+    auto last_enrolls = blocks.retro.take(3).map!(block => block.header.enrollments.length);
+    assert(last_enrolls.sum() == 6);
+    assert(!last_enrolls.any!(count => count > 3));
 }
 
 // Some nodes are interrupted during their validator cycles, they should
