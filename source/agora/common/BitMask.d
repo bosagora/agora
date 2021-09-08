@@ -127,6 +127,13 @@ public struct BitMask
         return this.setIndices.count!(i => this[i]);
     }
 
+    public ubyte percentage () const
+    {
+        ulong percentage = 100 * this.setCount / this.length;
+        assert(percentage <= 100);
+        return cast(ubyte)percentage;
+    }
+
     /// Support for sorting by count of set bits not value
     public int opCmp (in typeof(this) rhs) const
     {
@@ -230,4 +237,17 @@ unittest
     assert(bitmask2.length == bitmask.length);
     assert(bitmask2.setCount == bitmask.setCount);
     assert(bitmask2 == bitmask);
+}
+
+/// Test percentage
+unittest
+{
+    auto bitmask50 = BitMask.fromString("010110");
+    assert(bitmask50.percentage == 50);
+    auto bitmask85 = BitMask.fromString("0111111");
+    assert(bitmask85.percentage == 85);
+    auto bitmask0 = BitMask.fromString("0000000");
+    assert(bitmask0.percentage == 0);
+    auto bitmask100 = BitMask.fromString("1111111111111111111111111");
+    assert(bitmask100.percentage == 100);
 }
