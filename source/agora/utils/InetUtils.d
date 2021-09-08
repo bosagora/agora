@@ -91,61 +91,59 @@ struct InetUtils
         return ips;
     }
 
-version (Windows)
-{
-    import std.socket;
-
-    import core.sys.windows.iphlpapi;
-    import core.sys.windows.iptypes;
-    import core.sys.windows.windef;
-    import core.sys.windows.winsock2;
-    import core.stdc.stdlib: malloc, free;
-    import core.stdc.string: strlen;
-
-    public static string[] getAllIPs()
+    version (Windows)
     {
-        string[] ips;
-        PIP_ADAPTER_INFO adapter_info_head = cast(IP_ADAPTER_INFO *) malloc(IP_ADAPTER_INFO.sizeof);
-        PIP_ADAPTER_INFO adapter_info;
-        DWORD ret_adapters_info;
-        ULONG buff_length = IP_ADAPTER_INFO.sizeof;
-        if (adapter_info_head == NULL)
+        import core.sys.windows.iphlpapi;
+        import core.sys.windows.iptypes;
+        import core.sys.windows.windef;
+        import core.sys.windows.winsock2;
+        import core.stdc.stdlib: malloc, free;
+        import core.stdc.string: strlen;
+
+        public static string[] getAllIPs()
         {
-            log.error("Error allocating memory needed to call GetAdaptersinfo");
-            return null;
-        }
-        scope(exit) free(adapter_info_head);
-        // find out the real size we need to allocate
-        if (GetAdaptersInfo(adapter_info_head, &buff_length) == ERROR_BUFFER_OVERFLOW)
-        {
-            free(adapter_info_head);
-            adapter_info_head = cast(IP_ADAPTER_INFO *) malloc(buff_length);
+            string[] ips;
+            PIP_ADAPTER_INFO adapter_info_head = cast(IP_ADAPTER_INFO *) malloc(IP_ADAPTER_INFO.sizeof);
+            PIP_ADAPTER_INFO adapter_info;
+            DWORD ret_adapters_info;
+            ULONG buff_length = IP_ADAPTER_INFO.sizeof;
             if (adapter_info_head == NULL)
             {
-                log.error("Error reallocating memory needed to call GetAdaptersinfo");
+                log.error("Error allocating memory needed to call GetAdaptersinfo");
                 return null;
             }
-        }
-        ret_adapters_info = GetAdaptersInfo(adapter_info_head, &buff_length);
-        if (ret_adapters_info != NO_ERROR)
-        {
-            log.error("GetAdaptersInfo failed with error: {}", ret_adapters_info);
-            return null;
-        }
+            scope(exit) free(adapter_info_head);
+            // find out the real size we need to allocate
+            if (GetAdaptersInfo(adapter_info_head, &buff_length) == ERROR_BUFFER_OVERFLOW)
+            {
+                free(adapter_info_head);
+                adapter_info_head = cast(IP_ADAPTER_INFO *) malloc(buff_length);
+                if (adapter_info_head == NULL)
+                {
+                    log.error("Error reallocating memory needed to call GetAdaptersinfo");
+                    return null;
+                }
+            }
+            ret_adapters_info = GetAdaptersInfo(adapter_info_head, &buff_length);
+            if (ret_adapters_info != NO_ERROR)
+            {
+                log.error("GetAdaptersInfo failed with error: {}", ret_adapters_info);
+                return null;
+            }
 
-        adapter_info = adapter_info_head;
-        while (adapter_info)
-        {
-            auto ip_tmp = cast(char *) adapter_info.IpAddressList.IpAddress.String;
-            string ip = ip_tmp[0 .. strlen(ip_tmp)].idup;
-            if (ip.length > 0 && ip != "0.0.0.0")
-                ips ~= ip;
+            adapter_info = adapter_info_head;
+            while (adapter_info)
+            {
+                auto ip_tmp = cast(char *) adapter_info.IpAddressList.IpAddress.String;
+                string ip = ip_tmp[0 .. strlen(ip_tmp)].idup;
+                if (ip.length > 0 && ip != "0.0.0.0")
+                    ips ~= ip;
 
-            adapter_info = adapter_info.Next;
+                adapter_info = adapter_info.Next;
+            }
+            return ips;
         }
-        return ips;
     }
-}
 
     /***************************************************************************
 
