@@ -1390,6 +1390,13 @@ LOuter: while (1)
         in OnionPacket packet, in Payload payload, in PublicNonce peer_nonce,
         in Height height, in Point shared_secret) @trusted
     {
+        // On a private channel, peer can only propose payments that are directly
+        // to the funder
+        if (payload.next_chan_id != Hash.init && this.conf.is_private
+            && this.is_owner)
+            return Result!PublicNonce(ErrorCode.PrivateChannel,
+                format("Private channels can not be used for routing"));
+
         if (!this.isOpen())
             return Result!PublicNonce(ErrorCode.ChannelNotOpen,
                 "This channel is not open");

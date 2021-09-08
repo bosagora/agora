@@ -130,8 +130,17 @@ public struct ChannelConfig
     /// note: using `ulong` due to Serializer errors with Duration
     public ulong cooperative_close_timeout;
 
+    /// If this channel should be kept private and reject any routing attempts
+    public bool is_private;
+
     /// The channel's ID is derived from the hash of the funding transaction.
     public alias chan_id = funding_tx_hash;
+
+    /// Returns: if PublicKey `key` is a peer of this Channel
+    public bool is_peer (PublicKey key) const
+    {
+        return this.funder_pk == key || this.peer_pk == key;
+    }
 }
 
 /// Channel update. Peers can update some channel attributes on the fly.
