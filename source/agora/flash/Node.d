@@ -469,14 +469,21 @@ public class FlashNode : FlashControlAPI
     /// Handle an outgoing gossip event
     private void handleGossip (GossipEvent event)
     {
-        foreach (peer; this.known_peers.byKeyValue)
+        scope should_gossip = (in ChannelConfig conf, in PublicKey key)
+        {
+            return !conf.is_private || conf.is_peer(key);
+        };
+
+        foreach (key, peer; this.known_peers)
         final switch (event.type) with (GossipType)
         {
         case Open:
-            peer.value.gossipChannelsOpen([event.open].staticArray);
+            if (should_gossip(event.open.conf, key))
+                peer.gossipChannelsOpen([event.open].staticArray);
             break;
         case Update:
-            peer.value.gossipChannelUpdates([event.update].staticArray);
+            if (should_gossip(this.known_channels[event.update.chan_id].conf, key))
+                peer.gossipChannelUpdates([event.update].staticArray);
             break;
         }
     }
@@ -1216,7 +1223,7 @@ public class FlashNode : FlashControlAPI
     public override Result!Hash openNewChannel (/* in */ UTXO funding_utxo,
         /* in */ Hash funding_utxo_hash, /* in */ Amount capacity,
         /* in */ uint settle_time, /* in */ Point recv_pk,
-        /* in */ string peer_address)
+        /* in */ bool is_private, /* in */ string peer_address)
     {
         log.info("openNewChannel({}, {}, {})",
                  capacity, settle_time, recv_pk.flashPrettify);
@@ -1273,6 +1280,7 @@ public class FlashNode : FlashControlAPI
             funding_utxo_idx: cast (uint) funding_utxo_idx,
             capacity        : capacity,
             settle_time     : settle_time,
+            is_private      : is_private,
         };
         this.pending_channels.insertBack(PendingChannel(chan_conf, peer_address));
         return Result!Hash(chan_id);

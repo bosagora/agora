@@ -123,4 +123,7 @@ public enum ErrorCode : ushort
 
     /// Invalid Config
     InvalidConfig,
+
+    /// Can't route through private channels
+    PrivateChannel,
 }

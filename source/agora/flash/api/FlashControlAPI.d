@@ -111,7 +111,7 @@ public interface FlashControlAPI : FlashAPI, BlockExternalizedHandler
     public Result!Hash openNewChannel (/* in */ UTXO funding_utxo,
         /* in */ Hash funding_utxo_hash, /* in */ Amount capacity,
         /* in */ uint settle_time, /* in */ Point peer_pk,
-        /* in */ string peer_address);
+        /* in */ bool is_private, /* in */ string peer_address);
 
     /***************************************************************************
 

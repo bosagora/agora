@@ -45,6 +45,9 @@ public class Network
         /// The total amount funded in this channel. This information is
         /// derived from the Outputs of the funding transaction.
         public Amount capacity;
+
+        /// If this channel can be used as an intermediate hop
+        public bool is_private;
     }
 
     /// Static information about channel that are useful for routing
@@ -76,7 +79,7 @@ public class Network
         const peer_pk = chan_conf.peer_pk;
 
         this.routing_info[chan_conf.chan_id] = ChannelRoutingInfo(
-            chan_conf.funder_pk, chan_conf.capacity);
+            chan_conf.funder_pk, chan_conf.capacity, chan_conf.is_private);
 
         this.addChannel(funder_pk, peer_pk, chan_conf);
         this.addChannel(peer_pk, funder_pk, chan_conf);
@@ -192,7 +195,8 @@ public class Network
                         if (chan_id in ignore_chans)
                             return false;
                         auto info = this.routing_info[chan_id];
-                        if (amount > info.capacity)
+                        if (amount > info.capacity ||
+                            (info.is_private && info.funder_pk != to_pk && info.funder_pk != from_pk))
                             return false;
                         return true;
                     };
@@ -353,4 +357,39 @@ unittest
     // unknown keys
     path = ln.getPaymentPath(Scalar.random().toPoint(), pks[1], Amount(1));
     assert(path is null);
+
+    conf.funder_pk = pks[2];
+    conf.peer_pk = pks[3];
+    conf.chan_id = hashFull(5);
+    conf.is_private = true;
+    ln.addChannel(conf);
+    // #0 -- #1
+    //   \    |
+    //    \__ #2 -p- #3 -- #4
+
+    // anything that should use private channel as a hop should fail
+    foreach (node1; 0 .. 2)
+        assert(ln.getPaymentPath(pks[node1], pks[4], Amount(1)) == null);
+    foreach (node2; 0 .. 2)
+        assert(ln.getPaymentPath(pks[4], pks[node2], Amount(1)) == null);
+
+    // should be able to route directly between #2 and #3
+    path = ln.getPaymentPath(pks[2], pks[3], Amount(1));
+    assert(path.length == 1);
+    assert(path[0].pub_key == pks[3]);
+    assert(path[0].chan_id == hashFull(5));
+
+    path = ln.getPaymentPath(pks[3], pks[2], Amount(1));
+    assert(path.length == 1);
+    assert(path[0].pub_key == pks[2]);
+    assert(path[0].chan_id == hashFull(5));
+
+    // should not be able to route from left part of the graph to #3
+    foreach (node1; 0 .. 2)
+        assert(ln.getPaymentPath(pks[node1], pks[3], Amount(1)) == null);
+
+    // should be able to route from right part of the graph to #2
+    path = ln.getPaymentPath(pks[4], pks[2], Amount(1));
+    assert(path[$-1].pub_key == pks[2]);
+    assert(path[$-1].chan_id == hashFull(5));
 }
