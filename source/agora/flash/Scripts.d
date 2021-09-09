@@ -20,6 +20,7 @@ import agora.consensus.data.UTXO;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
+import agora.flash.api.FlashAPI;
 import agora.flash.Config;
 import agora.flash.Types;
 import agora.script.Lock;

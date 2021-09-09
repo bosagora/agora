@@ -17,6 +17,7 @@ import agora.common.Types;
 import agora.common.Amount;
 import agora.crypto.Key;
 import agora.consensus.data.UTXO;
+import agora.flash.api.FlashAPI;
 import agora.flash.Config;
 import agora.flash.ErrorCode;
 import agora.flash.Invoice;
