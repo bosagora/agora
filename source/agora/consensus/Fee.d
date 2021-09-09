@@ -228,20 +228,19 @@ public class FeeManager
 
     /***************************************************************************
 
-        Checks the following in the data payload:
+        Checks the given transaction has the required fees
 
-            Checks that the size of the data does not exceed
-            the maximum size allowed.
-            Checks if a commons budget address exists in the output.
-            Checks if the appropriate fee is paid by commons budget address.
+        The transaction fees must be sufficient to pay the data payload fee and
+        also the minimum fee for the size of the transaction. The size of the
+        data payload is also checked to be less than maximum allowed.
 
         Params:
             tx = `Transaction`
             tx_fee = transaction fee
 
         Return:
-            `null` if the transaction is valid, a string explaining the reason it
-            is invalid otherwise.
+            `null` if the transaction is valid otherwise a string explaining the
+            reason it is not.
 
     ***************************************************************************/
 
@@ -259,8 +258,15 @@ public class FeeManager
         if (tx.payload.length > this.params.TxPayloadMaxSize)
             return "Transaction: The size of the data payload is too large";
 
-        const required_fee = calculateDataFee(tx.payload.length,
+        auto required_fee = calculateDataFee(tx.payload.length,
             this.params.TxPayloadFeeFactor);
+
+        if (!required_fee.isValid)
+            return "The data fee is more than maximum Amount allowed";
+
+        if (!required_fee.add(minimumFee))
+            return "The sum of minimum fee and data fee is more than maximum Amount allowed";
+
         if (tx_fee < required_fee)
             return "Transaction: There is not enough data fee";
 
