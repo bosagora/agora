@@ -17,7 +17,7 @@ import agora.common.Types;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
-import agora.flash.Node : KnownChannel;
+import agora.flash.api.FlashAPI;
 
 import vibe.http.common;
 import vibe.web.rest;

@@ -13,6 +13,7 @@
 
 module agora.flash.Network;
 
+import agora.flash.api.FlashAPI;
 import agora.flash.Config;
 import agora.flash.Channel;
 import agora.flash.Route;

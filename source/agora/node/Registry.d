@@ -22,6 +22,7 @@ import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.node.Config;
+import agora.flash.api.FlashAPI;
 import agora.flash.Node;
 import agora.serialization.Serializer;
 import agora.stats.Registry;

@@ -1544,16 +1544,6 @@ public bool isValidChannelOpen (in ChannelConfig conf, in Block block) @safe not
     return block.txs.canFind!(tx => tx.hashFull() == conf.funding_tx_hash);
 }
 
-/// Metadata associated with known channels
-public struct KnownChannel
-{
-    /// Channel open confirmation height
-    public Height height;
-
-    /// Channel config
-    public ChannelConfig conf;
-}
-
 /// All the node metadata which we keep in the DB for storage
 private mixin template NodeMetadata ()
 {
