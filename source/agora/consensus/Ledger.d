@@ -1263,7 +1263,7 @@ public class Ledger
     /// return the last payment block before the current block
     public Height getLastPaymentBlock () const scope @safe @nogc nothrow pure
     {
-        return lastPaymentBlock(this.getBlockHeight, this.params.PayoutPeriod);
+        return lastPaidHeight(this.getBlockHeight, this.params.PayoutPeriod);
     }
 
     version (unittest):
@@ -1295,7 +1295,8 @@ public class Ledger
     }
 }
 
-private Height lastPaymentBlock(in Height height, uint payout_period) @safe @nogc nothrow pure
+/// This is the last block height that has had fees and rewards paid before the current block
+private Height lastPaidHeight(in Height height, uint payout_period) @safe @nogc nothrow pure
 {
     return Height(height <= payout_period ? 1 : (height - 1) - ((height - 1) % payout_period));
 }
@@ -1310,7 +1311,7 @@ unittest
     only(tuple(0,1), tuple(1,1), tuple(4,1), tuple(5,1), // test before first reward block is externalized
         tuple(6,5), tuple(9,5), tuple(10,5), // test before second reward block is externalized
         tuple(11,10)).each!( // last we test after second
-        (height, expected) => assert(lastPaymentBlock(Height(height), paymentPeriod) == expected));
+        (height, expected) => assert(lastPaidHeight(Height(height), paymentPeriod) == expected));
 }
 
 /*******************************************************************************
