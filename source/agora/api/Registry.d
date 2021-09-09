@@ -93,11 +93,11 @@ public interface NameRegistryAPI
             the error message
 
         API:
-            PUT /validator
+            POST /validator
 
     ***************************************************************************/
 
-    public void putValidator (RegistryPayload registry_payload);
+    public void postValidator (RegistryPayload registry_payload);
 
     /***************************************************************************
 
@@ -129,9 +129,9 @@ public interface NameRegistryAPI
                 a known channel of the registering public key
 
         API:
-            PUT /flash_node
+            POST /flash_node
 
     ***************************************************************************/
 
-    public void putFlashNode (RegistryPayload registry_payload, KnownChannel channel);
+    public void postFlashNode (RegistryPayload registry_payload, KnownChannel channel);
 }

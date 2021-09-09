@@ -1689,7 +1689,7 @@ public class AgoraFlashNode : FlashNode
 
             try
             {
-                this.registry_client.putValidator(payload);
+                this.registry_client.postValidator(payload);
             }
             catch (Exception ex)
             {

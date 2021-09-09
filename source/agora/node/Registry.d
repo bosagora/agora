@@ -169,11 +169,11 @@ public class NameRegistry: NameRegistryAPI
             the error message
 
         API:
-            PUT /validator
+            POST /validator
 
     ***************************************************************************/
 
-    public override void putValidator (RegistryPayload registry_payload)
+    public override void postValidator (RegistryPayload registry_payload)
     {
         import std.algorithm;
 
@@ -239,11 +239,11 @@ public class NameRegistry: NameRegistryAPI
                 a known channel of the registering public key
 
         API:
-            PUT /flash_node
+            POST /flash_node
 
     ***************************************************************************/
 
-    public override void putFlashNode (RegistryPayload registry_payload, KnownChannel channel)
+    public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
         ensureValidPayload(registry_payload, this.flash_map);
 
