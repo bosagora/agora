@@ -1,0 +1,53 @@
+@import "base.scss";
+
+.root {
+  width: 100%;
+  max-width: 360px;
+  color: $color-black;
+  .outer{
+    padding-left: 15px;
+    padding-right: 15px;
+
+    div{
+      span{
+        font-family: "Alegreya Sans";
+      }
+    }
+  }
+  .itemText{
+
+  }
+  .naviLink {
+    width: 100%;
+    color: $color-black;
+    text-decoration: none;
+    &:focus,
+    &:visited,
+    &:link,
+    &:active {
+      text-decoration: none;
+    }
+    &:hover {
+      text-decoration: none;
+    }
+  }
+
+  .activeStyle {
+    color: $color-primary;
+    text-decoration: none;
+    &:focus,
+    &:hover,
+    &:visited,
+    &:link,
+    &:active {
+      text-decoration: none;
+    }
+  }
+
+  .nested{
+    padding-left: 30px;
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
+
+}

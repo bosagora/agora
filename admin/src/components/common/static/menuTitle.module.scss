@@ -1,0 +1,9 @@
+@import "./../../../base.scss";
+
+.menuTitle {
+  @include font(1.3rem, 1.4, null, normal, 0);
+
+  @media (max-width: $maxMediaXS) {
+    @include font(1.3rem, 1.4, null, normal, 0);
+  }
+}

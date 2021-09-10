@@ -1,0 +1,503 @@
+@mixin customScrollOuter {
+  &>.rcs-custom-scroll {
+
+    &>.rcs-outer-container {
+      width: calc(100% + 30px);
+      padding-left: 10px;
+      margin-left: -10px;
+
+      &>.rcs-inner-container {
+        width: calc(100% + 27px);
+        padding-right: 20px;
+        padding-left: 10px;
+        margin-left: -10px;
+
+        &>div {
+          &>*:last-child {
+            padding-bottom: 30px;
+          }
+        }
+      }
+
+      &>.rcs-positioning {
+
+        &>.rcs-custom-scrollbar {
+          right: 2px;
+          width: 6px;
+          padding: 6px 0;
+
+          &>.rcs-custom-scroll-handle {
+
+            &>.rcs-inner-handle {
+              background-color: $paginationScrollBar;
+              @include border-radius(3px);
+              margin-top: 6px;
+            }
+          }
+        }
+
+      }
+    }
+
+  }
+}
+
+@mixin customScrollContent {
+  &>.rcs-custom-scroll {
+
+    &>.rcs-outer-container {
+
+      &>.rcs-inner-container {
+        margin: 0px;
+        padding: 40px 0px 0px;
+        width: calc(100% + 17px);
+      }
+
+      &>.rcs-positioning {
+
+        &>.rcs-custom-scrollbar {
+          right: 15px;
+          width: 6px;
+          padding: 6px 0;
+
+          &>.rcs-custom-scroll-handle {
+
+            &>.rcs-inner-handle {
+              background-color: $paginationScrollBar;
+              @include border-radius(3px);
+              margin-top: 6px;
+            }
+          }
+        }
+
+      }
+    }
+
+  }
+}
+
+@mixin cfix {
+  &:after{
+    content: " ";
+    display: block;
+    clear: both;
+  }
+}
+
+@mixin animation-iteration-count($count) {
+  -webkit-animation-iteration-count: $count;
+  -moz-animation-iteration-count: $count;
+  -o-animation-iteration-count: $count;
+  animation-iteration-count: $count;
+}
+
+@mixin animation-duration($duration) {
+  -webkit-animation-duration: $duration;
+  -moz-animation-duration: $duration;
+  -o-animation-duration: $duration;
+  animation-duration: $duration;
+}
+
+@mixin animation-timing-function($timing) {
+  -webkit-animation-timing-function: $timing;
+  -moz-animation-timing-function: $timing;
+  -o-animation-timing-function: $timing;
+  animation-timing-function: $timing;
+}
+
+@mixin animation-delay($timing) {
+  -webkit-animation-delay: $timing;
+  -moz-animation-delay: $timing;
+  -o-animation-delay: $timing;
+  animation-delay: $timing;
+}
+
+@mixin animation-name($name) {
+  -webkit-animation-name: $name;
+  -moz-animation-name: $name;
+  -o-animation-name: $name;
+  animation-name: $name;
+}
+
+@mixin animation-fill-mode($name) {
+  -webkit-animation-fill-mode: $name;
+  -moz-animation-fill-mode: $name;
+  -o-animation-fill-mode: $name;
+  animation-fill-mode: $name;
+}
+
+@mixin outline($outline) {
+  -webkit-outline: $outline;
+  -moz-outline: $outline;
+  outline: $outline;
+}
+
+@mixin user-select($select) {
+  -moz-user-select: $select;
+  -webkit-user-select: $select;
+  -ms-user-select: $select;
+  -o-user-select: $select;
+  user-select: $select;
+}
+
+@mixin transition($transition) {
+  -webkit-transition: $transition;
+  -moz-transition: $transition;
+  -o-transition: $transition;
+  transition: $transition;
+}
+
+@mixin transform($transform) {
+  -moz-transform: $transform;
+  -ms-transform: $transform;
+  -webkit-transform: $transform;
+  -o-transform: $transform;
+  transform: $transform;
+}
+
+@mixin filter($filter) {
+  -webkit-filter: $filter;
+  -moz-filter: $filter;
+  -ms-filter: $filter;
+  -o-filter: $filter;
+}
+
+@mixin appearance($appearance) {
+  -webkit-appearance: $appearance;
+  -moz-appearance: $appearance;
+  appearance: $appearance;
+}
+
+@mixin box-shadow($shadow) {
+  -webkit-box-shadow: $shadow;
+  -moz-box-shadow: $shadow;
+  box-shadow: $shadow;
+}
+
+@mixin box-sizing($sizing) {
+  -webkit-box-sizing: $sizing;
+  -moz-box-sizing: $sizing;
+  box-sizing: $sizing;
+}
+
+@mixin border-radius($radius) {
+  -webkit-border-radius: $radius;
+  -moz-border-radius: $radius;
+  -ms-border-radius: $radius;
+  border-radius: $radius;
+}
+
+@mixin border-radius-top-right($radius) {
+  -webkit-border-top-right-radius: $radius;
+  -moz-border-radius-topright: $radius;
+  -ms-border-top-right-radius: $radius;
+  border-top-right-radius: $radius;
+}
+
+@mixin border-radius-top-left($radius) {
+  -webkit-border-top-left-radius: $radius;
+  -moz-border-radius-topleft: $radius;
+  -ms-border-top-left-radius: $radius;
+  border-top-left-radius: $radius;
+}
+
+@mixin border-radius-bottom-right($radius) {
+  -webkit-border-bottom-right-radius: $radius;
+  -moz-border-radius-bottomright: $radius;
+  -ms-border-bottom-right-radius: $radius;
+  border-bottom-right-radius: $radius;
+}
+
+@mixin border-radius-bottom-left($radius) {
+  -webkit-border-bottom-left-radius: $radius;
+  -moz-border-radius-bottomleft: $radius;
+  -ms-border-bottom-left-radius: $radius;
+  border-bottom-left-radius: $radius;
+}
+
+@mixin font($size, $line, $color, $weight, $lSpace) {
+  @if $size !=null {
+    font-size: $size;
+  }
+
+  @if $line !=null {
+    line-height: $line;
+  }
+
+  @if $color !=null {
+    color: $color;
+  }
+
+  @if $weight !=null {
+    font-weight: $weight;
+  }
+
+  @if $lSpace !=null {
+    letter-spacing: $lSpace;
+  }
+}
+
+@mixin linear-gradientFull($deg, $color1, $p1, $color2, $p2) {
+  background: $color1;
+  background: -moz-linear-gradient($deg, $color1 $p1, $color2 $p2);
+  background: -webkit-linear-gradient($deg, $color1 $p1, $color2 $p2);
+  background: linear-gradient(to right, $color1 $p1, $color2 $p2); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=1 );
+}
+
+@mixin linear-gradientH($color1, $color2) {
+  background: $color1;
+  background: -moz-linear-gradient(left, $color1 0%, $color2 100%);
+  background: -webkit-linear-gradient(left, $color1 0%, $color2 100%);
+  background: linear-gradient(to right, $color1 0%, $color2 100%); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=1 );
+}
+
+@mixin linear-gradientH3($color1, $color2, $color3) {
+  background: $color1;
+  background: -moz-linear-gradient(left, $color1 0%, $color2 50%, $color3 100%);
+  background: -webkit-linear-gradient(left, $color1 0%, $color2 50%, $color3 100%);
+  background: linear-gradient(to right, $color1 0%, $color2 50%, $color3 100%); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=1 );
+}
+
+@mixin linear-gradientV($color1, $color2) {
+  background: $color1;
+  background: -moz-linear-gradient(top, $color1 0%, $color2 100%);
+  background: -webkit-linear-gradient(top, $color1 0%, $color2 100%);
+  background: linear-gradient(to bottom, $color1 0%, $color2 100%); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=0 );
+}
+
+@mixin linear-gradientR($color1, $color2) {
+  background: $color1;
+  background: -moz-radial-gradient(center, ellipse cover, $color1 0%, $color2 100%);
+  background: -webkit-radial-gradient(center, ellipse cover, $color1 0%, $color2 100%);
+  background: radial-gradient(ellipse at center, $color1 0%, $color2 100%); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=1 );
+}
+
+@mixin linear-gradientD45($color1, $color2) {
+  background: $color1;
+  background: -moz-linear-gradient(45deg, $color1 0%, $color2 100%);
+  background: -webkit-linear-gradient(45deg, $color1 0%, $color2 100%);
+  background: linear-gradient(45deg, $color1 0%, $color2 100%); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=1 );
+}
+
+@mixin linear-gradientD-45($color1, $color2) {
+  background: $color1;
+  background: -moz-linear-gradient(-45deg, $color1 0%, $color2 100%);
+  background: -webkit-linear-gradient(-45deg, $color1 0%, $color2 100%);
+  background: linear-gradient(-45deg, $color1 0%, $color2 100%); // filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=$color1, endColorstr=$color2,GradientType=1 );
+}
+
+@mixin back-img($size, $position, $repeat) {
+  background-size: $size;
+  background-position: $position;
+  background-repeat: $repeat;
+}
+
+@mixin text-size-adjust($val) {
+  -webkit-text-size-adjust: $val;
+  -moz-text-size-adjust: $val;
+  -ms-text-size-adjust: $val;
+}
+
+@mixin flexbox {
+  display: -webkit-box;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+}
+
+@mixin inline-flex {
+  display: -webkit-inline-box;
+  display: -moz-inline-box;
+  display: -webkit-inline-flex;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+}
+
+@mixin flex-direction($value: row) {
+  @if $value==row-reverse {
+      -webkit-box-direction: reverse;
+      -webkit-box-orient: horizontal;
+      -moz-box-direction: reverse;
+      -moz-box-orient: horizontal;
+  }
+
+  @else if $value==column {
+      -webkit-box-direction: normal;
+      -webkit-box-orient: vertical;
+      -moz-box-direction: normal;
+      -moz-box-orient: vertical;
+  }
+
+  @else if $value==column-reverse {
+      -webkit-box-direction: reverse;
+      -webkit-box-orient: vertical;
+      -moz-box-direction: reverse;
+      -moz-box-orient: vertical;
+  }
+
+  @else {
+      -webkit-box-direction: normal;
+      -webkit-box-orient: horizontal;
+      -moz-box-direction: normal;
+      -moz-box-orient: horizontal;
+  }
+
+  -webkit-flex-direction: $value;
+  -ms-flex-direction: $value;
+  flex-direction: $value;
+}
+
+@mixin flex-wrap($value: nowrap) {
+  -webkit-flex-wrap: $value;
+
+  @if $value==nowrap {
+      -ms-flex-wrap: none;
+  }
+
+  @else {
+      -ms-flex-wrap: $value;
+  }
+
+  flex-wrap: $value;
+}
+
+@mixin flex-flow($values: (row nowrap)) {
+  -webkit-flex-flow: $values;
+  -ms-flex-flow: $values;
+  flex-flow: $values;
+}
+
+@mixin order($int: 0) {
+  -webkit-box-ordinal-group: $int + 1;
+  -moz-box-ordinal-group: $int + 1;
+  -webkit-order: $int;
+  -ms-flex-order: $int;
+  order: $int;
+}
+
+@mixin flex-grow($int: 1) {
+  -webkit-box-flex: $int;
+  -moz-box-flex: $int;
+  -webkit-flex-grow: $int;
+  -ms-flex: $int;
+  flex-grow: $int;
+}
+
+@mixin flex-shrink($int: 0) {
+  -webkit-flex-shrink: $int;
+  -moz-flex-shrink: $int;
+  -ms-flex: $int;
+  flex-shrink: $int;
+}
+
+@mixin flex-basis($value: auto) {
+  -webkit-flex-basis: $value;
+  flex-basis: $value;
+}
+
+@mixin flex($fg: 1, $fs: 0, $fb: auto) {
+  $fg-boxflex: $fg;
+
+  @if type-of($fg)=='list' {
+      $fg-boxflex: nth($fg, 1);
+  }
+
+  -webkit-box: $fg-boxflex;
+  -moz-box: $fg-boxflex;
+  -webkit-flex: $fg $fs $fb;
+  -ms-flex: $fg $fs $fb;
+  flex: $fg $fs $fb;
+}
+
+@mixin justify-content($value: flex-start) {
+  @if $value==flex-start {
+      -webkit-box-pack: start;
+      -moz-box-pack: start;
+      -ms-flex-pack: start;
+  }
+
+  @else if $value==flex-end {
+      -webkit-box-pack: end;
+      -moz-box-pack: end;
+      -ms-flex-pack: end;
+  }
+
+  @else if $value==space-between {
+      -webkit-box-pack: justify;
+      -moz-box-pack: justify;
+      -ms-flex-pack: justify;
+  }
+
+  @else if $value==space-around {
+      -ms-flex-pack: distribute;
+  }
+
+  @else {
+      -webkit-box-pack: $value;
+      -moz-box-pack: $value;
+      -ms-flex-pack: $value;
+  }
+
+  -webkit-justify-content: $value;
+  justify-content: $value;
+}
+
+@mixin align-items($value: stretch) {
+  @if $value==flex-start {
+      -webkit-box-align: start;
+      -moz-box-align: start;
+      -ms-flex-align: start;
+  }
+
+  @else if $value==flex-end {
+      -webkit-box-align: end;
+      -moz-box-align: end;
+      -ms-flex-align: end;
+  }
+
+  @else {
+      -webkit-box-align: $value;
+      -moz-box-align: $value;
+      -ms-flex-align: $value;
+  }
+
+  -webkit-align-items: $value;
+  align-items: $value;
+}
+
+@mixin align-self($value: auto) {
+  -webkit-align-self: $value;
+
+  @if $value==flex-start {
+      -ms-flex-item-align: start;
+  }
+
+  @else if $value==flex-end {
+      -ms-flex-item-align: end;
+  }
+
+  @else {
+      -ms-flex-item-align: $value;
+  }
+
+  align-self: $value;
+}
+
+@mixin align-content($value: stretch) {
+  -webkit-align-content: $value;
+
+  @if $value==flex-start {
+      -ms-flex-line-pack: start;
+  }
+
+  @else if $value==flex-end {
+      -ms-flex-line-pack: end;
+  }
+
+  @else {
+      -ms-flex-line-pack: $value;
+  }
+
+  align-content: $value;
+}
