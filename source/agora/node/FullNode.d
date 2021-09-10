@@ -986,11 +986,50 @@ public class FullNode : API
     {
         this.recordReq("postEnrollment");
 
+        scope UTXOFinder utxo_finder;
+        scope TestUTXOSet extra_set;
+
         UTXO utxo;
-        this.utxo_set.peekUTXO(enroll.utxo_key, utxo);
+        if (this.utxo_set.peekUTXO(enroll.utxo_key, utxo))
+        {
+            utxo_finder = this.utxo_set.getUTXOFinder();
+        }
+        else 
+        {
+            /// FIXME: Use a proper type and sensible memory allocation pattern
+            // We create a extra UTXO set using the transaction pool if there
+            // is no UTXO in the UTXO set. We only use transactions that have
+            // a frozen UTXO with the right amount.
+            version (all)
+            {
+                extra_set = new TestUTXOSet();
+                foreach (ref Hash hash, ref Transaction tx; this.pool)
+                {
+                    if (!tx.isFreeze())
+                        continue;
+
+                    foreach (output; tx.outputs)
+                        if (output.type == OutputType.Freeze && 
+                            output.value >= Amount.MinFreezeAmount)
+                        {
+                            extra_set.put(tx);
+                            break;
+                        }
+                }
+                extra_set.peekUTXO(enroll.utxo_key, utxo);
+                utxo_finder = extra_set.getUTXOFinder();
+            }
+        }
+
+        if (utxo == UTXO.init)
+        {
+            log.info("Found no UTXO for the enrollment: {}", prettify(enroll));
+            return;
+        }
+
         const utxo_address = utxo.output.address;
         if (this.enroll_man.addEnrollment(enroll, utxo_address,
-            this.ledger.getBlockHeight() + 1, this.utxo_set.getUTXOFinder()))
+            this.ledger.getBlockHeight() + 1, utxo_finder))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
             this.network.peers.each!(p => p.client.sendEnrollment(enroll));
