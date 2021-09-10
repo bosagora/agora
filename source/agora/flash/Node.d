@@ -1228,6 +1228,9 @@ public abstract class FlashNode : FlashControlAPI
         auto result = peer.openChannel(chan_conf, pub_nonce);
         if (result.error != ErrorCode.None)
         {
+            log.error("Peer ({}) rejected channel open with error: {}",
+                chan_conf.peer_pk.flashPrettify, result.message);
+
             this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
                 ChannelState.Rejected, result.error);
             return;
