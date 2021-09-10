@@ -554,7 +554,6 @@ public abstract class FlashNode : FlashControlAPI
     public override Result!PublicNonce openChannel (
         /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
     {
-        // todo: verify `chan_conf.funding_utxo`
         log.info("openChannel()");
 
         auto secret_key = chan_conf.peer_pk in this.managed_keys;
@@ -571,6 +570,31 @@ public abstract class FlashNode : FlashControlAPI
         if (chan_conf.gen_hash != this.genesis_hash)
             return Result!PublicNonce(ErrorCode.InvalidGenesisHash,
                 "Unrecognized blockchain genesis hash");
+
+        if (!chan_conf.funder_pk.isValid())
+            return Result!PublicNonce(ErrorCode.InvalidConfig,
+                "Invalid funder public key");
+
+        if (chan_conf.pair_pk != chan_conf.funder_pk + chan_conf.peer_pk)
+            return Result!PublicNonce(ErrorCode.InvalidConfig,
+                "Invalid pair public key");
+
+        if (chan_conf.update_pair_pk != getUpdatePk(chan_conf.pair_pk, chan_conf.funding_tx_hash, chan_conf.num_peers))
+            return Result!PublicNonce(ErrorCode.InvalidConfig,
+                "Invalid update pair public key");
+
+        if (chan_conf.funding_tx_hash != chan_conf.funding_tx.hashFull())
+            return Result!PublicNonce(ErrorCode.InvalidConfig,
+                "Invalid funding transaction hash");
+
+        if (chan_conf.funding_utxo_idx >= chan_conf.funding_tx.outputs.length)
+            return Result!PublicNonce(ErrorCode.InvalidConfig,
+                "Invalid funding UTXO idx");
+
+        auto funding_output = chan_conf.funding_tx.outputs[chan_conf.funding_utxo_idx];
+        if (funding_output.address != chan_conf.pair_pk || funding_output.value != chan_conf.capacity)
+            return Result!PublicNonce(ErrorCode.InvalidConfig,
+                "Invalid funding output");
 
         if (chan_conf.capacity < this.conf.min_funding ||
             chan_conf.capacity > this.conf.max_funding)

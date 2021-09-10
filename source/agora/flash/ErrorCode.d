@@ -120,4 +120,7 @@ public enum ErrorCode : ushort
 
     /// Too much fee request for closing TX
     RejectedClosingFee,
+
+    /// Invalid Config
+    InvalidConfig,
 }
