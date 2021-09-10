@@ -42,11 +42,18 @@
     "styled-components": "^5.2.1",
     "throttle-debounce": "^2.1.0"
   },
+  "devDependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "express": "~4.16.1",
+    "morgan": "~1.9.1"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "server": "node ./fakeServer/bin/www"
   },
   "eslintConfig": {
     "extends": [
