@@ -55,8 +55,6 @@ public interface FlashAPI
         if it's managed by this Flash node.
 
         Params:
-            recv_pk = the receiving public key. If the receiving flash node
-                does not manage this key it will return an error.
             chan_conf = contains all the static configuration for this channel.
             peer_nonce = the nonce pair that will be used for signing the
                 initial settlement & trigger transactions.
@@ -68,8 +66,7 @@ public interface FlashAPI
     ***************************************************************************/
 
     public Result!PublicNonce openChannel (
-        PublicKey recv_pk, /* in */ ChannelConfig chan_conf,
-        /* in */ PublicNonce peer_nonce);
+        /* in */ ChannelConfig chan_conf, /* in */ PublicNonce peer_nonce);
 
     /***************************************************************************
 

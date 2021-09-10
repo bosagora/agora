@@ -1511,12 +1511,13 @@ unittest
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
 
     // error on mismatching genesis hash
-    ChannelConfig bad_conf = { funder_pk : WK.Keys.A.address };
-    auto open_res = charlie.openChannel(WK.Keys.C.address, bad_conf, PublicNonce.init);
+    ChannelConfig bad_conf = { funder_pk : WK.Keys.A.address, peer_pk : WK.Keys.C.address};
+    auto open_res = charlie.openChannel(bad_conf, PublicNonce.init);
     assert(open_res.error == ErrorCode.InvalidGenesisHash, open_res.to!string);
 
+    bad_conf.peer_pk = PublicKey.init;
     // error on non-managed key
-    open_res = charlie.openChannel(WK.Keys.A.address, bad_conf, PublicNonce.init);
+    open_res = charlie.openChannel(bad_conf, PublicNonce.init);
     assert(open_res.error == ErrorCode.KeyNotRecognized, open_res.to!string);
 
     // error on capacity too low
