@@ -552,19 +552,18 @@ public abstract class FlashNode : FlashControlAPI
 
     /// See `FlashAPI.openChannel`
     public override Result!PublicNonce openChannel (
-        PublicKey recv_pk, /*in*/ ChannelConfig chan_conf,
-        /*in*/ PublicNonce peer_nonce) @trusted
+        /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce) @trusted
     {
         // todo: verify `chan_conf.funding_utxo`
         log.info("openChannel()");
 
-        auto secret_key = recv_pk in this.managed_keys;
+        auto secret_key = chan_conf.peer_pk in this.managed_keys;
         if (secret_key is null)
             return Result!PublicNonce(ErrorCode.KeyNotRecognized,
                 format("The provided key %s is not managed by this "
-                ~ "Flash node. Do you have the right address..?", recv_pk));
+                ~ "Flash node. Do you have the right address..?", chan_conf.peer_pk));
 
-        if (auto chans = recv_pk in this.channels)
+        if (auto chans = chan_conf.peer_pk in this.channels)
             if (chan_conf.chan_id in *chans)
                 return Result!PublicNonce(ErrorCode.DuplicateChannelID,
                     "There is already an open channel with this ID");
@@ -591,7 +590,7 @@ public abstract class FlashNode : FlashControlAPI
                 "Settle time rejecteds. Want between %s and %s",
                 this.conf.min_settle_time, this.conf.max_settle_time));
 
-        if (auto error = this.listener.onRequestedChannelOpen(recv_pk,
+        if (auto error = this.listener.onRequestedChannelOpen(chan_conf.peer_pk,
             chan_conf))
             return Result!PublicNonce(ErrorCode.UserRejectedChannel, error);
 
@@ -603,7 +602,7 @@ public abstract class FlashNode : FlashControlAPI
             &this.onPaymentComplete, &this.onUpdateComplete,  &this.getFeeUTXOs,
             this.db);
 
-        this.channels[recv_pk][chan_conf.chan_id] = channel;
+        this.channels[chan_conf.peer_pk][chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
         return Result!PublicNonce(pub_nonce);
@@ -1202,8 +1201,7 @@ public abstract class FlashNode : FlashControlAPI
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        auto result = peer.openChannel(PublicKey(chan_conf.peer_pk), chan_conf,
-            pub_nonce);
+        auto result = peer.openChannel(chan_conf, pub_nonce);
         if (result.error != ErrorCode.None)
         {
             this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
