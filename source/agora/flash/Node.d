@@ -568,12 +568,6 @@ public abstract class FlashNode : FlashControlAPI
                 return Result!PublicNonce(ErrorCode.DuplicateChannelID,
                     "There is already an open channel with this ID");
 
-        auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout);
-        if (peer is null)
-            return Result!PublicNonce(ErrorCode.AddressNotFound,
-                format("Cannot find address of flash node in registry for the key %s",
-                    chan_conf.funder_pk));
-
         if (chan_conf.gen_hash != this.genesis_hash)
             return Result!PublicNonce(ErrorCode.InvalidGenesisHash,
                 "Unrecognized blockchain genesis hash");
@@ -593,6 +587,12 @@ public abstract class FlashNode : FlashControlAPI
         if (auto error = this.listener.onRequestedChannelOpen(chan_conf.peer_pk,
             chan_conf))
             return Result!PublicNonce(ErrorCode.UserRejectedChannel, error);
+
+        auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout);
+        if (peer is null)
+            return Result!PublicNonce(ErrorCode.AddressNotFound,
+                format("Cannot find address of flash node in registry for the key %s",
+                    chan_conf.funder_pk));
 
         PrivateNonce priv_nonce = genPrivateNonce();
         const key_pair = KeyPair.fromSeed(*secret_key);
