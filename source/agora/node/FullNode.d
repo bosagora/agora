@@ -283,7 +283,8 @@ public class FullNode : API
         );
 
         if (config.registry.enabled)
-            this.registry = new NameRegistry(config.node.realm, config.registry, this, this.cacheDB);
+            this.registry = new NameRegistry(config.node.realm, config.registry,
+                                             this.ledger, this.cacheDB);
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
