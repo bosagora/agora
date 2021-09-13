@@ -45,6 +45,7 @@ import agora.network.Clock;
 import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Config;
+import agora.node.Registry;
 import agora.consensus.Ledger;
 import agora.node.TransactionRelayer;
 import agora.script.Engine;
@@ -221,6 +222,14 @@ public class FullNode : API
     /// Ditto
     protected TransactionReceivedHandler[Address] transaction_handlers;
 
+    /// Name registry, if enabled for this node
+    protected NameRegistry registry;
+
+    /// Used by `Runner`
+    package NameRegistry getRegistry () @safe pure nothrow @nogc return
+    {
+        return this.registry;
+    }
 
     /***************************************************************************
 
@@ -274,6 +283,9 @@ public class FullNode : API
             // Use second precision to simplify aggregation
             Clock.currTime!(ClockType.second)(UTC()).toISOString(),
         );
+
+        if (config.registry.enabled)
+            this.registry = new NameRegistry(config.node.realm, config.registry, this);
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
