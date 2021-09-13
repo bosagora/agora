@@ -91,20 +91,10 @@ public class NameRegistry: NameRegistryAPI
                           this.config.dns.authoritative.map!(z => z.name));
 
             auto currTime = Clock.currTime(UTC());
+            // Serial's value wraps around so the cast is safe
+            const serial = cast(uint) currTime.toUnixTime();
             foreach (const ref zone; config.dns.authoritative)
-            {
-                SOA soa;
-                soa.mname = zone.name;
-                soa.rname = zone.email.replace('@', '.');
-                // This value wraps so the case is safe
-                soa.serial = cast(uint) currTime.toUnixTime();
-                // Casts are safe as the values are validated during config parsing
-                soa.refresh = cast(int) zone.refresh.total!"seconds";
-                soa.retry = cast(int) zone.retry.total!"seconds";
-                soa.expire = cast(int) zone.expire.total!"seconds";
-                soa.minimum = cast(uint) zone.minimum.total!"seconds";
-                this.zones ~= soa;
-            }
+                this.zones ~= zone.fromConfig(serial);
         }
     }
 
@@ -654,4 +644,19 @@ unittest
 
     assert("v4.bosagora.io".guessAddressType == TYPE.CNAME);
     assert("bosagora".guessAddressType == TYPE.CNAME);
+}
+
+/// Converts a `ZoneConfig` to an `SOA` record
+private SOA fromConfig (in ZoneConfig zone, uint serial) @safe pure
+{
+    SOA soa;
+    soa.mname = zone.name;
+    soa.rname = zone.email.replace('@', '.');
+    soa.serial = serial;
+    // Casts are safe as the values are validated during config parsing
+    soa.refresh = cast(int) zone.refresh.total!"seconds";
+    soa.retry = cast(int) zone.retry.total!"seconds";
+    soa.expire = cast(int) zone.expire.total!"seconds";
+    soa.minimum = cast(uint) zone.minimum.total!"seconds";
+    return soa;
 }
