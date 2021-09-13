@@ -251,7 +251,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     public override Transaction getPublishUpdateIndex (in PublicKey pk,
         in Hash chan_id, in uint index)
     {
-        auto channel = chan_id in this.channels[pk];
+        auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.getPublishUpdateIndex(index);
     }
@@ -260,7 +260,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     public override void waitForUpdateIndex (in PublicKey pk, in Hash chan_id,
         in uint index)
     {
-        auto channel = chan_id in this.channels[pk];
+        auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.waitForUpdateIndex(index);
     }
@@ -299,7 +299,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     ///
     public override Transaction getClosingTx (in PublicKey pk, in Hash chan_id)
     {
-        auto channel = chan_id in this.channels[pk];
+        auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.getClosingTx();
     }
@@ -307,7 +307,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     ///
     public override Transaction getLastSettleTx (in PublicKey pk, in Hash chan_id)
     {
-        auto channel = chan_id in this.channels[pk];
+        auto channel = chan_id in this.channels;
         assert(channel !is null);
         return channel.getLastSettleTx();
     }
