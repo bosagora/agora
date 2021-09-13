@@ -408,28 +408,50 @@ class ConservativeGC : GC
         return p;
     }
 
-
-    BlkInfo qalloc( size_t size, uint bits, const TypeInfo ti) nothrow
+    static if (__VERSION__ <= 2097)
     {
-
-        if (!size)
+        override BlkInfo qalloc( size_t size, uint bits, const TypeInfo ti) nothrow
         {
-            return BlkInfo.init;
+            if (!size)
+            {
+                return BlkInfo.init;
+            }
+
+            BlkInfo retval;
+
+            retval.base = runLocked!(mallocNoSync, mallocTime, numMallocs)(size, bits, retval.size, ti);
+
+            if (!(bits & BlkAttr.NO_SCAN))
+            {
+                memset(retval.base + size, 0, retval.size - size);
+            }
+
+            retval.attr = bits;
+            return retval;
         }
-
-        BlkInfo retval;
-
-        retval.base = runLocked!(mallocNoSync, mallocTime, numMallocs)(size, bits, retval.size, ti);
-
-        if (!(bits & BlkAttr.NO_SCAN))
-        {
-            memset(retval.base + size, 0, retval.size - size);
-        }
-
-        retval.attr = bits;
-        return retval;
     }
+    else
+    {
+        override BlkInfo qalloc( size_t size, uint bits, const scope TypeInfo ti) nothrow
+        {
+            if (!size)
+            {
+                return BlkInfo.init;
+            }
 
+            BlkInfo retval;
+
+            retval.base = runLocked!(mallocNoSync, mallocTime, numMallocs)(size, bits, retval.size, ti);
+
+            if (!(bits & BlkAttr.NO_SCAN))
+            {
+                memset(retval.base + size, 0, retval.size - size);
+            }
+
+            retval.attr = bits;
+            return retval;
+        }
+    }
 
     void *calloc(size_t size, uint bits, const TypeInfo ti) nothrow
     {
