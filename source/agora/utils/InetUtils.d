@@ -17,20 +17,30 @@ import agora.utils.Log;
 
 import vibe.inet.url : URL;
 
+import core.stdc.string;
+
 import std.algorithm;
 import std.algorithm.searching;
 import std.array;
 import std.ascii : isAlpha, isDigit;
 import std.conv;
+import std.datetime : Clock, dur;
+import std.file : tempDir, exists, isFile, read, write;
+import std.path : buildPath;
 import std.range : zip, iota;
 import std.regex : matchFirst, regex;
 import std.string : indexOf, strip;
 import std.socket;
 import std.typecons : tuple, Tuple;
 
-import core.stdc.string;
 
 mixin AddLogger!();
+
+private immutable string cache;
+
+shared static this() {
+	cache = buildPath(tempDir(), ".dub.my-ip");
+}
 
 ///
 public enum HostType : ubyte
@@ -39,6 +49,17 @@ public enum HostType : ubyte
     IPv4,
     IPv6,
     Domain,
+}
+
+struct Service {
+	enum ipify = Service("api.ipify.org", "/");							/// https://www.ipify.org/
+	enum plain_text_ip = Service("plain-text-ip.com", "/");				/// http://about.plain-text-ip.com/
+	enum icanhazip = Service("icanhazip.com", "/");						/// http://icanhazip.com/
+	enum whatismyipaddress = Service("bot.whatismyipaddress.com", "/");	/// https://whatismyipaddress.com/api
+	enum amazonws = Service("checkip.amazonaws.com", "/");				/// http://checkip.amazonaws.com/
+
+	string host;
+	string path;
 }
 
 struct InetUtils
@@ -86,7 +107,7 @@ struct InetUtils
                 ips ~= ip;
             }
         }
-
+        ips ~= publicAddresses();
         return ips;
     }
 
@@ -139,7 +160,94 @@ struct InetUtils
 
                 adapter_info = adapter_info.Next;
             }
+            ips ~= publicAddresses();
             return ips;
+        }
+    }
+
+    static string publicAddressImpl (Service service, AddressFamily addressFamily)
+        @safe
+    {
+
+        Address address =
+        {
+            switch (addressFamily) 
+            {
+                case AddressFamily.INET: return cast(Address)new InternetAddress(service.host, 80);
+                case AddressFamily.INET6: return cast(Address)new Internet6Address(service.host, 80);
+                default: throw new SocketException("Invalid address family");
+            }
+        }();
+
+        Socket socket = new TcpSocket(addressFamily);
+        socket.blocking = true;
+        socket.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(5));
+        socket.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(5));
+        socket.connect(address);
+        scope(exit) socket.close();
+
+        if (socket.send("GET " ~ service.path ~ " HTTP/1.1\r\nHost: " ~ service.host ~ "\r\nAccept: text/plain\r\n\r\n") 
+            != Socket.ERROR)
+        {
+            char[] buffer = new char[512];
+            ptrdiff_t recv, body_;
+
+            if ((recv = socket.receive(buffer)) != Socket.ERROR && (body_ = buffer[0..recv].indexOf("\r\n\r\n")) != -1)
+                return buffer[body_+4..recv].idup.strip;
+        }
+
+        throw new SocketException("Could not send or receive data");
+    }
+
+    static string publicAddress (Service service=Service.ipify, AddressFamily addressFamily=AddressFamily.INET)
+        @trusted
+    {
+        if (exists(cache) && isFile(cache))
+        {
+            void[] data = read(cache);
+            if (data.length > 4)
+            {
+                if ((cast(int[])data[0..4])[0] + 60 * 60 > Clock.currTime.toUnixTime!int)
+                {
+                    // cached less that one hour ago
+                    return cast(string)data[4..$];
+                }
+            }
+        }
+        try
+        {
+            string ret = publicAddressImpl(service, addressFamily);
+            write(cache, cast(void[])[Clock.currTime.toUnixTime!int] ~ cast(void[])ret);
+            return ret;
+        }
+        catch (SocketException ex)
+        {
+            log.info("Exception thrown in getting public address", ex);
+            return string.init;
+        }
+    }
+
+    static string[] publicAddresses () @trusted
+    {
+        string[] ips;
+        auto ip = publicAddress(Service.ipify, AddressFamily.INET);
+        if (ip != string.init && !ips.canFind(ip))
+            ips ~= ip;
+        ip = publicAddress(Service.ipify, AddressFamily.INET6);
+        if (ip != string.init && !ips.canFind(ip))
+            ips ~= ip;
+
+        return ips;
+    }
+
+    unittest
+    {
+        auto ips = publicAddresses();
+        assert(ips.length > 0);
+        foreach (ip; ips)
+        {
+            assert(ip != "" && ip != "::" && ip != "::1"); // Not loopback
+            assert(!isPrivateIP(ip));
         }
     }
 
