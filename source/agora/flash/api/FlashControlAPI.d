@@ -93,9 +93,6 @@ public interface FlashControlAPI : FlashAPI, BlockExternalizedHandler
         is accepted / rejected by the counter-party.
 
         Params:
-            reg_pk = the registered public key, and the initiator of the
-            channel open request. If this key is not managed by this Flash
-            node then an error will be returned.
             funding_utxo = the UTXO that will be used to fund the setup tx
             funding_utxo_hash = hash of `funding_utxo`
             capacity = the amount that will be used to fund the setup tx
@@ -111,10 +108,10 @@ public interface FlashControlAPI : FlashAPI, BlockExternalizedHandler
 
     ***************************************************************************/
 
-    public Result!Hash openNewChannel (PublicKey reg_pk,
-        /* in */ UTXO funding_utxo, /* in */ Hash funding_utxo_hash,
-        /* in */ Amount capacity, /* in */ uint settle_time,
-        /* in */ Point peer_pk, /* in */ string peer_address);
+    public Result!Hash openNewChannel (/* in */ UTXO funding_utxo,
+        /* in */ Hash funding_utxo_hash, /* in */ Amount capacity,
+        /* in */ uint settle_time, /* in */ Point peer_pk,
+        /* in */ string peer_address);
 
     /***************************************************************************
 

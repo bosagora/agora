@@ -627,8 +627,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -706,8 +706,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_4_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_4_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -805,8 +805,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -892,8 +892,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -916,8 +916,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
-    const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo, charlie_utxo_hash, Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
+    const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
+        Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1029,8 +1029,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1052,8 +1052,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
-    const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
+    const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1075,8 +1075,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const diego_utxo = UTXO(0, txs[2].outputs[0]);
     const diego_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
-    const diego_alice_chan_id_res = diego.openNewChannel(WK.Keys.D.address,
-        diego_utxo, diego_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.A.address, to!string(WK.Keys.A.address));
+    const diego_alice_chan_id_res = diego.openNewChannel(diego_utxo, diego_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.A.address, to!string(WK.Keys.A.address));
     assert(diego_alice_chan_id_res.error == ErrorCode.None,
         diego_alice_chan_id_res.message);
     const diego_alice_chan_id = diego_alice_chan_id_res.value;
@@ -1165,8 +1165,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1188,8 +1188,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const charlie_utxo = UTXO(0, txs[2].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
-    const charlie_diego_chan_id_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo, charlie_utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
+    const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1216,8 +1216,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const charlie_utxo_2 = UTXO(0, txs[3].outputs[0]);
     const charlie_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
-    const charlie_diego_chan_id_2_res = charlie.openNewChannel(WK.Keys.C.address,
-        charlie_utxo_2, charlie_utxo_hash_2, Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
+    const charlie_diego_chan_id_2_res = charlie.openNewChannel(charlie_utxo_2, charlie_utxo_hash_2,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, to!string(WK.Keys.D.address));
     assert(charlie_diego_chan_id_2_res.error == ErrorCode.None,
         charlie_diego_chan_id_2_res.message);
     const charlie_diego_chan_id_2 = charlie_diego_chan_id_2_res.value;
@@ -1363,8 +1363,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const alice_charlie_chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        alice_utxo, alice_utxo_hash, Amount(10_000), 0, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
+        Amount(10_000), 0, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1428,8 +1428,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
@@ -1521,8 +1521,8 @@ unittest
     assert(open_res.error == ErrorCode.KeyNotRecognized, open_res.to!string);
 
     // error on capacity too low
-    auto res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(1), Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    auto res = alice.openNewChannel(utxo, utxo_hash, Amount(1), Settle_10_Blocks,
+        WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     auto error = network.listener.waitUntilChannelState(res.value,
@@ -1534,8 +1534,8 @@ unittest
         == ErrorCode.InvalidChannelID);
 
     // error on capacity too high
-    res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(1_000_000_000), Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    res = alice.openNewChannel(utxo, utxo_hash, Amount(1_000_000_000),
+        Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1543,8 +1543,8 @@ unittest
     assert(error == ErrorCode.RejectedFundingAmount, res.to!string);
 
     // error on settle time too low
-    res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address,
+        to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1552,30 +1552,30 @@ unittest
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     // error on not enough funds on funding UTXO
-    res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    res = alice.openNewChannel(utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, WK.Keys.C.address,
+        to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not enough funds on funding UTXO for TX fees
-    res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    res = alice.openNewChannel(utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, WK.Keys.C.address,
+        to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not own funding UTXO
-    res = charlie.openNewChannel(WK.Keys.C.address,
-        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.A.address, to!string(WK.Keys.A.address));
-    assert(res.error == ErrorCode.RejectedFundingUTXO);
+    res = charlie.openNewChannel(utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.A.address,
+        to!string(WK.Keys.A.address));
+    assert(res.error == ErrorCode.KeyNotRecognized);
 
-    res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address,
+        to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
         ChannelState.Rejected, WK.Keys.A.address);
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), Settle_10_Blocks,
+        WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     network.listener.waitUntilChannelState(res.value, ChannelState.WaitingForFunding);
     const chan_id = chan_id_res.value;
@@ -1589,7 +1589,7 @@ unittest
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
-    res = alice.openNewChannel(WK.Keys.A.address, utxo, utxo_hash, Amount(10_000),
+    res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
         Settle_10_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(res.error == ErrorCode.DuplicateChannelID, res.to!string);
 
@@ -1713,8 +1713,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), Settle_1_Blocks,
+        WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -1808,8 +1808,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
 
@@ -1847,8 +1847,8 @@ unittest
     // the utxo the funding tx will spend (only relevant to the funder)
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
-    const chan_id_res = alice.openNewChannel(WK.Keys.A.address,
-        utxo, utxo_hash, Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_1_Blocks, WK.Keys.C.address, to!string(WK.Keys.C.address));
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
