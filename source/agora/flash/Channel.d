@@ -266,7 +266,7 @@ public class Channel
 
     ***************************************************************************/
 
-    public static Channel[Hash][PublicKey] loadChannels (FlashConfig flash_conf,
+    public static Channel[Hash] loadChannels (FlashConfig flash_conf,
         ManagedDatabase db,
         FlashAPI delegate (in PublicKey peer_pk, Duration timeout, string address = null) getFlashClient,
         Engine engine, ITaskManager taskman,
@@ -276,7 +276,7 @@ public class Channel
         OnUpdateComplete onUpdateComplete,
         GetFeeUTXOs getFeeUTXOs)
     {
-        Channel[Hash][PublicKey] channels;
+        Channel[Hash] channels;
 
         db.execute("CREATE TABLE IF NOT EXISTS channels " ~
             "(key BLOB NOT NULL, chan_id BLOB NOT NULL, data BLOB NOT NULL, " ~
@@ -287,7 +287,7 @@ public class Channel
         {
             const key = deserializeFull!PublicKey(row.peek!(ubyte[])(0));
             const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(1));
-            channels[key][chan_id] = new Channel(key, chan_id, flash_conf, engine,
+            channels[chan_id] = new Channel(key, chan_id, flash_conf, engine,
                 taskman, txPublisher, paymentRouter, onChannelNotify,
                 onPaymentComplete, onUpdateComplete, getFeeUTXOs, getFlashClient, db);
         }
