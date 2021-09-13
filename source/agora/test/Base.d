@@ -597,6 +597,9 @@ public class TestAPIManager
     /// Test configuration
     protected TestConf test_conf;
 
+    /// The name registry used in this network
+    public NodePair dns;
+
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
@@ -780,6 +783,10 @@ public class TestAPIManager
         static assert (isInputRange!Pairs);
 
         const exp_time = test_start_time + this.getBlockTimeOffset(height);
+        // We also need to set the registry time, because otherwise their Ledger
+        // will reject new blocks as they exceed tolerance.
+        // Note that this relies on the time moving forward only.
+        this.dns.time = exp_time;
         foreach (pair; pairs)
             pair.time = exp_time;
     }
@@ -870,29 +877,35 @@ public class TestAPIManager
         return api;
     }
 
-    private static class TestNameRegistry : NameRegistry
-    {
-        public this (RegistryConfig config, string agora_addr, Duration timeout, AnyRegistry* reg)
-        {
-            auto listener = reg.locate!TestAPI(agora_addr);
-            assert(listener != typeof(listener).init);
-            super("localrest", config, new RemoteAPI!TestAPI(listener, timeout),
-                new ManagedDatabase(":memory:"));
-        }
-    }
-
     /***************************************************************************
 
         Create a new name registry
 
+        The name registry is a full node that exposes a more advanced interface.
+        It is not part of the `nodes` array, but is reachable as a designed
+        address (currently "name.registry").
+
+        Params:
+          conf = The `FullNode` configuration to use.
+          file = File this function is called for, forwarded to localrest for
+                 better debugging output.
+          line = Line this function is called for, forwarded to localrest for
+                 better debugging output.
+
     ***************************************************************************/
 
-    public void createNameRegistry ()
+    public void createNameRegistry (Config conf, string file, int line)
     {
-        RegistryConfig config = { enabled: true };
-        auto registry = RemoteAPI!NameRegistryAPI.spawn!TestNameRegistry(
-            config, this.nodes[0].address, 5.seconds, &this.registry);
-        this.registry.register("name.registry", registry.ctrl.listener());
+        assert(conf.interfaces.length == 1);
+
+        auto time = new shared(TimePoint)(this.initial_time);
+        auto cli = RemoteAPI!FullRegistryAPI.spawn!RegistryNode(
+            conf, &this.registry, this.blocks, this.test_conf, time,
+            conf.node.timeout, file, line);
+        auto casted = new RemoteAPI!(TestAPI)(cli.listener(), conf.node.timeout);
+
+        this.dns = NodePair(conf.interfaces[0].address, casted, time);
+        assert(this.registry.register(conf.interfaces[0].address, cli.listener()));
     }
 
     /***************************************************************************
@@ -906,15 +919,13 @@ public class TestAPIManager
 
     public void start ()
     {
+        scope startDg = (scope TestAPI api) { api.start(); };
+
+        // have to wait indefinitely as the constructor is
+        // currently a slow routine, stalling the call to start().
+        this.dns.client.ctrl.withTimeout(0.msecs, startDg);
         foreach (node; this.nodes)
-        {
-            // have to wait indefinitely as the constructor is
-            // currently a slow routine, stalling the call to start().
-            node.client.ctrl.withTimeout(0.msecs,
-                (scope TestAPI api) {
-                    api.start();
-                });
-        }
+            node.client.ctrl.withTimeout(0.msecs, startDg);
     }
 
     /***************************************************************************
@@ -946,11 +957,12 @@ public class TestAPIManager
             node.client = null;
         }
 
-        scope name_registry = new RemoteAPI!NameRegistryAPI(
-            this.registry.locate!NameRegistryAPI("name.registry"));
         this.registry.clear();
-        name_registry.ctrl.shutdown();
         this.nodes = null;
+
+        this.dns.client.ctrl.shutdown(
+            printLogs ? &shutdownWithLogs : &shutdownSilent);
+        this.dns.client = null;
     }
 
     /***************************************************************************
@@ -990,6 +1002,11 @@ public class TestAPIManager
                 catch (Exception ex)
                     writefln("Could not print logs for node: %s", ex.message);
             }
+            writeln("Registry logs:");
+            try
+                this.dns.printLog();
+            catch (Exception ex)
+                writefln("Could not print registry logs: %s", ex.message);
         }
     }
 
@@ -1570,8 +1587,8 @@ public struct UTXOPair
 /// (multiple-inheritance is not supported in D)
 private mixin template TestNodeMixin ()
 {
-    ///
-    protected AnyRegistry* registry;
+    /// The network registry (note that the parent class has a `registry` member)
+    protected AnyRegistry* nregistry;
 
     /// pointer to the unittests-adjusted clock time
     protected shared(TimePoint)* cur_time;
@@ -1633,7 +1650,7 @@ private mixin template TestNodeMixin ()
         assert(taskman !is null);
         return new TestNetworkManager(
             this.config, this.cacheDB, taskman, clock, this.config.interfaces[0].address,
-            this.registry);
+            this.nregistry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1769,7 +1786,7 @@ public class TestFullNode : FullNode, TestAPI
     public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
         in TestConf test_conf, shared(TimePoint)* cur_time)
     {
-        this.registry = reg;
+        this.nregistry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
 
@@ -1840,7 +1857,7 @@ public class TestValidatorNode : Validator, TestAPI
     public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
                  in TestConf test_conf, shared(TimePoint)* cur_time)
     {
-        this.registry = reg;
+        this.nregistry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
 
@@ -2086,7 +2103,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     std.concurrency.scheduler = null;
 
     const TotalNodes = GenesisValidators + test_conf.full_nodes +
-        test_conf.outsider_validators;
+        test_conf.outsider_validators + /* Registry */ 1;
 
     ConsensusConfig makeConsensusConfig ()
     {
@@ -2217,7 +2234,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     auto full_node_addresses = test_conf.full_nodes.iota.map!(
-        idx => fullNodeAddress(idx)).array;
+        idx => fullNodeAddress(idx)).array ~ ["name.registry"];
 
     // full nodes and enrolled validators will connect to other enrolled validators
     // and other full nodes (but not to outsider nodes)
@@ -2245,9 +2262,21 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         test_conf.extra_blocks);
 
     auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp, eArgs);
+
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
-    net.createNameRegistry();
+
+    Config registry_config = {
+      banman : ban_conf,
+      node : makeNodeConfig(),
+      interfaces: [ makeInterfaceConfig("name.registry") ],
+      consensus: makeConsensusConfig(),
+      network : net.nodes.map!(pair => pair.address).array.dup,
+      logging: test_conf.logging,
+      event_handlers : test_conf.event_handlers,
+      registry: { enabled: true, },
+    };
+    net.createNameRegistry(registry_config, file, line);
 
     return net;
 }
@@ -2377,4 +2406,42 @@ public class NoGossipTransactionRelayer : TransactionRelayer
 
     ///
     public override string addTransaction (in Transaction tx) @safe { return null; }
+}
+
+/// Interface combining both the `TestAPI` and the `NameRegistryAPI` to expose both at once
+package interface FullRegistryAPI : TestAPI, NameRegistryAPI {}
+
+/// A node that implements `FullRegistryAPI`
+public class RegistryNode : TestFullNode, FullRegistryAPI
+{
+    import agora.flash.api.FlashAPI;
+    import agora.flash.Node;
+
+    ///
+    mixin ForwardCtor!();
+
+    /// Forwards to the registry's methods
+    public const(RegistryPayload) getValidator (PublicKey public_key) @safe
+    {
+        return this.registry.getValidator(public_key);
+    }
+
+    /// Ditto
+    public void postValidator(RegistryPayload registry_payload) @safe
+    {
+        this.registry.postValidator(registry_payload);
+    }
+
+    /// Ditto
+    public const(RegistryPayload) getFlashNode(PublicKey public_key) @safe
+    {
+        return this.registry.getFlashNode(public_key);
+    }
+
+    /// Ditto
+    public void postFlashNode(RegistryPayload registry_payload, KnownChannel channel)
+        @safe
+    {
+        return this.registry.postFlashNode(registry_payload, channel);
+    }
 }
