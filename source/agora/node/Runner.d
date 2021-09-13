@@ -14,7 +14,6 @@
 module agora.node.Runner;
 
 import agora.api.FullNode;
-import agora.api.Registry;
 import agora.api.Validator;
 import agora.common.DNS;
 import agora.common.Ensure;
@@ -51,7 +50,6 @@ public alias Listeners = Tuple!(
     FullNode, "node",
     AdminInterface, "admin",
     FlashNode, "flash",
-    NameRegistry, "registry",
     HTTPListener[], "http",
     TCPListener[], "tcp",
  );
@@ -128,11 +126,12 @@ public Listeners runNode (Config config)
 
     if (config.registry.enabled)
     {
-        result.registry = new NameRegistry(config.node.realm, config.registry, result.node);
-        router.registerRestInterface!(NameRegistryAPI)(result.registry);
-        /* auto dnstask = */ runTask(() => runDNSServer(config.registry, result.registry));
-        result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(result.registry),
-            config.registry.address);
+        auto reg = result.node.getRegistry();
+        assert(reg !is null);
+        router.registerRestInterface(reg);
+        /* auto dnstask = */ runTask(() => runDNSServer(config.registry, reg));
+        result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(reg),
+                config.registry.address);
     }
 
     bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
