@@ -166,6 +166,7 @@ public class Channel
         this.is_owner = conf.funder_pk == kp.address;
         this.peer = peer;
         this.peer_pk = this.is_owner ? conf.peer_pk : conf.funder_pk;
+        this.own_pk = this.is_owner ? conf.funder_pk : conf.peer_pk;
         this.db = db;
         this.priv_nonce = priv_nonce;
         this.peer_nonce = peer_nonce;
@@ -319,7 +320,7 @@ public class Channel
         }
 
         this.db.execute("REPLACE INTO channels (key, chan_id, data) VALUES (?, ?, ?)",
-            this.kp.address.serializeFull, this.conf.chan_id.serializeFull,
+            this.own_pk.serializeFull, this.conf.chan_id.serializeFull,
             this.serialize_buffer);
     }
 
@@ -454,7 +455,7 @@ public class Channel
         in Height height) @safe
     {
         log.info("{}: learnSecrets({}, hashes: {}, known: {}, drop: {} height: {})",
-            this.kp.address.flashPrettify,
+            this.own_pk.flashPrettify,
             secrets.map!(s => s.flashPrettify),
             secrets.map!(s => s.hashFull.flashPrettify),
             this.payment_hashes.byKey.map!(s => s.flashPrettify),
@@ -474,7 +475,7 @@ public class Channel
                 matching_rev_htlcs ~= htlc;
 
         log.info("{}: learnSecrets matching: secrets: {} drop: {}",
-            this.kp.address.flashPrettify,
+            this.own_pk.flashPrettify,
             matching_secrets.map!(s => s.flashPrettify),
             matching_rev_htlcs.map!(s => s.flashPrettify));
 
@@ -511,7 +512,7 @@ public class Channel
     {
         this.state = ChannelState.SettingUp;
         assert(this.cur_seq_id == 0);
-        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None);
 
         // initial output allocates all the funds back to the channel creator
@@ -657,7 +658,7 @@ LOuter: while (1)
         else
             this.state = ChannelState.WaitingForFunding;
 
-        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None, this.funding_tx_externalized);
 
         if (this.state == ChannelState.Open)
@@ -694,7 +695,7 @@ LOuter: while (1)
         this.cur_balance = expected_balance;
 
         this.dump();
-        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None, this.funding_tx_externalized);
     }
 
@@ -715,11 +716,11 @@ LOuter: while (1)
 
     private void onCloseTxExternalized (in Transaction tx)
     {
-        log.info("{}: Received close tx: {}", this.kp.address.flashPrettify, tx.hashFull.flashPrettify);
-        log.info("{}: Tx is: {}", this.kp.address.flashPrettify, tx);
+        log.info("{}: Received close tx: {}", this.own_pk.flashPrettify, tx.hashFull.flashPrettify);
+        log.info("{}: Tx is: {}", this.own_pk.flashPrettify, tx);
         // todo: can notify Node that it can destroy this channel instance later
         this.state = ChannelState.Closed;
-        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None);
     }
 
@@ -747,14 +748,14 @@ LOuter: while (1)
     public void onUpdateTxExternalized (in Transaction tx, in uint utxo_idx, in bool is_last)
     {
         this.state = ChannelState.StartedUnilateralClose;
-        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None);
 
         this.last_externalized_update_utxo = UTXO.getHash(tx.hashFull(), utxo_idx);
         if (is_last)
         {
             this.state = ChannelState.WaitingOnSettlement;
-            this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+            this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
                 ErrorCode.None);
             this.update_ext_height = this.height;
         }
@@ -787,7 +788,7 @@ LOuter: while (1)
             // point the input to the last update utxo
             settle_tx.inputs[0].utxo = this.last_externalized_update_utxo;
             log.info("{}: Publishing last settle tx {}: {}",
-                this.kp.address.flashPrettify, this.channel_updates.length,
+                this.own_pk.flashPrettify, this.channel_updates.length,
                 settle_tx.hashFull().flashPrettify);
             this.txPublisher(cast()settle_tx);
         }
@@ -839,7 +840,7 @@ LOuter: while (1)
     {
         // todo: assert this is the actual settlement transaction
         this.state = ChannelState.Closed;
-        this.onChannelNotify(this.kp.address, this.conf.chan_id, this.state,
+        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None);
     }
 
@@ -963,7 +964,7 @@ LOuter: while (1)
 
             // todo: there may be a double call here if the first request timed-out
             // and the client sends this request again.
-            result = this.peer.proposeUpdate(this.kp.address,
+            result = this.peer.proposeUpdate(this.own_pk,
                 PublicKey(this.peer_pk), this.conf.chan_id, new_seq_id,
                 cast(Hash[])this.secrets,
                 cast(Hash[])this.revert_htlcs, pub_nonce, update_height);
@@ -975,7 +976,7 @@ LOuter: while (1)
                     return;
 
                 log.info("{}: Error proposing update with {}: {}",
-                    this.kp.address.flashPrettify, this.peer_pk.flashPrettify, result);
+                    this.own_pk.flashPrettify, this.peer_pk.flashPrettify, result);
                 continue;
             }
 
@@ -1002,7 +1003,7 @@ LOuter: while (1)
         this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: +Update+ Got new pair from {}! Balanced updated: {}",
-            this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
+            this.own_pk.flashPrettify, this.peer_pk.flashPrettify, new_balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
 
@@ -1017,7 +1018,7 @@ LOuter: while (1)
             this.payment_hashes.remove(secret.hashFull());
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
-        this.onUpdateComplete(this.kp.address, secrets, rev_htlcs_filtered);
+        this.onUpdateComplete(this.own_pk, secrets, rev_htlcs_filtered);
         this.dump();
     }
 
@@ -1083,7 +1084,7 @@ LOuter: while (1)
                 "Proposed balance is the same as current one");
 
         log.info("{}: onProposedUpdate from {} accepted ({}, {}, {}, {})",
-            this.kp.address.flashPrettify, this.peer_pk.flashPrettify,
+            this.own_pk.flashPrettify, this.peer_pk.flashPrettify,
             seq_id, secrets.map!(s => s.flashPrettify),
             revert_htlcs.map!(s => s.flashPrettify), height);
 
@@ -1092,7 +1093,7 @@ LOuter: while (1)
         PrivateNonce priv_nonce = genPrivateNonce();
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
-        log.info("{}: Before folding: {}. After folding: {}", this.kp.address.flashPrettify,
+        log.info("{}: Before folding: {}. After folding: {}", this.own_pk.flashPrettify,
             old_balance, new_balance);
 
         // let the work fiber handle it next
@@ -1121,7 +1122,7 @@ LOuter: while (1)
         auto new_outputs = this.buildBalanceOutputs(new_balance);
 
         log.info("{}: Handling incoming payment balance request: {}",
-            this.kp.address.flashPrettify, new_balance);
+            this.own_pk.flashPrettify, new_balance);
 
         this.cur_seq_id = payment.seq_id;
 
@@ -1146,7 +1147,7 @@ LOuter: while (1)
         this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: Got new pair from {}! Balance updated! {}",
-            this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
+            this.own_pk.flashPrettify, this.peer_pk.flashPrettify, new_balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
 
@@ -1158,9 +1159,9 @@ LOuter: while (1)
         {
             OnionPacket next_packet = nextPacket(payment.packet);
 
-            log.info("{}: Routing to next channel: {}", this.kp.address.flashPrettify,
+            log.info("{}: Routing to next channel: {}", this.own_pk.flashPrettify,
                 payment.payload.next_chan_id.flashPrettify);
-            this.paymentRouter(this.kp.address, payment.payload.next_chan_id,
+            this.paymentRouter(this.own_pk, payment.payload.next_chan_id,
                 payment.payment_hash,
                 payment.payload.forward_amount,
                 Height(payment.lock_height - this.last_update.htlc_delta),
@@ -1168,7 +1169,7 @@ LOuter: while (1)
         }
         else
             // propose an update afterwards
-            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+            this.onPaymentComplete(this.own_pk, this.conf.chan_id,
                 payment.payment_hash);
 
         this.dump();
@@ -1190,7 +1191,7 @@ LOuter: while (1)
         const cur_amount = this.getBalance(direction);
         if (cur_amount < payment.amount)
         {
-            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+            this.onPaymentComplete(this.own_pk, this.conf.chan_id,
                 payment.payment_hash, ErrorCode.ExceedsMaximumPayment);
             return true;  // remove it from the queue
         }
@@ -1211,7 +1212,7 @@ LOuter: while (1)
                 break;  // timeout
             this.taskman.wait(WaitTime);
 
-            result = this.peer.proposePayment(this.kp.address,
+            result = this.peer.proposePayment(this.own_pk,
                 PublicKey(this.peer_pk),
                 this.conf.chan_id, new_seq_id,
                 payment.payment_hash, payment.amount, payment.lock_height,
@@ -1223,7 +1224,7 @@ LOuter: while (1)
                 if (result.error == ErrorCode.ProposalInProgress)
                     return false;
 
-                log.info("{}: Error proposing payment: {}", this.kp.address.flashPrettify,
+                log.info("{}: Error proposing payment: {}", this.own_pk.flashPrettify,
                     result);
 
                 continue;
@@ -1236,7 +1237,7 @@ LOuter: while (1)
         {
             log.error("Couldn't propose outgoing payment: {}. Error: {}",
                 payment, result.message);
-            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+            this.onPaymentComplete(this.own_pk, this.conf.chan_id,
                 payment.payment_hash, result.error);
             return true;  // remove it from the queue
         }
@@ -1248,7 +1249,7 @@ LOuter: while (1)
         auto new_outputs = this.buildBalanceOutputs(new_balance);
 
         log.info("{}: Created outgoing payment balance request: {}",
-            this.kp.address.flashPrettify, new_balance);
+            this.own_pk.flashPrettify, new_balance);
 
         assert(this.channel_updates[0].update_tx.outputs.length == 1);
         const update_utxo = UTXO(0,
@@ -1264,7 +1265,7 @@ LOuter: while (1)
         {
             log.error("Couldn't sign outgoing payment: {}. Error: {} Msg: {}",
                 payment, update_pair_res.error, update_pair_res.message);
-            this.onPaymentComplete(this.kp.address, this.conf.chan_id,
+            this.onPaymentComplete(this.own_pk, this.conf.chan_id,
                 payment.payment_hash, update_pair_res.error);
             return true;  // remove it from the queue
         }
@@ -1274,7 +1275,7 @@ LOuter: while (1)
         this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: Got new pair from {}! Balanced updated. New balance: {}",
-            this.kp.address.flashPrettify, this.peer_pk.flashPrettify, new_balance);
+            this.own_pk.flashPrettify, this.peer_pk.flashPrettify, new_balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = new_balance;
 
@@ -1320,7 +1321,7 @@ LOuter: while (1)
         this.known_settle_txs.put(update_pair.settle_tx.hashFull());
 
         log.info("{}: Got new pair from {}! Balance updated: {}",
-            this.kp.address.flashPrettify, this.peer_pk.flashPrettify, update.balance);
+            this.own_pk.flashPrettify, this.peer_pk.flashPrettify, update.balance);
         this.channel_updates ~= update_pair;
         this.cur_balance = update.balance;
 
@@ -1335,7 +1336,7 @@ LOuter: while (1)
             this.payment_hashes.remove(secret.hashFull());
         rev_htlcs_filtered.each!(hash => this.payment_hashes.remove(hash));
 
-        this.onUpdateComplete(this.kp.address, update.secrets,
+        this.onUpdateComplete(this.own_pk, update.secrets,
             update.revert_htlcs);
     }
 
@@ -1356,7 +1357,7 @@ LOuter: while (1)
     public void queueNewPayment (in Hash payment_hash, in Amount amount,
         in Height lock_height, in OnionPacket packet, in Height height) @safe
     {
-        log.info("{}: Queued new payment: {}", this.kp.address.flashPrettify,
+        log.info("{}: Queued new payment: {}", this.own_pk.flashPrettify,
             payment_hash.flashPrettify);
 
         this.outgoing_payments ~= OutgoingPayment(payment_hash, amount,
@@ -1447,7 +1448,7 @@ LOuter: while (1)
                     this.cur_seq_id + 1, seq_id));
 
         log.info("{}: onProposedPayment from {} accepted ({}, {}, {}, {}, {})",
-            this.kp.address.flashPrettify, this.peer_pk.flashPrettify,
+            this.own_pk.flashPrettify, this.peer_pk.flashPrettify,
             this.conf.chan_id, seq_id, payment_hash.flashPrettify, amount,
             lock_height);
 
@@ -1501,19 +1502,19 @@ LOuter: while (1)
         {
             if (htlc.lock_height < height || revert_htlcs.canFind(payment_hash))
             {
-                log.info("{}: Fold: Folded outgoing time-expired/dropped HTLC: {}", this.kp.address.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded outgoing time-expired/dropped HTLC: {}", this.own_pk.flashPrettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                log.info("{}: Fold: Folded outgoing secret-revealed HTLC: {}", this.kp.address.flashPrettify, payment_hash.flashPrettify);
+                log.info("{}: Fold: Folded outgoing secret-revealed HTLC: {}", this.own_pk.flashPrettify, payment_hash.flashPrettify);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                //log.info("{}: Fold: Did not fold outgoing HTLC: {}", this.kp.address.flashPrettify, payment_hash.flashPrettify);
+                //log.info("{}: Fold: Did not fold outgoing HTLC: {}", this.own_pk.flashPrettify, payment_hash.flashPrettify);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -1523,19 +1524,19 @@ LOuter: while (1)
         {
             if (htlc.lock_height < height || revert_htlcs.canFind(payment_hash))
             {
-                log.info("{}: Fold: Folded incoming time-expired/dropped HTLC: {}", this.kp.address.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded incoming time-expired/dropped HTLC: {}", this.own_pk.flashPrettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else if (payment_hash in payment_hashes)  // fold secret HTLC
             {
-                log.info("{}: Fold: Folded incoming secret-revealed HTLC: {}", this.kp.address.flashPrettify, payment_hash.flashPrettify);
+                log.info("{}: Fold: Folded incoming secret-revealed HTLC: {}", this.own_pk.flashPrettify, payment_hash.flashPrettify);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                //log.info("{}: Fold: Did not fold outgoing HTLC: {}", this.kp.address.flashPrettify, payment_hash.flashPrettify);
+                //log.info("{}: Fold: Did not fold outgoing HTLC: {}", this.own_pk.flashPrettify, payment_hash.flashPrettify);
                 new_balance.incoming_htlcs[payment_hash] = htlc;
             }
         }
@@ -1574,13 +1575,13 @@ LOuter: while (1)
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                log.info("{}: Fold: Folded outgoing HTLC: {}", this.kp.address.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded outgoing HTLC: {}", this.own_pk.flashPrettify, payment_hash);
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                log.info("{}: Fold: Not folded outgoing HTLC: {}", this.kp.address.flashPrettify, payment_hash);
+                log.info("{}: Fold: Not folded outgoing HTLC: {}", this.own_pk.flashPrettify, payment_hash);
                 new_balance.outgoing_htlcs[payment_hash] = htlc;
             }
         }
@@ -1591,13 +1592,13 @@ LOuter: while (1)
             // fold expired HTLCs
             if (htlc.lock_height < height)
             {
-                log.info("{}: Fold: Folded incoming HTLC: {}", this.kp.address.flashPrettify, payment_hash);
+                log.info("{}: Fold: Folded incoming HTLC: {}", this.own_pk.flashPrettify, payment_hash);
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
             else
             {
-                log.info("{}: Fold: Not folded incoming HTLC: {}", this.kp.address.flashPrettify, payment_hash);
+                log.info("{}: Fold: Not folded incoming HTLC: {}", this.own_pk.flashPrettify, payment_hash);
                 new_balance.incoming_htlcs[payment_hash] = htlc;
             }
         }
@@ -1645,28 +1646,28 @@ LOuter: while (1)
             if (tx.hashFull() == this.conf.funding_tx_hash)
             {
                 log.info("{}: Funding tx externalized({}) on height {}",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
+                    this.own_pk.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onFundingTxExternalized(tx, block.header.height);
             }
             else
             if (this.isClosingTx(tx)) // always check for closing TX before update TX
             {
                 log.info("{}: Close tx externalized({}) on height {}",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
+                    this.own_pk.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onCloseTxExternalized(tx);
             }
             else
             if (this.isUpdateTx(tx, update_utxo_idx, update_is_last)) // always check for update TX before settle TX
             {
                 log.info("{}: Update tx externalized({}) on height {}",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
+                    this.own_pk.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onUpdateTxExternalized(tx, update_utxo_idx, update_is_last);
             }
             else
             if (this.isSettleTx(tx))
             {
                 log.info("{}: Settle tx externalized({}) on height {}",
-                    this.kp.address.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
+                    this.own_pk.flashPrettify, tx.hashFull().flashPrettify, block.header.height);
                 this.onSettleTxExternalized(tx);
             }
         }
@@ -1792,21 +1793,21 @@ LOuter: while (1)
                 {
                     // timeout
                     this.state = ChannelState.RejectedCollaborativeClose;
-                    this.onChannelNotify(this.kp.address, this.conf.chan_id,
+                    this.onChannelNotify(this.own_pk, this.conf.chan_id,
                         this.state, close_res.error);
                     return;
                 }
 
                 this.taskman.wait(WaitTime);
 
-                close_res = this.peer.closeChannel(this.kp.address,
+                close_res = this.peer.closeChannel(this.own_pk,
                     PublicKey(this.peer_pk), this.conf.chan_id, this.cur_seq_id,
                     priv_nonce.V, fee);
                 if (close_res.error)
                 {
                     // todo: retry with bigger fee if smaller fee was rejected?
                     log.info("{}: closeChannel() request rejected: {}",
-                        this.kp.address.flashPrettify, close_res);
+                        this.own_pk.flashPrettify, close_res);
                     continue;
                 }
 
@@ -1814,7 +1815,7 @@ LOuter: while (1)
             }
 
             this.collectCloseSignatures(priv_nonce, close_res.value, fee);
-            this.onChannelNotify(this.kp.address, this.conf.chan_id, ChannelState.StartedCollaborativeClose,
+            this.onChannelNotify(this.own_pk, this.conf.chan_id, ChannelState.StartedCollaborativeClose,
                 ErrorCode.None);
         });
 
@@ -1845,7 +1846,7 @@ LOuter: while (1)
         {
             // publish trigger tx. onUpdateTxExternalized() will handle the rest.
             this.publishUpdateTx(this.channel_updates[0]);
-            this.onChannelNotify(this.kp.address, this.conf.chan_id,
+            this.onChannelNotify(this.own_pk, this.conf.chan_id,
                 ChannelState.StartedUnilateralClose, ErrorCode.None);
         });
 
@@ -1936,7 +1937,7 @@ LOuter: while (1)
         if (!fee.mul(dummy_closing_tx.sizeInBytes))
         {
             this.state = ChannelState.RejectedCollaborativeClose;
-            this.onChannelNotify(this.kp.address, this.conf.chan_id,
+            this.onChannelNotify(this.own_pk, this.conf.chan_id,
                 this.state, ErrorCode.RejectedClosingFee);
         }
 
@@ -1957,19 +1958,19 @@ LOuter: while (1)
             {
                 // timeout
                 this.state = ChannelState.RejectedCollaborativeClose;
-                this.onChannelNotify(this.kp.address, this.conf.chan_id,
+                this.onChannelNotify(this.own_pk, this.conf.chan_id,
                     this.state, sig_res.error);
                 return;
             }
 
             this.taskman.wait(WaitTime);
 
-            sig_res = this.peer.requestCloseSig(this.kp.address,
+            sig_res = this.peer.requestCloseSig(this.own_pk,
                 PublicKey(this.peer_pk), this.conf.chan_id, this.cur_seq_id);
             if (sig_res.error)
             {
                 log.info("{}: Closing tx signature request rejected: {}",
-                    this.kp.address.flashPrettify, sig_res);
+                    this.own_pk.flashPrettify, sig_res);
                 continue;
             }
 
@@ -1978,10 +1979,10 @@ LOuter: while (1)
                 sig_res.value, priv_nonce, peer_nonce))
             {
                 log.info("{}: Error during validation: {}. For closing signature: {}",
-                    this.kp.address.flashPrettify, error, sig_res.value);
+                    this.own_pk.flashPrettify, error, sig_res.value);
 
                 this.state = ChannelState.RejectedCollaborativeClose;
-                this.onChannelNotify(this.kp.address, this.conf.chan_id,
+                this.onChannelNotify(this.own_pk, this.conf.chan_id,
                     this.state, ErrorCode.InvalidSignature);
                 return;
             }
@@ -1994,7 +1995,7 @@ LOuter: while (1)
 
         // todo: schedule this
         log.info("{}: Publishing close tx: {}",
-            this.kp.address.flashPrettify, this.pending_close.tx.hashFull.flashPrettify);
+            this.own_pk.flashPrettify, this.pending_close.tx.hashFull.flashPrettify);
         this.txPublisher(this.pending_close.tx);
     }
 
@@ -2059,7 +2060,7 @@ LOuter: while (1)
         this.taskman.setTimer(100.msecs,
         {
             this.collectCloseSignatures(priv_nonce, peer_nonce, fee);
-            this.onChannelNotify(this.kp.address, this.conf.chan_id,
+            this.onChannelNotify(this.own_pk, this.conf.chan_id,
                 ChannelState.StartedCollaborativeClose, ErrorCode.None);
         });
 
@@ -2253,13 +2254,13 @@ LOuter: while (1)
         auto update_input = update_tx.inputs[0];
         auto update_ouput = update_tx.outputs[0];
 
-        auto utxos = this.getFeeUTXOs(this.kp.address, update_tx.sizeInBytes());
+        auto utxos = this.getFeeUTXOs(this.own_pk, update_tx.sizeInBytes());
         update_tx.inputs ~= utxos.utxos.map!(hash => Input(hash)).array;
         update_tx.inputs.sort();
 
         // check for refund amount
         if (utxos.total_value > 0.coins)
-            update_tx.outputs ~= [Output(utxos.total_value, this.kp.address)];
+            update_tx.outputs ~= [Output(utxos.total_value, this.own_pk)];
         update_tx.outputs.sort();
 
         auto output_idx = update_tx.outputs.countUntil(update_ouput);
@@ -2278,7 +2279,7 @@ LOuter: while (1)
                 update_tx.inputs[idx].unlock = genKeyUnlock(fee_sig);
 
         log.info("{}: Publishing update tx {}: {}",
-            this.kp.address.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify);
+            this.own_pk.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify);
         this.txPublisher(update_tx);
         return update_tx;
     }
@@ -2389,6 +2390,9 @@ private mixin template ChannelMetadata ()
 
     /// Whether we are the funder of this channel (`funder_pk == this.kp.V`)
     public bool is_owner;
+
+    /// Our own public key
+    public PublicKey own_pk;
 
     /// The public key of the counter-party (for logging)
     public PublicKey peer_pk;
