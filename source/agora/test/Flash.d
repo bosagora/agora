@@ -129,16 +129,7 @@ enum DatabaseStorage : string
 public class TestFlashNode : FlashNode, TestFlashAPI
 {
     ///
-    protected Registry!TestAPI* agora_registry;
-
-    ///
-    protected Registry!TestFlashAPI* flash_registry;
-
-    ///
-    protected Registry!TestFlashListenerAPI* listener_registry;
-
-    ///
-    protected Registry!NameRegistryAPI* nreg_registry;
+    protected AnyRegistry* registry;
 
     ///
     protected FullNodeAPI agora_node;
@@ -147,16 +138,10 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     protected bool allow_publish;
 
     ///
-    public this (FlashConfig conf, Registry!TestAPI* agora_registry,
-        string agora_address, DatabaseStorage storage,
-        Registry!TestFlashAPI* flash_registry,
-        Registry!TestFlashListenerAPI* listener_registry,
-        Registry!NameRegistryAPI* nreg_registry, Duration timeout)
+    public this (FlashConfig conf, AnyRegistry* registry,
+        string agora_address, DatabaseStorage storage, Duration timeout)
     {
-        this.agora_registry = agora_registry;
-        this.flash_registry = flash_registry;
-        this.listener_registry = listener_registry;
-        this.nreg_registry = nreg_registry;
+        this.registry = registry;
         const genesis_hash = hashFull(GenesisBlock);
         const TestStackMaxTotalSize = 16_384;
         const TestStackMaxItemSize = 512;
@@ -205,7 +190,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     protected FullNodeAPI getAgoraClient (Address address,
         Duration timeout)
     {
-        auto tid = this.agora_registry.locate(address);
+        auto tid = this.registry.locate!TestAPI(address);
         assert(tid != typeof(tid).init, "Agora node not initialized");
         return new RemoteAPI!TestAPI(tid, timeout);
     }
@@ -217,7 +202,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
         Listener!TestFlashAPI tid;
         foreach (i; 0 .. 5)
         {
-            tid = this.flash_registry.locate(address);
+            tid = this.registry.locate!TestFlashAPI(address);
             if (tid != typeof(tid).init)
                 break;
 
@@ -233,7 +218,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     protected override TestFlashListenerAPI getFlashListenerClient (
         string address, Duration timeout) @trusted
     {
-        auto tid = this.listener_registry.locate(address);
+        auto tid = this.registry.locate!TestFlashListenerAPI(address);
         assert(tid != typeof(tid).init);
         return new RemoteAPI!TestFlashListenerAPI(tid, timeout);
     }
@@ -241,7 +226,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     ///
     public NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
     {
-        auto tid = this.nreg_registry.locate(address);
+        auto tid = this.registry.locate!NameRegistryAPI(address);
         assert(tid != typeof(tid).init, "Trying to access name registry at address '" ~ address ~
                "' without first creating it");
         return new RemoteAPI!NameRegistryAPI(tid, timeout);
@@ -342,12 +327,6 @@ public class TestFlashNode : FlashNode, TestFlashAPI
 /// Is in charge of spawning the flash nodes
 public class FlashNodeFactory : TestAPIManager
 {
-    /// we keep a separate LocalRest registry of the flash "nodes"
-    private Registry!TestFlashAPI flash_registry;
-
-    /// and a registry of listener nodes (usually just one)
-    private Registry!TestFlashListenerAPI listener_registry;
-
     /// list of flash addresses
     private PublicKey[] addresses;
 
@@ -371,8 +350,6 @@ public class FlashNodeFactory : TestAPIManager
         TimePoint test_start_time)
     {
         super(blocks, test_conf, test_start_time);
-        this.flash_registry.initialize();
-        this.listener_registry.initialize();
     }
 
     ///
@@ -407,14 +384,12 @@ public class FlashNodeFactory : TestAPIManager
         import agora.api.Handlers;
 
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
-            conf, &this.reg, this.nodes[0].address, storage,
-            &this.flash_registry, &this.listener_registry, &this.nreg,
+            conf, &this.registry, this.nodes[0].address, storage,
             10.seconds);  // timeout from main thread
 
         this.addresses ~= kp.address;
         this.flash_nodes ~= api;
-        this.flash_registry.register(kp.address.to!string, api.listener());
-        this.bh_registry.register(kp.address.to!string, cast(Listener!BlockExternalizedHandler) api.listener());
+        this.registry.register(kp.address.to!string, api.listener());
         api.registerKey(kp.secret);
 
         return api;
@@ -424,9 +399,9 @@ public class FlashNodeFactory : TestAPIManager
     public RemoteAPI!TestFlashListenerAPI createFlashListener (
         Listener : TestFlashListenerAPI)(string address)
     {
-        RemoteAPI!TestFlashListenerAPI api
-            = RemoteAPI!TestFlashListenerAPI.spawn!Listener(&this.reg, this.nodes[0].address, 5.seconds);
-        this.listener_registry.register(address, api.listener());
+        auto api = RemoteAPI!TestFlashListenerAPI.spawn!Listener(
+            &this.registry, this.nodes[0].address, 5.seconds);
+        this.registry.register(address, api.listener());
         this.listener_addresses ~= address;
         this.listener_nodes ~= api;
         return api;
@@ -470,9 +445,6 @@ public class FlashNodeFactory : TestAPIManager
     {
         super.shutdown();
 
-        this.flash_registry.clear();
-        this.listener_registry.clear();
-
         foreach (node; this.flash_nodes)
             node.shutdownNode();
 
@@ -510,11 +482,11 @@ private class FlashListener : TestFlashListenerAPI
     LocalRestTaskManager taskman;
     FullNodeAPI agora_node;
 
-    public this (Registry!TestAPI* agora_registry, string agora_address)
+    public this (AnyRegistry* registry, string agora_address)
     {
         this.taskman = new LocalRestTaskManager();
 
-        auto tid = agora_registry.locate(agora_address);
+        auto tid = registry.locate!TestAPI(agora_address);
         assert(tid != typeof(tid).init, "Agora node not initialized");
         this.agora_node = new RemoteAPI!TestAPI(tid, 5.seconds);
     }

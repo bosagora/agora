@@ -589,13 +589,7 @@ public class TestAPIManager
     }
 
     /// Registry holding the nodes
-    protected Registry!TestAPI reg;
-
-    /// Registry holding the name registries
-    protected Registry!NameRegistryAPI nreg;
-
-    ///
-    protected Registry!BlockExternalizedHandler bh_registry;
+    protected AnyRegistry registry;
 
     ///
     public this (immutable(Block)[] blocks, TestConf test_conf,
@@ -605,22 +599,7 @@ public class TestAPIManager
         this.blocks = blocks;
         this.test_start_time = test_start_time;
         this.initial_time = test_start_time;
-        this.reg.initialize();
-        this.nreg.initialize();
-        this.bh_registry.initialize();
-    }
-
-
-    /***************************************************************************
-
-        Returns:
-            A pointer to the network registry
-
-    ***************************************************************************/
-
-    public Registry!TestAPI* getRegistry ()
-    {
-        return &this.reg;
+        this.registry.initialize();
     }
 
     /***************************************************************************
@@ -842,13 +821,12 @@ public class TestAPIManager
         string file = __FILE__, int line = __LINE__)
     {
         auto time = new shared(TimePoint)(this.initial_time);
-        auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.reg, &this.nreg,
-            &this.bh_registry, this.blocks, this.test_conf, time, eArgs,
-            conf.node.timeout, file, line);
+        auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.registry,
+            this.blocks, this.test_conf, time, eArgs, conf.node.timeout, file, line);
 
         foreach (ref interf; conf.interfaces)
         {
-            assert(this.reg.register(interf.address, api.listener()));
+            assert(this.registry.register(interf.address, api.listener()));
             this.nodes ~= NodePair(interf.address, api, time, api);
         }
         return api;
@@ -856,9 +834,9 @@ public class TestAPIManager
 
     private static class TestNameRegistry : NameRegistry
     {
-        public this (RegistryConfig config, string agora_addr, Duration timeout, Registry!TestAPI* reg)
+        public this (RegistryConfig config, string agora_addr, Duration timeout, AnyRegistry* reg)
         {
-            auto listener = reg.locate(agora_addr);
+            auto listener = reg.locate!TestAPI(agora_addr);
             assert(listener != typeof(listener).init);
             super(config, new RemoteAPI!TestAPI(listener, timeout));
         }
@@ -873,8 +851,8 @@ public class TestAPIManager
     public void createNameRegistry ()
     {
         auto registry = RemoteAPI!NameRegistryAPI.spawn!TestNameRegistry(
-            RegistryConfig.init, this.nodes[0].address, 5.seconds, &this.reg);
-        this.nreg.register("name.registry", registry.ctrl.listener());
+            RegistryConfig.init, this.nodes[0].address, 5.seconds, &this.registry);
+        this.registry.register("name.registry", registry.ctrl.listener());
     }
 
     /***************************************************************************
@@ -928,13 +906,11 @@ public class TestAPIManager
             node.client = null;
         }
 
-        this.reg.clear();
-        this.nodes = null;
-
         scope name_registry = new RemoteAPI!NameRegistryAPI(
-            this.nreg.locate("name.registry"));
-        this.nreg.clear();
+            this.registry.locate!NameRegistryAPI("name.registry"));
+        this.registry.clear();
         name_registry.ctrl.shutdown();
+        this.nodes = null;
     }
 
     /***************************************************************************
@@ -1290,24 +1266,16 @@ public class TestNetworkManager : NetworkManager
     /// Remove this once `registerListener` is gone
     private string address;
 
-    ///
-    public Registry!TestAPI* registry;
-
-    ///
-    public Registry!NameRegistryAPI* nregistry;
-
-    ///
-    protected Registry!BlockExternalizedHandler* bh_registry;
+    /// This is the "network router": It takes an address (e.g. an IPv4)
+    /// and converts it to a pointer (e.g. something that can route the message).
+    public AnyRegistry* registry;
 
     /// Constructor
     public this (Parameters!(NetworkManager.__ctor) args, string address,
-                 Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
-                 Registry!BlockExternalizedHandler* bh_registry)
+                 AnyRegistry* reg)
     {
         super(args);
         this.registry = reg;
-        this.nregistry = nreg;
-        this.bh_registry = bh_registry;
         this.address = address;
     }
 
@@ -1315,7 +1283,7 @@ public class TestNetworkManager : NetworkManager
     protected final override TestAPI getClient (Address address,
         Duration timeout)
     {
-        auto tid = this.registry.locate(address);
+        auto tid = this.registry.locate!TestAPI(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!TestAPI(tid, timeout);
         assert(0, format("Trying to access node at address '%s' from '%s' without first creating it",
@@ -1325,7 +1293,7 @@ public class TestNetworkManager : NetworkManager
     ///
     public override RemoteAPI!NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
     {
-        auto tid = this.nregistry.locate(address);
+        auto tid = this.registry.locate!NameRegistryAPI(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!NameRegistryAPI(tid, timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
@@ -1364,9 +1332,10 @@ public class TestNetworkManager : NetworkManager
         (Address address)
     {
         import std.typecons : BlackHole;
-        auto tid = this.bh_registry.locate(address);
+        auto tid = this.registry.locate!BlockExternalizedHandler(address);
         if (tid != typeof(tid).init)
             return new RemoteAPI!BlockExternalizedHandler(tid, 5.seconds);
+
         return new BlackHole!BlockExternalizedHandler();
     }
 
@@ -1574,11 +1543,7 @@ public struct UTXOPair
 private mixin template TestNodeMixin ()
 {
     ///
-    protected Registry!TestAPI* registry;
-    ///
-    protected Registry!NameRegistryAPI* nregistry;
-    ///
-    protected Registry!BlockExternalizedHandler* bh_registry;
+    protected AnyRegistry* registry;
 
     /// pointer to the unittests-adjusted clock time
     protected shared(TimePoint)* cur_time;
@@ -1646,7 +1611,7 @@ private mixin template TestNodeMixin ()
         assert(taskman !is null);
         return new TestNetworkManager(
             this.config, metadata, taskman, clock, this.config.interfaces[0].address,
-            this.registry, this.nregistry, this.bh_registry);
+            this.registry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1781,13 +1746,10 @@ public class TestFullNode : FullNode, TestAPI
     mixin TestNodeMixin!();
 
     ///
-    public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
-        Registry!BlockExternalizedHandler* bh_registry, immutable(Block)[] blocks,
+    public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
         in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
-        this.nregistry = nreg;
-        this.bh_registry = bh_registry;
         this.blocks = blocks;
         this.cur_time = cur_time;
 
@@ -1855,13 +1817,10 @@ public class TestValidatorNode : Validator, TestAPI
     mixin TestNodeMixin!();
 
     ///
-    public this (Config config, Registry!TestAPI* reg, Registry!NameRegistryAPI* nreg,
-        Registry!BlockExternalizedHandler* bh_registry, immutable(Block)[] blocks, in TestConf test_conf,
-        shared(TimePoint)* cur_time)
+    public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
+                 in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.registry = reg;
-        this.nregistry = nreg;
-        this.bh_registry = bh_registry;
         this.blocks = blocks;
         this.cur_time = cur_time;
 
