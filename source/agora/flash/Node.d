@@ -157,7 +157,7 @@ public class FlashNode : FlashControlAPI
     }
 
     /// List of channels which are pending to be opened
-    protected DList!PendingChannel[PublicKey] pending_channels;
+    protected DList!PendingChannel pending_channels;
 
     /// All channels which we are the participants of (open / pending / closed)
     protected Channel[Hash][PublicKey] channels;
@@ -328,7 +328,6 @@ public class FlashNode : FlashControlAPI
         auto address = PublicKey(scalar.toPoint()[]);
         this.managed_keys[address] = secret;
         this.channels[address] = typeof(this.channels[address]).init;
-        this.pending_channels[address] = typeof(this.pending_channels[address]).init;
     }
 
     /***************************************************************************
@@ -464,14 +463,11 @@ public class FlashNode : FlashControlAPI
 
     private void channelOpenTask ()
     {
-        foreach (reg_pk, ref pending; this.pending_channels)
+        while (!this.pending_channels.empty())
         {
-            while (!pending.empty)
-            {
-                scope (exit) pending.removeFront();
-                this.handleOpenNewChannel(PublicKey(reg_pk), pending.front);
-                this.taskman.wait(1.msecs);  // yield
-            }
+            this.handleOpenNewChannel(this.pending_channels.front());
+            this.pending_channels.removeFront();
+            this.taskman.wait(1.msecs);  // yield
         }
     }
 
@@ -1250,32 +1246,25 @@ public class FlashNode : FlashControlAPI
     }
 
     ///
-    public override Result!Hash openNewChannel (PublicKey reg_pk,
-        /* in */ UTXO funding_utxo, /* in */ Hash funding_utxo_hash,
-        /* in */ Amount capacity, /* in */ uint settle_time, /* in */ Point recv_pk,
+    public override Result!Hash openNewChannel (/* in */ UTXO funding_utxo,
+        /* in */ Hash funding_utxo_hash, /* in */ Amount capacity,
+        /* in */ uint settle_time, /* in */ Point recv_pk,
         /* in */ string peer_address)
     {
         log.info("openNewChannel({}, {}, {})",
                  capacity, settle_time, recv_pk.flashPrettify);
 
-        auto secret_key = reg_pk in this.managed_keys;
-        if (secret_key is null)
+        if (funding_utxo.output.address !in this.managed_keys)
             return Result!Hash(ErrorCode.KeyNotRecognized,
-                format("The provided key %s is not managed by this Flash node.",
-                    reg_pk));
-
-        if (funding_utxo.output.address != reg_pk)
-            return Result!Hash(ErrorCode.RejectedFundingUTXO,
-                format("The provided UTXO does not belong to %s",
-                    reg_pk));
+                format("Owner of the provided UTXO %s is not managed by this Flash node.",
+                    funding_utxo.output.address));
 
         if (funding_utxo.output.value < capacity)
             return Result!Hash(ErrorCode.RejectedFundingUTXO,
                 format("The provided UTXO does not have requested (%s BOA) funds",
                     capacity));
 
-        const key_pair = () @trusted { return KeyPair.fromSeed(*secret_key); }();
-        const pair_pk = key_pair.address + recv_pk;
+        const pair_pk = funding_utxo.output.address + recv_pk;
 
         // create funding, don't sign it yet as we'll share it first
         auto funding_tx = createFundingTx(funding_utxo, funding_utxo_hash,
@@ -1288,9 +1277,9 @@ public class FlashNode : FlashControlAPI
         const funding_tx_hash = hashFull(funding_tx);
         const Hash chan_id = funding_tx_hash;
 
-        auto all_funding_utxos = this.pending_channels[reg_pk][]
+        auto all_funding_utxos = this.pending_channels[]
             .map!(pending => pending.conf)
-            .chain(this.channels[reg_pk].byValue.map!(chan => chan.conf))
+            .chain(this.channels[funding_utxo.output.address].byValue.map!(chan => chan.conf))
             .map!(conf => conf.funding_tx_hash);
 
         // this channel is already being set up (or duplicate funding UTXO used)
@@ -1307,9 +1296,9 @@ public class FlashNode : FlashControlAPI
         ChannelConfig chan_conf =
         {
             gen_hash        : this.genesis_hash,
-            funder_pk       : key_pair.address,
+            funder_pk       : funding_utxo.output.address,
             peer_pk         : recv_pk,
-            pair_pk         : key_pair.address + recv_pk,
+            pair_pk         : funding_utxo.output.address + recv_pk,
             num_peers       : num_peers,
             update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
             funding_tx      : funding_tx,
@@ -1318,18 +1307,18 @@ public class FlashNode : FlashControlAPI
             capacity        : capacity,
             settle_time     : settle_time,
         };
-        this.pending_channels[reg_pk].insertBack(PendingChannel(chan_conf, peer_address));
+        this.pending_channels.insertBack(PendingChannel(chan_conf, peer_address));
         return Result!Hash(chan_id);
     }
 
     /// Handle opening new channels
-    private void handleOpenNewChannel (PublicKey reg_pk, PendingChannel pending_channel)
+    private void handleOpenNewChannel (PendingChannel pending_channel)
     {
         auto chan_conf = pending_channel.conf;
         auto peer = this.getFlashClient(chan_conf.peer_pk, this.conf.timeout, pending_channel.peer_addr);
         if (peer is null)
         {
-            this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
+            this.listener.onChannelNotify(chan_conf.funder_pk, chan_conf.chan_id,
                 ChannelState.Rejected, ErrorCode.AddressNotFound);
             return;
         }
@@ -1344,12 +1333,12 @@ public class FlashNode : FlashControlAPI
             log.error("Peer ({}) rejected channel open with error: {}",
                 chan_conf.peer_pk.flashPrettify, result.message);
 
-            this.listener.onChannelNotify(reg_pk, chan_conf.chan_id,
+            this.listener.onChannelNotify(chan_conf.funder_pk, chan_conf.chan_id,
                 ChannelState.Rejected, result.error);
             return;
         }
 
-        auto secret_key = reg_pk in this.managed_keys;
+        auto secret_key = chan_conf.funder_pk in this.managed_keys;
         if (secret_key is null)
             assert(0);  // should not happen
         const key_pair = KeyPair.fromSeed(*secret_key);
@@ -1358,7 +1347,7 @@ public class FlashNode : FlashControlAPI
             priv_nonce, result.value, peer, this.engine, this.taskman,
             this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, &this.getFeeUTXOs, this.db);
-        this.channels[reg_pk][chan_conf.chan_id] = channel;
+        this.channels[chan_conf.funder_pk][chan_conf.chan_id] = channel;
     }
 
     ///
