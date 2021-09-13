@@ -13,13 +13,13 @@
 
 module agora.node.Registry;
 
-import agora.api.FullNode : FullNodeAPI = API;
 import agora.api.Registry;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.consensus.data.ValidatorInfo;
+import agora.consensus.Ledger;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
@@ -62,7 +62,7 @@ public class NameRegistry: NameRegistryAPI
     private ZoneData flash;
 
     ///
-    private FullNodeAPI agora_node;
+    private Ledger ledger;
 
     ///
     private Height validator_info_height;
@@ -71,14 +71,15 @@ public class NameRegistry: NameRegistryAPI
     private ValidatorInfo[] validator_info;
 
     ///
-    public this (string realm, RegistryConfig config, FullNodeAPI agora_node, 
+    public this (string realm, RegistryConfig config, Ledger ledger,
         ManagedDatabase cache_db)
     {
         assert(config.enabled, "Registry instantiated but not enabled");
 
         this.config = config;
         this.log = Logger(__MODULE__);
-        this.agora_node = agora_node;
+
+        this.ledger = ledger;
         this.validators = ZoneData("validator", cache_db);
         this.flash = ZoneData("flash", cache_db);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
@@ -203,10 +204,10 @@ public class NameRegistry: NameRegistryAPI
             this.validators.get(registry_payload.data.public_key));
 
         // Last step is to check the state of the chain
-        auto last_height = this.agora_node.getBlockHeight() + 1;
+        auto last_height = this.ledger.getBlockHeight() + 1;
         if (last_height > this.validator_info_height || this.validator_info.length == 0)
         {
-            this.validator_info = this.agora_node.getValidators(last_height);
+            this.validator_info = this.ledger.getValidators(last_height);
             this.validator_info_height = last_height;
         }
         ensure(this.validator_info.map!(info => info.address)
@@ -264,11 +265,12 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        TYPE payload_type = this.ensureValidPayload(registry_payload, 
+        TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.flash.get(registry_payload.data.public_key));
 
-        ensure(isValidChannelOpen(channel.conf, this.agora_node.getBlock(channel.height)),
-            "Not a valid channel");
+        auto range = this.ledger.getBlocksFrom(channel.height);
+        ensure(!range.empty && isValidChannelOpen(channel.conf, range.front),
+               "Not a valid channel");
 
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
@@ -380,10 +382,10 @@ public class NameRegistry: NameRegistryAPI
 
         foreach (payload; zone)
         {
-            reply.answers ~= this.convertPayload(payload, format("%s.%s", 
+            reply.answers ~= this.convertPayload(payload, format("%s.%s",
                 payload.payload.data.public_key, zone.root.value));
         }
-            
+
         reply.answers ~= soa;
         reply.header.RCODE = Header.RCode.NoError;
     }
@@ -724,13 +726,13 @@ private struct ZoneData
     {
         this.db = cache_db;
 
-        this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature", 
+        this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature",
             type_table_name);
 
         this.query_registry_get = format("SELECT pubkey " ~
             "FROM registry_%s_signature", type_table_name);
 
-        this.query_payload = format("SELECT signature, sequence, address, type " ~ 
+        this.query_payload = format("SELECT signature, sequence, address, type " ~
             "FROM registry_%s_addresses l " ~
             "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", type_table_name, type_table_name);
@@ -744,7 +746,7 @@ private struct ZoneData
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
             "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
             "PRIMARY KEY(pubkey))", type_table_name);
-        
+
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_signature(pubkey) ON DELETE CASCADE, " ~
@@ -849,12 +851,12 @@ private struct ZoneData
         if (payload.payload.data.addresses.length == 0)
             return;
 
-        db.execute(this.query_signature_add, 
+        db.execute(this.query_signature_add,
             payload.payload.data.public_key,
             payload.payload.signature,
             payload.payload.data.seq);
 
-        // There is no need to check for stale addresses 
+        // There is no need to check for stale addresses
         // since `REPLACE INTO` is used and `DELETE` is cascaded.
         foreach (address; payload.payload.data.addresses)
         {
