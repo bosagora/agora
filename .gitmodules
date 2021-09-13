@@ -36,7 +36,7 @@
 	url = https://github.com/dlang-community/tinyendian.git
 [submodule "vibe-core"]
 	path = submodules/vibe-core
-	url = https://github.com/vibe-d/vibe-core.git
+	url = https://github.com/bosagora/vibe-core.git
 [submodule "vibe.d"]
 	path = submodules/vibe.d
 	url = https://github.com/bosagora/vibe.d.git
