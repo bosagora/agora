@@ -470,11 +470,8 @@ public class FlashNodeFactory : TestAPIManager
     {
         super.shutdown();
 
-        foreach (address; this.addresses)
-            enforce(this.flash_registry.unregister(address.to!string));
-
-        foreach (address; this.listener_addresses)
-            enforce(this.listener_registry.unregister(address));
+        this.flash_registry.clear();
+        this.listener_registry.clear();
 
         foreach (node; this.flash_nodes)
             node.shutdownNode();

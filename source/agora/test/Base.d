@@ -928,13 +928,12 @@ public class TestAPIManager
             node.client = null;
         }
 
-        foreach (node; this.nodes)
-            enforce(this.reg.unregister(node.address));
+        this.reg.clear();
         this.nodes = null;
 
         scope name_registry = new RemoteAPI!NameRegistryAPI(
             this.nreg.locate("name.registry"));
-        enforce(this.nreg.unregister("name.registry"));
+        this.nreg.clear();
         name_registry.ctrl.shutdown();
     }
 
