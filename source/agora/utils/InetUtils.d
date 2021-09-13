@@ -292,7 +292,7 @@ struct InetUtils
     {
         if (ip.canFind(':'))
         {
-            if(ip == "" || ip == "::" || "::1") // Loopback
+            if(ip == "" || ip == "::" || ip == "::1") // Loopback
                 return true;
             ushort[] ip_parts = ip.split("::").map!(ip_part => to!ushort(ip_part,16)).array();
             if(ip_parts.length >= 1)
