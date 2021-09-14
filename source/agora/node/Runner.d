@@ -17,6 +17,7 @@ import agora.api.FullNode;
 import agora.api.Registry;
 import agora.api.Validator;
 import agora.common.DNS;
+import agora.common.Ensure;
 import agora.common.Task : Periodic;
 import agora.flash.api.FlashAPI;
 import agora.flash.Node;
@@ -361,20 +362,44 @@ private void runTCPDNSServer (TCPConnection conn, NameRegistry registry) @truste
 /// Ditto
 private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry) @trusted
 {
-    ubyte[2048] buffer;
-    scope reader = (size_t size) @safe {
-        assert(size <= buffer.length);
-        conn.read(buffer[0 .. size]);
-        return buffer[0 .. size];
+    ubyte[4096] buffer;
+    ushort length = 2;
+    scope writer = (in ubyte[] data) @safe {
+        ensure(data.length <= (buffer.length - length),
+               "Buffer overflow: Trying to write {} bytes in a {} buffer ({} used)",
+               data.length, buffer.length, length);
+        buffer[length .. length + data.length] = data[];
+        length += data.length;
     };
 
     try
     {
-        auto query = deserializeFull!Message(reader);
+        // RFC1035 - 4.2.2. TCP usage
+        // The message is prefixed with a two byte length field which gives the
+        // message length, excluding the two byte length field.
+        // This length field allows the low-level processing to assemble
+        // a complete message before beginning to parse it.
+        conn.read(buffer[0 .. 2]);
+        const ushort size = deserializeFull!ushort(
+            buffer[0 .. 2], DeserializerOptions(DefaultMaxLength, CompactMode.No));
+        ensure(size <= buffer.length, "Received a message of size {} (> {})",
+               size, buffer.length);
+
+        // Read everything directly since it's going to be faster
+        // than performing context switches
+        conn.read(buffer[0 .. size]);
+
+        auto query = deserializeFull!Message(buffer[0 .. size]);
         registry.answerQuestions(
             query,
-            (in Message msg) @safe => msg.serializePart(&conn.write));
+            (in Message msg) @safe => msg.serializePart(writer, CompactMode.No));
 
+        // Write the length at the begining
+        assert(length >= 2);
+        ushort copy = cast(ushort) (length - 2);
+        length = 0;
+        copy.serializePart(writer, CompactMode.No);
+        conn.write(buffer[0 .. copy + 2]);
     }
     catch (Exception exc)
     {
