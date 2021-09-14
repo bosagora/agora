@@ -283,13 +283,6 @@ The Invoice should then be shared with the Payer through some form, for example
 the Payer wallet's UI or kiosk display. When the Payer wishes to pay for the
 Invoice their wallet will need to use the `FlashControlAPI.payInvoice()` API.
 
-### FlashControlAPI.changeFees()
-
-This changes the fixed and proportional fees for the given channel ID.
-The Wallet may adjust these dynamically over time to either increase profits
-from fees, or to make that channel more attractive for other users to route
-their payments through.
-
 ## FlashListenerAPI interface
 
 This section describes how the Wallet should respond to messages received via

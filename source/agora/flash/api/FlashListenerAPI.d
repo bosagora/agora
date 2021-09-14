@@ -77,7 +77,7 @@ public interface FlashListenerAPI
 
     ***************************************************************************/
 
-    public string onRequestedChannelOpen (PublicKey pk, ChannelConfig chan_conf);
+    public Result!ChannelUpdate onRequestedChannelOpen (PublicKey pk, ChannelConfig chan_conf);
 
     /***************************************************************************
 

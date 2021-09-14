@@ -549,9 +549,14 @@ private class FlashListener : TestFlashListenerAPI
         this.channel_state[chan_id][pk] = State(state, error);
     }
 
-    public string onRequestedChannelOpen (PublicKey pk, ChannelConfig conf)
+    public Result!ChannelUpdate onRequestedChannelOpen (PublicKey pk, ChannelConfig conf)
     {
-        return null;  // accept by default
+        auto is_owner = pk == conf.funder_pk;
+        auto update = ChannelUpdate(conf.chan_id,
+            is_owner ? PaymentDirection.TowardsPeer : PaymentDirection.TowardsOwner,
+            Amount(1), Amount(1), 1);
+        update.sig = WK.Keys[pk].sign(update);
+        return Result!ChannelUpdate(update);  // accept by default
     }
 
     public FeeUTXOs getFeeUTXOs (PublicKey pk, Amount amount)
@@ -1119,9 +1124,12 @@ unittest
     charlie.waitForUpdateIndex(WK.Keys.C.address, charlie_diego_chan_id, 2);
     diego.waitForUpdateIndex(WK.Keys.D.address, charlie_diego_chan_id, 2);
 
-    alice.changeFees(WK.Keys.A.address, diego_alice_chan_id, Amount(1337),
-        Amount(1));
-    auto update = alice.waitForChannelUpdate(diego_alice_chan_id,
+    auto update = ChannelUpdate(diego_alice_chan_id,
+        PaymentDirection.TowardsOwner,
+        Amount(1337), Amount(1), 1, 1);
+    update.sig = WK.Keys.A.sign(update);
+    alice.gossipChannelUpdates([update]);
+    update = alice.waitForChannelUpdate(diego_alice_chan_id,
         PaymentDirection.TowardsOwner, 1);
     assert(update.fixed_fee == Amount(1337));
     assert(update.proportional_fee == Amount(1));
@@ -1208,7 +1216,11 @@ unittest
     network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     alice.waitForChannelDiscovery(charlie_diego_chan_id);  // also alice (so it can detect fees)
 
-    charlie.changeFees(WK.Keys.C.address, charlie_diego_chan_id, Amount(100), Amount(1));
+    auto update = ChannelUpdate(charlie_diego_chan_id,
+        PaymentDirection.TowardsPeer,
+        Amount(100), Amount(1), 1, 1);
+    update.sig = WK.Keys.C.sign(update);
+    charlie.gossipChannelUpdates([update]);
     alice.waitForChannelUpdate(charlie_diego_chan_id, PaymentDirection.TowardsPeer, 1);
     diego.waitForChannelUpdate(charlie_diego_chan_id, PaymentDirection.TowardsPeer, 1);
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -1264,7 +1276,11 @@ unittest
     assert(info.owner_balance == Amount(10_000), info.owner_balance.to!string);
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
-    charlie.changeFees(WK.Keys.C.address, charlie_diego_chan_id_2, Amount(10), Amount(1));
+    update = ChannelUpdate(charlie_diego_chan_id_2,
+        PaymentDirection.TowardsPeer,
+        Amount(10), Amount(1), 1, 1);
+    update.sig = WK.Keys.C.sign(update);
+    charlie.gossipChannelUpdates([update]);
     alice.waitForChannelUpdate(charlie_diego_chan_id_2, PaymentDirection.TowardsPeer, 1);
     diego.waitForChannelUpdate(charlie_diego_chan_id_2, PaymentDirection.TowardsPeer, 1);
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -1489,7 +1505,8 @@ unittest
         max_settle_time : 100,
         max_retry_delay : 100.msecs,
         registry_address : "name.registry",
-        addresses_to_register : [to!string(WK.Keys.C.address)]
+        addresses_to_register : [to!string(WK.Keys.C.address)],
+        listener_address : network.ListenerAddress,
     };
     auto alice = network.createFlashNode(WK.Keys.A);
     auto charlie = network.createFlashNode(WK.Keys.C, charlie_conf);
@@ -1765,10 +1782,12 @@ unittest
     {
         mixin ForwardCtor!();
 
-        public override string onRequestedChannelOpen (PublicKey pk,
+        public override Result!ChannelUpdate onRequestedChannelOpen (PublicKey pk,
             ChannelConfig conf)
         {
-            return "I don't like this channel";
+            if (conf.funder_pk == pk)
+                return super.onRequestedChannelOpen(pk, conf);
+            return Result!ChannelUpdate(ErrorCode.InvalidGenesisHash, "I don't like this channel");
         }
     }
 
