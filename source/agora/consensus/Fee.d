@@ -325,7 +325,8 @@ public class FeeManager
         foreach (share; normalized_shares)
         {
             auto validator_fee = tx_fees;
-            validator_fee.mul(share);
+            if (!validator_fee.mul(share))
+                assert(0, "getValidatorPayouts: Overflow when multiplying validator fee with share");
             validator_fees ~= validator_fee;
         }
         return validator_fees;
