@@ -318,6 +318,7 @@ public class FeeManager
         auto normalized_shares = shares.map!(share => share / shares_gcd);
 
         // tx_fees now equals "share value", which is the amount each share will get
+        // Ignore remainder as any left over after `Validator` payouts goes to `Commons Budget`
         tx_fees.div(normalized_shares.sum());
 
         Amount[] validator_fees;
