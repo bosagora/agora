@@ -378,6 +378,6 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
     }
     catch (Exception exc)
     {
-        stderr.writeln("Exception happened while handling TCP request: {}", exc);
+        stderr.writeln("Exception happened while handling TCP request: ", exc);
     }
 }
