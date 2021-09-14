@@ -27,7 +27,16 @@ consensus:
 
 validator:
   enabled: false
-  registry_address: http://eu-001.bosagora.io:5001
+  registry_address: https://v0.bosagora.io/
+
+registry:
+  enabled: true
+  dns:
+    authoritative:
+      flash.local:
+        email: github@bosagora.io
+      validators.local:
+        email: github@bosagora.io
 
 # Note: You may want to comment some of those to selectively test
 network:
