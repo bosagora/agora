@@ -639,8 +639,8 @@ public class Ledger
                     {
                         // Fetch validators at this height and filter out those who did not sign
                         // the block as they will not get paid for this block
-                        ValidatorInfo[] validators = this.getValidators(header.height)
-                            .enumerate.filter!(en => header.validators[en.index]).map!(en => en.value).array;
+                        auto validators = this.getValidators(header.height)
+                            .enumerate.filter!(en => header.validators[en.index]).map!(en => en.value);
 
                         // Calculate the block rewards using the percentage of validators who signed
                         auto rewards = this.rewards.calculateBlockRewards(Height(height - this.params.PayoutPeriod),
@@ -650,16 +650,14 @@ public class Ledger
                         auto val_payouts = this.fee_man.getValidatorPayouts(header.height, rewards, validators);
 
                         // Update the payouts that will be included in the Coinbase tx for each validator
-                        val_payouts.enumerate.each!((idx, payout)
-                            {
-                                payouts.update(validators[idx].address,
-                                    { return payout; }, // if first for this validator use this payout
+                        val_payouts.zip(validators).each!((Amount payout, ValidatorInfo validator) =>
+                            payouts.update(validator.address,
+                                { return payout; }, // if first for this validator use this payout
                                     (ref Amount so_far) // otherwise use delegate to keep running total
                                     {
                                         so_far += payout; // Add this payout to sum so far
                                         return so_far;
-                                    });
-                            });
+                                    }));
                         auto commons_payout = this.fee_man.getCommonsBudgetPayout(header.height, rewards, val_payouts);
                         payouts.update(this.params.CommonsBudgetAddress,
                             { return commons_payout; },

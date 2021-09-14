@@ -297,7 +297,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public auto getValidatorPayouts (in Height height, in BlockRewards rewards, in ValidatorInfo[] validators) @safe
+    public auto getValidatorPayouts (ValidatorInfos) (in Height height, in BlockRewards rewards, ValidatorInfos validators) @safe
     {
         import std.numeric : gcd;
 
