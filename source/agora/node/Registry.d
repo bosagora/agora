@@ -327,10 +327,11 @@ public class NameRegistry: NameRegistryAPI
                 reply.header.RCODE = Header.RCode.NotImplemented;
             }
         }
+        reply.fill(query.header);
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
                   query, reply);
-        sender(reply.fill(query.header));
+        sender(reply);
     }
 
     /***************************************************************************
