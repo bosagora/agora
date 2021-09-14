@@ -362,7 +362,8 @@ public class FlashNodeFactory : TestAPIManager
 
     /// Create a new flash node user
     public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
-        (const KeyPair kp, DatabaseStorage storage = DatabaseStorage.Local)
+        (const KeyPair kp, DatabaseStorage storage = DatabaseStorage.Local,
+        string file = __FILE__, int line = __LINE__)
     {
         FlashConfig conf = { enabled : true,
             min_funding : Amount(1000),
@@ -374,18 +375,19 @@ public class FlashNodeFactory : TestAPIManager
             listener_address : ListenerAddress,
             registry_address : "name.registry",
             addresses_to_register : [to!string(kp.address)]};
-        return this.createFlashNode!FlashNodeImpl(kp, conf, storage);
+        return this.createFlashNode!FlashNodeImpl(kp, conf, storage, file, line);
     }
 
     /// ditto
     public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
-        (const KeyPair kp, FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local)
+        (const KeyPair kp, FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local,
+        string file = __FILE__, int line = __LINE__)
     {
         import agora.api.Handlers;
 
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             conf, &this.registry, this.nodes[0].address, storage,
-            10.seconds);  // timeout from main thread
+            10.seconds, 10.seconds, file, line);  // timeout from main thread
 
         this.addresses ~= kp.address;
         this.flash_nodes ~= api;
