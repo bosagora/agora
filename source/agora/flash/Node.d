@@ -153,6 +153,7 @@ public class FlashNode : FlashControlAPI
     private static struct PendingChannel
     {
         ChannelConfig conf;
+        ChannelUpdate update;
         string peer_addr;
     }
 
@@ -483,25 +484,6 @@ public class FlashNode : FlashControlAPI
 
     /***************************************************************************
 
-        Change the fees for the given channel ID.
-
-        Params:
-            key = the registered public key
-            chan_id = the channel ID to change the fees for
-            fixed_fee = the new fixed fee
-            proportional_fee = the new proportional fee
-
-    ***************************************************************************/
-
-    public override void changeFees (PublicKey key, Hash chan_id,
-        Amount fixed_fee, Amount proportional_fee)
-    {
-        this.gossipChannelUpdates(
-            [this.channels[chan_id].updateFees(fixed_fee, proportional_fee)]);
-    }
-
-    /***************************************************************************
-
         Overridable in tests to test restart behavior.
 
         Params:
@@ -714,9 +696,10 @@ public class FlashNode : FlashControlAPI
                 "Settle time rejecteds. Want between %s and %s",
                 this.conf.min_settle_time, this.conf.max_settle_time));
 
-        if (auto error = this.listener.onRequestedChannelOpen(chan_conf.peer_pk,
-            chan_conf))
-            return Result!PublicNonce(ErrorCode.UserRejectedChannel, error);
+        auto update = this.listener.onRequestedChannelOpen(chan_conf.peer_pk,
+            chan_conf);
+        if (update.error != ErrorCode.None)
+            return Result!PublicNonce(ErrorCode.UserRejectedChannel, update.message);
 
         auto peer = this.getFlashClient(chan_conf.funder_pk, this.conf.timeout, funder_address);
         if (peer is null)
@@ -731,6 +714,9 @@ public class FlashNode : FlashControlAPI
             this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete,  &this.getFeeUTXOs,
             this.db);
+
+        if (!channel.applyChannelUpdate(update.value))
+            assert(0);
 
         channel.start();
         this.channels[chan_conf.chan_id] = channel;
@@ -848,6 +834,8 @@ public class FlashNode : FlashControlAPI
                 return false;
             }
             this.channel_updates[update.chan_id][update.direction] = update;
+            if (auto chan = update.chan_id in this.channels)
+                chan.applyChannelUpdate(update);
             log.info("gossipChannelUpdates() added channel update: {}. chan_id: {}. direction: {}. address: {}",
                     update, update.chan_id, update.direction, cast(void*)&this.channel_updates);
 
@@ -1276,7 +1264,13 @@ public class FlashNode : FlashControlAPI
             settle_time     : settle_time,
             is_private      : is_private,
         };
-        this.pending_channels.insertBack(PendingChannel(chan_conf, peer_address));
+
+        auto update = this.listener.onRequestedChannelOpen(chan_conf.funder_pk,
+            chan_conf);
+        if (update.error != ErrorCode.None)
+            return Result!Hash(ErrorCode.UserRejectedChannel, update.message);
+
+        this.pending_channels.insertBack(PendingChannel(chan_conf, update.value, peer_address));
         return Result!Hash(chan_id);
     }
 
@@ -1316,6 +1310,8 @@ public class FlashNode : FlashControlAPI
             priv_nonce, result.value, peer, this.engine, this.taskman,
             this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, &this.getFeeUTXOs, this.db);
+        if(!channel.applyChannelUpdate(pending_channel.update))
+            assert(0);
         channel.start();
         this.channels[chan_conf.chan_id] = channel;
     }

@@ -199,20 +199,4 @@ public interface FlashControlAPI : FlashAPI, BlockExternalizedHandler
     ***************************************************************************/
 
     public void payInvoice (PublicKey reg_pk, /* in */ Invoice invoice);
-
-    /***************************************************************************
-
-        Broadcast a channel update to change the fees
-
-        Params:
-            reg_pk = the registered public key. If this key is not managed by
-                this Flash node then the error will be ignored (todo: fixup)
-            chan_id = channel ID
-            fixed_fee = Fixed fee that should paid for each payment
-            proportional_fee = Proportional fee that should paid for each BOA
-
-    ***************************************************************************/
-
-    public void changeFees (PublicKey reg_pk, Hash chan_id, Amount fixed_fee,
-        Amount proportional_fee);
 }
