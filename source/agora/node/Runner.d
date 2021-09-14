@@ -51,7 +51,8 @@ public alias Listeners = Tuple!(
     AdminInterface, "admin",
     FlashNode, "flash",
     NameRegistry, "registry",
-    HTTPListener[], "http"
+    HTTPListener[], "http",
+    TCPListener[], "tcp",
  );
 
 /*******************************************************************************
@@ -115,7 +116,6 @@ public Listeners runNode (Config config)
         result.flash = flash;
     }
 
-    TCPListener dnstcplistener;
     scope (exit)
         if (config.registry.enabled && config.registry.dns.enabled)
         {
@@ -123,7 +123,6 @@ public Listeners runNode (Config config)
             // however this throws an exception in the task that needs to be explicitly
             // handled. And it doesn't help with the error messages printed by Vibe.d.
             //dnstask.interrupt();
-            dnstcplistener.stopListening();
         }
 
     if (config.registry.enabled)
@@ -133,7 +132,7 @@ public Listeners runNode (Config config)
         if (config.registry.dns.enabled)
         {
             /* auto dnstask = */ runTask(() => runDNSServer(config.registry, result.registry));
-            dnstcplistener = listenTCP(config.registry.dns.port, (conn) => conn.runTCPDNSServer(result.registry),
+            result.tcp ~= listenTCP(config.registry.dns.port, (conn) => conn.runTCPDNSServer(result.registry),
                 config.registry.dns.address);
         }
     }
