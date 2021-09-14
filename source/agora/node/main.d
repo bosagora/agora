@@ -198,6 +198,8 @@ private int main (string[] args)
         // will be false and the foreach will not loop.
         foreach (ref l; listeners.http)
             l.stopListening();
+        foreach (ref l; listeners.tcp)
+            l.stopListening();
         if (listeners.node !is null)
             listeners.node.shutdown();
     }
