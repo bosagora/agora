@@ -297,12 +297,9 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount[] getValidatorPayouts (in Height height, in BlockRewards rewards, in ValidatorInfo[] validators) @safe
+    public auto getValidatorPayouts (in Height height, in BlockRewards rewards, in ValidatorInfo[] validators) @safe
     {
         import std.numeric : gcd;
-        // no stakes, no fees
-        if (validators.length == 0)
-            return [];
 
         // tx_fees = (tot_fee - tot_data_fee) * (ValidatorTXFeeCut / 100)
         Amount tx_fees = this.block_fees.get(height, 0.coins);
@@ -326,15 +323,15 @@ public class FeeManager
         // Ignore remainder as any left over after `Validator` payouts goes to `Commons Budget`
         tx_fees.div(normalized_shares.sum());
 
-        Amount[] validator_fees;
-        foreach (share; normalized_shares)
+        Amount calculatePayout (ulong share)
         {
             auto validator_fee = tx_fees;
             if (!validator_fee.mul(share))
                 assert(0, "getValidatorPayouts: Overflow when multiplying validator fee with share");
-            validator_fees ~= validator_fee;
+            return validator_fee;
         }
-        return validator_fees;
+
+        return normalized_shares.map!((ulong share) => calculatePayout(share));
     }
 
     /***************************************************************************
@@ -357,7 +354,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public Amount getCommonsBudgetPayout (in Height height, in BlockRewards rewards, in Amount[] validator_payouts) @safe
+    public Amount getCommonsBudgetPayout (Payouts) (in Height height, in BlockRewards rewards, Payouts validator_payouts) @safe
     {
         // Initailize total with rewards for validators
         Amount total_payout = rewards.validator_rewards;
@@ -371,7 +368,7 @@ public class FeeManager
             assert(0, "getCommonsBudgetPayout: Failed to add total fees");
 
         // Subtract each validator payout
-        validator_payouts.each!((payout)
+        validator_payouts.each!((Amount payout)
         {
             if (!total_payout.sub(payout))
                 assert(0, "getCommonsBudgetPayout: Failed to subtract validator payout");
@@ -600,7 +597,7 @@ public class FeeManager
 
         // 1 2X stake, 2 1X stakes
         auto val_payouts = man.getValidatorPayouts(Height(1), rewards, validators);
-        assert(val_payouts.length == validators.length);
+        assert(val_payouts.walkLength(validators.length) == validators.length);
 
         auto fees = val_payouts.uniq.array;
         assert(fees.length == 2);

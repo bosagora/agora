@@ -647,16 +647,16 @@ public class Ledger
                             header.validators.percentage());
 
                         // Divide up the validator fees and rewards based on stakes
-                        Amount[] val_payouts = this.fee_man.getValidatorPayouts(header.height, rewards, validators);
+                        auto val_payouts = this.fee_man.getValidatorPayouts(header.height, rewards, validators);
 
                         // Update the payouts that will be included in the Coinbase tx for each validator
-                        validators.enumerate.each!((idx, val)
+                        val_payouts.enumerate.each!((idx, payout)
                             {
-                                payouts.update(val.address,
-                                    { return val_payouts[idx]; }, // if first for this validator use this payout
+                                payouts.update(validators[idx].address,
+                                    { return payout; }, // if first for this validator use this payout
                                     (ref Amount so_far) // otherwise use delegate to keep running total
                                     {
-                                        so_far += val_payouts[idx]; // Add this payout to sum so far
+                                        so_far += payout; // Add this payout to sum so far
                                         return so_far;
                                     });
                             });
