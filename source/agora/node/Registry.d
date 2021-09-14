@@ -289,6 +289,7 @@ public class NameRegistry: NameRegistryAPI
         @safe
     {
         Message reply;
+        reply.header.RCODE = Header.RCode.FormatError;
         reply.header.RA = false; // TODO: Implement
         reply.header.AA = true;  // TODO: Make configurable
 
@@ -306,8 +307,9 @@ public class NameRegistry: NameRegistryAPI
                 reply.header.AA = false;
             else if (q.qclass != QCLASS.IN)
             {
-                log.trace("DNS: Ignoring question with unknown QCLASS: {}", q);
-                continue;
+                log.warn("DNS: Ignoring query with unknown QCLASS: {}", q);
+                reply.header.RCODE = Header.RCode.NotImplemented;
+                break;
             }
 
             if (q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
@@ -320,7 +322,10 @@ public class NameRegistry: NameRegistryAPI
                 }
             }
             else
-                log.warn("Question for unknown QTYPE: {}", q);
+            {
+                log.warn("DNS: Ignoring query for unknown QTYPE: {}", q);
+                reply.header.RCODE = Header.RCode.NotImplemented;
+            }
         }
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
