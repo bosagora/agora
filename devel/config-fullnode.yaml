@@ -31,12 +31,11 @@ validator:
 
 registry:
   enabled: true
-  dns:
-    authoritative:
-      flash.local:
-        email: github@bosagora.io
-      validators.local:
-        email: github@bosagora.io
+  authoritative:
+    flash.local:
+      email: github@bosagora.io
+    validators.local:
+      email: github@bosagora.io
 
 # Note: You may want to comment some of those to selectively test
 network:

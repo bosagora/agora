@@ -80,22 +80,21 @@ public class NameRegistry: NameRegistryAPI
     ///
     public this (RegistryConfig config, FullNodeAPI agora_node)
     {
+        assert(config.enabled, "Registry instantiated but not enabled");
+
         this.config = config;
         this.log = Logger(__MODULE__);
         this.agora_node = agora_node;
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
 
-        if (this.config.dns.enabled)
-        {
-            this.log.info("Starting authoritative DNS server for zones: {}",
-                          this.config.dns.authoritative.map!(z => z.name));
+        this.log.info("Starting authoritative DNS server for zones: {}",
+                      this.config.authoritative.map!(z => z.name));
 
-            auto currTime = Clock.currTime(UTC());
-            // Serial's value wraps around so the cast is safe
-            const serial = cast(uint) currTime.toUnixTime();
-            foreach (const ref zone; config.dns.authoritative)
-                this.zones ~= zone.fromConfig(serial);
-        }
+        auto currTime = Clock.currTime(UTC());
+        // Serial's value wraps around so the cast is safe
+        const serial = cast(uint) currTime.toUnixTime();
+        foreach (const ref zone; config.authoritative)
+            this.zones ~= zone.fromConfig(serial);
     }
 
     ///

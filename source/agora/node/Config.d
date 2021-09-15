@@ -396,76 +396,6 @@ public struct RegistryConfig
     /// If this node should also act as a registry
     public bool enabled;
 
-    /// DNS server configuration
-    public DNSConfig dns;
-
-    /// Validate the semantic of the user-provided configuration
-    public void validate () const
-    {
-        if (this.dns.enabled)
-        {
-            ensure(this.dns.address.length > 0, "DNS is enabled but no `address` is provided");
-            ensure(this.dns.port > 0, "dns.port: 0 is not a valid value");
-            ensure(this.dns.authoritative.length > 0, "No authoritative zones provided");
-
-            foreach (idx, zone; this.dns.authoritative)
-            {
-                auto rng = zone.name.splitter('.');
-                ensure(!rng.empty, "dns.authoritative: Empty array entry at index {}", idx);
-                ensure(rng.front.length > 0,
-                       "dns.authoritative: Value '{}' at index '{}' starts with a dot ('.')," ~
-                       " which is not allowed. Remove it.", zone.name, idx);
-
-                do {
-                    // It might be the empty label, in which case it needs to be last
-                    if (rng.front.length == 0)
-                    {
-                        rng.popFront();
-                        ensure(rng.empty,
-                               "dns.authoritative: Value '{}' at index '{}' contains" ~
-                               " an empty label, which is not allowed. Remove the double dot.",
-                               zone.name, idx);
-                        break;
-                    }
-                    ensure(rng.front.length <= 63,
-                           "dns.authoritative: Value '{}' at index '{}' contains a label ('{}') " ~
-                           "which is longer than 63 characters ({} characters), which is not allowed.",
-                           zone.name, idx, rng.front, rng.front.length);
-                    rng.popFront();
-                } while (!rng.empty);
-
-                // Now validate the durations are consistent with one another
-                ensure(zone.refresh <= zone.expire,
-                       "dns.authoritative: Zone '{}' field 'refresh' ({}) should be lower than field 'expire' ({})",
-                       zone.name, zone.refresh, zone.expire);
-                // The other ones could actually be set to very low values to
-                // avoid clients caching data, so don't validate them besides
-                // checking they fit in an `int`.
-                const intMaxSecs = int.max.seconds;
-                const uintMaxSecs = uint.max.seconds;
-                ensure(zone.refresh <= intMaxSecs,
-                       "dns.authoritative: Zone '{}' field 'refresh' ({}) should be at most {}",
-                       zone.name, zone.refresh, intMaxSecs);
-                ensure(zone.retry <= intMaxSecs,
-                       "dns.authoritative: Zone '%s' field 'retry' ({}) should be at most {}",
-                       zone.name, zone.retry, intMaxSecs);
-                ensure(zone.expire <= intMaxSecs,
-                       "dns.authoritative: Zone '%s' field 'expire' ({}) should be at most {}",
-                       zone.name, zone.expire, intMaxSecs);
-                ensure(zone.minimum <= intMaxSecs,
-                       "dns.authoritative: Zone '%s' field 'minimum' ({}) should be at most {}",
-                       zone.name, zone.minimum, uintMaxSecs);
-            }
-        }
-    }
-}
-
-///
-public struct DNSConfig
-{
-    /// Whether the DNS server is enabled at all
-    public bool enabled = true;
-
     /***************************************************************************
 
         The address to bind to - All interfaces by default
@@ -482,6 +412,63 @@ public struct DNSConfig
 
     /// Which zones this server is authoritative for
     public @Key("name") immutable(ZoneConfig[]) authoritative;
+
+    /// Validate the semantic of the user-provided configuration
+    public void validate () const
+    {
+        ensure(this.address.length > 0, "registry is enabled but no `address` is provided");
+        ensure(this.port > 0, "registry.port: 0 is not a valid value");
+        ensure(this.authoritative.length > 0, "registry: No authoritative zones provided");
+
+        foreach (idx, zone; this.authoritative)
+        {
+            auto rng = zone.name.splitter('.');
+            ensure(!rng.empty, "registry.authoritative: Empty array entry at index {}", idx);
+            ensure(rng.front.length > 0,
+                   "registry.authoritative: Value '{}' at index '{}' starts with a dot ('.')," ~
+                   " which is not allowed. Remove it.", zone.name, idx);
+
+            do {
+                // It might be the empty label, in which case it needs to be last
+                if (rng.front.length == 0)
+                {
+                    rng.popFront();
+                    ensure(rng.empty,
+                           "registry.authoritative: Value '{}' at index '{}' contains" ~
+                           " an empty label, which is not allowed. Remove the double dot.",
+                           zone.name, idx);
+                    break;
+                }
+                ensure(rng.front.length <= 63,
+                       "registry.authoritative: Value '{}' at index '{}' contains a label ('{}') " ~
+                       "which is longer than 63 characters ({} characters), which is not allowed.",
+                       zone.name, idx, rng.front, rng.front.length);
+                rng.popFront();
+            } while (!rng.empty);
+
+            // Now validate the durations are consistent with one another
+            ensure(zone.refresh <= zone.expire,
+                   "registry.authoritative: Zone '{}' field 'refresh' ({}) should be lower than field 'expire' ({})",
+                   zone.name, zone.refresh, zone.expire);
+            // The other ones could actually be set to very low values to
+            // avoid clients caching data, so don't validate them besides
+            // checking they fit in an `int`.
+            const intMaxSecs = int.max.seconds;
+            const uintMaxSecs = uint.max.seconds;
+            ensure(zone.refresh <= intMaxSecs,
+                   "registry.authoritative: Zone '{}' field 'refresh' ({}) should be at most {}",
+                   zone.name, zone.refresh, intMaxSecs);
+            ensure(zone.retry <= intMaxSecs,
+                   "registry.authoritative: Zone '%s' field 'retry' ({}) should be at most {}",
+                   zone.name, zone.retry, intMaxSecs);
+            ensure(zone.expire <= intMaxSecs,
+                   "registry.authoritative: Zone '%s' field 'expire' ({}) should be at most {}",
+                   zone.name, zone.expire, intMaxSecs);
+            ensure(zone.minimum <= intMaxSecs,
+                   "registry.authoritative: Zone '%s' field 'minimum' ({}) should be at most {}",
+                   zone.name, zone.minimum, uintMaxSecs);
+        }
+    }
 }
 
 /// Configuration for a DNS zone
