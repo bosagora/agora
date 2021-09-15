@@ -167,10 +167,6 @@ public class Ledger
         ensure(gen_block == params.Genesis,
                 "Genesis block loaded from disk ({}) is different from the one in the config file ({})",
                 gen_block.hashFull(), params.Genesis.hashFull());
-        foreach (idx, const ref e; gen_block.header.enrollments)
-            ensure(e.cycle_length == params.ValidatorCycle,
-                    "ConsensusParams's ValidatorCycle ({}) is not consistent with Genesis ({}, idx: {})",
-                    params.ValidatorCycle, e.cycle_length, idx);
 
         if (this.utxo_set.length == 0
             || this.enroll_man.validator_set.countActive(this.last_block.header.height + 1) == 0)
@@ -1614,7 +1610,7 @@ public class ValidatingLedger : Ledger
                 assert(cycle_seed != Hash.init);
                 assert(cycle_seed_height != Height(0));
                 auto enroll = EnrollmentManager.makeEnrollment(
-                    v.utxo, kp, next_block, this.params.ValidatorCycle,
+                    v.utxo, kp, next_block,
                     cycle_seed, cycle_seed_height);
 
                 data.enrolls ~= enroll;
@@ -1687,8 +1683,7 @@ version (unittest)
                    // Use the provided Genesis block
                    ? new immutable(ConsensusParams)(
                        cast(immutable)blocks[0], WK.Keys.CommonsBudget.address,
-                       ConsensusConfig(ConsensusConfig.init.genesis_timestamp,
-                                       blocks[0].header.enrollments[0].cycle_length))
+                       ConsensusConfig(ConsensusConfig.init.genesis_timestamp))
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
 
@@ -2076,11 +2071,11 @@ unittest
     {
         assert(ex.message ==
                "Genesis block loaded from disk " ~
-               "(0x2515b2650e0defbc2419976e5306c6d014eb593a5969b49db6cd6858fdc5841" ~
-               "e1a1794dfd203b840dccd5d068d8dada155bdf2ae4ed5230e6fd9bd6b6cbe9397) " ~
+               "(0x4caf6eb467ab6b9e19309bd50da4dedade3b0a3cde674a3d20d8121880508fc" ~
+               "a22a54fe0928ac2317d737e80271ca4851f8fd619a1e1f6c1b0a20e46eccbff86) " ~
                "is different from the one in the config file " ~
-               "(0x01c9b940eeeaa335a8e4b87d6e2245366829a245faae34e133f93f131904ee3" ~
-               "9ff21201d7c1fe60e50970ea8f804b3b723915f9b4e0dbc57853bc663ecb73b58)");
+               "(0xc66290bee81a97497e240bfe0939bb1e8d6184adce52905a37e16bba3e3e9f4" ~
+               "0ec732cf33a1dcdf04558831fb94ab06aed1467e71fbef91617f2f85a137e4ffc)");
     }
 
     immutable good_params = new immutable(ConsensusParams)();
@@ -2230,7 +2225,7 @@ unittest
         assert(cycle_seed != Hash.init);
         assert(cycle_seed_height != Height(0));
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, Height(params.ValidatorCycle), params.ValidatorCycle,
+            utxos[idx], kp, Height(params.ValidatorCycle),
             cycle_seed, cycle_seed_height);
         assert(ledger.enroll_man.addEnrollment(enroll, kp.address,
             Height(params.ValidatorCycle), &ledger.utxo_set.peekUTXO));

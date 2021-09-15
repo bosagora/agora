@@ -42,10 +42,6 @@ public struct Enrollment
     /// X: commitment, The nth image of random value
     public Hash commitment;
 
-    /// n: cycle length, the number of rounds a validator will participate in
-    /// (currently fixed to (freezing period / 2)
-    public uint cycle_length;
-
     /// S: A signature for the message H(K, X, n, R) and the key K, using R
     public Signature enroll_sig;
 
@@ -66,7 +62,6 @@ public struct Enrollment
     {
         hashPart(this.utxo_key, dg);
         hashPart(this.commitment, dg);
-        hashPart(this.cycle_length, dg);
     }
 }
 
@@ -75,7 +70,7 @@ unittest
 {
     import std.conv;
     Enrollment enroll = Enrollment.init;
-    assert(enroll.hashFull() == Hash("0xb7bb5b3b77f41ac7f36fa20b0f8f25875cf23847252e64e49684765bfe8755ce2c0b0e3f5c7610b599626c8ee47f4d96eb2aae314db02881948d18deec8472ae"),
+    assert(enroll.hashFull() == Hash("0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986"),
         enroll.hashFull().to!string);
 }
 
@@ -97,7 +92,6 @@ unittest
     Enrollment record = {
         utxo_key: key,
         commitment: seed,
-        cycle_length: 42,
         enroll_sig: sig,
     };
     testSymmetry(record);

@@ -46,9 +46,6 @@ public struct EnrollmentState
     /// The Height the enrollment was accepted at
     Height enrolled_height;
 
-    /// Length of the Validation cycle
-    uint cycle_length;
-
     /// The most recently revealed PreImage
     PreImageInfo preimage;
 }
@@ -91,7 +88,7 @@ public class ValidatorSet
         // create the table for validator set if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS validator " ~
             "(key TEXT, public_key TEXT, " ~
-            "cycle_length INTEGER, enrolled_height INTEGER, " ~
+            "enrolled_height INTEGER, " ~
             "nonce TEXT, slashed_height INTEGER, stake INTEGER,
             PRIMARY KEY (key, enrolled_height))");
 
@@ -144,11 +141,10 @@ public class ValidatorSet
                     enroll.utxo_key, height.value,
                     enroll.commitment);
                 this.db.execute("INSERT INTO validator " ~
-                    "(key, public_key, cycle_length, enrolled_height, nonce, stake) " ~
-                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    "(key, public_key, enrolled_height, nonce, stake) " ~
+                    "VALUES (?, ?, ?, ?, ?)",
                     enroll.utxo_key,
                     pubkey,
-                    enroll.cycle_length,
                     height.value,
                     enroll.enroll_sig.R,
                     stake);
@@ -621,14 +617,13 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height, cycle_length " ~
+            auto results = this.db.execute("SELECT enrolled_height " ~
                 "FROM validator WHERE key = ? ORDER BY enrolled_height DESC", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 auto row = results.front;
                 state.enrolled_height = Height(row.peek!(size_t)(0));
-                state.cycle_length = row.peek!(uint)(1);
                 state.preimage = this.getPreimage(enroll_key);
                 return true;
             }
@@ -685,7 +680,7 @@ unittest
     Height cycle_seed_height;
     getCycleSeed(WK.Keys[0], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight,
-        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+        cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
     assert(set.countActive(FirstEnrollHeight) == 0);
     assert(set.countActive(FirstEnrollHeight + 1) == 1);    // Will be active next block
@@ -695,14 +690,14 @@ unittest
 
     getCycleSeed(WK.Keys[1], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight,
-        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+        cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
     assert(set.countActive(FirstEnrollHeight + 1) == 2);
 
     const SecondEnrollHeight = Height(9);
     getCycleSeed(WK.Keys[2], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight,
-        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+        cycle_seed, cycle_seed_height);
     assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
     assert(set.countActive(SecondEnrollHeight + 1) == 3);
 
@@ -747,7 +742,7 @@ unittest
     // test for clear up expired validators
     getCycleSeed(WK.Keys[3], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight,
-        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+        cycle_seed, cycle_seed_height);
     assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
     keys.length = 0;
     assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle + 8), keys));
@@ -762,7 +757,7 @@ unittest
     assert(set.countActive(SecondEnrollHeight + 1) == 0);
     getCycleSeed(WK.Keys[0], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight,
-        set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
+        cycle_seed, cycle_seed_height);
     assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
 
     // still active at height 1008

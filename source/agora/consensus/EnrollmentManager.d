@@ -304,7 +304,7 @@ public class EnrollmentManager
         const seed = this.cycle[height];
         const enroll = makeEnrollment(
             utxo, this.key_pair, seed,
-            this.params.ValidatorCycle, this.cycle.index);
+            this.cycle.index);
 
         return enroll;
     }
@@ -328,7 +328,6 @@ public class EnrollmentManager
             utxo = `Hash` of a frozen UTXO value that can be used for enrollment
             key  = `KeyPair` that controls the `utxo`
             seed = commitment to use
-            cycle_length = The cycle length to use (see `ConsensusParams`)
             offset = The number of times this private key has enrolled before.
                      If `seed` is provided, this parameter is non-optional.
 
@@ -338,12 +337,11 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public static Enrollment makeEnrollment (
-        in Hash utxo, in KeyPair key, in Hash seed, uint cycle_length, ulong offset = 0)
+        in Hash utxo, in KeyPair key, in Hash seed, ulong offset = 0)
         @safe nothrow @nogc
     {
         Enrollment result = {
             utxo_key: utxo,
-            cycle_length: cycle_length,
             commitment: seed,
         };
 
@@ -357,23 +355,23 @@ public class EnrollmentManager
 
     /// Ditto
     version (unittest) public static Enrollment makeEnrollment (
-        in Hash utxo, in KeyPair key, in Height height, uint cycle_length)
+        in Hash utxo, in KeyPair key, in Height height)
         @trusted nothrow
     {
         // Generate the random seed to use
-        auto cycle = PreImageCycle(key.secret, cycle_length);
-        return makeEnrollment(utxo, key, cycle[height], cycle_length);
+        auto cycle = PreImageCycle(key.secret);
+        return makeEnrollment(utxo, key, cycle[height]);
     }
 
     /// Ditto
     version (unittest) public static Enrollment makeEnrollment (
-        in Hash utxo, in KeyPair key, in Height height, uint cycle_length,
+        in Hash utxo, in KeyPair key, in Height height,
         in Hash cycle_seed, in Height seed_pos)
         @trusted nothrow
     {
         // Generate the random seed to use
-        auto cycle = PreImageCycle(cycle_seed, seed_pos, cycle_length);
-        return makeEnrollment(utxo, key, cycle[height], cycle_length);
+        auto cycle = PreImageCycle(cycle_seed, seed_pos);
+        return makeEnrollment(utxo, key, cycle[height]);
     }
 
     /***************************************************************************
@@ -792,7 +790,7 @@ unittest
     // The UTXO belongs to key_pair but we sign with genesis key pair and check it fails
     Enrollment fail_enroll =
         EnrollmentManager.makeEnrollment(utxo_hash, gen_key_pair, EnrollAt1,
-        params.ValidatorCycle, CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1));
+        CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1));
     assert(!man.addEnrollment(fail_enroll, gen_key_pair.address, EnrollAt1,
             utxo_set.getUTXOFinder()));
 
@@ -803,7 +801,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         auto enroll = EnrollmentManager.makeEnrollment(utxo_hashes[idx], kp,
-            EnrollAt1, params.ValidatorCycle, NodeCycleSeeds[idx], Height(params.ValidatorCycle * 2 - 1));
+            EnrollAt1, NodeCycleSeeds[idx], Height(params.ValidatorCycle * 2 - 1));
 
         assert(man.addEnrollment(enroll, kp.address, EnrollAt1, &utxo_set.peekUTXO));
         assert(man.enroll_pool.count() == idx + 1);
@@ -834,7 +832,7 @@ unittest
     // Add removed enrollment to the pool with the new height
     assert(man.addEnrollment(
             EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], EnrollAt9,
-                params.ValidatorCycle, CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1)),
+                CommonCycleSeed, Height(params.ValidatorCycle * 2 - 1)),
             pairs[1].address, EnrollAt9, &utxo_set.peekUTXO));
     // The expired enrollments in the pool from height 1 are cleared on this next call
     // to get enrollments at a higher height. We do have an enrollment at height 9
@@ -935,7 +933,7 @@ unittest
     foreach (idx, kp; pairs[0 .. 3])
     {
         enrollments ~= EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, height, params.ValidatorCycle,
+            utxo_hashes[idx], kp, height,
             NodeCycleSeeds[idx], Height(params.ValidatorCycle * 2 - 1));
     }
 
@@ -993,9 +991,9 @@ unittest
     // and the offset (which is 0 in both cases)
     Hash utxo;
     const validator_cycle = 20;
-    auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, Height(1), 10,
+    auto e1 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.A, Height(1),
         NodeCycleSeeds[0], Height(validator_cycle * 2 - 1));
-    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.C, Height(1), 10,
+    auto e2 = EnrollmentManager.makeEnrollment(utxo, WK.Keys.C, Height(1),
         NodeCycleSeeds[1], Height(validator_cycle * 2 - 1));
     assert(e1.commitment != e2.commitment);
 }
@@ -1047,7 +1045,6 @@ unittest
     // add the enrollment that is already a validator, and check if
     // the enrollment can be nominated at the height before the cycle end
     auto re_enroll = man.createEnrollment(utxos.keys[0], firstEnrolledAt10 + validator_cycle);
-    assert(re_enroll.cycle_length == validator_cycle);
     assert(man.addEnrollment(re_enroll, key_pair.address, firstEnrolledAt10 + validator_cycle, &utxo_set.peekUTXO));
 
     // Can only enroll at exact height as the preimage is for that height
@@ -1108,7 +1105,7 @@ unittest
     foreach (idx, kp; pairs)
     {
         const enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, Height(1), params.ValidatorCycle,
+            utxos[idx], kp, Height(1),
             node_seeds[kp], Height(params.ValidatorCycle * cycles - 1),);
         assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
             storage.storage) is null);
@@ -1217,7 +1214,6 @@ unittest
     assert(man.validator_set.countActive(Height(1)) == 1);
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.enrolled_height == Height(0));
-    assert(state.cycle_length == params.ValidatorCycle);
     assert(state.preimage.hash == genesis_enroll.commitment);
     assert(state.preimage.height == 0);
 
@@ -1247,7 +1243,6 @@ unittest
 
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.enrolled_height == Height(0));
-    assert(state.cycle_length == params.ValidatorCycle);
     assert(state.preimage.hash == preimage.hash);
     assert(state.preimage.height == preimage.height);
 
@@ -1280,10 +1275,10 @@ unittest
         params.ValidatorCycle);
     auto man = new EnrollmentManager(WK.Keys.A, params, cycle);
     auto e1 = EnrollmentManager.makeEnrollment(
-        utxos[0], WK.Keys.A, Height(1), man.params.ValidatorCycle,
+        utxos[0], WK.Keys.A, Height(1),
         NodeCycleSeeds[0], Height(params.ValidatorCycle * 2 - 1));
     auto e2 = EnrollmentManager.makeEnrollment(
-        utxos[1], WK.Keys.C, Height(1), man.params.ValidatorCycle,
+        utxos[1], WK.Keys.C, Height(1),
         NodeCycleSeeds[1], Height(params.ValidatorCycle * 2 - 1),);
 
     assert(man.addEnrollment(e1, WK.Keys.A.address, Height(1), &utxo_set.peekUTXO));

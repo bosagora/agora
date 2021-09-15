@@ -380,7 +380,7 @@ unittest
         auto utxo_hash = utxo_hashes[index];
         avail_height = Height(params.ValidatorCycle);
         enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height,
-            params.ValidatorCycle, NodeCycleSeeds[index], Height(params.ValidatorCycle * 2 - 1));
+            NodeCycleSeeds[index], Height(params.ValidatorCycle * 2 - 1));
         assert(pool.add(enrollments[$ - 1], avail_height,
                                 storage.getUTXOFinder(), &findEnrollment));
         assert(pool.count() == index + 1);

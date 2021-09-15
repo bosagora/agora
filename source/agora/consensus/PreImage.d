@@ -312,7 +312,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public this (in Scalar secret, in uint cycle_length,
+    public this (in Scalar secret, in uint cycle_length = 20,
         in ulong preimage_count = PreImageCount, in Height initial_seek = Height(0))
     {
         // Using this predictable scheme ensures that the pre-image can
@@ -339,7 +339,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public this (in Hash from, in Height at, in uint cycle_length,
+    public this (in Hash from, in Height at, in uint cycle_length = 20,
                  in Height initial_seek = Height(0))
     {
         // Make sure that what we got falls on the boundary of a seed

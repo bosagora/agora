@@ -28,7 +28,6 @@ Should be cleaned up and make readable. Once `utxo` is usable, both can be used 
 |-----------------|----------|------------------|--------------------------------------|----------------------------------------------------|
 | key             | TEXT     | Hash             | PRIMARY KEY (with `enrolled_height`) | The `utxo` field in the `Enrollment`               |
 | public_key      | TEXT     | PublicKey        |                                      | Should be replaced with a join using the UTXO hash |
-| cycle_length    | INTEGER  | ulong            |                                      | Should be removed.                                 |
 | enrolled_height | INTEGER  | Height           | PRIMARY KEY (with `key`)             |                                                    |
 | nonce           | TEXT     | Point            |                                      | The `R` used to sign the `Enrollment`              |
 | slashed_height  | INTEGER  | Height           |                                      | Height at which a validator is slashed or null     |

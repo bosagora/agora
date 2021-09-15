@@ -652,7 +652,6 @@ public EnrollmentFinder getGenesisEnrollmentFinder () nothrow @trusted
         if (!enrolls.empty)
         {
             state.enrolled_height = Height(0);
-            state.cycle_length = enrolls[0].cycle_length;
             state.preimage.hash = enrolls[0].commitment;
             state.preimage.height = 0;
         }
@@ -927,7 +926,6 @@ unittest
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
     enroll1.commitment = hashFull(Scalar.random());
-    enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll1);
 
@@ -935,7 +933,6 @@ unittest
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.commitment = hashFull(Scalar.random());
-    enroll2.cycle_length = 1008;
     enroll2.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
         signature_noise.v, enroll2);
 
@@ -1067,7 +1064,6 @@ unittest
         Enrollment enroll1;
         enroll1.utxo_key = utxo_hash1;
         enroll1.commitment = hashFull(Scalar.random());
-        enroll1.cycle_length = 1008;
         enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
             signature_noise.v, enroll1);
 
