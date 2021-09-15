@@ -34,7 +34,7 @@ import std.algorithm.iteration : map, splitter;
 import std.algorithm.searching : endsWith;
 import std.array : replace;
 import std.datetime;
-import std.range : only, zip;
+import std.range : zip;
 import std.socket;
 static import std.uni;
 
@@ -357,7 +357,7 @@ public class NameRegistry: NameRegistryAPI
         const ref Question question, ref Message reply) @safe
     {
         const public_key = question.qname
-            .parsePublicKeyFromDomain(this.validators.soa.mname.value.only);
+            .parsePublicKeyFromDomain(this.validators);
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
@@ -413,94 +413,40 @@ public class NameRegistry: NameRegistryAPI
 
 /***************************************************************************
 
-    Parse a PublicKey from a domain name
-
-    Our server is authoritative for 'realms', but it still receives UTF-8
-    data, hence we need to iterate the string from beginning to end,
-    and can't do arbitrary lookups.
-
-    Start by checking that the first component has the correct length,
-    then check that the other components are for domain we are
-    authoritative for. If not, the caller will either reject or recurse.
+    Parse a PublicKey from a domain name for the given zone
 
     Params:
       domain = The full domain name to parse
-      authoritative = The list of domain for which we are authoritative
+      zone = The zone we are matching against
 
     Returns:
       A valid `PublicKey` that `domain` points to, or `PublicKey.init`
 
     ***************************************************************************/
 
-private PublicKey parsePublicKeyFromDomain (StrRange) (in char[] domain,
-    StrRange authoritative) @safe
+private PublicKey parsePublicKeyFromDomain (in char[] domain,
+    ZoneData zone) @safe
 {
-    auto range = domain.splitter('.');
-    if (range.empty)
-        return PublicKey.init;
-
-    enum PublicKeyStringLength = 63;
-    enum NoHRPPublicKeyStringLength = 63 - "boa1".length;
     // In the future, we may allow things like:
     // `admin.$PUBKEY.domain`, but for the moment, restrict it to
     // `$PUBKEY.domain`, and a public key is 63 chars with HRP,
     // 59 chars otherwise.
-    const(char)[] keyWithHRP;
-    if (range.front.length == PublicKeyStringLength)
-        keyWithHRP = range.front;
-    else if (range.front.length == NoHRPPublicKeyStringLength)
-        keyWithHRP = "boa1" ~ range.front;
-    else
-        return PublicKey.init;
+    enum PublicKeyStringLength = 63;
+    enum NoHRPPublicKeyStringLength = 63 - "boa1".length;
 
-    range.popFront();
-    if (range.empty) return PublicKey.init;
-
-    // Now check that the pubkey is under a domain we know about
-NEXT_DOMAIN:
-    foreach (ad; authoritative)
+    static PublicKey tryParse (in char[] data)
     {
-        // We can't use `std.algorithm.comparison : equal` here,
-        // as we may have an empty label at the end,
-        // either for the authoritative domains or the requested one
-        // We can't use a `std.range: {zip,lockstep}` + `foreach` approach either,
-        // as it implicitly saves the range. So make a save of the `domain` range
-        // (as we might be iterating multiple times over it), and do it manually.
-        auto auth_domain_range = ad.splitter('.');
-        auto domain_range = range.save();
-        while (true)
-        {
-            // Pop empty label(s)
-            if (!auth_domain_range.empty && auth_domain_range.front.length == 0)
-                // Note: Should be empty after this, if the caller properly
-                // validated its input to us.
-                auth_domain_range.popFront();
-            if (!domain_range.empty && domain_range.front.length == 0)
-            {
-                domain_range.popFront();
-                // It means we have something like `a..b.com` which is not valid
-                if (!domain_range.empty)
-                    return PublicKey.init;
-            }
+        try return PublicKey.fromString(data);
+        catch (Exception exc) return PublicKey.init;
+    }
 
-            // Different length means they can't be equal
-            if (auth_domain_range.empty != domain_range.empty)
-                continue NEXT_DOMAIN;
-
-            // Found a match
-            if (domain_range.empty)
-                break;
-
-            if (std.uni.sicmp(domain_range.front, auth_domain_range.front))
-                continue NEXT_DOMAIN; // `sicmp` returns `0` on match
-
-            domain_range.popFront();
-            auth_domain_range.popFront();
-        }
-
-        try
-            return PublicKey.fromString(keyWithHRP);
-        catch (Exception exc)
+    if (auto str = zone.owns(domain))
+    {
+        if (str.length == PublicKeyStringLength)
+            return tryParse(str);
+        else if (str.length == NoHRPPublicKeyStringLength)
+            return tryParse("boa1" ~ str);
+        else
             return PublicKey.init;
     }
     return PublicKey.init;
@@ -512,54 +458,49 @@ unittest
     import agora.utils.Test;
 
     const AStr = WK.Keys.A.address.toString();
+    // We only need a valid mname
+    ZoneData zone;
+    zone.soa.mname = "net.bosagora.io";
 
     // Most likely case
     assert((AStr ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(["net.bosagora.io"]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Technically, request may end with the null label (a dot), and the user
     // might also specify it, so test for it.
     assert((AStr ~ ".net.bosagora.io.")
-           .parsePublicKeyFromDomain(["net.bosagora.io"]) == WK.Keys.A.address);
-    assert((AStr ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(["net.bosagora.io."]) == WK.Keys.A.address);
-    assert((AStr ~ ".net.bosagora.io.")
-           .parsePublicKeyFromDomain(["net.bosagora.io."]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Without the HRP
     assert((AStr["boa1".length .. $] ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(["net.bosagora.io"]) == WK.Keys.A.address);
-
-    // Multiple domains
-    assert((AStr ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(["net.bosagora.io", "foo.com"]) == WK.Keys.A.address);
-    assert((AStr ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(["foo.com", "net.bosagora.io", "bar.foo"]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Only gTLD
+    zone.soa.mname = "bosagora";
     assert((AStr ~ ".bosagora")
-           .parsePublicKeyFromDomain(["net.foo", ".bosagora", "far.fetched"]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Uppercase / lowercase doesn't matter, except for the key
     assert((AStr ~ ".BOSAGORA")
-           .parsePublicKeyFromDomain(["net.foo", ".bosagora", "far.fetched"]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
     assert((AStr ~ ".BoSAGorA")
-           .parsePublicKeyFromDomain(["net.foo", ".bosagora", "far.fetched"]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    zone.soa.mname = ".BoSAgOrA";
     assert((AStr ~ ".BOSAGORA")
-           .parsePublicKeyFromDomain(["net.foo", ".BoSAgOrA", "far.fetched"]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Rejection tests
+    zone.soa.mname = "boa";
     assert((AStr[1 .. $] ~ ".boa")
-           .parsePublicKeyFromDomain([".boa"]) is PublicKey.init);
+           .parsePublicKeyFromDomain(zone) is PublicKey.init);
     auto invalid = AStr.dup;
     invalid[0] = 'c';
     assert((invalid ~ ".boa")
-           .parsePublicKeyFromDomain(["boa"]) is PublicKey.init);
+           .parsePublicKeyFromDomain(zone) is PublicKey.init);
 
+    zone.soa.mname = "boap";
     assert((AStr ~ ".boa")
-           .parsePublicKeyFromDomain(["boap", "foo.bar"]) is PublicKey.init);
-    assert((AStr ~ ".boa")
-           .parsePublicKeyFromDomain(["boap", "foo.bar", "boa."]) == WK.Keys.A.address);
+           .parsePublicKeyFromDomain(zone) is PublicKey.init);
 }
 
 /*******************************************************************************
@@ -694,5 +635,86 @@ private struct ZoneData
             this.soa = config.fromConfig(name, serial);
         else
             this.soa.mname = name;
+    }
+
+    /***************************************************************************
+
+         Check if the provided name exactly matches this domain
+
+         Note: this should be `@nogc`, but `splitter` is not
+         (https://issues.dlang.org/show_bug.cgi?id=12768))
+
+         Params:
+           input = The string to check against this zone's mname
+
+    ***************************************************************************/
+
+    public bool matches (in char[] input) const scope @safe pure
+    {
+        // We can't use `std.algorithm.comparison : equal` here,
+        // as we may have an empty label at the end,
+        // either for the domain we're matching against or the requested one
+        // We can't use a `std.range: {zip,lockstep}` + `foreach` approach either,
+        // as it implicitly saves the range. So make a save of the `domain` range
+        // (as we might be iterating multiple times over it), and do it manually.
+        auto auth_domain_range = this.soa.mname.value.splitter('.');
+        auto domain_range = input.splitter('.');
+        while (true)
+        {
+            // Pop empty label(s)
+            if (!auth_domain_range.empty && auth_domain_range.front.length == 0)
+                // Note: Should be empty after this, if the caller properly
+                // validated its input to us.
+                auth_domain_range.popFront();
+            if (!domain_range.empty && domain_range.front.length == 0)
+            {
+                domain_range.popFront();
+                // It means we have something like `a..b.com` which is not valid
+                if (!domain_range.empty)
+                    return false;
+            }
+
+            // Different length means they can't be equal
+            if (auth_domain_range.empty != domain_range.empty)
+                return false;
+
+            // Found a match
+            if (domain_range.empty)
+                return true;
+
+            if (std.uni.sicmp(domain_range.front, auth_domain_range.front))
+                return false; // `sicmp` returns `0` on match
+
+            domain_range.popFront();
+            auth_domain_range.popFront();
+        }
+    }
+
+    /***************************************************************************
+
+         Check if the provided name is a direct child of this domain
+
+         Params:
+           input = The string to check against this zone's mname
+
+         Returns:
+           The owned subdomain, or `null` if it is not a subdomain of this zone.
+
+    ***************************************************************************/
+
+    public const(char)[] owns (return in char[] input)
+        const scope @safe pure
+    {
+        auto range = input.splitter('.');
+        if (range.empty || range.front.length < 1)
+            return null;
+
+        // Slice past the dot
+        const child = range.front;
+        const parentDomain = input[child.length + 1 .. $];
+        range.popFront();
+        if (range.empty)
+            return null;
+        return this.matches(parentDomain) ? child : null;
     }
 }
