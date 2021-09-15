@@ -837,7 +837,7 @@ public class TestAPIManager
         {
             auto listener = reg.locate!TestAPI(agora_addr);
             assert(listener != typeof(listener).init);
-            super(config, new RemoteAPI!TestAPI(listener, timeout));
+            super("localrest", config, new RemoteAPI!TestAPI(listener, timeout));
         }
     }
 

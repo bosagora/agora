@@ -57,7 +57,7 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /// This server's SOA records, one for each authoritative zone
-    private SOA[] zones;
+    private SOA[2] zones;
 
     ///
     private TypedPayload[PublicKey] validator_map;
@@ -78,7 +78,7 @@ public class NameRegistry: NameRegistryAPI
     private ValidatorInfo[] validator_info;
 
     ///
-    public this (RegistryConfig config, FullNodeAPI agora_node)
+    public this (string realm, RegistryConfig config, FullNodeAPI agora_node)
     {
         assert(config.enabled, "Registry instantiated but not enabled");
 
@@ -87,14 +87,24 @@ public class NameRegistry: NameRegistryAPI
         this.agora_node = agora_node;
         Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
 
-        this.log.info("Starting authoritative DNS server for zones: {}",
-                      this.config.authoritative.map!(z => z.name));
+        const vname = "validators." ~ realm;
+        const fname = "flash." ~ realm;
+        static string serverType (bool auth)
+        {
+            return auth ? "authoritative" : "secondary";
+        }
+
+        this.log.info("Registry is {} DNS server for zone '{}'",
+                      serverType(this.config.validators.authoritative), vname);
+        this.log.info("Registry is {} DNS server for zone '{}'",
+                      serverType(this.config.flash.authoritative), fname);
 
         auto currTime = Clock.currTime(UTC());
         // Serial's value wraps around so the cast is safe
         const serial = cast(uint) currTime.toUnixTime();
-        foreach (const ref zone; config.authoritative)
-            this.zones ~= zone.fromConfig(serial);
+
+        this.zones[0] = config.validators.fromConfig(vname, serial);
+        this.zones[1] = config.flash.fromConfig(fname, serial);
     }
 
     ///
@@ -360,7 +370,7 @@ public class NameRegistry: NameRegistryAPI
         const ref Question question, ref Message reply) @safe
     {
         const public_key = question.qname
-            .parsePublicKeyFromDomain(this.zones.map!(z => z.mname.value));
+            .parsePublicKeyFromDomain(this.zones[].map!(z => z.mname.value));
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
@@ -652,10 +662,10 @@ unittest
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
-private SOA fromConfig (in ZoneConfig zone, uint serial) @safe pure
+private SOA fromConfig (in ZoneConfig zone, string name, uint serial) @safe pure
 {
     SOA soa;
-    soa.mname = zone.name;
+    soa.mname = name;
     soa.rname = zone.email.replace('@', '.');
     soa.serial = serial;
     // Casts are safe as the values are validated during config parsing

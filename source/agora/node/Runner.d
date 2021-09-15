@@ -128,7 +128,7 @@ public Listeners runNode (Config config)
 
     if (config.registry.enabled)
     {
-        result.registry = new NameRegistry(config.registry, result.node);
+        result.registry = new NameRegistry(config.node.realm, config.registry, result.node);
         router.registerRestInterface!(NameRegistryAPI)(result.registry);
         /* auto dnstask = */ runTask(() => runDNSServer(config.registry, result.registry));
         result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(result.registry),

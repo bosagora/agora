@@ -277,6 +277,39 @@ public struct NodeConfig
     /// Transaction put into the relay queue will expire, and will be removed
     /// after `relay_tx_cache_exp`.
     public @Optional Duration relay_tx_cache_exp;
+
+    /// The realm to which this node belongs (a domain name)
+    public string realm = "coinnet.bosagora.io";
+
+    /// Validate this struct
+    public void validate () const
+    {
+        ensure(this.realm.length > 0, "node.realm cannot be empty");
+
+        auto rng = this.realm.splitter('.');
+        assert(!rng.empty);
+        ensure(rng.front.length > 0,
+            "node.realm ('{}')starts with a dot ('.'), which is not allowed. Remove it.",
+            this.realm);
+
+        do {
+            // It might be the empty label, in which case it needs to be last
+            if (rng.front.length == 0)
+            {
+                rng.popFront();
+                ensure(rng.empty,
+                    "node.realm ('{}') contains an empty label, which is not " ~
+                    "allowed. Remove the double dot.",
+                    this.realm);
+                break;
+            }
+            ensure(rng.front.length <= 63,
+                "node.realm ('{}') contains a label ('{}') which is longer " ~
+                "than 63 characters ({} characters), which is not allowed.",
+                this.realm, rng.front, rng.front.length);
+            rng.popFront();
+        } while (!rng.empty);
+    }
 }
 
 /// Validator config
@@ -410,64 +443,52 @@ public struct RegistryConfig
     /// The port to bind to - Default to the standard DNS port (53)
     public ushort port = 53;
 
-    /// Which zones this server is authoritative for
-    public @Key("name") immutable(ZoneConfig[]) authoritative;
+    /// The 'validators' zone
+    public immutable(ZoneConfig) validators;
+
+    /// The 'flash' zone
+    public immutable(ZoneConfig) flash;
 
     /// Validate the semantic of the user-provided configuration
     public void validate () const
     {
         ensure(this.address.length > 0, "registry is enabled but no `address` is provided");
         ensure(this.port > 0, "registry.port: 0 is not a valid value");
-        ensure(this.authoritative.length > 0, "registry: No authoritative zones provided");
 
-        foreach (idx, zone; this.authoritative)
+        static void validateZone (string name, in ZoneConfig zone)
         {
-            auto rng = zone.name.splitter('.');
-            ensure(!rng.empty, "registry.authoritative: Empty array entry at index {}", idx);
-            ensure(rng.front.length > 0,
-                   "registry.authoritative: Value '{}' at index '{}' starts with a dot ('.')," ~
-                   " which is not allowed. Remove it.", zone.name, idx);
+            // If we're not authoritative, there's no configuration to validate
+            if (!zone.authoritative)
+                return;
 
-            do {
-                // It might be the empty label, in which case it needs to be last
-                if (rng.front.length == 0)
-                {
-                    rng.popFront();
-                    ensure(rng.empty,
-                           "registry.authoritative: Value '{}' at index '{}' contains" ~
-                           " an empty label, which is not allowed. Remove the double dot.",
-                           zone.name, idx);
-                    break;
-                }
-                ensure(rng.front.length <= 63,
-                       "registry.authoritative: Value '{}' at index '{}' contains a label ('{}') " ~
-                       "which is longer than 63 characters ({} characters), which is not allowed.",
-                       zone.name, idx, rng.front, rng.front.length);
-                rng.popFront();
-            } while (!rng.empty);
+            ensure(zone.email.length > 0,
+                   "registry.{}: Authoritative zones require an email to be provided", name);
 
             // Now validate the durations are consistent with one another
             ensure(zone.refresh <= zone.expire,
-                   "registry.authoritative: Zone '{}' field 'refresh' ({}) should be lower than field 'expire' ({})",
-                   zone.name, zone.refresh, zone.expire);
+                   "registry.{}.refresh ({}) should be lower than field 'expire' ({})",
+                   name, zone.refresh, zone.expire);
             // The other ones could actually be set to very low values to
             // avoid clients caching data, so don't validate them besides
             // checking they fit in an `int`.
             const intMaxSecs = int.max.seconds;
             const uintMaxSecs = uint.max.seconds;
             ensure(zone.refresh <= intMaxSecs,
-                   "registry.authoritative: Zone '{}' field 'refresh' ({}) should be at most {}",
-                   zone.name, zone.refresh, intMaxSecs);
+                   "registry.{}.refresh ({}) should be at most {}",
+                   name, zone.refresh, intMaxSecs);
             ensure(zone.retry <= intMaxSecs,
-                   "registry.authoritative: Zone '%s' field 'retry' ({}) should be at most {}",
-                   zone.name, zone.retry, intMaxSecs);
+                   "registry.{}.retry ({}) should be at most {}",
+                   name, zone.retry, intMaxSecs);
             ensure(zone.expire <= intMaxSecs,
-                   "registry.authoritative: Zone '%s' field 'expire' ({}) should be at most {}",
-                   zone.name, zone.expire, intMaxSecs);
+                   "registry.{}.expire ({}) should be at most {}",
+                   name, zone.expire, intMaxSecs);
             ensure(zone.minimum <= uintMaxSecs,
-                   "registry.authoritative: Zone '%s' field 'minimum' ({}) should be at most {}",
-                   zone.name, zone.minimum, uintMaxSecs);
+                   "registry.{}.minimum ({}) should be at most {}",
+                   name, zone.minimum, uintMaxSecs);
         }
+
+        validateZone("validators", this.validators);
+        validateZone("flash", this.flash);
     }
 }
 
@@ -475,11 +496,11 @@ public struct RegistryConfig
 /// All `Duration` values are precise to the second
 public struct ZoneConfig
 {
-    /// The zone name
-    public string name;
+    /// Whether this registry is authoritative for the zone or not
+    public bool authoritative;
 
     /// Email address of the person responsible for the zone
-    public string email;
+    public SetInfo!string email;
 
     /// How often secondary servers should refresh this zone
     /// Default to 9 minutes, slightly lower than the block interval
