@@ -16,10 +16,10 @@ module agora.stats.Registry;
 import agora.stats.Stats;
 
 ///
-public struct RegistryStatsValue
+public struct RegistryStats
 {
-    public ulong registry_record_count;
+    /// Number of records in the 'validators' zone
+    public ulong registry_validator_record_count;
+    /// Number of records in the 'flash' zone
+    public ulong registry_flash_record_count;
 }
-
-///
-public alias RegistryStats = Stats!(RegistryStatsValue, NoLabel);
