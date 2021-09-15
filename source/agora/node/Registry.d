@@ -52,9 +52,6 @@ public class NameRegistry: NameRegistryAPI
     /// The `flash` zone
     private ZoneData flash;
 
-    /// Validator count stats
-    private RegistryStats registry_stats;
-
     ///
     private FullNodeAPI agora_node;
 
@@ -72,7 +69,7 @@ public class NameRegistry: NameRegistryAPI
         this.config = config;
         this.log = Logger(__MODULE__);
         this.agora_node = agora_node;
-        Utils.getCollectorRegistry().addCollector(&this.collectRegistryStats);
+        Utils.getCollectorRegistry().addCollector(&this.collectStats);
 
         const vname = "validators." ~ realm;
         const fname = "flash." ~ realm;
@@ -94,8 +91,22 @@ public class NameRegistry: NameRegistryAPI
         this.flash.fill(fname, this.config.flash, serial);
     }
 
-    ///
-    mixin DefineCollectorForStats!("registry_stats", "collectRegistryStats");
+    /***************************************************************************
+
+        Collect registry stats
+
+        Params:
+            collector = the Collector to collect the stats into
+
+    ***************************************************************************/
+
+    private void collectStats (Collector collector)
+    {
+        RegistryStats stats;
+        stats.registry_validator_record_count = this.validators.map.length;
+        stats.registry_flash_record_count = this.flash.map.length;
+        collector.collect(stats);
+    }
 
     /// Returns: throws if payload is not valid
     protected void ensureValidPayload (in RegistryPayload registry_payload,
@@ -183,7 +194,6 @@ public class NameRegistry: NameRegistryAPI
                  registry_payload.data.addresses, registry_payload.data.public_key);
         this.validators.map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-        this.registry_stats.setMetricTo!"registry_record_count"(this.validators.map.length + this.flash.map.length);
     }
 
     /***************************************************************************
@@ -244,7 +254,6 @@ public class NameRegistry: NameRegistryAPI
             registry_payload.data.public_key.toString());
         this.flash.map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-        this.registry_stats.setMetricTo!"registry_record_count"(this.validators.map.length + this.flash.map.length);
     }
 
     ///
