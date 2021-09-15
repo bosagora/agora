@@ -66,7 +66,7 @@ public struct PreImageCache
         index 0, and the last value, as returned by `reset`).
         Changing the mode makes it print either the internal content, or the
         full range that is covered, in a newline-separated list.
-        Those two later mode are intended for debugging. The parameterless
+        Those two later modes are intended for debugging. The parameterless
         `toString` overload is not implemented for this reason.
 
         Params:
@@ -160,7 +160,7 @@ public struct PreImageCache
           seed = Initial value to derive preimage from. This will always be the
                  first value of the array.
           length = The number of entries to populate.
-                   This can be used when large sample size are used,
+                   This can be used when large sample sizes are used,
                    and one wishes to stop initialization past a certain threshold.
 
     ***************************************************************************/
@@ -307,7 +307,7 @@ public struct PreImageCycle
         Params:
           secret = The secret to use to generate the pre-image
           cycle_length = The length of a cycle
-          cycles = Number of cycles to generate (defaults to 100)
+          preimage_count = The total number of pre-images
           initial_seek = The value to seek at after generating the seeds
 
     ***************************************************************************/
@@ -393,7 +393,7 @@ public struct PreImageCycle
         The index of the enrollment within the current cycle
 
         This number is incremented every time a new Enrollment is accepted
-        by the consensus protocol, and reset when `nonce` is incremented.
+        by the consensus protocol.
 
     ***************************************************************************/
 
@@ -403,8 +403,8 @@ public struct PreImageCycle
 
         Seed for all enrollments for the current cycle
 
-        This variable is changed every time `nonce` is changed,
-        and contains all the roots used to generate the `preimages` value.
+        This variable is contains all the roots used to generate the
+        `preimages` value.
 
     ***************************************************************************/
 
@@ -425,7 +425,7 @@ public struct PreImageCycle
 
         Seek to the `PreImage`s at height `height`
 
-        This will calculate the `index` and `nonce` according to the given
+        This will calculate the `index` according to the given
         height and populate the `seed` and `preimages` if neccesary.
 
         This will be particularly usefull since the PreImages will now be
@@ -497,7 +497,7 @@ version (unittest)
     static immutable CommonCycleSeed = Hash(`0xb7f3802d774665c6ccb4d24f3e6128542185f847e6da4e9c5a0254cfeb885d2536a89be8b882f0917f3ed43dae4760bb3a85b4c5a9e1871872a794fcf5e5236d`);
 }
 
-/// Each `PreImageCycle` for ramdon keys can be created just with a cycle seed without generating
+/// Each `PreImageCycle` for random keys can be created just with a cycle seed without generating
 /// 5 million preimages. These pre-defined cycle seeds are used for that.
 version (unittest)
 {
