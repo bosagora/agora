@@ -33,7 +33,7 @@ import std.algorithm.iteration : map, splitter;
 import std.algorithm.searching : endsWith;
 import std.array : replace;
 import std.datetime;
-import std.range : zip;
+import std.range : only, zip;
 import std.socket;
 static import std.uni;
 
@@ -46,24 +46,11 @@ public class NameRegistry: NameRegistryAPI
     ///
     protected RegistryConfig config;
 
-    /// Associate a `RegistryPayload` with internal data
-    static private struct TypedPayload
-    {
-        /// The DNS RR TYPE
-        public TYPE type;
+    /// The `validators` zone
+    private ZoneData validators;
 
-        /// The payload itself
-        public RegistryPayload payload;
-    }
-
-    /// This server's SOA records, one for each authoritative zone
-    private SOA[2] zones;
-
-    ///
-    private TypedPayload[PublicKey] validator_map;
-
-    ///
-    private TypedPayload[PublicKey] flash_map;
+    /// The `flash` zone
+    private ZoneData flash;
 
     /// Validator count stats
     private RegistryStats registry_stats;
@@ -103,8 +90,8 @@ public class NameRegistry: NameRegistryAPI
         // Serial's value wraps around so the cast is safe
         const serial = cast(uint) currTime.toUnixTime();
 
-        this.zones[0] = config.validators.fromConfig(vname, serial);
-        this.zones[1] = config.flash.fromConfig(fname, serial);
+        this.validators.fill(vname, this.config.validators, serial);
+        this.flash.fill(fname, this.config.flash, serial);
     }
 
     ///
@@ -146,7 +133,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
-        if (auto ptr = public_key in validator_map)
+        if (auto ptr = public_key in this.validators.map)
         {
             log.trace("Successfull GET /validator: {} => {}", public_key, *ptr);
             return (*ptr).payload;
@@ -176,7 +163,7 @@ public class NameRegistry: NameRegistryAPI
     {
         import std.algorithm;
 
-        ensureValidPayload(registry_payload, this.validator_map);
+        ensureValidPayload(registry_payload, this.validators.map);
 
         // Check that there's either one CNAME, or multiple IPs
         TYPE payload_type = this.getPayloadType(registry_payload);
@@ -194,9 +181,9 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering addresses {}: {} for public key: {}", payload_type,
                  registry_payload.data.addresses, registry_payload.data.public_key);
-        validator_map[registry_payload.data.public_key] =
+        this.validators.map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-        this.registry_stats.setMetricTo!"registry_record_count"(validator_map.length + flash_map.length);
+        this.registry_stats.setMetricTo!"registry_record_count"(this.validators.map.length + this.flash.map.length);
     }
 
     /***************************************************************************
@@ -218,7 +205,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getFlashNode (PublicKey public_key)
     {
-        if (auto ptr = public_key in flash_map)
+        if (auto ptr = public_key in this.flash.map)
         {
             log.trace("Successfull GET /flash_node: {} => {}", public_key, *ptr);
             return (*ptr).payload;
@@ -244,7 +231,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        ensureValidPayload(registry_payload, this.flash_map);
+        ensureValidPayload(registry_payload, this.flash.map);
 
         ensure(isValidChannelOpen(channel.conf, this.agora_node.getBlock(channel.height)),
             "Not a valid channel");
@@ -255,9 +242,9 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
-        flash_map[registry_payload.data.public_key] =
+        this.flash.map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-        this.registry_stats.setMetricTo!"registry_record_count"(validator_map.length + flash_map.length);
+        this.registry_stats.setMetricTo!"registry_record_count"(this.validators.map.length + this.flash.map.length);
     }
 
     ///
@@ -370,11 +357,11 @@ public class NameRegistry: NameRegistryAPI
         const ref Question question, ref Message reply) @safe
     {
         const public_key = question.qname
-            .parsePublicKeyFromDomain(this.zones[].map!(z => z.mname.value));
+            .parsePublicKeyFromDomain(this.validators.soa.mname.value.only);
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
-        auto ptr = public_key in validator_map;
+        auto ptr = public_key in this.validators.map;
         // We are authoritative, so we can set `NameError`
         if (!ptr || !(*ptr).payload.data.addresses.length)
             return Header.RCode.NameError;
@@ -674,4 +661,38 @@ private SOA fromConfig (in ZoneConfig zone, string name, uint serial) @safe pure
     soa.expire = cast(int) zone.expire.total!"seconds";
     soa.minimum = cast(uint) zone.minimum.total!"seconds";
     return soa;
+}
+
+/// Associate a `RegistryPayload` with internal data
+private struct TypedPayload
+{
+    /// The DNS RR TYPE
+    public TYPE type;
+
+    /// The payload itself
+    public RegistryPayload payload;
+}
+
+/// Contains infos related to either `validators` or `flash`
+private struct ZoneData
+{
+    /// The SOA record
+    public SOA soa;
+
+    /// Whether we are authoritative or we're just caching
+    public bool authoritative;
+
+    /// The content of the zone
+    public TypedPayload[PublicKey] map;
+
+    /// Fill this from the configuration
+    public void fill (in string name, in ZoneConfig config, uint serial)
+    {
+        this.authoritative = config.authoritative;
+
+        if (this.authoritative)
+            this.soa = config.fromConfig(name, serial);
+        else
+            this.soa.mname = name;
+    }
 }
