@@ -189,9 +189,6 @@ public class Channel
         this.last_update.sig = this.kp.sign(this.last_update);
 
         this.dump();
-
-        this.taskman.setTimer(100.msecs,
-            { this.start(priv_nonce, peer_nonce); });
     }
 
     /***************************************************************************
@@ -239,11 +236,6 @@ public class Channel
         this.getFeeUTXOs = getFeeUTXOs;
         this.backoff = new Backoff(this.flash_conf.retry_multiplier,
             this.flash_conf.max_retry_delay.total!"msecs".to!uint);
-
-        this.taskman.setTimer(100.msecs,
-            (this.channel_updates.length == 0)
-            ? { this.start(this.priv_nonce, this.peer_nonce); }  // funding not done yet
-            : &this.eventLoop);  // funding already done
     }
 
     /***************************************************************************
@@ -287,9 +279,11 @@ public class Channel
         {
             const key = deserializeFull!PublicKey(row.peek!(ubyte[])(0));
             const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(1));
-            channels[chan_id] = new Channel(key, chan_id, flash_conf, engine,
+            auto chn = new Channel(key, chan_id, flash_conf, engine,
                 taskman, txPublisher, paymentRouter, onChannelNotify,
                 onPaymentComplete, onUpdateComplete, getFeeUTXOs, getFlashClient, db);
+            chn.start();
+            channels[chan_id] = chn;
         }
 
         return channels;
@@ -500,40 +494,41 @@ public class Channel
         funding transaction to be externalized before marking the channel
         as `Open`.
 
-        Params:
-            priv_nonce = the private nonce pair of this node for signing the
-                initial settlement & trigger transactions
-            peer_nonce = the public nonce pair which the counter-party will use
-                to sign the initial settlement & trigger transactions
-
     ***************************************************************************/
 
-    private void start (in PrivateNonce priv_nonce, in PublicNonce peer_nonce)
+    public void start ()
     {
-        this.state = ChannelState.SettingUp;
-        assert(this.cur_seq_id == 0);
-        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
-            ErrorCode.None);
+        this.taskman.setTimer(100.msecs,
+        {
+            // If starting from a backup
+            if (this.channel_updates.length == 0)
+            {
+                this.state = ChannelState.SettingUp;
+                assert(this.cur_seq_id == 0);
+                this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
+                    ErrorCode.None);
 
-        // initial output allocates all the funds back to the channel creator
-        const seq_id = 0;
-        Balance balance = { refund_amount : this.conf.capacity };
-        Output[] outputs = this.buildBalanceOutputs(balance);
+                // initial output allocates all the funds back to the channel creator
+                const seq_id = 0;
+                Balance balance = { refund_amount : this.conf.capacity };
+                Output[] outputs = this.buildBalanceOutputs(balance);
 
-        const funding_utxo = UTXO(0,
-            this.conf.funding_tx.outputs[this.conf.funding_utxo_idx]);
-        const funding_utxo_hash = UTXO.getHash(
-            hashFull(this.conf.funding_tx), this.conf.funding_utxo_idx);
-        auto pair_res = this.update_signer.collectSignatures(this.peer, 0,
-            outputs, priv_nonce, peer_nonce, funding_utxo_hash, funding_utxo);
-        assert(pair_res.error == ErrorCode.None);  // todo: handle
-        this.onSetupComplete(pair_res.value);
+                const funding_utxo = UTXO(0,
+                    this.conf.funding_tx.outputs[this.conf.funding_utxo_idx]);
+                const funding_utxo_hash = UTXO.getHash(
+                    hashFull(this.conf.funding_tx), this.conf.funding_utxo_idx);
+                auto pair_res = this.update_signer.collectSignatures(this.peer, 0,
+                    outputs, this.priv_nonce, this.peer_nonce, funding_utxo_hash, funding_utxo);
+                assert(pair_res.error == ErrorCode.None);  // todo: handle
+                this.onSetupComplete(pair_res.value);
 
-        // wait until the channel is open
-        while (this.state != ChannelState.Open)
-            this.taskman.wait(100.msecs);
+                // wait until the channel is open
+                while (this.state != ChannelState.Open)
+                    this.taskman.wait(100.msecs);
+            }
 
-        this.eventLoop();
+            this.eventLoop();
+        });
     }
 
     /***************************************************************************

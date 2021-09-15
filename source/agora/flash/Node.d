@@ -732,6 +732,7 @@ public class FlashNode : FlashControlAPI
             &this.onPaymentComplete, &this.onUpdateComplete,  &this.getFeeUTXOs,
             this.db);
 
+        channel.start();
         this.channels[chan_conf.chan_id] = channel;
         this.network.addChannel(chan_conf);
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
@@ -1314,6 +1315,7 @@ public class FlashNode : FlashControlAPI
             priv_nonce, result.value, peer, this.engine, this.taskman,
             this.postTransaction, &this.paymentRouter, &this.onChannelNotify,
             &this.onPaymentComplete, &this.onUpdateComplete, &this.getFeeUTXOs, this.db);
+        channel.start();
         this.channels[chan_conf.chan_id] = channel;
     }
 
