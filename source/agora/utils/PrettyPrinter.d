@@ -415,12 +415,12 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
-{ utxo: 0x210f...3b64, seed: 0xcfc5...33e1, cycles: 20, sig: 0x0183...5f8c }
-{ utxo: 0x3b44...ba77, seed: 0xff4e...d698, cycles: 20, sig: 0xe3f9...9bb0 }
-{ utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, cycles: 20, sig: 0x375e...b319 }
-{ utxo: 0x9b27...6b2c, seed: 0xe0dc...7c3e, cycles: 20, sig: 0xa72e...97c8 }
-{ utxo: 0xab19...1255, seed: 0x2bd8...ee80, cycles: 20, sig: 0xe9a3...2c74 }
-{ utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, cycles: 20, sig: 0x07ff...88b7 }]
+{ utxo: 0x210f...3b64, seed: 0xcfc5...33e1, sig: 0x0183...fb90 }
+{ utxo: 0x3b44...ba77, seed: 0xff4e...d698, sig: 0xe3f9...0344 }
+{ utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, sig: 0x375e...89e5 }
+{ utxo: 0x9b27...6b2c, seed: 0xe0dc...7c3e, sig: 0xa72e...1e81 }
+{ utxo: 0xab19...1255, seed: 0x2bd8...ee80, sig: 0xe9a3...c88d }
+{ utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, sig: 0x07ff...4ad1 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Random seed: [0x0000...0000],
@@ -458,12 +458,12 @@ private struct BlockFmt
 @safe unittest
 {
     static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
-{ utxo: 0x210f...3b64, seed: 0xcfc5...33e1, cycles: 20, sig: 0x0183...5f8c }
-{ utxo: 0x3b44...ba77, seed: 0xff4e...d698, cycles: 20, sig: 0xe3f9...9bb0 }
-{ utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, cycles: 20, sig: 0x375e...b319 }
-{ utxo: 0x9b27...6b2c, seed: 0xe0dc...7c3e, cycles: 20, sig: 0xa72e...97c8 }
-{ utxo: 0xab19...1255, seed: 0x2bd8...ee80, cycles: 20, sig: 0xe9a3...2c74 }
-{ utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, cycles: 20, sig: 0x07ff...88b7 }]
+{ utxo: 0x210f...3b64, seed: 0xcfc5...33e1, sig: 0x0183...fb90 }
+{ utxo: 0x3b44...ba77, seed: 0xff4e...d698, sig: 0xe3f9...0344 }
+{ utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, sig: 0x375e...89e5 }
+{ utxo: 0x9b27...6b2c, seed: 0xe0dc...7c3e, sig: 0xa72e...1e81 }
+{ utxo: 0xab19...1255, seed: 0x2bd8...ee80, sig: 0xe9a3...c88d }
+{ utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, sig: 0x07ff...4ad1 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Random seed: [0x0000...0000],
@@ -513,12 +513,12 @@ private struct RangeFmt (R)
     static immutable ResultStr = `
 ====================================================
 Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
-{ utxo: 0x210f...3b64, seed: 0xcfc5...33e1, cycles: 20, sig: 0x0183...5f8c }
-{ utxo: 0x3b44...ba77, seed: 0xff4e...d698, cycles: 20, sig: 0xe3f9...9bb0 }
-{ utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, cycles: 20, sig: 0x375e...b319 }
-{ utxo: 0x9b27...6b2c, seed: 0xe0dc...7c3e, cycles: 20, sig: 0xa72e...97c8 }
-{ utxo: 0xab19...1255, seed: 0x2bd8...ee80, cycles: 20, sig: 0xe9a3...2c74 }
-{ utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, cycles: 20, sig: 0x07ff...88b7 }]
+{ utxo: 0x210f...3b64, seed: 0xcfc5...33e1, sig: 0x0183...fb90 }
+{ utxo: 0x3b44...ba77, seed: 0xff4e...d698, sig: 0xe3f9...0344 }
+{ utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, sig: 0x375e...89e5 }
+{ utxo: 0x9b27...6b2c, seed: 0xe0dc...7c3e, sig: 0xa72e...1e81 }
+{ utxo: 0xab19...1255, seed: 0x2bd8...ee80, sig: 0xe9a3...c88d }
+{ utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, sig: 0x07ff...4ad1 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Random seed: [0x0000...0000],
@@ -534,7 +534,7 @@ Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>
 ====================================================
-Height: 1, Prev: 0x2515...9397, Root: 0xb039...ee32, Enrollments: []
+Height: 1, Prev: 0x4caf...ff86, Root: 0xb039...ee32, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
 Random seed: [0x0000...0000],
@@ -581,10 +581,9 @@ private struct EnrollmentFmt
     {
         try
         {
-            formattedWrite(sink, "{ utxo: %s, seed: %s, cycles: %s, sig: %s }",
+            formattedWrite(sink, "{ utxo: %s, seed: %s, sig: %s }",
                 HashFmt(this.enroll.utxo_key),
                 HashFmt(this.enroll.commitment),
-                this.enroll.cycle_length,
                 HashFmt(this.enroll.enroll_sig.toBlob()));
         }
         catch (Exception ex)
@@ -609,11 +608,10 @@ unittest
     {
         utxo_key: key,
         commitment: seed,
-        cycle_length: 1008,
         enroll_sig: sig,
     };
 
-    static immutable Res1 = `{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }`;
+    static immutable Res1 = `{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }`;
 
     assert(Res1 == format("%s", prettify(enrollment)),
                    format("%s", prettify(enrollment)));
@@ -662,7 +660,6 @@ unittest
     {
         utxo_key: key,
         commitment: seed,
-        cycle_length: 1008,
         enroll_sig: sig,
     };
 
@@ -674,7 +671,7 @@ unittest
         time_offset: 123,
     };
 
-    static immutable Res1 = `{ tx_set: [0x2686...31b7, 0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, cycles: 1008, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 123 }`;
+    static immutable Res1 = `{ tx_set: [0x2686...31b7, 0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 123 }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));

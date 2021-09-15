@@ -169,7 +169,6 @@ unittest
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
     enroll1.commitment = hashFull(Scalar.random());
-    enroll1.cycle_length = 1008;
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
     Pair node_key_pair_2 = Pair.fromScalar(key_pairs[1].secret);
@@ -177,7 +176,6 @@ unittest
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.commitment = hashFull(Scalar.random());
-    enroll2.cycle_length = 1008;
     enroll2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll2);
 
     Pair node_key_pair_3 = Pair.fromScalar(key_pairs[2].secret);
@@ -185,7 +183,6 @@ unittest
     Enrollment enroll3;
     enroll3.utxo_key = utxo_hash3;
     enroll3.commitment = hashFull(Scalar.random());
-    enroll3.cycle_length = 1008;
     enroll3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll3);
 
     // Make pair with non matching scalar and point
@@ -194,7 +191,6 @@ unittest
     Enrollment enroll4;
     enroll4.utxo_key = utxo_hash4;
     enroll4.commitment = hashFull(Scalar.random());
-    enroll4.cycle_length = 1008;
     enroll4.enroll_sig = sign(node_key_pair_invalid, signature_noise, enroll4);
 
     assert(!enroll1.isValid(utxoFinder, Height(0),
@@ -236,7 +232,6 @@ unittest
 
     enroll1.utxo_key = utxo_hash1;
     enroll1.commitment = cycle[Height(0)];
-    enroll1.cycle_length = params.ValidatorCycle;
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
     assert(validator_set.add(Height(0), utxoPeek, enroll1,

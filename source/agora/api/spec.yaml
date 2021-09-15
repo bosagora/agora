@@ -436,9 +436,6 @@ components:
       properties:
         commitment:
           type: string
-        cycle_length:
-          type: integer
-          format: uint32
         enroll_sig:
           type: string
         utxo_key:

@@ -75,7 +75,7 @@ unittest
     import std.conv;
 
     auto sorted_enrollments = checkGenesisEnrollments(GenesisBlock, [ WK.Keys.NODE2, WK.Keys.NODE3, WK.Keys.NODE4,
-        WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7 ], 20);
+        WK.Keys.NODE5, WK.Keys.NODE6, WK.Keys.NODE7 ]);
 
     // For unit tests we want the index of the nodes to match the order of the enrollments
     assert(genesis_validator_keys.map!(k => k.address).array == sorted_enrollments.map!(e => e.key).array);
@@ -89,13 +89,13 @@ unittest
 {
     import agora.consensus.data.genesis.Coinnet;
 
-    checkGenesisEnrollments(GenesisBlock, genesis_validator_keys, 1008);
+    checkGenesisEnrollments(GenesisBlock, genesis_validator_keys);
     checkGenesisTransactions(GenesisBlock);
 }
 
 /// Assert the enrollments of a GenesisBlock match expected values and are sorted by utxo (print the potential replacement set when not matching)
 version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
-    in Block genesisBlock, in KeyPair[] keys, uint cycle_length)
+    in Block genesisBlock, in KeyPair[] keys)
 {
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.Transaction : Transaction;
@@ -112,7 +112,7 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     Hash txhash = hashFull(freeze_tx);
     Hash[] utxos = iota(6).map!(i => UTXO.getHash(txhash, i)).array;
     auto enrollments = utxos.enumerate.map!(en =>
-        NodeEnrollment(EnrollmentManager.makeEnrollment(en.value, keys[en.index], Height(0), cycle_length),
+        NodeEnrollment(EnrollmentManager.makeEnrollment(en.value, keys[en.index], Height(0)),
         keys[en.index].address)).array;
     auto sorted_enrollments = enrollments.sort!((a,b) => a.enrol.utxo_key < b.enrol.utxo_key).array;
     assert(genesisBlock.header.enrollments == sorted_enrollments.map!(e => e.enrol).array,
@@ -120,8 +120,8 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
             sorted_enrollments
                 .fold!((s, e) =>
                     format!"%s\n%s"
-                    (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        %s,\n        Signature.fromString(`%s`)),"
-                        (e.key, e.enrol.utxo_key, e.enrol.commitment, e.enrol.cycle_length, e.enrol.enroll_sig.toString())))
+                    (s, format!"    // %s\n    Enrollment(\n        Hash(`%s`),\n        Hash(`%s`),\n        Signature.fromString(`%s`)),"
+                        (e.key, e.enrol.utxo_key, e.enrol.commitment, e.enrol.enroll_sig.toString())))
                     ("\n    enrollments: [")));
     return sorted_enrollments;
 }

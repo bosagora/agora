@@ -58,7 +58,6 @@ unittest
     const Enrollment record = {
         utxo_key: key,
         commitment: seed,
-        cycle_length: 1008,
         enroll_sig: sig,
     };
 

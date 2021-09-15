@@ -107,8 +107,7 @@ public import std.traits : Parameters;
 
 // Convenience constants
 public const size_t GenesisValidators = GenesisBlock.header.enrollments.count();
-public const uint GenesisValidatorCycle = GenesisBlock
-    .header.enrollments[0].cycle_length;
+public const uint GenesisValidatorCycle = 20;
 
 /// Initialized from the unittest runner and never overriden afterwards
 private __gshared LogLevel defaultLogLevel = LogLevel.Info;
