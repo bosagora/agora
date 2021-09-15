@@ -7,7 +7,7 @@
       validators is stored;
     - It stores `Enrollment`s that are not yet part of the validator set;
     - Most importantly, if this node is a validator, it manages this node's
-      enrollement data, including pre-images.
+      `Enrollment` data, including pre-images.
 
     The consensus protocol requires each validator to commit to a hash and
     to reveal a pre-image for the next `ValidatorCycle` blocks (currently 1008).
@@ -22,17 +22,16 @@
     In order to ensure that we will never lose the ability to reveal
     pre-images, this implementation uses a reproducible scheme:
     on the first run, we generate a "cycle seed" which is derived from a hash
-    of the private key, a constant string, and a nonce, starting from 0.
+    of the private key, a constant string, and a constant value (0).
     Using this cycle seed, we generate a large amount of pre-images
-    (currently enough for 100 enrollments). Then out of this range of
-    [0 .. 100_800] pre-images, we reveal the last 1008 (`ValidatorCycle`),
+    (currently 5_040_000). Then out of this range of
+    [0 .. 5_040_000] pre-images, we reveal the last 1008 (`ValidatorCycle`),
     or in D terms `[$ - 1008 .. $]`.
     When the first enrollment runs out, we reveal the next last 1008,
     or in D terms `[$ - 2016 .. $ - 1008]`.
-    When the cycle is expired, we re-generate a new cycle seed after
-    increasing the nonce.
+    When the cycle is expired, we re-generate a new cycle seed.
     By using this scheme, a node that would start from scratch with
-    an already-enrolled key will be able to recover its nonce and
+    an already-enrolled key will be able to recover its
     cycle index by scanning the blockchain, and resume validating.
 
     Copyright:
@@ -334,7 +333,7 @@ public class EnrollmentManager
                      If `seed` is provided, this parameter is non-optional.
 
         Returns:
-            An `Enrollment` refencing `utxo` signed with `key`
+            An `Enrollment` referencing `utxo` signed with `key`
 
     ***************************************************************************/
 
