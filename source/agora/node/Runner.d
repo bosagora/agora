@@ -118,7 +118,7 @@ public Listeners runNode (Config config)
     }
 
     scope (exit)
-        if (config.registry.enabled && config.registry.dns.enabled)
+        if (config.registry.enabled)
         {
             // Here, we might need to interrupt the task to correctly shut down,
             // however this throws an exception in the task that needs to be explicitly
@@ -130,12 +130,9 @@ public Listeners runNode (Config config)
     {
         result.registry = new NameRegistry(config.registry, result.node);
         router.registerRestInterface!(NameRegistryAPI)(result.registry);
-        if (config.registry.dns.enabled)
-        {
-            /* auto dnstask = */ runTask(() => runDNSServer(config.registry, result.registry));
-            result.tcp ~= listenTCP(config.registry.dns.port, (conn) => conn.runTCPDNSServer(result.registry),
-                config.registry.dns.address);
-        }
+        /* auto dnstask = */ runTask(() => runDNSServer(config.registry, result.registry));
+        result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(result.registry),
+            config.registry.address);
     }
 
     bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
@@ -288,7 +285,7 @@ private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry regis
     // The `listenUDP` needs to be in the `runTask` otherwise we get
     // a fatal error due to a bug in vibe-core (see comment #2):
     /// https://github.com/vibe-d/vibe-core/issues/289
-    auto udp = listenUDP(config.dns.port, config.dns.address);
+    auto udp = listenUDP(config.port, config.address);
     scope (exit) udp.close();
     // Otherwise `recv` allocates 65k per call (!!!)
     ubyte[2048] buffer;

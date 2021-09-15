@@ -272,28 +272,55 @@ event_handlers:
 
 ################################################################################
 ##                             Registry configuration                         ##
-## Configuration for the name registry.                                       ##
 ##                                                                            ##
+## The registry is a DNS server used to resolve the address of validators or  ##
+## Flash nodes. It is also a Full Node (or validator if enabled), as it needs ##
+## to validate registration requests.                                         ##
+##                                                                            ##
+## The registry is optional, and disabled by default. Enabling it exposes an  ##
+## extra API for registration, and a DNS server (on port 53 by default).      ##
 ################################################################################
 registry:
   # If this node should also act as a registry
   enabled: true
 
-  # DNS server configuration
-  dns:
-    enabled: true
-    address: 0.0.0.0
-    port: 53
-    authoritative:
-      validators.bosagora.io:
-        email: dns@validators.bosaagora.io
-      flash.bosagora.io:
-        email: dns.flash.bosagora.io
-        refresh:
-          minutes: 1
-        retry:
-          seconds: 30
-        expire:
-          minutes: 10
-        minimum:
-          minutes: 1
+  # The address to bind the DNS server to (default: 0.0.0.0)
+  # On Linux system with systemd, one might want to specify the local IP,
+  # as systemd-resolvd binds to 127.0.0.53:53, which conflicts with this.
+  address: 0.0.0.0
+  # Port to bind to (default: 53, standard DNS port)
+  # Note that ports < 1024 are privileged ports and might require root powers
+  port: 53
+  # Zones for which this server is authoritative
+  authoritative:
+    # The zone responsible for validators registration
+    validators.bosagora.io:
+      ## The fields below define the SOA record for the DNS entry.
+      ##
+      ## If you are not familiar with DNS, simply enter a valid email address,
+      ## and use the default values.
+      ##
+      ## Those fields are ignored if the server is not authoritative for the zone.
+
+      # Email of the DNS server administrator
+      # This field is required for authoritative servers.
+      email: dns@validators.bosagora.io
+
+      # The rate at which secondary servers will refresh their zones from this server
+      refresh:
+        minutes: 1
+      # Time interval between two retries when a secondary server fails to retrieve data
+      retry:
+        seconds: 30
+      # Initial interval after which the zone data should be purged from cache
+      expire:
+        minutes: 10
+      # The minimum TTL to apply to the zone
+      minimum:
+        minutes: 1
+
+    # Zone responsible for flash nodes registration
+    flash.bosagora.io:
+      # `email` support DNS-style syntax, that is, using `.` instead of `@`
+      email: dns.flash.bosagora.io
+      # The rest of this zone uses the default values.
