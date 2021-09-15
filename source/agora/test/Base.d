@@ -849,8 +849,9 @@ public class TestAPIManager
 
     public void createNameRegistry ()
     {
+        RegistryConfig config = { enabled: true };
         auto registry = RemoteAPI!NameRegistryAPI.spawn!TestNameRegistry(
-            RegistryConfig.init, this.nodes[0].address, 5.seconds, &this.registry);
+            config, this.nodes[0].address, 5.seconds, &this.registry);
         this.registry.register("name.registry", registry.ctrl.listener());
     }
 
