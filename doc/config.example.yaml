@@ -67,6 +67,10 @@ node:
   # The minimum percentage of average fee in the pool which the incoming
   # transaction should include
   min_fee_pct: 80
+  # Which 'realm' this node is connected to - By default, 'coinnet.bosagora.io'
+  # Do not change this unless you intend to maintain your own DNS servers,
+  # or want to join an alternative network.
+  realm: 'coinnet.bosagora.io'
 
 # Each entry in this array is an interface Agora will listen to, allowing to
 # expose the same node on more than one network interface or with different
@@ -291,36 +295,38 @@ registry:
   # Port to bind to (default: 53, standard DNS port)
   # Note that ports < 1024 are privileged ports and might require root powers
   port: 53
-  # Zones for which this server is authoritative
-  authoritative:
-    # The zone responsible for validators registration
-    validators.bosagora.io:
-      ## The fields below define the SOA record for the DNS entry.
-      ##
-      ## If you are not familiar with DNS, simply enter a valid email address,
-      ## and use the default values.
-      ##
-      ## Those fields are ignored if the server is not authoritative for the zone.
+  # The zone responsible for validators registration
+  validators:
+    # Whether this registry is authoritative for this zone, or just a secondary
+    authoritative: true
 
-      # Email of the DNS server administrator
-      # This field is required for authoritative servers.
-      email: dns@validators.bosagora.io
+    ## The fields below define the SOA record for the DNS entry.
+    ##
+    ## If you are not familiar with DNS, simply enter a valid email address,
+    ## and use the default values.
+    ##
+    ## Those fields are ignored if the server is not `authoritative` for the zone.
 
-      # The rate at which secondary servers will refresh their zones from this server
-      refresh:
-        minutes: 1
-      # Time interval between two retries when a secondary server fails to retrieve data
-      retry:
-        seconds: 30
-      # Initial interval after which the zone data should be purged from cache
-      expire:
-        minutes: 10
-      # The minimum TTL to apply to the zone
-      minimum:
-        minutes: 1
+    # Email of the DNS server administrator
+    # This field is required for authoritative servers.
+    # `email` support DNS-style syntax, that is, using `.` instead of `@`
+    email: dns@validators.bosagora.io
 
-    # Zone responsible for flash nodes registration
-    flash.bosagora.io:
-      # `email` support DNS-style syntax, that is, using `.` instead of `@`
-      email: dns.flash.bosagora.io
-      # The rest of this zone uses the default values.
+    # The rate at which secondary servers will refresh their zones from this server
+    refresh:
+      minutes: 1
+    # Time interval between two retries when a secondary server fails to retrieve data
+    retry:
+      seconds: 30
+    # Initial interval after which the zone data should be purged from cache
+    expire:
+      minutes: 10
+    # The minimum TTL to apply to the zone
+    minimum:
+      minutes: 1
+
+  # Zone responsible for flash nodes registration
+  flash:
+    # Having separate authoritative server increases redundancy and reduces load,
+    # hence this configuration, while unlikely in a small to medium network, is supported.
+    authoritative: false
