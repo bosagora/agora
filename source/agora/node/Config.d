@@ -464,7 +464,7 @@ public struct RegistryConfig
             ensure(zone.expire <= intMaxSecs,
                    "registry.authoritative: Zone '%s' field 'expire' ({}) should be at most {}",
                    zone.name, zone.expire, intMaxSecs);
-            ensure(zone.minimum <= intMaxSecs,
+            ensure(zone.minimum <= uintMaxSecs,
                    "registry.authoritative: Zone '%s' field 'minimum' ({}) should be at most {}",
                    zone.name, zone.minimum, uintMaxSecs);
         }
