@@ -386,9 +386,6 @@ public class NetworkManager
     /// All connected nodes (Validators & FullNodes)
     public DList!NodeConnInfo peers;
 
-    /// Easy lookup of currently connected peers
-    protected Set!Address connected_peers;
-
     /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
 
@@ -466,7 +463,6 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
-        this.connected_peers.put(node.client.address);
         this.peers.insertBack(node);
 
         if (node.isValidator())
@@ -775,9 +771,9 @@ public class NetworkManager
     private bool shouldEstablishConnection (Address address)
     {
         return !this.banman.isBanned(address) &&
-            address !in this.connected_peers &&
             address !in this.connection_tasks &&
-            address !in this.todo_addresses;
+            address !in this.todo_addresses &&
+            !this.peers[].map!(p => p.address).canFind(address);
     }
 
     /// Received new set of addresses, put them in the todo address list
