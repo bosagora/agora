@@ -766,6 +766,11 @@ public class NetworkManager
     /// Ditto
     private void addAddress (Address address)
     {
+        // Ensure we do not have a trailing slash for address
+        while (address.length && address[$ - 1] == '/')
+            address.length -= 1;
+        if (!address.length) return;
+
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
 
