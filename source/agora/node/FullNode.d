@@ -28,7 +28,6 @@ import agora.consensus.data.Block;
 import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.ManagedDatabase;
-import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.VibeTask;
 import agora.common.Types;
@@ -115,9 +114,6 @@ public class FullNode : API
 
     /// Network of connected nodes
     protected NetworkManager network;
-
-    /// Metadata instance
-    protected Metadata metadata;
 
     /// Transaction pool
     protected TransactionPool pool;
@@ -249,8 +245,7 @@ public class FullNode : API
         this.cacheDB = this.makeCacheDB();
         this.taskman = this.makeTaskManager();
         this.clock = this.makeClock(this.taskman);
-        this.metadata = this.makeMetadata();
-        this.network = this.makeNetworkManager(this.metadata, this.taskman, this.clock);
+        this.network = this.makeNetworkManager(this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
         this.utxo_set = this.makeUTXOSet();
         this.pool = this.makeTransactionPool();
@@ -616,7 +611,6 @@ public class FullNode : API
         // But a SEGV is better than memory corruption.
         this.taskman = null;
         this.clock = null;
-        this.metadata = null;
         this.pool = null;
         this.ledger = null;
         this.enroll_man = null;
@@ -700,7 +694,6 @@ public class FullNode : API
 
         Params:
             node_config = the node config
-            metadata = metadata containing known peers and other meta info
             taskman = task manager
             clock = clock instance
 
@@ -709,10 +702,9 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected NetworkManager makeNetworkManager (Metadata metadata,
-        ITaskManager taskman, Clock clock)
+    protected NetworkManager makeNetworkManager (ITaskManager taskman, Clock clock)
     {
-        return new NetworkManager(this.config, metadata, taskman, clock);
+        return new NetworkManager(this.config, this.cacheDB, taskman, clock);
     }
 
     protected TransactionRelayer makeTransactionRelayer ()
@@ -818,24 +810,6 @@ public class FullNode : API
     protected UTXOSet makeUTXOSet ()
     {
         return new UTXOSet(this.stateDB);
-    }
-
-    /***************************************************************************
-
-        Reads the metadata from the provided disk path.
-
-        Subclasses can override this method and return
-        a Metadata object which loads/dumps data in memory
-        rather than on disk, to avoid I/O (e.g. for unittesting)
-
-        Returns:
-            the metadata loaded from disk
-
-    ***************************************************************************/
-
-    protected Metadata makeMetadata () @system
-    {
-        return new DiskMetadata(this.config.node.data_dir);
     }
 
     /***************************************************************************

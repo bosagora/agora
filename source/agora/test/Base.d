@@ -30,7 +30,6 @@ import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitMask;
 import agora.common.ManagedDatabase;
-import agora.common.Metadata;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
@@ -1592,12 +1591,6 @@ private mixin template TestNodeMixin ()
         return new ManagedDatabase(":memory:");
     }
 
-    /// Used by the node
-    public override Metadata makeMetadata () @system
-    {
-        return new MemMetadata();
-    }
-
     /// Return a LocalRest-backed task manager
     protected override ITaskManager makeTaskManager ()
     {
@@ -1606,11 +1599,11 @@ private mixin template TestNodeMixin ()
 
     /// Return an instance of the custom TestNetworkManager
     protected override NetworkManager makeNetworkManager (
-        Metadata metadata, ITaskManager taskman, Clock clock)
+        ITaskManager taskman, Clock clock)
     {
         assert(taskman !is null);
         return new TestNetworkManager(
-            this.config, metadata, taskman, clock, this.config.interfaces[0].address,
+            this.config, this.cacheDB, taskman, clock, this.config.interfaces[0].address,
             this.registry);
     }
 
