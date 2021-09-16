@@ -76,6 +76,12 @@ public class NetworkManager
         /// Client
         NetworkClient client;
 
+        /// Convenience function to access the client's address
+        public Address address () const scope @safe pure nothrow @nogc
+        {
+            return this.client.address;
+        }
+
         ///
         public bool isValidator () const scope @safe pure nothrow @nogc
         {
