@@ -27,7 +27,7 @@ import agora.api.Registry;
 import agora.api.Validator;
 import agora.common.BanManager;
 import agora.common.Types;
-import agora.common.Metadata;
+import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
 import agora.consensus.data.Block;
@@ -404,7 +404,7 @@ public class NetworkManager
     protected BanManager banman;
 
     ///
-    private Metadata metadata;
+    private ManagedDatabase cacheDB;
 
     /// Clock instance
     protected Clock clock;
@@ -419,7 +419,7 @@ public class NetworkManager
     protected URL proxy_url;
 
     /// Ctor
-    public this (in Config config, Metadata metadata, ITaskManager taskman, Clock clock)
+    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
@@ -427,30 +427,31 @@ public class NetworkManager
         this.proxy_url = config.proxy.url;
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
-        this.metadata = metadata;
+        this.cacheDB = cache;
         this.banman = this.getBanManager(config.banman, clock,
             node_config.data_dir);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
         this.banman.load();
 
-        assert(this.metadata !is null, "Metadata is null");
-        this.metadata.load();
+        this.cacheDB.execute(
+            "CREATE TABLE IF NOT EXISTS network_manager (" ~
+            "utxo TEXT, pubkey TEXT, address TEXT NOT NULL)");
 
-        // if we have peers in the metadata, use them
-        if (this.metadata.peers.length > 0)
+        auto results = this.cacheDB.execute("SELECT address FROM network_manager");
+        bool needSeeding = results.empty;
+        foreach (ref row; results)
         {
-            this.addAddresses(this.metadata.peers);
+            const address = row.peek!(string)(0);
+            this.addAddress(address);
         }
-        else
-        {
-            // add the IP seeds
-            this.addAddresses(Set!Address.from(config.network));
 
-            // add the DNS seeds
-            if (config.dns_seeds.length > 0)
-                this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
-        }
+        // add the IP seeds
+        this.addAddresses(Set!Address.from(config.network));
+
+        // add the DNS seeds
+        if (config.dns_seeds.length > 0)
+            this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -469,7 +470,6 @@ public class NetworkManager
             this.required_peers.remove(node.utxo);
 
         this.discovery_task.add(node.client);
-        this.metadata.peers.put(node.client.address);
         this.connection_tasks.remove(node.client.address);
 
         this.registerAsListener(node.client);
@@ -1066,12 +1066,15 @@ public class NetworkManager
     }
 
     /// Shut down timers & dump the metadata
-    public void shutdown () @safe
+    public void shutdown () @trusted
     {
         foreach (peer; this.peers)
             peer.client.shutdown();
         this.banman.dump();
-        this.metadata.dump();
+        foreach (const ref peer; this.peers)
+            this.cacheDB.execute(
+                "REPLACE INTO network_manager(address, utxo, pubkey) VALUES(?, ?, ?)",
+                peer.address, peer.utxo, peer.key);
     }
 
     ///
