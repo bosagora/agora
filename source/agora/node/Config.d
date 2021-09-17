@@ -32,9 +32,11 @@ import scpd.types.Utils;
 import vibe.inet.url;
 
 import std.algorithm.iteration : splitter;
+import std.algorithm.searching : all;
 import std.exception;
 import std.getopt;
 import std.traits : hasUnsharedAliasing;
+import std.uni : isAlphaNum;
 
 import core.time;
 
@@ -289,6 +291,12 @@ public struct NodeConfig
     /// Validate this struct
     public void validate () const scope @safe
     {
+        static bool isDomainChar (dchar c) @safe pure nothrow @nogc
+        {
+            // Dot is handled by `splitter`
+            return isAlphaNum(c) || c == '-';
+        }
+
         ensure(this.realm.length > 0, "node.realm cannot be empty");
 
         auto rng = this.realm.splitter('.');
@@ -312,6 +320,17 @@ public struct NodeConfig
                 "node.realm ('{}') contains a label ('{}') which is longer " ~
                 "than 63 characters ({} characters), which is not allowed.",
                 this.realm, rng.front, rng.front.length);
+
+            ensure(rng.front.all!isDomainChar,
+                   "node.realm: label '{}' contains non-alpha characters. " ~
+                   "Only alphanumeric ('a' to 'z', 'A' to 'Z', '0' to '9') and dash ('-'_ are allowed.",
+                   rng.front);
+
+            ensure(rng.front[0] != '-',
+                   "node.realm: label '{}' cannot start with a dash", rng.front);
+            ensure(rng.front[$-1] != '-',
+                   "node.realm: label '{}' cannot end with a dash", rng.front);
+
             rng.popFront();
         } while (!rng.empty);
     }
