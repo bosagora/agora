@@ -469,21 +469,14 @@ public class FlashNode : FlashControlAPI
     /// Handle an outgoing gossip event
     private void handleGossip (GossipEvent event)
     {
-        scope should_gossip = (in ChannelConfig conf, in PublicKey key)
-        {
-            return !conf.is_private || conf.is_peer(key);
-        };
-
         foreach (key, peer; this.known_peers)
         final switch (event.type) with (GossipType)
         {
         case Open:
-            if (should_gossip(event.open.conf, key))
-                peer.gossipChannelsOpen([event.open].staticArray);
+            peer.gossipChannelsOpen([event.open].staticArray);
             break;
         case Update:
-            if (should_gossip(this.known_channels[event.update.chan_id].conf, key))
-                peer.gossipChannelUpdates([event.update].staticArray);
+            peer.gossipChannelUpdates([event.update].staticArray);
             break;
         }
     }

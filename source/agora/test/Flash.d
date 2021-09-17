@@ -594,7 +594,8 @@ private TestConf flashTestConf ()
     conf.event_handlers = [
         EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.A.address.to!string()]),
         EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.C.address.to!string()]),
-        EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.D.address.to!string()])
+        EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.D.address.to!string()]),
+        EventHandlerConfig(HandlerType.BlockExternalized, [WK.Keys.E.address.to!string()])
     ];
     return conf;
 }
@@ -1916,4 +1917,134 @@ unittest
     iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
     network.listener.waitUntilChannelState(chan_id,
         ChannelState.Closed);
+}
+
+/// Test private channels
+unittest
+{
+    auto conf = flashTestConf();
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
+    scope (exit) network.shutdown();
+    scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+    auto diego = network.createFlashNode(WK.Keys.D);
+    auto eomer = network.createFlashNode(WK.Keys.E);
+
+    network.start();
+    network.waitForDiscovery();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+    //const Settle_10_Blocks = 10;
+
+    /+ OPEN ALICE => CHARLIE CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const alice_utxo = UTXO(0, txs[0].outputs[0]);
+    const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
+    const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
+        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, to!string(WK.Keys.C.address));
+    assert(alice_charlie_chan_id_res.error == ErrorCode.None,
+        alice_charlie_chan_id_res.message);
+    const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
+    log.info("Alice charlie channel ID: {}", alice_charlie_chan_id);
+    network.listener.waitUntilChannelState(alice_charlie_chan_id,
+        ChannelState.WaitingForFunding);
+
+    // await alice & charlie channel funding transaction
+    network.expectTxExternalization(alice_charlie_chan_id);
+
+    // wait for the parties to detect the funding tx
+    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
+    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
+
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    /+ OPEN CHARLIE => DIEGO CHANNEL (PRIVATE) +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const charlie_utxo = UTXO(0, txs[1].outputs[0]);
+    const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
+    const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
+        Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, true, to!string(WK.Keys.D.address));
+    assert(charlie_diego_chan_id_res.error == ErrorCode.None,
+        charlie_diego_chan_id_res.message);
+    const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
+    log.info("Charlie Diego channel ID: {}", charlie_diego_chan_id);
+    network.listener.waitUntilChannelState(charlie_diego_chan_id,
+        ChannelState.WaitingForFunding);
+
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(charlie_diego_chan_id);
+
+    // wait for the parties to detect the funding tx
+    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
+    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    /+ OPEN DIEGO => EOMER CHANNEL +/
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const diego_utxo = UTXO(0, txs[2].outputs[0]);
+    const diego_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
+    const eomer_diego_chan_id_res = diego.openNewChannel(diego_utxo, diego_utxo_hash,
+        Amount(3_000), Settle_1_Blocks, WK.Keys.E.address, false, to!string(WK.Keys.E.address));
+    assert(eomer_diego_chan_id_res.error == ErrorCode.None,
+        eomer_diego_chan_id_res.message);
+    const eomer_diego_chan_id = eomer_diego_chan_id_res.value;
+    log.info("Eomer Diego channel ID: {}", eomer_diego_chan_id);
+    network.listener.waitUntilChannelState(eomer_diego_chan_id,
+        ChannelState.WaitingForFunding);
+
+    // await charlie & charlie channel funding transaction
+    network.expectTxExternalization(eomer_diego_chan_id);
+
+    // wait for the parties to detect the funding tx
+    eomer.waitForChannelOpen(WK.Keys.E.address, eomer_diego_chan_id);
+    diego.waitForChannelOpen(WK.Keys.D.address, eomer_diego_chan_id);
+    network.listener.waitUntilChannelState(eomer_diego_chan_id, ChannelState.Open);
+    /+++++++++++++++++++++++++++++++++++++++++++++/
+
+    // also wait for all parties to discover other channels on the network
+    alice.waitForChannelDiscovery(charlie_diego_chan_id);
+    eomer.waitForChannelDiscovery(charlie_diego_chan_id);
+    alice.waitForChannelDiscovery(eomer_diego_chan_id);
+    charlie.waitForChannelDiscovery(eomer_diego_chan_id);
+    diego.waitForChannelDiscovery(alice_charlie_chan_id);
+    eomer.waitForChannelDiscovery(alice_charlie_chan_id);
+
+    // begin off-chain transactions
+    auto inv_1 = diego.createNewInvoice(WK.Keys.D.address, Amount(2_000),
+        time_t.max, "payment 1");
+
+    // This would have to use Charlie => Diego channel as a hop, but channel is private
+    alice.payInvoice(WK.Keys.A.address, inv_1.value);
+    auto inv_res = network.listener.waitUntilNotified(inv_1.value);
+    assert(inv_res == ErrorCode.PathNotFound, format("Payment %s didn't fail", inv_res));
+
+    auto inv_2 = charlie.createNewInvoice(WK.Keys.C.address, Amount(1_000),
+        time_t.max, "payment 1");
+    auto inv_3 = eomer.createNewInvoice(WK.Keys.E.address, Amount(2_000),
+        time_t.max, "payment 1");
+
+    // charlie and eomer should be able to pay each other.
+    charlie.payInvoice(WK.Keys.C.address, inv_3.value);
+    inv_res = network.listener.waitUntilNotified(inv_3.value);
+    assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
+
+    eomer.payInvoice(WK.Keys.E.address, inv_2.value);
+    inv_res = network.listener.waitUntilNotified(inv_2.value);
+    assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
 }
