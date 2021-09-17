@@ -110,21 +110,33 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /// Returns: throws if payload is not valid
-    protected void ensureValidPayload (in RegistryPayload registry_payload,
+    protected TYPE ensureValidPayload (in RegistryPayload payload,
         TypedPayload[PublicKey] map) @safe
     {
         // verify signature
-        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
+        ensure(payload.verifySignature(payload.data.public_key),
                 "Incorrect signature for payload");
 
         // check if we received stale data
-        if (auto previous = registry_payload.data.public_key in map)
-            ensure(previous.payload.data.seq <= registry_payload.data.seq,
+        if (auto previous = payload.data.public_key in map)
+            ensure(previous.payload.data.seq <= payload.data.seq,
                 "registry already has a more up-to-date version of the data");
 
-        ensure(registry_payload.data.addresses.length > 0,
+        ensure(payload.data.addresses.length > 0,
                 "Payload for '{}' should have addresses but have 0",
-                registry_payload.data.public_key);
+                payload.data.public_key);
+
+        // Check that there's either one CNAME, or multiple IPs
+        TYPE payload_type;
+        foreach (idx, const ref addr; payload.data.addresses)
+        {
+            const this_type = addr.guessAddressType();
+            ensure(this_type != TYPE.CNAME || payload.data.addresses.length == 1,
+                    "Can only have one domain name (CNAME) for payload, not: {}",
+                    payload);
+            payload_type = this_type;
+        }
+        return payload_type;
     }
 
     /***************************************************************************
@@ -175,10 +187,7 @@ public class NameRegistry: NameRegistryAPI
     {
         import std.algorithm;
 
-        ensureValidPayload(registry_payload, this.validators.map);
-
-        // Check that there's either one CNAME, or multiple IPs
-        TYPE payload_type = this.getPayloadType(registry_payload);
+        TYPE payload_type = this.ensureValidPayload(registry_payload, this.validators.map);
 
         // Last step is to check the state of the chain
         auto last_height = this.agora_node.getBlockHeight() + 1;
@@ -242,35 +251,16 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        ensureValidPayload(registry_payload, this.flash.map);
+        TYPE payload_type = this.ensureValidPayload(registry_payload, this.flash.map);
 
         ensure(isValidChannelOpen(channel.conf, this.agora_node.getBlock(channel.height)),
             "Not a valid channel");
-
-        // Check that there's either one CNAME, or multiple IPs
-        TYPE payload_type = this.getPayloadType(registry_payload);
 
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
         this.flash.map[registry_payload.data.public_key] =
             TypedPayload(payload_type, registry_payload);
-    }
-
-    ///
-    protected TYPE getPayloadType (in RegistryPayload payload) @safe
-    {
-        // Check that there's either one CNAME, or multiple IPs
-        TYPE payload_type;
-        foreach (idx, const ref addr; payload.data.addresses)
-        {
-            const this_type = addr.guessAddressType();
-            ensure(this_type != TYPE.CNAME || payload.data.addresses.length == 1,
-                    "Can only have one domain name (CNAME) for payload, not: {}",
-                    payload);
-            payload_type = this_type;
-        }
-        return payload_type;
     }
 
     /***************************************************************************
