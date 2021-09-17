@@ -2173,12 +2173,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     string validatorAddress (size_t idx, KeyPair key)
     {
-        return format("Validator #%s (%s)", idx, key.address);
+        return format("Validator-%s.%s.localrest", idx, key.address);
     }
 
     string fullNodeAddress (size_t idx)
     {
-        return format("FullNode #%s", idx);
+        return format("FullNode-%s.localrest", idx);
     }
 
     auto outsider_validators_keys = WK.Keys.byRange()
