@@ -139,6 +139,11 @@ public struct Config
 
         if (this.consensus.quorum_threshold < 1 || this.consensus.quorum_threshold > 100)
             throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
+
+        // Work around https://github.com/bosagora/config/issues/3
+        this.node.validate();
+        if (this.registry.enabled)
+            this.registry.validate();
     }
 }
 
@@ -282,7 +287,7 @@ public struct NodeConfig
     public string realm = "coinnet.bosagora.io";
 
     /// Validate this struct
-    public void validate () const
+    public void validate () const scope @safe
     {
         ensure(this.realm.length > 0, "node.realm cannot be empty");
 
@@ -450,7 +455,7 @@ public struct RegistryConfig
     public immutable(ZoneConfig) flash;
 
     /// Validate the semantic of the user-provided configuration
-    public void validate () const
+    public void validate () const scope @safe
     {
         ensure(this.address.length > 0, "registry is enabled but no `address` is provided");
         ensure(this.port > 0, "registry.port: 0 is not a valid value");
