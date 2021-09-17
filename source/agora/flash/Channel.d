@@ -121,8 +121,7 @@ public class Channel
     private Backoff backoff;
 
     /// Called when a channel update has been completed.
-    private alias GetFeeUTXOs = FeeUTXOs delegate (PublicKey pk,
-        ulong tx_size);
+    private alias GetFeeUTXOs = FeeUTXOs delegate (ulong tx_size);
     /// Ditto
     private GetFeeUTXOs getFeeUTXOs;
 
@@ -2236,7 +2235,7 @@ LOuter: while (1)
         auto update_input = update_tx.inputs[0];
         auto update_ouput = update_tx.outputs[0];
 
-        auto utxos = this.getFeeUTXOs(this.own_pk, update_tx.sizeInBytes());
+        auto utxos = this.getFeeUTXOs(update_tx.sizeInBytes());
         update_tx.inputs ~= utxos.utxos.map!(hash => Input(hash)).array;
         update_tx.inputs.sort();
 

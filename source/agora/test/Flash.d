@@ -374,7 +374,9 @@ public class FlashNodeFactory : TestAPIManager
             max_retry_delay : 100.msecs,
             listener_address : ListenerAddress,
             registry_address : "name.registry",
-            addresses_to_register : [to!string(kp.address)]};
+            addresses_to_register : [to!string(kp.address)],
+            key_pair : kp,
+        };
         return this.createFlashNode!FlashNodeImpl(kp, conf, storage, file, line);
     }
 
@@ -1010,7 +1012,8 @@ unittest
         max_retry_time : 4.seconds,
         max_retry_delay : 100.msecs,
         registry_address : "name.registry",
-        addresses_to_register : [to!string(WK.Keys.A.address)]
+        addresses_to_register : [to!string(WK.Keys.A.address)],
+        key_pair : WK.Keys.A
     };
 
     auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
@@ -1508,6 +1511,7 @@ unittest
         registry_address : "name.registry",
         addresses_to_register : [to!string(WK.Keys.C.address)],
         listener_address : network.ListenerAddress,
+        key_pair : WK.Keys.C
     };
     auto alice = network.createFlashNode(WK.Keys.A);
     auto charlie = network.createFlashNode(WK.Keys.C, charlie_conf);
@@ -1709,7 +1713,8 @@ unittest
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
         registry_address : "name.registry",
-        addresses_to_register : [to!string(WK.Keys.A.address)]
+        addresses_to_register : [to!string(WK.Keys.A.address)],
+        key_pair : WK.Keys.A
     };
 
     auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
@@ -1806,7 +1811,8 @@ unittest
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
         registry_address : "name.registry",
-        addresses_to_register : [to!string(WK.Keys.A.address)]
+        addresses_to_register : [to!string(WK.Keys.A.address)],
+        key_pair : WK.Keys.A
     };
 
     auto alice = network.createFlashNode(WK.Keys.A, alice_conf);

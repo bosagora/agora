@@ -73,6 +73,11 @@ public struct FlashConfig
 
     /// Multiplier for the truncating exponential backoff retrying algorithm
     public uint retry_multiplier = 10;
+
+    /// The seed to use for the keypair of this node
+    /// This will only be used for paying on-chain fees in uncollaborative close attempts
+    @Converter!KeyPair((value) => KeyPair.fromSeed(SecretKey.fromString(value.as!string)))
+    public @Name("seed") immutable KeyPair key_pair;
 }
 
 /***************************************************************************

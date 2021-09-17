@@ -170,6 +170,13 @@ flash:
   max_retry_time:
     msecs: 60000
 
+  # The seed to use for the keypair of this node
+  # This will only be used for paying on-chain fees in uncollaborative close attempts
+  #
+  # DO NOT USE THOSE VALUES ANYWHERE
+  # Public address:  boa1xrfl00xmyf28jxnnh2g3xvwgqffx4wxh6sdkn5mvqauygtv3vmpwq93vv77
+  seed: SBGQOIPUN4FV4TVDHJ7VLZ2NE5AC3G5WRGVKRKM7JO4BH57KE6IQFRZI
+
 ################################################################################
 ##                         Ban manager configuration                          ##
 ################################################################################

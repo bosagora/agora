@@ -1411,12 +1411,13 @@ public class FlashNode : FlashControlAPI
     }
 
     ///
-    protected FeeUTXOs getFeeUTXOs (PublicKey pk, ulong tx_size)
+    protected FeeUTXOs getFeeUTXOs (ulong tx_size)
     {
         auto per_byte = this.listener.getEstimatedTxFee();
         if(!per_byte.mul(tx_size))
             return FeeUTXOs.init;
-        auto utxos = this.listener.getFeeUTXOs(pk, per_byte);
+        // Always pay with the node key
+        auto utxos = this.listener.getFeeUTXOs(this.conf.key_pair.address, per_byte);
         // reuse total_value as refund amount
         if (!utxos.total_value.sub(per_byte))
             utxos.total_value = Amount(0);
