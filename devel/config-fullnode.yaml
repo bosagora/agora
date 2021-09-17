@@ -10,6 +10,7 @@
 # ./build/agora -c devel/config-fullnode.yaml
 
 node:
+  realm: "testnet.bosagora.io"
   testing: true
   data_dir: .fullnode/data/
   # Can be used with curl or just a browser
@@ -31,11 +32,10 @@ validator:
 
 registry:
   enabled: true
-  authoritative:
-    flash.local:
-      email: github@bosagora.io
-    validators.local:
-      email: github@bosagora.io
+  flash:
+    email: github@bosagora.io
+  validators:
+    email: github@bosagora.io
 
 # Note: You may want to comment some of those to selectively test
 network:
