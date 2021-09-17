@@ -283,6 +283,43 @@ public class EnrollmentPool
 
     /***************************************************************************
 
+        Get the enrollment with the key and the height
+
+        Params:
+            enroll_hash = key for the enrollment which has the frozen UTXO
+            height = the height of proposed block
+
+        Returns:
+            Return an `Enrollment` if the enrollment is found, otherwise
+                `Enrollment.init`
+
+    ***************************************************************************/
+
+    public Enrollment getEnrollment (in Hash enroll_hash, in Height height)
+        @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT key, val FROM enrollment_pool " ~
+                "WHERE key = ? AND avail_height = ?", enroll_hash, height.value);
+
+            foreach (row; results)
+            {
+                return deserializeFull!Enrollment(row.peek!(ubyte[])(1));
+            }
+        }
+        catch (Exception ex)
+        {
+            log.error("Exception occured on getEnrollment: {}, " ~
+                "Key for enrollment: {}", ex.msg, enroll_hash);
+            return Enrollment.init;
+        }
+
+        return Enrollment.init;
+    }
+
+    /***************************************************************************
+
         Get the height when the enrollment will be available
 
         Params:

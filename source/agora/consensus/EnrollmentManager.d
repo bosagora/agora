@@ -46,6 +46,7 @@
 module agora.consensus.EnrollmentManager;
 
 import agora.common.ManagedDatabase;
+import agora.common.Set;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
@@ -114,6 +115,15 @@ public class EnrollmentManager
 
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
+
+    /// Current height
+    private Height current_height;
+
+    /// Indices of Frozen UTXOs which are sorted by hashes of UTXOs
+    private uint[Hash] utxo_key_to_idx;
+
+    /// Enrollments of Frozen UTXOs by index
+    private Enrollment[uint] utxo_idx_to_enroll;
 
     /***************************************************************************
 
@@ -222,8 +232,15 @@ public class EnrollmentManager
             return false;
         }
 
-        return this.enroll_pool.add(enroll, Height(available), finder,
+        auto result = this.enroll_pool.add(enroll, Height(available), finder,
                                     &this.validator_set.findRecentEnrollment);
+
+        // Update the map of index to UTXO if the UTXO is already frozen
+        if (result && this.current_height + 1 == Height(available) &&
+            enroll.utxo_key in this.utxo_key_to_idx)
+            this.utxo_idx_to_enroll[this.utxo_key_to_idx[enroll.utxo_key]] = enroll;
+
+        return result;
     }
 
     /***************************************************************************
@@ -732,6 +749,85 @@ public class EnrollmentManager
     public EnrollmentFinder getEnrollmentFinder () @trusted nothrow
     {
         return &this.validator_set.findRecentEnrollment;
+    }
+
+    /***************************************************************************
+
+        Undate the map of frozen UTXOs
+
+        Params:
+            height = the current block height
+            utxos =  the frozen UTXOs from the utxo set
+
+    ***************************************************************************/
+
+    public void updateFrozenUTXO (in Height height, in UTXO[Hash] utxos)
+        @trusted nothrow
+    {
+        uint idx = 0;
+        this.current_height = height;
+        this.utxo_key_to_idx.clear();
+        this.utxo_idx_to_enroll.clear();
+
+        utxos.keys.sort.each!((key) {
+            this.utxo_key_to_idx[key] = idx;
+            this.utxo_idx_to_enroll[idx] = this.enroll_pool.getEnrollment(key, height);
+            idx++;
+        });
+    }
+
+    /***************************************************************************
+
+        Get the indices of enrollments of the node and future ones
+
+        Params:
+            height = the height intended for the enrollments
+            enroll_set = the indices of enrollments of the node
+
+    ***************************************************************************/
+
+    public void getEnrollmentIndices (Height height, ref Set!uint enroll_set)
+        @safe nothrow
+    {
+        try
+        {
+            foreach (idx, value; this.utxo_idx_to_enroll)
+            {
+                if (value != Enrollment.init)
+                    enroll_set.put(idx);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.warn("Caught Exception while calling getEnrolmentIndices {}", ex);
+        }
+    }
+
+    /***************************************************************************
+
+        Get all the enrollments excluding the unwanted enrollments
+
+        Params:
+            height = the height intended for the enrollments
+            exclude_enrolls = the indices of unwanted enrollments
+
+        Returns:
+            The enrollments excluding the unwanted and `future` ones
+
+    ***************************************************************************/
+
+    public Enrollment[] getExclusiveEnrollments (in Height height,
+        Set!uint exclude_enrolls) @safe nothrow
+    {
+        Enrollment[] enrolls;
+        Set!uint enroll_set;
+        getEnrollmentIndices(height, enroll_set);
+
+        exclude_enrolls.each!(idx => enroll_set.remove(idx));
+        foreach (idx; enroll_set)
+            enrolls ~= utxo_idx_to_enroll[idx];
+
+        return enrolls;
     }
 }
 

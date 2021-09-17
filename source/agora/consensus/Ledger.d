@@ -566,6 +566,10 @@ public class Ledger
                 assert(0);
             }
         }
+
+        // update frozen UTXOs in the enrollment manager
+        auto frozen_utxos = this.utxo_set.getUTXOs(OutputType.Freeze);
+        this.enroll_man.updateFrozenUTXO(block.header.height, frozen_utxos);
     }
 
     /***************************************************************************

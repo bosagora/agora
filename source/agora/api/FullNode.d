@@ -364,4 +364,21 @@ public interface API
 
     @method(HTTPMethod.GET)
     public Enrollment getEnrollment (in Hash enroll_hash);
+
+    /***************************************************************************
+
+        API:
+            GET /enrollments
+
+        Params:
+            height = the height of proposed block
+            exclude_enrolls = the enrollments that should be excluded
+
+        Returns:
+            All the enrollments for the height in the enrollment pool
+
+    ***************************************************************************/
+
+    @method(HTTPMethod.GET)
+    public Enrollment[] getEnrollments (ulong height, Set!uint exclude_enrolls);
 }

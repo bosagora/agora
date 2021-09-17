@@ -1059,6 +1059,16 @@ public class FullNode : API
         return this.enroll_man.getEnrollment(enroll_hash);
     }
 
+    /// GET: /enrollments
+    public override Enrollment[] getEnrollments (ulong height, Set!uint exclude_enrolls)
+        @safe
+    {
+        if (height != this.getBlockHeight() + 1)
+            return Enrollment[].init;
+
+        return this.enroll_man.getExclusiveEnrollments(Height(height), exclude_enrolls);
+    }
+
     /// POST /preimage
     public override void postPreimage (in PreImageInfo preimage) @safe
     {

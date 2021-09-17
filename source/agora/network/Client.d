@@ -510,6 +510,26 @@ public class NetworkClient
 
     /***************************************************************************
 
+        Get the array of the enrollments in the enrollment pool
+
+        Params:
+            height = the height of proposed block
+            exclude_enrolls = the enrollments that should be excluded
+
+        Returns:
+            All the enrollments in the enrollment pool
+
+    ***************************************************************************/
+
+    public Enrollment[] getEnrollments (in Height height, Set!uint exclude_enrolls)
+        @trusted nothrow
+    {
+        return this.attemptRequest!(API.getEnrollments, Throw.No)(
+            this.api, height, exclude_enrolls);
+    }
+
+    /***************************************************************************
+
         Attempt a request up to 'this.max_retries' attempts, and make the task
         wait this.retry_delay between each attempt.
 
