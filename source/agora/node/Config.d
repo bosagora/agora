@@ -349,6 +349,25 @@ public struct ValidatorConfig
     /// The height of the seed of PreImageCycle which is not parsed from the configuraton file
     public @Optional Height cycle_seed_height;
 
+    /***************************************************************************
+
+        How far in the future (in unit of blocks) pre-images can be revealed
+
+        For example, if a validator enrolled at block #100, expiring at
+        block #200, has this value set to 10, it will gossip pre-image
+        for height #152 as soon as block #142 is externalized.
+
+        Increasing this value allow to be more tolerant to long outage, at the
+        expense of encrypted Votera ballots being readable earlier, and a minor
+        increase in predictability.
+
+        By default, the value is set to 6, which, with CoinNet defaults,
+        is equivalent to an hour.
+
+    ***************************************************************************/
+
+    public size_t max_preimage_reveal = 6;
+
     // Network addresses that will be registered with the public key
     public @Optional immutable string[] addresses_to_register;
 

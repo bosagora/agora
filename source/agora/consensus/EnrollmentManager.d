@@ -83,10 +83,6 @@ import std.string;
 
 public class EnrollmentManager
 {
-    /// The period for revealing a preimage
-    /// It is an hour interval if a block is made in every 10 minutes
-    public static immutable uint PreimageRevealPeriod = 6;
-
     /// Logger instance
     private Logger log;
 
@@ -101,6 +97,10 @@ public class EnrollmentManager
 
     /// The final hash of the preimages at the beginning of the enrollment cycle
     private Hash commitment;
+
+    /// How far away in the future a pre-image should be revealed.
+    /// This is expressed in numbers of block
+    private size_t max_preimage_reveal;
 
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
@@ -137,6 +137,7 @@ public class EnrollmentManager
         this.log = Logger(__MODULE__);
         this.params = params;
         this.key_pair = config.key_pair;
+        this.max_preimage_reveal = config.max_preimage_reveal;
 
         if (config.key_pair !is KeyPair.init)
         {
@@ -486,7 +487,7 @@ public class EnrollmentManager
             return false;
 
         assert(height >= enrolled);
-        const next_reveal = min(height + PreimageRevealPeriod,
+        const next_reveal = min(height + this.max_preimage_reveal,
                                 enrolled + this.params.ValidatorCycle);
 
         if (next_reveal <= height)
