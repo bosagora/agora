@@ -639,6 +639,23 @@ private struct ZoneData
 
     /***************************************************************************
 
+         Returns:
+           A ResourceRecord matching this zone's SOA.
+
+    ***************************************************************************/
+
+    public ResourceRecord toRR () const @safe
+    {
+        ResourceRecord result;
+        result.name = this.soa.mname;
+        result.type = TYPE.SOA;
+        result.class_ = CLASS.IN;
+        result.rdata = this.soa.serializeFull(CompactMode.No);
+        return result;
+    }
+
+    /***************************************************************************
+
          Check if the provided name exactly matches this domain
 
          Note: this should be `@nogc`, but `splitter` is not
@@ -688,6 +705,18 @@ private struct ZoneData
             domain_range.popFront();
             auth_domain_range.popFront();
         }
+    }
+
+    ///
+    unittest
+    {
+        ZoneData zone;
+        zone.soa.mname = "example.com";
+        assert(zone.matches("example.com"));
+        assert(!zone.matches("a.example.com"));
+        assert(!zone.matches("exampld.com"));
+        assert(!zone.matches("example.bar"));
+        assert(!zone.matches("example.com.a"));
     }
 
     /***************************************************************************
