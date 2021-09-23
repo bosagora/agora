@@ -116,6 +116,11 @@ validator:
   # How often we should check for pre-images to reveal
   preimage_reveal_interval:
     seconds: 10
+  # The maximum number (in numbers of block) of pre-image to reveal in advance
+  # Be default, a validator will reveal the pre-image for block N + 6 when block N
+  # is externalized, roughly an hour in advance, to prevent slashing
+  # in case of a short outage.
+  max_preimage_reveal: 6
   # How often the validator should try to catchup for the preimages for the
   # next block
   preimage_catchup_interval:
