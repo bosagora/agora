@@ -555,7 +555,12 @@ public class Validator : FullNode, API
 
         // regenerate the quorums
         if (validators_changed || need_shuffle)
+        {
+            // Try to register immediately if we are a validator for the next cycle
+            if (this.enroll_man.isEnrolled(block.header.height + 1, &this.utxo_set.peekUTXO))
+                this.network.onRegisterName();
             this.regenerateQuorums(block.header.height);
+        }
 
         // Re-enroll if our enrollment is about to expire and the block is recent enough
         auto cur_offset = this.clock.networkTime() - this.params.GenesisTimestamp;
