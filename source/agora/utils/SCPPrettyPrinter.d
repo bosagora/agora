@@ -431,7 +431,6 @@ version (unittest)
 
 unittest
 {
-    import agora.common.Config;
     import agora.common.Set;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.genesis.Test;

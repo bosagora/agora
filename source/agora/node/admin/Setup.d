@@ -18,7 +18,7 @@
 
 module agora.node.admin.Setup;
 
-import agora.common.Config;
+import agora.config.Config;
 import agora.crypto.Key;
 import agora.node.Config;
 import agora.node.FullNode;

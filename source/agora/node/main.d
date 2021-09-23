@@ -22,8 +22,8 @@ module agora.node.main;
 version (unittest) {}
 else:
 
-import agora.common.Config;
 import agora.common.FileBasedLock;
+import agora.config.Config;
 import agora.node.admin.Setup;
 import agora.node.Config;
 import agora.node.FullNode;

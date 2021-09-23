@@ -1950,7 +1950,7 @@ public struct TestConf
 
     /***************************************************************************
 
-        Base configuration for the nodes, matches `agora.common.Config : Config`
+        Base configuration for the nodes, matches `agora.node.Config : Config`
 
     ***************************************************************************/
 

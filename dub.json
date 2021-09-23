@@ -59,7 +59,6 @@
             "mainSourceFile": "source/agora/cli/client/main.d",
             "excludedSourceFiles": [
                 "source/agora/api/Validator.d",
-                "source/agora/common/Config.d",
                 "source/agora/common/SCPHash.d",
                 "source/agora/consensus/Quorum.d",
                 "source/agora/network/Client.d",
@@ -170,6 +169,7 @@
         "barcode":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "base32":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "bitblob":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "config":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "crypto":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "d2sqlite3":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "dyaml":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },

@@ -58,3 +58,6 @@
 [submodule "serialization"]
 	path = submodules/serialization
 	url = https://github.com/bosagora/serialization.git
+[submodule "config"]
+	path = submodules/config
+	url = https://github.com/bosagora/config.git

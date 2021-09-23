@@ -17,8 +17,8 @@ import agora.flash.api.FlashAPI;
 import agora.flash.Types;
 
 import agora.common.Amount;
-import agora.common.ConfigAttributes;
 import agora.common.Types;
+import agora.config.Attributes;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
 import agora.crypto.Hash;

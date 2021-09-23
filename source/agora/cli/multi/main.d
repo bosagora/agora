@@ -13,7 +13,7 @@
 
 module agora.cli.multi.main;
 
-import agora.common.Config;
+import agora.config.Config;
 import agora.consensus.data.Params;
 import agora.node.FullNode;
 import agora.node.Validator;
