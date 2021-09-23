@@ -21,7 +21,6 @@
 module agora.consensus.Ledger;
 
 import agora.common.Amount;
-import agora.common.Config;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Set;

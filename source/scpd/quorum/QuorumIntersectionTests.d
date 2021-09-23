@@ -25,7 +25,6 @@ import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
 import scpd.types.Utils;
 import scpd.types.XDRBase;
-import agora.common.Config;
 import agora.common.Types;
 import agora.crypto.Key;
 import agora.utils.Log;

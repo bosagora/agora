@@ -17,10 +17,10 @@ module agora.node.Config;
 
 import agora.common.Amount;
 import agora.common.BanManager;
-import agora.common.Config;
-import agora.common.ConfigAttributes;
 import agora.common.Ensure;
 import agora.common.Types;
+import agora.config.Attributes;
+import agora.config.Config;
 import agora.consensus.data.Params;
 import agora.crypto.Key;
 import agora.flash.Config;
