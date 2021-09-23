@@ -824,8 +824,11 @@ public class NetworkManager
     }
 
     /// register network addresses into the name registry
-    private void onRegisterName () @safe
+    public void onRegisterName () @safe
     {
+        if (this.registry_client is null)
+            return;
+
         const(Address)[] addresses = this.validator_config.addresses_to_register;
         if (!addresses.length)
             addresses = InetUtils.getPublicIPs();
