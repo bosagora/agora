@@ -1662,6 +1662,7 @@ version (unittest)
 {
     import agora.consensus.PreImage;
     import agora.consensus.validation.Block: getWellKnownPreimages;
+    import agora.node.Config;
     version (unittest) import agora.test.Base;
     import core.stdc.time : time;
 
@@ -1692,13 +1693,10 @@ version (unittest)
                     params.GenesisTimestamp +
                     (blocks.length * params.BlockInterval.total!"seconds"));
 
-            Hash cycle_seed;
-            Height cycle_seed_height;
-            getCycleSeed(key_pair, params.ValidatorCycle, cycle_seed, cycle_seed_height);
-            assert(cycle_seed != Hash.init);
-            assert(cycle_seed_height != Height(0));
-            auto cycle = PreImageCycle(cycle_seed, cycle_seed_height,
-                params.ValidatorCycle);
+            ValidatorConfig vconf = ValidatorConfig(true, key_pair);
+            getCycleSeed(key_pair, params.ValidatorCycle, vconf.cycle_seed, vconf.cycle_seed_height);
+            assert(vconf.cycle_seed != Hash.init);
+            assert(vconf.cycle_seed_height != Height(0));
 
             auto stateDB = new ManagedDatabase(":memory:");
             auto cacheDB = new ManagedDatabase(":memory:");
@@ -1706,7 +1704,7 @@ version (unittest)
                 new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(stateDB, cacheDB, key_pair, params, cycle),
+                new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
                 stateDB,
                 mock_clock,
@@ -1967,10 +1965,11 @@ unittest
         {
             auto stateDB = new ManagedDatabase(":memory:");
             auto cacheDB = new ManagedDatabase(":memory:");
+            ValidatorConfig vconf = ValidatorConfig(true, kp);
             super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(stateDB, cacheDB, kp, params),
+                new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
                 stateDB,
                 new MockClock(params.GenesisTimestamp +

@@ -69,6 +69,7 @@
                 "source/agora/utils/SCPPrettyPrinter.d",
                 "source/scpp/*",
                 "source/scpd/*",
+                "source/agora/consensus/EnrollmentManager.d",
                 "source/agora/consensus/Ledger.d",
                 "source/agora/consensus/protocol/Config.d",
                 "source/agora/consensus/protocol/EnvelopeStore.d",
