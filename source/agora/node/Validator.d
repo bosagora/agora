@@ -132,6 +132,7 @@ public class Validator : FullNode, API
     private void regenerateQuorums (Height height) nothrow @safe
     {
         this.last_shuffle_height = height;
+        this.required_peer_utxos = typeof(this.required_peer_utxos).init;
 
         // we're not enrolled and don't care about quorum sets
         if (!this.enroll_man.isEnrolled(height + 1, &this.utxo_set.peekUTXO))
