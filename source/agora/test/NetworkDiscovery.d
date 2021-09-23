@@ -48,6 +48,8 @@ unittest
         full_nodes : 4,
     };
     conf.node.min_listeners = 9;
+    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.retry_delay = 250.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
 
     network.start();
@@ -71,6 +73,8 @@ unittest
         topology : NetworkTopology.MinimallyConnected,
     };
     conf.node.min_listeners = 1;
+    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.retry_delay = 250.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

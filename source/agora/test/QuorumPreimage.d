@@ -44,6 +44,8 @@ unittest
         outsider_validators : 2,
     };
     conf.node.max_listeners = 7;
+    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.retry_delay = 250.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -124,6 +126,9 @@ unittest
     // make sure outsiders are up to date
     network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
+    // Wait for nodes to run a discovery task and update their required peers
+    Thread.sleep(3.seconds);
+    network.waitForDiscovery();
 
     enum quorums_2 = [
         // 0
