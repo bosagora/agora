@@ -464,6 +464,9 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
+        if (this.peerLimitReached())
+            return;
+
         this.peers.insertBack(node);
 
         if (node.isValidator())
@@ -710,7 +713,7 @@ public class NetworkManager
             return true;
         }
 
-        while (!this.peerLimitReached())
+        while (this.todo_addresses.length)
         {
             scope (success)
                 this.taskman.wait(this.node_config.retry_delay);
