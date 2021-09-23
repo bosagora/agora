@@ -15,6 +15,9 @@ module agora.test.ManyValidators;
 
 version (unittest):
 
+import core.thread;
+import core.time;
+
 void manyValidators (size_t validators)
 {
     import agora.test.Base : TestConf, GenesisValidators, GenesisValidatorCycle,
@@ -29,6 +32,8 @@ void manyValidators (size_t validators)
     import agora.crypto.Key;
 
     TestConf conf = { outsider_validators : validators - GenesisValidators };
+    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.retry_delay = 250.msecs;
 
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -74,6 +79,10 @@ void manyValidators (size_t validators)
         retryFor(node.countActive(Height(GenesisValidatorCycle + 1)) == validators, 5.seconds,
             format("Node %s has validator count %s. Expected: %s",
                 idx, node.countActive(Height(GenesisValidatorCycle + 1)), validators)));
+
+    // Wait for nodes to run a discovery task and update their required peers
+    Thread.sleep(3.seconds);
+    network.waitForDiscovery();
 
     // first validated block using all nodes
     network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1));
