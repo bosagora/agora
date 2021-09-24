@@ -1081,7 +1081,7 @@ public class FullNode : API
         if (known < start_height)
             return null;
 
-        // Bounds check end_height and make the API prractical
+        // Bounds check end_height and make the API practical
         if (known < end_height)
             end_height = known;
         else if (end_height < start_height)
