@@ -25,6 +25,7 @@ import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.protocol.Data;
+import agora.consensus.protocol.Config;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Transaction;
 import agora.crypto.Key;

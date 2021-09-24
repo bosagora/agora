@@ -70,6 +70,7 @@
                 "source/scpp/*",
                 "source/scpd/*",
                 "source/agora/consensus/Ledger.d",
+                "source/agora/consensus/protocol/Config.d",
                 "source/agora/consensus/protocol/EnvelopeStore.d",
                 "source/agora/consensus/protocol/Nominator.d",
                 "source/agora/cli/checkvtable/*",
