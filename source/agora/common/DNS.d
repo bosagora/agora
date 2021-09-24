@@ -28,7 +28,19 @@ import std.format;
 import std.string;
 static import std.utf;
 
-/// https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
+/*******************************************************************************
+
+    List of record types.
+
+    Originally defined in RFC1035, then extended through many RFCs.
+    A good overview can be obtained from the Wikipedia article linked below.
+
+    See_Also:
+        https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
+        https://en.wikipedia.org/wiki/List_of_DNS_record_types
+
+*******************************************************************************/
+
 enum TYPE : ushort
 {
     A     =  1, /// a host address
@@ -43,10 +55,25 @@ enum TYPE : ushort
     NULL  = 10, /// a null RR (EXPERIMENTAL)
     WKS   = 11, /// a well known service description
     PTR   = 12, /// a domain name pointer
-    HINFO = 13, /// host information
+    HINFO = 13, /// host information (redefined in RFC 8482)
     MINFO = 14, /// mailbox or mail list information
     MX    = 15, /// mail exchange
     TXT   = 16, /// text strings
+
+    // End of RFC1035 records
+
+    AAAA   =  28, /// IPv6 host address (RFC 3596)
+    LOC    =  29, /// Geolocation record (RFC 1876)
+    SRV    =  33, /// Generalized service location record (RFC 2782)
+    NAPTR  =  35, /// Naming Authority Pointer (RFC 3403)
+    DNAME  =  39, /// Delegated name, a non-unique CNAME (RFC 6672)
+    DS     =  43, /// DNSSEC Delegation signer (RFC 4034)
+    RRSIG  =  46, /// DNSSEC Signature (RFC 4034)
+    DNSKEY =  48, /// DNSSEC Key record (RFC 4034)
+    CSYNC  =  62, /// Child to parent synchronization (RFC 7477)
+    URI    = 256, /// Mappings from hostnames to URIs (RFC 7553)
+    CAA    = 257, /// DNS certification authority authorization (RFC 6844)
+
 }
 
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.3
@@ -68,7 +95,21 @@ enum QTYPE : ushort
     MINFO = 14, /// mailbox or mail list information
     MX    = 15, /// mail exchange
     TXT   = 16, /// text strings
+    AAAA   =  28, /// IPv6 host address (RFC 3596)
+    LOC    =  29, /// Geolocation record (RFC 1876)
+    SRV    =  33, /// Generalized service location record (RFC 2782)
+    NAPTR  =  35, /// Naming Authority Pointer (RFC 3403)
+    DNAME  =  39, /// Delegated name, a non-unique CNAME (RFC 6672)
+    DS     =  43, /// DNSSEC Delegation signer (RFC 4034)
+    RRSIG  =  46, /// DNSSEC Signature (RFC 4034)
+    DNSKEY =  48, /// DNSSEC Key record (RFC 4034)
+    CSYNC  =  62, /// Child to parent synchronization (RFC 7477)
+    URI    = 256, /// Mappings from hostnames to URIs (RFC 7553)
+    CAA    = 257, /// DNS certification authority authorization (RFC 6844)
 
+    OPT = 41,     /// Options (Pseudo record for EDNS)
+
+    IXFR  = 251, /// Incremental zone transfer (RFC 1996)
     AXFR  = 252, /// A request for a transfer of an entire zone
     MAILB = 253, /// A request for mailbox-related records (MB, MG or MR)
     MAILA = 254, /// A request for mail agent RRs (Obsolete - see MX)
@@ -134,6 +175,45 @@ public struct RDATA
 {
     /// A 32 bit Internet address.
     public uint address;
+}
+
+/// https://datatracker.ietf.org/doc/html/rfc3596#section-2.2
+public struct AAAARDATA
+{
+    /// A 128 bit IPv6 address is encoded in the data portion of an AAAA
+    /// resource record in network byte order (high-order byte first).
+    public ulong[2] address;
+}
+
+/// https://datatracker.ietf.org/doc/html/rfc2782
+public struct SRVRDATA
+{
+    /// The priority of this target host (lowest is better)
+    public ushort priority;
+
+    /// A server selection mechanism for entries with the same priority
+    public ushort weight;
+
+    // The port on this target host of this service.
+    public ushort port;
+
+    /// The domain name of the target host (should not be an alias)
+    /// Using '.' means that the service doesn't exists.
+    public Domain target;
+}
+
+/// https://datatracker.ietf.org/doc/html/rfc7553#section-4
+public struct URIRDATA
+{
+    /// The priority of this target host (lowest is better)
+    public ushort priority;
+
+    /// A server selection mechanism for entries with the same priority
+    public ushort weight;
+
+    /// This field holds the URI of the target (RFC 3986)
+    /// Resolution of the URI is according to the definitions for the Scheme of the URI.
+    public string target;
 }
 
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-4
