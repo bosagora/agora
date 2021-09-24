@@ -824,7 +824,7 @@ public class NetworkManager
     }
 
     /// register network addresses into the name registry
-    private void onRegisterName ()
+    private void onRegisterName () @safe
     {
         const(Address)[] addresses = this.validator_config.addresses_to_register;
         if (!addresses.length)
