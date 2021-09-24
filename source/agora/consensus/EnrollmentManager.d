@@ -1068,64 +1068,6 @@ unittest
     assert(man.getEnrollments(firstEnrolledAt10 + validator_cycle, &utxo_set.peekUTXO).length == 0);
 }
 
-// test getRandomSeed()
-unittest
-{
-    import agora.consensus.data.Transaction;
-    import std.conv;
-    import std.range;
-    import std.stdio;
-
-    scope storage = new TestUTXOSet;
-    Hash[] utxos;
-
-    // genesisSpendable returns 8 outputs
-    auto pairs = iota(8).map!(idx => WK.Keys[idx]).array;
-
-    genesisSpendable()
-        .enumerate
-        .map!(tup => tup.value
-            .refund(pairs[tup.index].address)
-            .sign(OutputType.Freeze))
-        .each!((tx) {
-            storage.put(tx);
-            utxos ~= UTXO.getHash(tx.hashFull(), 0);
-        });
-
-    auto params = new immutable(ConsensusParams)(20);
-    scope man = new EnrollmentManager(KeyPair.random(), params);
-
-    Hash[KeyPair] node_seeds = [
-        WK.Keys[0]: Hash(`0x3a481cb1576d79002755239b8d4019587d7e5394ddd448f92d5dca74baf742f4899dd53daefda9136e9d3cc6887b3456ffcfc85cfc711e5cf8659998047771cb`),
-        WK.Keys[1]: Hash(`0x1a7ebfe71dd438ac96da520917680ff4278c3e4de031890cea2305de009dc750dfd3d9b714ef7b4cf983633a540ca4614ff1eae38d9d121604907f2dc2a7e885`),
-        WK.Keys[2]: Hash(`0x64d1b6e98019df73b59c3593e2ca1baea53aeeb3cac18748d3ab50473a64963c76c318913158349caf368730b027eb8c4596b743308a7e53a65e484016c8e2ca`),
-        WK.Keys[3]: Hash(`0x0bb70cf7d265661d006bc5bfd5bf70a66c5b32e54d05ee37bf023c4c0bf9b3bc76faf38d656c25e254aae7ea73aabba1902192575da80cfe10a24363d3e41118`),
-        WK.Keys[4]: Hash(`0xbb19e8bae8f03ce2aee0c15f83089c87dd208b44d17683ace877696a98680730c4cae9f762366a70dd00885cf0ff2eb228f285885ebda9e6dc11c0288158d8cf`),
-        WK.Keys[5]: Hash(`0x90f2a3d469831bad2d27f4698c463dad56c8d942b28859e38c2f4b1bc975605f0641f62aff2edf23326b67ad3b34c47bc43f96167485d4db2529d5e84fc7e994`),
-        WK.Keys[6]: Hash(`0xa84c60d88e1c075d8d70c77426c4724ac8bd38f83030fb16a3db71890396548572031907fbf7adba1034a7f9b7b4f2ae11155010cf677ed81cc32728f6ec7a06`),
-        WK.Keys[7]: Hash(`0xe39ae981988560d89e85f340c087fea46f1d9eefe73400f2a85edd3d3adee2bc5a3efd6e6ce9de04d73a3fe2554a1b1035450b7be9eaade24bbb789585aa0015`),
-    ];
-
-    const cycles = 10;
-    foreach (idx, kp; pairs)
-    {
-        const enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, Height(1),
-            node_seeds[kp], Height(params.ValidatorCycle * cycles - 1),);
-        assert(man.addValidator(enroll, kp.address, Height(1), storage.getUTXOFinder(),
-            storage.storage) is null);
-
-        auto cache = PreImageCache(cycles, params.ValidatorCycle);
-        cache.reset(node_seeds[kp]);
-
-        PreImageInfo preimage = { utxo : utxos[idx],
-            height : Height(params.ValidatorCycle),
-            hash : cache[$ - params.ValidatorCycle - 1] };
-
-        assert(man.validator_set.addPreimage(preimage));
-    }
-}
-
 // Tests for get/set a enrollment key
 unittest
 {
