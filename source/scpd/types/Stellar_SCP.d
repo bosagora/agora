@@ -340,7 +340,7 @@ struct SCPQuorumSet {
     import agora.common.Types;
     import agora.crypto.Hash;
     import agora.crypto.Key;
-    import agora.node.Config;
+    import agora.consensus.protocol.Config;
     import std.conv;
 
     const qc1 = toSCPQuorumSet(QuorumConfig(2, [0, 1]));

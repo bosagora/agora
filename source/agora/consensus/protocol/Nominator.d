@@ -28,6 +28,7 @@ import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Data;
+import agora.consensus.protocol.Config;
 import agora.consensus.protocol.EnvelopeStore;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
