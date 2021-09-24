@@ -1059,9 +1059,8 @@ public class FullNode : API
         return preimage_infos;
     }
 
-    /// GET: /preimages_range
-    public override PreImageInfo[] getPreimagesRange (
-        ulong start_height, ulong end_height)
+    /// GET: /preimages_from
+    public override PreImageInfo[] getPreimagesFrom (ulong start_height)
         @safe nothrow
     {
         this.recordReq("preimages_range");
@@ -1071,14 +1070,7 @@ public class FullNode : API
         if (known < start_height)
             return null;
 
-        // Bounds check end_height and make the API practical
-        if (known < end_height)
-            end_height = known;
-        else if (end_height < start_height)
-            end_height = start_height;
-
-        return this.enroll_man.getValidatorPreimages(
-            Height(start_height), Height(end_height))
+        return this.enroll_man.getValidatorPreimages(Height(start_height))
             .array();
     }
 

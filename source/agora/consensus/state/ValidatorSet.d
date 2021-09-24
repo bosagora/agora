@@ -508,23 +508,20 @@ public class ValidatorSet
 
         Params:
             start_height = the starting enrolled height to begin retrieval from
-            end_height = the end enrolled height to finish retrieval to
 
         Returns:
             preimages' information of the validators
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimages (Height start_height,
-        Height end_height) @trusted nothrow
+    public PreImageInfo[] getPreimages (Height start_height) @trusted nothrow
     {
         PreImageInfo[] preimages;
 
         try
         {
             auto results = this.db.execute("SELECT key, preimage, height " ~
-                "FROM preimages WHERE height >= ? AND height <= ?",
-                start_height, end_height);
+                "FROM preimages WHERE height >= ?", start_height);
 
             foreach (row; results)
             {
@@ -536,8 +533,8 @@ public class ValidatorSet
         }
         catch (Exception ex)
         {
-            log.error("Exception occured on getPreimages: {}, heights " ~
-                "[{}..{}]", ex.msg, start_height, end_height);
+            log.error("Exception occured on getPreimages: {}, height {}",
+                ex.msg, start_height);
         }
 
         return preimages;
