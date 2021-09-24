@@ -43,7 +43,7 @@ public enum HostType : ubyte
 
 struct InetUtils
 {
-    version (Posix) public static string[] getAllIPs()
+    version (Posix) public static string[] getAllIPs() @trusted
     {
         import core.sys.posix.netdb;
 
@@ -278,7 +278,7 @@ struct InetUtils
             == HostPortTup("seed.bosagora.io", 80, HostType.Domain, "http"));
     }
 
-    public static string[] getPublicIPs()
+    public static string[] getPublicIPs() @safe
     {
         return filterIPs(ip => !isPrivateIP(ip));
     }
@@ -325,7 +325,7 @@ struct InetUtils
         }
     }
 
-    private static string[] filterIPs(bool function(string ip) filter_func)
+    private static string[] filterIPs(bool function(string ip) filter_func) @trusted
     {
         return filter!(ip => filter_func(ip))(getAllIPs()).array();
     }
