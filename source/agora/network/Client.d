@@ -517,7 +517,6 @@ public class NetworkClient
 
         Params:
             start_height = the starting enrolled height to begin retrieval from
-            end_height = the end enrolled height to finish retrieval to
 
         Returns:
             the array of preimages of validators enrolling from `enrolled_height`
@@ -527,11 +526,10 @@ public class NetworkClient
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimagesRange (ulong start_height,
-        ulong end_height) nothrow
+    public PreImageInfo[] getPreimagesFrom (ulong start_height) nothrow
     {
-        return this.attemptRequest!(API.getPreimagesRange, Throw.No)(this.api,
-            start_height, end_height);
+        return this.attemptRequest!(API.getPreimagesFrom, Throw.No)(this.api,
+            start_height);
     }
 
     /***************************************************************************

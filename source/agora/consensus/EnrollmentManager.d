@@ -524,18 +524,15 @@ public class EnrollmentManager
 
         Params:
             start_height = the starting enrolled height to begin retrieval from
-            end_height = the end enrolled height to finish retrieval to
 
         Returns:
             preimages' information of the validators
 
     ***************************************************************************/
 
-    public PreImageInfo[] getValidatorPreimages (
-        in Height start_height, in Height end_height) @safe nothrow
+    public PreImageInfo[] getValidatorPreimages (in Height start_height) @safe nothrow
     {
-        return this.validator_set.getPreimages(start_height,
-            end_height);
+        return this.validator_set.getPreimages(start_height);
     }
 
     /***************************************************************************

@@ -2318,13 +2318,12 @@ public class NoPreImageVN : TestValidatorNode
     }
 
     /// GET: /preimages
-    public override PreImageInfo[] getPreimagesRange (ulong start_height,
-        ulong end_height) @safe nothrow
+    public override PreImageInfo[] getPreimagesFrom (ulong start_height) @safe nothrow
     {
         if (atomicLoad(*this.reveal_preimage))
-            return super.getPreimagesRange(start_height, end_height);
+            return super.getPreimagesFrom(start_height);
         const ek = this.enroll_man.getEnrollmentKey();
-        return super.getPreimagesRange(start_height, end_height)
+        return super.getPreimagesFrom(start_height)
             .filter!(pi => pi.utxo != ek).array();
     }
 

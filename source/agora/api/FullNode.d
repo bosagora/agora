@@ -253,23 +253,17 @@ public interface API
         validator, not the bound of the pre-images.
 
         API:
-            GET /preimages_range
+            GET /preimages_from
 
         Params:
             start_height = the starting enrolled height to begin retrieval from
-            end_height = the end enrolled height to finish retrieval to.
-                         If the value provided is lower than `start_height`,
-                         only the pre-images for validators active at
-                         `start_height` will be returned.
-                         If the value is higher than the currently known block
-                         height, the return will be bound to that value.
 
         Returns:
             preimages' information of the validators
 
     ***************************************************************************/
 
-    public PreImageInfo[] getPreimagesRange (ulong start_height, ulong end_height);
+    public PreImageInfo[] getPreimagesFrom (ulong start_height);
 
     /***************************************************************************
 
