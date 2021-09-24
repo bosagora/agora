@@ -23,13 +23,13 @@ import std.conv;
 
 /*******************************************************************************
 
-    Convert a QuorumConfig to the SCPQorum which the SCP protocol understands
+    Convert a `QuorumConfig` to an `SCPQuorum` struct, used by the SCP code.
 
     Params:
         quorum_conf = the quorum config
 
     Returns:
-        `SCPQuorumSet` instance
+        An `SCPQuorumSet` instance derived from `quorum_conf`
 
 *******************************************************************************/
 
@@ -54,13 +54,13 @@ public SCPQuorumSet toSCPQuorumSet (in QuorumConfig quorum_conf) @safe nothrow
 
 /*******************************************************************************
 
-    Convert an SCPQorum to a QuorumConfig
+    Convert an `SCPQuorum` to a `QuorumConfig`
 
     Params:
-        scp_quorum = the quorum config
+        scp_quorum = the quorum set to convert
 
     Returns:
-        `SCPQuorumSet` instance
+        An `QuorumConfig` instance derived from `scp_quorum`
 
 *******************************************************************************/
 
