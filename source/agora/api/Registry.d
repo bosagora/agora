@@ -19,9 +19,6 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
 import agora.flash.api.FlashAPI;
 
-import vibe.http.common;
-import vibe.web.rest;
-
 ///
 public struct RegistryPayloadData
 {
