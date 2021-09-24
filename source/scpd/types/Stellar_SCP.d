@@ -16,6 +16,7 @@ module scpd.types.Stellar_SCP;
 import vibe.data.json;
 
 import agora.common.Ensure;
+import agora.crypto.Hash;
 import agora.serialization.Serializer;
 
 import scpd.Cpp;
@@ -181,7 +182,6 @@ struct SCPStatement {
 
         extern(D)
         {
-            import agora.crypto.Hash : HashDg, hashPart;
             /// Hashing support
             public void computeHash (scope HashDg dg) const scope
                 @trusted pure @nogc nothrow
@@ -315,8 +315,6 @@ struct SCPEnvelope {
 static assert(SCPEnvelope.sizeof == 168);
 
 struct SCPQuorumSet {
-    import agora.crypto.Hash;
-
     uint32_t threshold;
     xvector!(NodeID) validators;
     xvector!(SCPQuorumSet) innerSets;
@@ -338,7 +336,6 @@ struct SCPQuorumSet {
 @safe unittest
 {
     import agora.common.Types;
-    import agora.crypto.Hash;
     import agora.crypto.Key;
     import agora.consensus.protocol.Config;
     import std.conv;
