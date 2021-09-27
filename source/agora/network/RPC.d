@@ -351,10 +351,10 @@ private void handle (API) (API api, ref TCPConnection stream) @trusted nothrow
         // This should never happen, but if it does, at least let the user know
         catch (Exception e)
         {
-            printf("[%s:%d] Error while logging an error\n",
-                   __FILE__.ptr, __LINE__);
+            printf("[%s:%d] Error while logging an error: %.*s\n",
+                   __FILE__.ptr, __LINE__, cast(int) ex.msg.length, ex.msg.ptr);
         }
-        //stream.close();
+        stream.close();
     }
 }
 
