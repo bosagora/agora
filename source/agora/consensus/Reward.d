@@ -259,9 +259,8 @@ public class Reward
         ulong payout_percent = 100 - 2 * (100 - percent_signed); // penalty of `y = 2x`
 
         Amount actual = total_allocated;
-        if (!actual.mul(payout_percent))
-            assert(0, format!"Failed to multiply Amount %s by %s"(actual, payout_percent));
-        actual.div(100); // We can ignore remainder as it will end up in Commons Budget reward
+        if (!actual.percentage(cast(ubyte) payout_percent))
+            assert(0, format!"Failed to get percentage %s of Amount %s"(payout_percent, actual));
 
         log.trace("Reduced validator reward is: {}", actual);
         assert(actual.isValid());
