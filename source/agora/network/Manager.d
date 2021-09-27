@@ -1113,7 +1113,7 @@ public class NetworkManager
             return new RPCClient!API(
                 url.host, url.port,
                 /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout);
+                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/);
         }
 
         if (url.schema.startsWith("http"))

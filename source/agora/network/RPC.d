@@ -27,6 +27,7 @@ import agora.serialization.Serializer;
 import ocean.text.convert.Formatter;
 
 import vibe.core.net;
+import vibe.core.connectionpool;
 
 import std.traits;
 import core.stdc.stdio;
@@ -125,13 +126,62 @@ public class RPCClient (API) : API
         ***********************************************************************/
 
         public Duration retry_delay;
+
+        ///
+        public uint concurrency;
     }
 
     /// Config instance for this client
     private Config config;
 
-    /// TCP connection to the host
-    private TCPConnection connection;
+    ///
+    private class RPCConnection
+    {
+        ///
+        private TCPConnection conn;
+
+        ///
+        alias conn this;
+
+        /// Ensure that we are still connected, and implement retry logic
+        private void ensureConnected () @trusted
+        {
+            uint attempts;
+            do
+            {
+                if (this.conn.connected())
+                    return;
+
+                // If it's not the first time we loop, sleep before retry
+                if (attempts > 0)
+                {
+                    import vibe.core.core : sleep;
+                    sleep(this.outer.config.retry_delay);
+                }
+
+                try
+                {
+                    this.conn = connectTCP(
+                        this.outer.config.host, this.outer.config.port,
+                        null, 0, // Bind interface / port, unused
+                        this.outer.config.connection_timeout);
+                    this.conn.keepAlive = true;
+                    this.conn.readTimeout = this.outer.config.read_timeout;
+                }
+                catch (Exception e) {}
+                attempts++;
+
+            } while (attempts < this.outer.config.max_retries);
+
+            ensure(this.conn.connected(),
+                format("Failed to connect to {}:{} after {} attempts ({}:{})",
+                    this.outer.config.host, this.outer.config.port, this.outer.config.max_retries,
+                    this.outer.config.connection_timeout, this.outer.config.retry_delay));
+        }
+    }
+
+    /// Pool of connections to the host
+    private ConnectionPool!RPCConnection pool;
 
     /// Logger for this client
     private Logger log;
@@ -163,7 +213,8 @@ public class RPCClient (API) : API
 
     public this (string host, ushort port,
                  Duration retry_delay, uint max_retries,
-                 Duration ctimeout, Duration rtimeout, Duration wtimeout)
+                 Duration ctimeout, Duration rtimeout, Duration wtimeout,
+                 uint concurrency)
         @trusted
     {
         const Config config = {
@@ -176,6 +227,7 @@ public class RPCClient (API) : API
             connection_timeout: ctimeout,
             read_timeout:       rtimeout,
             write_timeout:      wtimeout,
+            concurrency:        concurrency,
         };
         this(config);
     }
@@ -186,46 +238,14 @@ public class RPCClient (API) : API
         this.config = config;
         this.log = Log.lookup(
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
+        this.pool = new ConnectionPool!RPCConnection({
+            return new RPCConnection();
+        });
+        this.pool.maxConcurrency = this.config.concurrency;
 
         static foreach (member; __traits(allMembers, API))
             static foreach (ovrld; __traits(getOverloads, API, member))
                 this.lookup[ovrld.mangleof] = hashFull(ovrld.mangleof);
-    }
-
-    /// Ensure that we are still connected, and implement retry logic
-    private void ensureConnected () @trusted
-    {
-        uint attempts;
-
-        do
-        {
-            if (this.connection.connected())
-                return;
-
-            // If it's not the first time we loop, sleep before retry
-            if (attempts > 0)
-            {
-                import vibe.core.core : sleep;
-                sleep(this.config.retry_delay);
-            }
-
-            try
-            {
-                this.connection = connectTCP(
-                    this.config.host, this.config.port,
-                    null, 0, // Bind interface / port, unused
-                    this.config.connection_timeout);
-                this.connection.keepAlive = true;
-            }
-            catch (Exception e) {}
-            attempts++;
-
-        } while (attempts < this.config.max_retries);
-
-        throw new Exception(
-            format("Failed to connect to {}:{} after {} attempts ({}:{})",
-                   this.config.host, this.config.port, this.config.max_retries,
-                   this.config.connection_timeout, this.config.retry_delay));
     }
 
     private struct Pack (T...) { T args; }
@@ -239,19 +259,22 @@ public class RPCClient (API) : API
                 {
                     this.log.trace("[CLIENT]: {}: {}", __PRETTY_FUNCTION__,
                                    Pack!(Parameters!ovrld)(params));
-                    this.ensureConnected();
+                    scope conn = this.pool.lockConnection();
+                    conn.ensureConnected();
+                    scope (exit) conn.close();
+
                     ubyte[512] tmp = void;
                     Hash method = this.lookup[ovrld.mangleof];
                     // Send the method type
-                    this.connection.write(method[0 .. $]);
+                    conn.write(method[0 .. $]);
                     // List of parameters
                     foreach (ref p; params)
-                        serializePart(p, (in ubyte[] v) => this.connection.write(v));
-                    this.connection.flush();
+                        serializePart(p, (in ubyte[] v) => conn.write(v));
+                    conn.flush();
                     static if (is(typeof(return) == void))
                     {
                         // Wait for the remote to write back the same method type
-                        this.connection.read(method[0 .. $]);
+                        conn.read(method[0 .. $]);
                         this.log.trace("[CLIENT] Returning from {} : {}",
                                        __PRETTY_FUNCTION__, method);
                     }
@@ -260,7 +283,7 @@ public class RPCClient (API) : API
                         scope DeserializeDg dg = (size_t size)
                             {
                                 ensure(size < tmp.length, "Out of bound read");
-                                this.connection.read(tmp[0 .. size]);
+                                conn.read(tmp[0 .. size]);
                                 return tmp[0 .. size];
                             };
                         version (all)
