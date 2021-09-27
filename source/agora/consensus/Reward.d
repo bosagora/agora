@@ -135,10 +135,8 @@ public class Reward
         Returns the Block Rewards for the given height.
 
         Params:
-            height = last block of the current payout period
-                (the CoinBase transaction will be in block at this height plus the payout period)
+            height = height of block for payout
             percent_signed = (#actual signatures / #expected signatures) * 100
-                on all the blocks for payout period
 
         Returns:
             `BlockRewards` which indicates the `Amount` to pay the `Validators`
@@ -172,8 +170,7 @@ public class Reward
         Returns the Commons Budget reward as defined in the Whitepaper.
 
         Params:
-            height = block height of coinbase payout block
-                (checked to be valid in `Reward` constructor)
+            height = block height for reward
 
         Returns:
             Reward amount
@@ -199,7 +196,7 @@ public class Reward
         Returns the total allocated whitepaper validator reward.
 
         Params:
-            height = last block of the current payout period
+            height = block height for reward
 
         Returns:
             validator reward
@@ -243,9 +240,8 @@ public class Reward
 
         Params:
             total_allocated = allocated `Amount` to pay the Validators if all
-                blocks have all signatures
+                have signed the block
             percent_signed = (#actual signatures / #expected signatures) * 100
-                on all the blocks for payout period
 
         Returns:
             validator reward - penalty on validators due to missing signature
