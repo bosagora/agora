@@ -642,8 +642,7 @@ public class Ledger
                             .enumerate.filter!(en => header.validators[en.index]).map!(en => en.value);
 
                         // Calculate the block rewards using the percentage of validators who signed
-                        auto rewards = this.rewards.calculateBlockRewards(Height(height - this.params.PayoutPeriod),
-                            header.validators.percentage());
+                        auto rewards = this.rewards.calculateBlockRewards(header.height, header.validators.percentage());
 
                         // Divide up the validator fees and rewards based on stakes
                         auto val_payouts = this.fee_man.getValidatorPayouts(header.height, rewards, validators);

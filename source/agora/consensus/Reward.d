@@ -148,8 +148,6 @@ public class Reward
 
     public BlockRewards calculateBlockRewards (in Height height, in ubyte percent_signed) nothrow @safe
     {
-        if (height % this.payout_period != 0)
-            return BlockRewards(0.coins, 0.coins);
         assert(height > 0, "We can not payout in Genesis block");
 
         auto validator_allocated = allocatedValRewards(height);
@@ -295,23 +293,23 @@ unittest
     auto reward = new Reward(144, 600.seconds);
 
     // first payout block
-    assert(reward.commonsBudgetRewards(Height(144)) == 6_000.coins);
+    assert(reward.commonsBudgetRewards(Height(1)) == 6_000.coins);
 
     // second payout block
-    assert(reward.commonsBudgetRewards(Height(2 * 144)) == 6_000.coins);
+    assert(reward.commonsBudgetRewards(Height(2)) == 6_000.coins);
 
     // payout block in second year
-    assert(reward.commonsBudgetRewards(Height(reward.blocks_per_year + 144)) == 6_000.coins);
+    assert(reward.commonsBudgetRewards(Height(reward.blocks_per_year + 1)) == 6_000.coins);
 
     // payout block in 6th year
-    assert(reward.commonsBudgetRewards(Height(5 * reward.blocks_per_year + 144)) == 6_000.coins);
+    assert(reward.commonsBudgetRewards(Height(5 * reward.blocks_per_year + 1)) == 6_000.coins);
 
     // last payout block
-    const ulong totalCommonsPayouts = 1_800_000_000 / (6000 * 144);
-    assert(reward.commonsBudgetRewards(Height(totalCommonsPayouts * 144)) == 6_000.coins);
+    const ulong totalCommonsPayouts = 1_800_000_000 / 6000;
+    assert(reward.commonsBudgetRewards(Height(totalCommonsPayouts)) == 6_000.coins);
 
     // one after last payout block should be zero
-    assert(reward.commonsBudgetRewards(Height(totalCommonsPayouts * 144 + 144)) == 0.coins);
+    assert(reward.commonsBudgetRewards(Height(totalCommonsPayouts + 1)) == 0.coins);
 
     // one way after last payout block should also be zero
     assert(reward.commonsBudgetRewards(Height(10 * reward.blocks_per_year)) == 0.coins);
@@ -331,28 +329,28 @@ unittest
     assert(firstYearValRewards == valYear1);
 
     // first payout block
-    assert(reward.allocatedValRewards(Height(144)) == Amount(valYear1 / reward.blocks_per_year));
+    assert(reward.allocatedValRewards(Height(1)) == Amount(valYear1 / reward.blocks_per_year));
 
     // second payout block
-    assert(reward.allocatedValRewards(Height(2 * 144)) == Amount(valYear1 / reward.blocks_per_year));
+    assert(reward.allocatedValRewards(Height(2)) == Amount(valYear1 / reward.blocks_per_year));
 
     // last payout block of first year
     assert(reward.allocatedValRewards(Height(reward.blocks_per_year)) == Amount(valYear1 / reward.blocks_per_year));
 
     // first payout block of second year
-    assert(reward.allocatedValRewards(Height(reward.blocks_per_year + 144)) == Amount(valYear2 / reward.blocks_per_year));
+    assert(reward.allocatedValRewards(Height(reward.blocks_per_year + 1)) == Amount(valYear2 / reward.blocks_per_year));
 
     // last payout block of second year
     assert(reward.allocatedValRewards(Height(2 * reward.blocks_per_year)) == Amount(valYear2 / reward.blocks_per_year));
 
     // first payout block of third year
-    assert(reward.allocatedValRewards(Height(2 * reward.blocks_per_year) + 144) == Amount(valYear3 / reward.blocks_per_year));
+    assert(reward.allocatedValRewards(Height(2 * reward.blocks_per_year) + 1) == Amount(valYear3 / reward.blocks_per_year));
 
     // first payout block of tenth year
-    assert(reward.allocatedValRewards(Height(9 * reward.blocks_per_year) + 144) == Amount(valYear10 / reward.blocks_per_year));
+    assert(reward.allocatedValRewards(Height(9 * reward.blocks_per_year) + 1) == Amount(valYear10 / reward.blocks_per_year));
 
     // first payout block of year 50
-    assert(reward.allocatedValRewards(Height(49 * reward.blocks_per_year) + 144) == Amount(valYear50 / reward.blocks_per_year));
+    assert(reward.allocatedValRewards(Height(49 * reward.blocks_per_year) + 1) == Amount(valYear50 / reward.blocks_per_year));
 }
 
 /// Testing reduced reward payout to validators
@@ -391,22 +389,22 @@ unittest
     auto reward = new Reward(144, 600.seconds);
 
     // First payout block, all signed
-    assert(reward.calculateBlockRewards(Height(144), 100) == BlockRewards(Amount(valYear1 / reward.blocks_per_year), 6_000.coins));
+    assert(reward.calculateBlockRewards(Height(1), 100) == BlockRewards(Amount(valYear1 / reward.blocks_per_year), 6_000.coins));
 
     // First payout block, 75% signed means 25% missing so penalty is 50%
     auto adjusted = Amount(valYear1 / reward.blocks_per_year / 2);
-    assert(reward.calculateBlockRewards(Height(144), 75) == BlockRewards(adjusted, 6_000.coins + adjusted));
+    assert(reward.calculateBlockRewards(Height(1), 75) == BlockRewards(adjusted, 6_000.coins + adjusted));
 
     // last payout block of first year, all signed
     assert(reward.calculateBlockRewards(Height(reward.blocks_per_year), 100) == BlockRewards(Amount(valYear1 / reward.blocks_per_year), 6_000.coins));
 
     // first payout block of second year with all signed
-    assert(reward.calculateBlockRewards(Height(reward.blocks_per_year + 144), 100) == BlockRewards(Amount(valYear2 / reward.blocks_per_year), 6_000.coins));
+    assert(reward.calculateBlockRewards(Height(reward.blocks_per_year + 1), 100) == BlockRewards(Amount(valYear2 / reward.blocks_per_year), 6_000.coins));
 
     // first payout block of second year with 98% signed means 4% reduction for validators which is added to Commons
-    assert(reward.calculateBlockRewards(Height(reward.blocks_per_year + 144), 98) == BlockRewards(Amount((valYear2 / reward.blocks_per_year) * 96 / 100),
+    assert(reward.calculateBlockRewards(Height(reward.blocks_per_year + 1), 98) == BlockRewards(Amount((valYear2 / reward.blocks_per_year) * 96 / 100),
         6_000.coins + (Amount((valYear2 / reward.blocks_per_year) * 4 / 100))));
 
     // first payout block of year 50 with all signed
-    assert(reward.calculateBlockRewards(Height(49 * reward.blocks_per_year + 144), 100) == BlockRewards(Amount(valYear50 / reward.blocks_per_year), 0.coins));
+    assert(reward.calculateBlockRewards(Height(49 * reward.blocks_per_year + 1), 100) == BlockRewards(Amount(valYear50 / reward.blocks_per_year), 0.coins));
 }
