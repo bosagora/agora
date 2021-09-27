@@ -316,9 +316,14 @@ public class RPCClient (API) : API
 
 *******************************************************************************/
 
-public TCPListener listenRPC (API) (API impl, string address, ushort port)
+public TCPListener listenRPC (API) (API impl, string address, ushort port,
+    Duration timeout)
 {
-    auto callback = (TCPConnection stream) @safe nothrow => handle(impl, stream);
+    auto callback = (TCPConnection stream) @safe nothrow {
+        try stream.readTimeout = timeout;
+        catch (Exception e) assert(0);
+        handle(impl, stream);
+    };
     return listenTCP(port, callback, address);
 }
 
