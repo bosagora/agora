@@ -51,7 +51,7 @@ unittest
     // clear filter after 100 msecs, the above requests will eventually be gossiped
     Thread.sleep(100.msecs);
     nodes[1 .. $].each!(node => node.clearFilter());
-    network.expectHeight(Height(1));
+    network.expectHeightAndPreImg(Height(1));
 }
 
 /// test request timeouts
