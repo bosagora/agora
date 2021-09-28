@@ -984,13 +984,20 @@ public class FullNode : API
     {
         this.recordReq("postEnrollment");
 
-        scope UTXOFinder utxo_finder;
-        scope TestUTXOSet extra_set;
-
         UTXO utxo;
+        Output found_output;
+        scope UTXOFinder utxo_finder;
         if (this.utxo_set.peekUTXO(enroll.utxo_key, utxo))
         {
-            utxo_finder = this.utxo_set.getUTXOFinder();
+            utxo_finder = (in Hash hash, out UTXO found_utxo)
+            {
+                if (hash == enroll.utxo_key)
+                {
+                    found_utxo = utxo;
+                    return true;
+                }
+                return false;
+            };
         }
         else
         {
@@ -1000,22 +1007,36 @@ public class FullNode : API
             // a frozen UTXO with the right amount.
             version (all)
             {
-                extra_set = new TestUTXOSet();
                 foreach (ref Hash hash, ref Transaction tx; this.pool)
                 {
                     if (!tx.isFreeze())
                         continue;
 
-                    foreach (output; tx.outputs)
-                        if (output.type == OutputType.Freeze &&
-                            output.value >= Amount.MinFreezeAmount)
+                    foreach (size_t idx, output_; tx.outputs)
+                    {
+                        if (output_.type == OutputType.Freeze &&
+                            output_.value >= Amount.MinFreezeAmount)
                         {
-                            extra_set.put(tx);
-                            break;
+                            if (UTXO.getHash(hashFull(tx), idx) == enroll.utxo_key)
+                            {
+                                found_output = output_;
+                                utxo_finder = (in Hash hash, out UTXO found_utxo)
+                                {
+                                    if (hash == enroll.utxo_key)
+                                    {
+                                        found_utxo.output = found_output;
+                                        return true;
+                                    }
+                                    return false;
+                                };
+                                break;
+                            }
                         }
+                    }
+
+                    if (utxo_finder(enroll.utxo_key, utxo))
+                        break;
                 }
-                extra_set.peekUTXO(enroll.utxo_key, utxo);
-                utxo_finder = extra_set.getUTXOFinder();
             }
         }
 
