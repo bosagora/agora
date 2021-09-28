@@ -970,20 +970,18 @@ public class TestAPIManager
     public void waitForDiscovery (Duration timeout = 5.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        try
+        foreach (idx, ref node; this.nodes)
         {
-            this.nodes.each!(node =>
-                retryFor(node.client.getNodeInfo().ifThrown(NodeInfo.init)
-                    .state == NetworkState.Complete,
-                    timeout,
-                    format("Node %s has not completed discovery after %s.",
-                        node.address, timeout)));
-        }
-        catch (Error ex)  // better UX
-        {
-            ex.file = file;
-            ex.line = line;
-            throw ex;
+            NodeInfo ni;
+            retryFor({
+                    ni = node.client.getNodeInfo().ifThrown(NodeInfo.init);
+                    return ni.state == NetworkState.Complete;
+                }(),
+                timeout,
+                format("Node %s (%s) has not completed discovery after %s: %s",
+                       idx, node.address, timeout, ni),
+                file, line,
+            );
         }
     }
 
