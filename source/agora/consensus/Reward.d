@@ -244,7 +244,7 @@ public class Reward
             percent_signed = (#actual signatures / #expected signatures) * 100
 
         Returns:
-            validator reward - penalty on validators due to missing signature
+            validator reward adjusted if there are missing signatures
 
     ***************************************************************************/
 
