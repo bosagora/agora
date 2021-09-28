@@ -2122,7 +2122,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     auto full_node_addresses = test_conf.full_nodes.iota.map!(
-        idx => fullNodeAddress(idx)).array;
+        idx => fullNodeAddress(idx)).array ~ ["name.registry"];
 
     // full nodes and enrolled validators will connect to other enrolled validators
     // and other full nodes (but not to outsider nodes)
