@@ -78,7 +78,7 @@ import std.range;
 import core.time;
 
 /// Maximum number of blocks that will be sent in a call to getBlocksFrom()
-private enum uint MaxBatchBlocksSent = 20;
+private enum uint MaxBatchBlocksSent = 24;
 
 /// Maximum number of transactions that will be sent in a call to
 /// getTransactionByHash
