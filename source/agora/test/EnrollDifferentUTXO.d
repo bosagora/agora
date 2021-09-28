@@ -15,9 +15,6 @@ module agora.test.EnrollDifferentUTXOs;
 
 version (unittest):
 
-import agora.common.Amount;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test: genesis_validator_keys;
 import agora.test.Base;
 

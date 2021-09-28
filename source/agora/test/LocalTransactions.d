@@ -16,9 +16,6 @@ module agora.test.LocalTransactions;
 
 version (unittest):
 
-import agora.consensus.data.Transaction;
-import agora.consensus.Fee;
-import agora.common.Task;
 import agora.crypto.Hash;
 import agora.consensus.Ledger;
 import agora.test.Base;

@@ -16,21 +16,8 @@ module agora.test.RestoreSCPState;
 version (unittest):
 
 import agora.common.ManagedDatabase;
-import agora.common.Task;
-import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
-import agora.consensus.data.Block;
-import agora.consensus.data.Params;
-import agora.consensus.data.Transaction;
-import agora.consensus.Ledger;
-import agora.node.Validator;
-import agora.network.Clock;
 import agora.test.Base;
-
-import scpd.Cpp;
-import scpd.types.Stellar_SCP;
-
-import core.thread;
 
 /// A test to store SCP state and recover SCP state
 unittest

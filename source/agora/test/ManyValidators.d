@@ -15,22 +15,13 @@ module agora.test.ManyValidators;
 
 version (unittest):
 
+import agora.test.Base;
+
 import core.thread;
 import core.time;
 
 void manyValidators (size_t validators)
 {
-    import agora.test.Base : TestConf, GenesisValidators, GenesisValidatorCycle,
-        makeTestNetwork, TestAPIManager;
-    import agora.common.Types : Height;
-    import agora.consensus.data.Transaction;
-    import agora.utils.Test : genesisSpendable, retryFor;
-    import std.algorithm;
-    import std.format;
-    import std.range;
-    import core.time : seconds;
-    import agora.crypto.Key;
-
     TestConf conf = { outsider_validators : validators - GenesisValidators };
     conf.node.network_discovery_interval = 2.seconds;
     conf.node.retry_delay = 250.msecs;

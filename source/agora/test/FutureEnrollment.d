@@ -15,13 +15,6 @@ module agora.test.FutureEnrollment;
 
 version (unittest):
 
-import agora.api.FullNode;
-import agora.common.Amount;
-import agora.consensus.data.Block;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.Transaction;
-import agora.crypto.Key;
-import agora.node.Config;
 import agora.test.Base;
 
 import core.atomic : atomicLoad;

@@ -24,22 +24,17 @@ version (unittest):
 
 import agora.api.FullNode : NodeInfo, NetworkState;
 import agora.api.Registry;
-import agora.api.Validator : ValidatorAPI = API, Identity;
 import agora.api.Handlers;
-import agora.common.Amount;
 import agora.common.BanManager;
 import agora.common.BitMask;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
-import agora.consensus.data.Block;
-import agora.consensus.data.Enrollment;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.ValidatorBlockSig;
-import agora.consensus.data.Transaction;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.Fee;
 import agora.consensus.Ledger;
@@ -82,7 +77,14 @@ import core.thread;
 
 /* The following imports are frequently needed in tests */
 
+public import agora.common.Amount;
 public import agora.common.Types;
+public import agora.consensus.data.Block;
+public import agora.consensus.data.Enrollment;
+public import agora.consensus.data.Transaction;
+
+/// In order to `filter` (LocalRest) any method, the `API` type is needed
+public import agora.api.Validator;
 /// Any test implementing their own nodes will need to use `Config`
 public import agora.node.Config : Config;
 /// Allows to easily configure the loggers
@@ -1326,7 +1328,7 @@ public class TestNetworkManager : NetworkManager
 
     API implemented by the test nodes runs by LocalRest
 
-    This API inherits from ValidatorAPI, and simply adds a few functions that
+    This API inherits from the validator API, and simply adds a few functions that
     should not be public in a real-world scenario, but are needed in our test
     setup. Those functions trigger a specific action (e.g. `start`, `printLog`),
     or in rare cases are a way to force a node to take a specific action.
@@ -1342,7 +1344,7 @@ public class TestNetworkManager : NetworkManager
 
 *******************************************************************************/
 
-public interface TestAPI : ValidatorAPI
+public interface TestAPI : API
 {
     /***************************************************************************
 

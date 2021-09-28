@@ -15,11 +15,7 @@ module agora.test.BlockRewards;
 
 version (unittest):
 
-import agora.api.Validator;
-import agora.common.Amount;
-import agora.consensus.data.Block;
 import agora.consensus.data.Params: ConsensusConfig;
-import agora.consensus.data.Transaction;
 import agora.consensus.Fee: calculateDataFee;
 import agora.consensus.protocol.Nominator;
 import agora.test.Base;

@@ -15,9 +15,7 @@ module agora.test.Script;
 
 version (unittest):
 
-import agora.api.Validator;
 import agora.consensus.data.genesis.Test;
-import agora.consensus.data.Transaction;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
@@ -30,7 +28,8 @@ import Schnorr = agora.crypto.Schnorr;
 
 import std.bitmanip;
 
-alias LockType = agora.script.Lock.LockType;
+// Needed to avoid conflict with `std.stdio.LockType`
+private alias LockType = agora.script.Lock.LockType;
 
 /// OP.VERIFY_LOCK_HEIGHT
 unittest

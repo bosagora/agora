@@ -16,20 +16,8 @@ module agora.test.SlashingMisbehavingValidator;
 
 version (unittest):
 
-import agora.common.ManagedDatabase;
-import agora.consensus.data.Block;
-import agora.consensus.data.Params;
-import agora.consensus.data.PreImageInfo;
-import agora.consensus.data.Transaction;
-import agora.consensus.EnrollmentManager;
-import agora.consensus.state.UTXOSet;
 import agora.crypto.Schnorr;
-import agora.crypto.Key;
-import agora.utils.Test;
 import agora.test.Base;
-
-import std.exception;
-import std.path : buildPath;
 
 import core.atomic;
 import core.stdc.stdint;

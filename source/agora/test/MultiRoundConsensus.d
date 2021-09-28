@@ -18,16 +18,7 @@ module agora.test.MultiRoundConsensus;
 
 version (unittest):
 
-import agora.api.Validator;
-import agora.common.Task;
-import agora.consensus.data.Block;
-import agora.consensus.data.Params;
-import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Nominator;
-import agora.consensus.data.Transaction;
-import agora.consensus.data.genesis.Test;
-import agora.network.Clock;
-import agora.consensus.Ledger;
 import agora.test.Base;
 
 import core.stdc.inttypes;

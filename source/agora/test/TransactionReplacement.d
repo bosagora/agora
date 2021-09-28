@@ -16,9 +16,7 @@ module agora.test.TransactionReplacement;
 version (unittest):
 
 import agora.api.Validator;
-import agora.common.Amount;
 import agora.consensus.data.genesis.Test;
-import agora.consensus.data.Transaction;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.test.Base;

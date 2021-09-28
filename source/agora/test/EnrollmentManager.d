@@ -19,15 +19,10 @@ version (unittest):
 import agora.common.Set;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
-import agora.consensus.data.Transaction;
 import agora.consensus.validation.PreImage;
 import agora.test.Base;
 
-import std.algorithm.searching : any;
-import std.range : only;
-
 import core.thread;
-import core.time;
 
 /// test for enrollment process & revealing a pre-image periodically
 unittest
