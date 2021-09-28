@@ -256,14 +256,18 @@ public class Reward
             log.info("Less than 50% signatures for payout period. The validators will get no rewards this payout!");
             return 0.coins;
         }
-        ulong payout_percent = 100 - 2 * (100 - percent_signed); // penalty of `y = 2x`
-
         Amount actual = total_allocated;
-        if (!actual.percentage(cast(ubyte) payout_percent))
-            assert(0, format!"Failed to get percentage %s of Amount %s"(payout_percent, actual));
 
-        log.trace("Reduced validator reward is: {}", actual);
-        assert(actual.isValid());
+        if (percent_signed < 100)
+        {
+            ulong payout_percent = 100 - 2 * (100 - percent_signed); // penalty of `y = 2x`
+
+            if (!actual.percentage(cast(ubyte) payout_percent))
+                assert(0, format!"Failed to get percentage %s of Amount %s"(payout_percent, actual));
+
+            log.info("Reduced validator reward is: {} as only {}% signed this block", actual, percent_signed);
+            assert(actual.isValid());
+        }
 
         return actual;
     }
