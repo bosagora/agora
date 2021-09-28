@@ -347,7 +347,7 @@ private void handle (API) (API api, ref TCPConnection stream) @trusted nothrow
         handleThrow(api, stream);
     catch (Exception ex)
     {
-        try log.error("Exception caught in handle: {}", ex);
+        try log.trace("Exception caught in handle: {}", ex);
         // This should never happen, but if it does, at least let the user know
         catch (Exception e)
         {
@@ -385,13 +385,13 @@ private void handleThrow (API) (scope API api, ref TCPConnection stream)
                 lookup[hashFull(ovrld.mangleof)] = ovrld.mangleof;
     }
 
-    log.info("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
+    log.trace("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
     Hash methodbin;
     stream.read(methodbin[]);
     const method = methodbin in lookup;
     if (method is null)
     {
-        log.error("[{}] Calling out of range method: {}",
+        log.trace("[{}] Calling out of range method: {}",
                   stream.peerAddress, methodbin);
         return;
     }
