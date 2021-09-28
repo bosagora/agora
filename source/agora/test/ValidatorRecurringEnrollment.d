@@ -319,10 +319,11 @@ unittest
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // set the recurring enrollment option to true and check in enrollment pools
-    network.clients.each!((node)
+    network.validators.each!((node)
     {
         Enrollment enroll = node.setRecurringEnrollment(true);
-        network.clients.each!(n =>
+        assert(enroll !is Enrollment.init);
+        network.validators.each!(n =>
             retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     });
     network.generateBlocks(Height(GenesisValidatorCycle));

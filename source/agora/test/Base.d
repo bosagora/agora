@@ -586,6 +586,13 @@ public class TestAPIManager
         return this.nodes.map!(np => np.client);
     }
 
+    /// Convenience function to get a range of all nodes instantiated as validators
+    public auto validators ()
+    {
+        // This is a crude way to get validators, but it works
+        return this.nodes.filter!(n => n.address.startsWith("Validator-")).map!(np => np.client);
+    }
+
     /// Registry holding the nodes
     protected AnyRegistry registry;
 
