@@ -16,31 +16,16 @@ module agora.test.InvalidBlockSigByzantine;
 
 version (unittest):
 
-import agora.api.Validator;
-import agora.common.Task;
-import agora.consensus.data.Block;
 import agora.consensus.protocol.Nominator;
 import agora.crypto.ECC;
 import agora.crypto.Schnorr;
 import agora.test.Base;
-import agora.utils.SCPPrettyPrinter;
 import agora.utils.Log;
-import agora.utils.PrettyPrinter;
-
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
 
-import std.algorithm;
-import std.exception;
-import std.format;
-import std.range;
-import std.stdio;
-
-import core.exception;
 import core.stdc.inttypes;
-import core.thread;
-import core.atomic;
 
 mixin AddLogger!();
 

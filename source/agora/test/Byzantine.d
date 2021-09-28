@@ -16,29 +16,19 @@ module agora.test.Byzantine;
 
 version (unittest):
 
-import agora.api.Validator;
 import agora.common.Task;
-import agora.common.Types;
-import agora.consensus.data.Block;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.data.Params;
-import agora.consensus.data.Transaction;
 import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.crypto.Schnorr;
 import agora.network.Clock;
-import agora.consensus.Ledger;
 import agora.test.Base;
-import agora.utils.SCPPrettyPrinter;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
 
-import std.algorithm;
 import std.exception;
-import std.format;
-import std.range;
-import std.stdio;
 
 import core.exception;
 import core.stdc.inttypes;

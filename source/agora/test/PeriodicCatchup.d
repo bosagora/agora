@@ -18,7 +18,6 @@ module agora.test.PeriodicCatchup;
 version (unittest):
 
 import agora.common.BitMask;
-import agora.consensus.data.Block;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.protocol.Nominator;
 import agora.crypto.Schnorr: Signature;

@@ -15,14 +15,9 @@ module agora.test.QuorumShuffle;
 
 version (unittest):
 
-import agora.common.Types;
-import agora.consensus.data.Block;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.Transaction;
 import agora.crypto.Key;
 import agora.test.Base;
 import agora.utils.Log;
-import agora.utils.PrettyPrinter;
 
 mixin AddLogger!();
 

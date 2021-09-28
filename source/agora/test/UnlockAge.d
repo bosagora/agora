@@ -15,8 +15,6 @@ module agora.test.UnlockAge;
 
 version (unittest):
 
-import agora.api.Validator;
-import agora.consensus.data.Transaction;
 import agora.test.Base;
 
 /// Ditto

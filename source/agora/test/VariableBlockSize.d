@@ -17,12 +17,7 @@ version (unittest):
 
 import agora.api.Validator;
 import agora.consensus.data.genesis.Test: GenesisBlock;
-import agora.utils.Test: genesisSpendable;
-import agora.consensus.data.Transaction;
 import agora.test.Base;
-
-import std.algorithm;
-import std.range;
 
 ///
 unittest

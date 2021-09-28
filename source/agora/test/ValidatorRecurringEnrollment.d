@@ -19,9 +19,6 @@ version (unittest):
 import agora.test.Base;
 
 import agora.consensus.protocol.Data;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.Transaction;
-import agora.consensus.data.Block;
 import agora.consensus.EnrollmentManager;
 import agora.consensus.PreImage;
 import agora.consensus.protocol.Nominator;

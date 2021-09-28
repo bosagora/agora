@@ -16,9 +16,6 @@ module agora.test.GenesisBlock;
 
 version (unittest):
 
-import agora.api.Validator;
-import agora.consensus.data.Block;
-import agora.consensus.data.Transaction;
 import agora.test.Base;
 
 /// ditto

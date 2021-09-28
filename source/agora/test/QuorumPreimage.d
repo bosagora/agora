@@ -16,11 +16,7 @@ module agora.test.QuorumPreimage;
 version (unittest):
 
 import agora.api.Validator;
-import agora.common.Amount;
 import agora.consensus.data.Params;
-import agora.consensus.data.Block;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.crypto.Key;
 import agora.node.FullNode;
@@ -28,17 +24,12 @@ import agora.test.Base;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
-import std.algorithm;
-import std.format;
-import std.range;
-
 import core.thread;
 import core.time;
 
 /// test preimage changing quorum configs
 unittest
 {
-    import agora.common.Types;
     TestConf conf = {
         recurring_enrollment : false,
         outsider_validators : 2,

@@ -15,10 +15,7 @@ module agora.test.NetworkClient;
 
 version (unittest):
 
-import agora.consensus.data.Block;
-import agora.common.Types;
 import agora.consensus.data.genesis.Test;
-import agora.consensus.data.Transaction;
 import agora.test.Base;
 
 import core.thread;

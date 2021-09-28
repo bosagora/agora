@@ -16,9 +16,6 @@ module agora.test.BanManager;
 
 version (unittest):
 
-import agora.common.Types;
-import agora.consensus.data.Transaction;
-import agora.crypto.Hash;
 import agora.test.Base;
 import core.thread;
 

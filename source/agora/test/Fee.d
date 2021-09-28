@@ -14,8 +14,6 @@
 module agora.test.Fee;
 
 import agora.test.Base;
-import agora.consensus.data.Transaction;
-import agora.common.Amount;
 
 // Normal operation, every `payout_period`th block should
 // include coinbase outputs to validators
@@ -81,7 +79,6 @@ unittest
 version (none)
 unittest
 {
-    import agora.consensus.data.Block;
     import core.thread;
 
     TestConf conf;
@@ -143,7 +140,6 @@ unittest
 // at different heights. With 80 quorum threshold, consensus should be reached
 unittest
 {
-    import agora.consensus.data.Block;
     import core.thread;
 
     TestConf conf;

@@ -15,15 +15,10 @@ module agora.test.MissingPreImageDetection;
 
 version (unittest):
 
-import agora.common.Task;
-import agora.consensus.data.Enrollment;
-import agora.consensus.data.PreImageInfo;
-import agora.consensus.EnrollmentManager;
 import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.serialization.Serializer;
 import agora.test.Base;
-import agora.utils.Test;
 
 import scpd.types.Stellar_SCP;
 import scpd.types.Utils;
