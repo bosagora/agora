@@ -994,7 +994,7 @@ public class FullNode : API
         {
             utxo_finder = this.utxo_set.getUTXOFinder();
         }
-        else 
+        else
         {
             /// FIXME: Use a proper type and sensible memory allocation pattern
             // We create a extra UTXO set using the transaction pool if there
@@ -1009,7 +1009,7 @@ public class FullNode : API
                         continue;
 
                     foreach (output; tx.outputs)
-                        if (output.type == OutputType.Freeze && 
+                        if (output.type == OutputType.Freeze &&
                             output.value >= Amount.MinFreezeAmount)
                         {
                             extra_set.put(tx);
