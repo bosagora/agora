@@ -581,9 +581,9 @@ public class TestAPIManager
     protected TimePoint initial_time;
 
     /// convenience: returns a random-access range which lets us access clients
-    auto clients ()
+    public auto clients ()
     {
-        return nodes.map!(np => np.client);
+        return this.nodes.map!(np => np.client);
     }
 
     /// Registry holding the nodes
@@ -945,13 +945,9 @@ public class TestAPIManager
             foreach (node; this.nodes)
             {
                 try
-                {
                     node.client.printLog();
-                }
                 catch (Exception ex)
-                {
                     writefln("Could not print logs for node: %s", ex.message);
-                }
             }
         }
     }
