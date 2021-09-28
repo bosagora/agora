@@ -261,7 +261,7 @@ public class RPCClient (API) : API
                                    Pack!(Parameters!ovrld)(params));
                     scope conn = this.pool.lockConnection();
                     conn.ensureConnected();
-                    scope (exit) conn.close();
+                    scope (failure) conn.close();
 
                     ubyte[512] tmp = void;
                     Hash method = this.lookup[ovrld.mangleof];
@@ -322,7 +322,9 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port,
     auto callback = (TCPConnection stream) @safe nothrow {
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
-        handle(impl, stream);
+        // Try to reuse the connection, if no requests arrive within a certain
+        // period then handleThrow() will throw and handle() will return false
+        while (handle(impl, stream, timeout)) {}
     };
     return listenTCP(port, callback, address);
 }
@@ -341,10 +343,10 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port,
 
 *******************************************************************************/
 
-private void handle (API) (API api, ref TCPConnection stream) @trusted nothrow
+private bool handle (API) (API api, ref TCPConnection stream, Duration timeout) @trusted nothrow
 {
     try
-        handleThrow(api, stream);
+        handleThrow(api, stream, timeout);
     catch (Exception ex)
     {
         try log.trace("Exception caught in handle: {}", ex);
@@ -354,8 +356,9 @@ private void handle (API) (API api, ref TCPConnection stream) @trusted nothrow
             printf("[%s:%d] Error while logging an error: %.*s\n",
                    __FILE__.ptr, __LINE__, cast(int) ex.msg.length, ex.msg.ptr);
         }
-        stream.close();
+        return false;
     }
+    return true;
 }
 
 /*******************************************************************************
@@ -374,7 +377,7 @@ private void handle (API) (API api, ref TCPConnection stream) @trusted nothrow
 
 *******************************************************************************/
 
-private void handleThrow (API) (scope API api, ref TCPConnection stream)
+private void handleThrow (API) (scope API api, ref TCPConnection stream, Duration timeout)
     @trusted
 {
     static string[Hash] lookup;
@@ -385,7 +388,14 @@ private void handleThrow (API) (scope API api, ref TCPConnection stream)
                 lookup[hashFull(ovrld.mangleof)] = ovrld.mangleof;
     }
 
-    log.trace("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
+    // use the existing readTimeout in leastSize()
+    // if this is a new connection, handle() will have set it to the configuration value
+    // if it is a reused connection it will be set to the keep alive period.
+    log.info("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
+    // after the initial data arrives, reduce the timeout to the configured amount
+    stream.readTimeout = timeout;
+    // We will reuse this connection, keep the connection alive for 10 minutes after handling a request
+    scope (exit) stream.readTimeout = 10.minutes;
     Hash methodbin;
     stream.read(methodbin[]);
     const method = methodbin in lookup;
