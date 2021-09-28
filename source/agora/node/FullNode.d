@@ -61,8 +61,6 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 import agora.utils.Utility;
 
-import scpd.types.Utils;
-
 import vibe.data.json;
 import vibe.web.rest;
 import vibe.http.common;
