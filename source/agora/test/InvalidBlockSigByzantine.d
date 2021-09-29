@@ -46,7 +46,6 @@ mixin AddLogger!();
 
 private enum ByzantineReason
 {
-    BadCommitmentR,
     BadSignature
 }
 
@@ -70,15 +69,8 @@ private extern(C++) class BadBlockSigningNominator : Nominator
         const Scalar challenge = hashFull(block);
         final switch (reason)
         {
-            case ByzantineReason.BadCommitmentR:
-                const Scalar rc = Scalar.random(); // This is normally the enrollment commitment
-                const Scalar r = rc + Scalar(preimage);
-                const Point R = r.toPoint();
-                return sign(this.kp.secret, R, r, challenge);
             case ByzantineReason.BadSignature:
-                const Scalar rc = Scalar(hashMulti(WK.Keys.NODE2.secret,
-                    "consensus.signature.noise", 0));
-                const Scalar r = rc + Scalar(preimage);
+                const Scalar r = Scalar(hashMulti(this.kp.secret, preimage));
                 const Point R = r.toPoint();
                 // Sign with random in place of validator secret key
                 const wrong_scalar_v = Scalar.random();
@@ -140,29 +132,6 @@ unittest
     TestConf conf;
     conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSignature))(conf);
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery();
-    auto nodes = network.clients;
-    auto last_node = nodes[$ - 1];
-    assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
-    auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
-    txes.each!(tx => last_node.postTransaction(tx));
-    // Trigger generation of block
-    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
-    // Make sure the client we will check is in sync with others (except for byzantine)
-    network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
-    assertValidatorsBitmask(last_node.getAllBlocks()[1]);
-}
-
-/// MultiSig test: One node signs with a valid block signature using incorrect R.
-/// The block should only have 5 / 6 block signatures added
-unittest
-{
-    TestConf conf;
-    conf.consensus.quorum_threshold = 83;
-    auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadCommitmentR))(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();

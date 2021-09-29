@@ -118,10 +118,7 @@ public struct BlockHeader
     {
         // challenge = Hash(block) to Scalar
         const Scalar challenge = this.hashFull();
-        // rc = r used in signing the commitment
-        const Scalar rc = Scalar(hashMulti(secret_key, "consensus.signature.noise", offset));
-        const Scalar reduced_preimage = Scalar(preimage);
-        const Scalar r = rc + reduced_preimage; // make it unique for block height
+        const Scalar r = Scalar(hashMulti(secret_key, preimage)); // make it unique for block height
         const Point R = r.toPoint();
         return sign(secret_key, R, r, challenge);
     }
@@ -848,8 +845,7 @@ unittest
     Scalar v = genesis_validator_keys[0].secret;
     assert(v.isValid(), "v is not a valid Scalar!");
     Point V = v.toPoint();
-    const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
-    const Scalar r = rc + Scalar(preimage);
+    const Scalar r = Scalar(hashMulti(v, preimage));
     const Point R = r.toPoint();
 
     // Two messages

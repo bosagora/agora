@@ -935,29 +935,9 @@ public class Ledger
                           block.header.height, K, idx);
                 continue;
             }
-
-            const CR = this.enroll_man.getCommitmentNonce(K, block.header.height);  // commited R
-            if (CR == Point.init)
-            {
-                log.error("Block#{}: Validator {} (idx: {}) Couldn't find commitment for this validator",
-                          block.header.height, K, idx);
-                return "Block: Couldn't find commitment for this validator";
-            }
-            assert(validator.preimage.height >= block.header.height);
-            const hash = validator.preimage[block.header.height];
-            Point R = CR + Scalar(hash).toPoint();
             sum_K = sum_K + K;
-            sum_R = sum_R + R;
         }
-
         assert(sum_K != Point.init, "Block has validators but no signature");
-
-        if (sum_R != block.header.signature.R)
-        {
-            log.error("Block#{}: Signature's `R` mismatch: Expected {}, got {}",
-                      block.header.height, sum_R, block.header.signature.R);
-            return "Block: Invalid schnorr signature (R)";
-        }
         if (!verify(block.header.signature, challenge, sum_K))
         {
             log.error("Block#{}: Invalid signature: {}", block.header.height,

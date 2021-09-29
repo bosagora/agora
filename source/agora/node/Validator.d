@@ -391,7 +391,7 @@ public class Validator : FullNode, API
             log.trace("This node's signature is already in the block signature");
             // Gossip this signature as it may have been only shared via ballot signing
             this.network.gossipBlockSignature(
-                ValidatorBlockSig(block.header.height, this_utxo, sig.s));
+                ValidatorBlockSig(block.header.height, this_utxo, sig));
         }
         else
         {

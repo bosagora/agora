@@ -68,18 +68,13 @@ public struct ValidatorBlockSig
     public Hash utxo;
 
     /// The block signature as s of Signature (R, s) for the validator
-    public SigScalar signature;
+    public Signature signature;
 
-    public this (Height height, Hash utxo, SigScalar signature) @safe @nogc nothrow
+    public this (Height height, Hash utxo, Signature signature) @safe @nogc nothrow
     {
         this.height = height;
         this.utxo = utxo;
         this.signature = signature;
-    }
-
-    public this (Height height, Hash utxo, Scalar signature) @safe @nogc nothrow
-    {
-        this(height, utxo, SigScalar(signature));
     }
 }
 
@@ -92,7 +87,9 @@ unittest
 
     Height height = Height(100);
     Hash hash = "Hello world".hashFull();
-    Scalar signature = Scalar("0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778");
+    Scalar s = Scalar("0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778");
+    Point R = Point("0x921405afbfa97813293770efd55865c01055f39ad2a70f2b7a04ac043766a693");
+    Signature signature = Signature(R, s);
     ValidatorBlockSig sig = ValidatorBlockSig(height, hash, signature);
     testSymmetry(sig);
 
@@ -100,5 +97,6 @@ unittest
     assert(sig.serializeToJsonString() == "{\"height\":\"100\"," ~
         "\"utxo\":\"0xee438b9928cd623262b040b3b2b1522235b8a92269d1a724cd53c25" ~
            "d1042ec86b2d178cef755014a5892706e689cd82e00de9f1225e87dcc0600b2c8b2be9931\"," ~
-        "\"signature\":\"0x0e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778\"}");
+        "\"signature\":\"0x921405afbfa97813293770efd55865c01055f39ad2a70f2b7a04ac043766a6930" ~
+        "e00a8df701806cb4deac9bb09cc85b097ee713e055b9d2bf1daf668b3f63778\"}");
 }
