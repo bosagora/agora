@@ -34,6 +34,7 @@ import std.algorithm.iteration : map, splitter;
 import std.algorithm.searching : endsWith;
 import std.array : replace;
 import std.datetime;
+import std.format;
 import std.range : zip;
 import std.socket;
 static import std.uni;
@@ -361,7 +362,7 @@ public class NameRegistry: NameRegistryAPI
     private void doAXFR (in ZoneData zone, ref Message reply) @safe
     {
         log.info("Performing AXFR for {} ({} entries)",
-                 zone.soa.mname, zone.map.length);
+                 zone.root.value, zone.map.length);
         auto soa = zone.toRR();
         reply.answers ~= soa;
         foreach (const ref key, const ref value; zone.map)
@@ -504,7 +505,7 @@ unittest
     const AStr = WK.Keys.A.address.toString();
     // We only need a valid mname
     ZoneData zone;
-    zone.soa.mname = "net.bosagora.io";
+    zone.root = Domain("net.bosagora.io");
 
     // Most likely case
     assert((AStr ~ ".net.bosagora.io")
@@ -520,7 +521,7 @@ unittest
            .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Only gTLD
-    zone.soa.mname = "bosagora";
+    zone.root = Domain("bosagora");
     assert((AStr ~ ".bosagora")
            .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
@@ -529,12 +530,12 @@ unittest
            .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
     assert((AStr ~ ".BoSAGorA")
            .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
-    zone.soa.mname = ".BoSAgOrA";
+    zone.root = Domain(".BoSAgOrA");
     assert((AStr ~ ".BOSAGORA")
            .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
 
     // Rejection tests
-    zone.soa.mname = "boa";
+    zone.root = Domain("boa");
     assert((AStr[1 .. $] ~ ".boa")
            .parsePublicKeyFromDomain(zone) is PublicKey.init);
     auto invalid = AStr.dup;
@@ -542,7 +543,7 @@ unittest
     assert((invalid ~ ".boa")
            .parsePublicKeyFromDomain(zone) is PublicKey.init);
 
-    zone.soa.mname = "boap";
+    zone.root = Domain("boap");
     assert((AStr ~ ".boa")
            .parsePublicKeyFromDomain(zone) is PublicKey.init);
 }
@@ -637,7 +638,7 @@ unittest
 private SOA fromConfig (in ZoneConfig zone, string name, uint serial) @safe pure
 {
     SOA soa;
-    soa.mname = name;
+    soa.mname = format("ns1.%s", name);
     soa.rname = zone.email.replace('@', '.');
     soa.serial = serial;
     // Casts are safe as the values are validated during config parsing
@@ -661,6 +662,9 @@ private struct TypedPayload
 /// Contains infos related to either `validators` or `flash`
 private struct ZoneData
 {
+    /// The zone fully qualified name
+    public Domain root;
+
     /// The SOA record
     public SOA soa;
 
@@ -673,12 +677,13 @@ private struct ZoneData
     /// Fill this from the configuration
     public void fill (in string name, in ZoneConfig config, uint serial)
     {
+        this.root = Domain(name);
         this.authoritative = config.authoritative;
 
         if (this.authoritative)
             this.soa = config.fromConfig(name, serial);
         else
-            this.soa.mname = name;
+            this.soa.mname = format("ns1.%s", this.root);
     }
 
     /***************************************************************************
@@ -718,7 +723,7 @@ private struct ZoneData
         // We can't use a `std.range: {zip,lockstep}` + `foreach` approach either,
         // as it implicitly saves the range. So make a save of the `domain` range
         // (as we might be iterating multiple times over it), and do it manually.
-        auto auth_domain_range = this.soa.mname.value.splitter('.');
+        auto auth_domain_range = this.root.value.splitter('.');
         auto domain_range = input.splitter('.');
         while (true)
         {
@@ -755,7 +760,7 @@ private struct ZoneData
     unittest
     {
         ZoneData zone;
-        zone.soa.mname = "example.com";
+        zone.root = Domain("example.com");
         assert(zone.matches("example.com"));
         assert(!zone.matches("a.example.com"));
         assert(!zone.matches("exampld.com"));
