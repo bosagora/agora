@@ -366,7 +366,7 @@ public class NameRegistry: NameRegistryAPI
         auto soa = zone.toRR();
         reply.answers ~= soa;
         foreach (const ref key, const ref value; zone.map)
-            reply.answers ~= this.convertPayload(value, key.toString());
+            reply.answers ~= this.convertPayload(value, format("%s.%s", key, zone.root.value));
         reply.answers ~= soa;
         reply.header.RCODE = Header.RCode.NoError;
     }
@@ -411,28 +411,35 @@ public class NameRegistry: NameRegistryAPI
         return Header.RCode.NoError;
     }
 
-    private ResourceRecord convertPayload (
-        in TypedPayload tp, lazy const char[] qname)
+    /***************************************************************************
+
+        Converts a `TypedPayload` to a valid `ResourceRecord`
+
+        Params:
+          tp = The typed payload as found in one of the zones map
+          qname = The "question name", or the record name (e.g. in AXFR)
+
+        Throws:
+          If the type of `tp` is not supported
+          (this would be a programming error).
+
+    ***************************************************************************/
+
+    private ResourceRecord convertPayload (in TypedPayload tp, const char[] qname)
         const @safe
     {
         ResourceRecord answer;
         answer.class_ = CLASS.IN; // Validated by the caller
         answer.type = tp.type;
+        answer.name = qname;
 
         if (tp.type == TYPE.CNAME)
         {
-            /* RFC1034: 4.3.2. Algorithm
-             *
-             * If the data at the node is a CNAME, and QTYPE doesn't
-             * match CNAME, copy the CNAME RR into the answer section
-             * of the response, change QNAME to the canonical name in
-             * the CNAME RR, and go back to step 1.
-             *
-             * Otherwise, copy all RRs which match QTYPE into the
-             * answer section and go to step 6.
+            /* If it's a CNAME, it has to be to another domain, as we don't
+             * yet support aliases in the same zone, hence the algorithm in
+             * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
             assert(tp.payload.data.addresses.length == 1);
-            answer.name = tp.payload.data.addresses[0];
             answer.rdata = answer.name.serializeFull();
             // We don't provide recursion yet, so just return this
             // and let the caller figure it out.
@@ -445,7 +452,6 @@ public class NameRegistry: NameRegistryAPI
                 ensure(ip4addr != InternetAddress.ADDR_NONE,
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, tp);
-                answer.name = qname;
                 answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
             }
         }
