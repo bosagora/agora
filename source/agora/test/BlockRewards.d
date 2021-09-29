@@ -29,7 +29,7 @@ import std.numeric : gcd;
 private const int PayoutPeriod = 6;
 
 // year 1: coins per 5 secs: commons = 50 validators = 27
-private const BlockSecs = 600;
+private const BlockSecs = 30;
 private const FiveSecsPerBlock = BlockSecs / 5;
 private const CommonsReward = 50.coins * FiveSecsPerBlock;
 private const ValRewards = 27.coins * FiveSecsPerBlock;
@@ -39,6 +39,7 @@ private const ValReward = 27.coins * (FiveSecsPerBlock / GenesisValidators);
 unittest
 {
     TestConf conf;
+    conf.consensus.block_interval = BlockSecs.seconds;
     conf.consensus.payout_period = PayoutPeriod;
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
@@ -83,6 +84,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.block_interval = BlockSecs.seconds;
     conf.consensus.payout_period = PayoutPeriod;
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
@@ -151,6 +153,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.consensus.block_interval = BlockSecs.seconds;
     conf.consensus.payout_period = PayoutPeriod;
     auto network = makeTestNetwork!TestManager(conf);
     network.start();
@@ -169,7 +172,7 @@ unittest
         .stride(Height(PayoutPeriod))
         .each!((Height h)
     {
-        network.generateBlocks(iota(activeValidators), h); // Don't include node 5
+        network.generateBlocks(iota(activeValidators), h, true); // Don't include node 5
         network.assertSameBlocks(h, last_height + 1);
         last_height = h;
     });
@@ -197,10 +200,13 @@ unittest
             if (block.header.height % 2 == 0)
             {
                 val_fees.div(activeValidators);
-                Amount val_reward = 27.coins * (FiveSecsPerBlock / activeValidators);
-                val_payout_node0 += val_fees + val_reward;
-                val_payout_rest += val_fees + val_reward;
-                commons_payout += CommonsReward + fees - (val_fees * activeValidators);
+                Amount val_reward = 27.coins * FiveSecsPerBlock;
+                val_reward.div(activeValidators); // div remainder goes to commons_payout
+                Amount val_payout = val_fees + val_reward;
+                val_payout_node0 += val_payout;
+                val_payout_rest += val_payout;
+                Amount leftover = ValRewards - (val_payout * activeValidators);
+                commons_payout += CommonsReward + fees + leftover;
             } else
             {
                 // For first block all nodes will be included but afterwards node 5 is slashed
@@ -208,13 +214,14 @@ unittest
                 ubyte signed_percent = 100 * (activeValidators - 1) / (isHeight_1 ? GenesisValidators : activeValidators);
                 ubyte percentage_reward = cast(ubyte) (100 - 2 * (100 - signed_percent));
                 assert(percentage_reward == isHeight_1 ? 32 : 60);
-                Amount reduced_val_reward = 27.coins * (FiveSecsPerBlock / (activeValidators - 1));
+                Amount reduced_val_reward = 27.coins * FiveSecsPerBlock;
+                reduced_val_reward.div(activeValidators - 1); // div remainder goes to commons_payout
                 assert(reduced_val_reward.percentage(percentage_reward));
-                val_fees.div(activeValidators - 1);
-                val_payout_rest += val_fees + reduced_val_reward;
-                commons_payout += CommonsReward + ValRewards
-                    - (reduced_val_reward * (activeValidators - 1))
-                    + fees - (val_fees * (activeValidators - 1));
+                val_fees.div(activeValidators - 1); // div remainder goes to commons_payout
+                Amount val_payout = val_fees + reduced_val_reward;
+                val_payout_rest += val_payout;
+                Amount leftover = ValRewards - (val_payout * (activeValidators - 1));
+                commons_payout += CommonsReward + fees + leftover;
             }
         });
         auto cb_tx = node_1.getBlocksFrom(height, 1).front.txs.filter!(tx => tx.isCoinbase).front;
