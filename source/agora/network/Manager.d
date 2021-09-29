@@ -633,8 +633,6 @@ public class NetworkManager
     /// discovery() is considered complete
     public void discover (UTXO[Hash] required_peer_utxos = null) nothrow
     {
-        log.info("Doing network discovery..");
-
         this.quorum_set_keys.from(Set!Hash.init);
         this.required_peers.from(Set!Hash.init);
 
@@ -644,6 +642,10 @@ public class NetworkManager
             if (!this.peers[].map!(ni => ni.utxo).canFind(peer.key))
                 this.required_peers.put(peer.key);
         }
+
+        log.info(
+            "Doing periodic network discovery: {} required peers requested, {} missing",
+            required_peer_utxos.length, this.required_peers.length);
 
         if (this.registry_client !is null && required_peer_utxos !is null)
         {
