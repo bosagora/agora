@@ -622,10 +622,12 @@ public class NetworkManager
             return null;
 
         this.onRegisterName();  // avoid delay
-        // we re-register in every 2 minutes, in order to cope with the situation below
+        // We re-register at regular interval in order to cope with the situation below
         // 1. network registry server is restarted
         // 2. client running agora node acquired some new IPs
-        return this.taskman.setTimer(2.minutes, &this.onRegisterName, Periodic.Yes);
+        return this.taskman.setTimer(
+            this.validator_config.name_registration_interval,
+            &this.onRegisterName, Periodic.Yes);
     }
 
     /// Discover the network, connect to all required peers
