@@ -28,6 +28,7 @@ import ocean.text.convert.Formatter;
 
 import vibe.core.net;
 import vibe.core.connectionpool;
+import vibe.core.sync;
 
 import std.traits;
 import core.stdc.stdio;
@@ -165,10 +166,10 @@ public class RPCClient (API) : API
 
     ***************************************************************************/
 
-    public this (string host, ushort port,
+    public this (ThisEndAPI) (string host, ushort port,
                  Duration retry_delay, uint max_retries,
                  Duration ctimeout, Duration rtimeout, Duration wtimeout,
-                 uint concurrency)
+                 uint concurrency, ThisEndAPI impl)
         @trusted
     {
         const Config config = {
@@ -183,11 +184,11 @@ public class RPCClient (API) : API
             write_timeout:      wtimeout,
             concurrency:        concurrency,
         };
-        this(config);
+        this(config, impl);
     }
 
     /// Ditto
-    public this (const Config config) @trusted
+    public this (ThisEndAPI) (const Config config, ThisEndAPI impl) @trusted
     {
         this.config = config;
         this.log = Log.lookup(
@@ -213,7 +214,14 @@ public class RPCClient (API) : API
                     conn.readTimeout = this.config.read_timeout;
 
                     if (conn.connected())
-                        return new RPCConnection(conn);
+                    {
+                        static import vibe.core.core;
+                        auto rpc_conn = new RPCConnection(conn);
+                        vibe.core.core.runTask({
+                            rpc_conn.startListening(impl);
+                        });
+                        return rpc_conn;
+                    }
                 }
                 catch (Exception e) {}
                 attempts++;
@@ -239,34 +247,39 @@ public class RPCClient (API) : API
             mixin(q{
                 override ReturnType!(ovrld) } ~ member ~ q{ (Parameters!ovrld params)
                 {
-                    this.log.trace("[CLIENT]: {}: {}", __PRETTY_FUNCTION__,
-                                   Pack!(Parameters!ovrld)(params));
                     scope conn = this.pool.lockConnection();
-                    scope (failure) this.pool.remove(conn);
-
+                    scope (failure)
+                    {
+                        conn.close();
+                        this.pool.remove(conn);
+                    }
                     ubyte[512] tmp = void;
                     Hash method = this.lookup[ovrld.mangleof];
                     // Send the method type
-                    conn.write(method[0 .. $]);
+
+                    conn.wlock.lock();
+                    conn.write(serializeFull(method));
                     // List of parameters
                     foreach (ref p; params)
                         serializePart(p, (in ubyte[] v) => conn.write(v));
                     conn.flush();
-                    static if (is(typeof(return) == void))
+                    conn.wlock.unlock();
+
+                    scope DeserializeDg dg = (size_t size)
+                        {
+                            ensure(size < tmp.length, "Out of bound read");
+                            conn.read(tmp[0 .. size]);
+                            return tmp[0 .. size];
+                        };
+
+                    conn.rlock.lock(); // todo: timeout
+                    scope (exit)
                     {
-                        // Wait for the remote to write back the same method type
-                        conn.read(method[0 .. $]);
-                        this.log.trace("[CLIENT] Returning from {} : {}",
-                                       __PRETTY_FUNCTION__, method);
+                        conn.rlock.unlock();
+                        conn.rcond.notify();
                     }
-                    else
+                    static if (!is(typeof(return) == void))
                     {
-                        scope DeserializeDg dg = (size_t size)
-                            {
-                                ensure(size < tmp.length, "Out of bound read");
-                                conn.read(tmp[0 .. size]);
-                                return tmp[0 .. size];
-                            };
                         version (all)
                         {
                             auto retval = deserializeFull!(typeof(return))(dg);
@@ -288,12 +301,41 @@ private class RPCConnection
     private TCPConnection conn;
 
     ///
+    public TaskMutex rlock;
+    public TaskMutex wlock;
+
+    ///
+    public TaskCondition rcond;
+
+    ///
     alias conn this;
 
     ///
-    this (TCPConnection conn) @safe
+    this () @safe nothrow
+    {
+        this.rlock = new TaskMutex();
+        this.wlock = new TaskMutex();
+        this.rcond = new TaskCondition(this.rlock);
+    }
+
+    ///
+    this (TCPConnection conn) @safe nothrow
     {
         this.conn = conn;
+        this();
+    }
+
+    ///
+    void startListening (ThisEndAPI) (ThisEndAPI impl) @safe
+    {
+        this.rlock.lock();
+        scope (exit) {
+            this.conn.close();
+            this.rlock.unlock();
+        }
+        // Try to reuse the connection, if no requests arrive within a certain
+        // period then handleThrow() will throw and handle() will return false
+        while (handle(impl, this, this.conn.readTimeout)) {}
     }
 }
 
@@ -319,9 +361,7 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port,
     auto callback = (TCPConnection stream) @safe nothrow {
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
-        // Try to reuse the connection, if no requests arrive within a certain
-        // period then handleThrow() will throw and handle() will return false
-        while (handle(impl, stream, timeout)) {}
+        new RPCConnection(stream).startListening(impl);
     };
     return listenTCP(port, callback, address);
 }
@@ -340,7 +380,7 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port,
 
 *******************************************************************************/
 
-private bool handle (API) (API api, ref TCPConnection stream, Duration timeout) @trusted nothrow
+private bool handle (API) (API api, RPCConnection stream, Duration timeout) @trusted nothrow
 {
     try
         handleThrow(api, stream, timeout);
@@ -374,7 +414,7 @@ private bool handle (API) (API api, ref TCPConnection stream, Duration timeout) 
 
 *******************************************************************************/
 
-private void handleThrow (API) (scope API api, ref TCPConnection stream, Duration timeout)
+private void handleThrow (API) (scope API api, RPCConnection stream, Duration timeout)
     @trusted
 {
     static string[Hash] lookup;
@@ -385,38 +425,45 @@ private void handleThrow (API) (scope API api, ref TCPConnection stream, Duratio
                 lookup[hashFull(ovrld.mangleof)] = ovrld.mangleof;
     }
 
-    // use the existing readTimeout in leastSize()
-    // if this is a new connection, handle() will have set it to the configuration value
-    // if it is a reused connection it will be set to the keep alive period.
-    log.trace("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
-    // after the initial data arrives, reduce the timeout to the configured amount
-    stream.readTimeout = timeout;
-    // We will reuse this connection, keep the connection alive for 10 minutes after handling a request
-    scope (exit) stream.readTimeout = 10.minutes;
-    Hash methodbin;
-    stream.read(methodbin[]);
-    const method = methodbin in lookup;
-    if (method is null)
-    {
-        log.trace("[{}] Calling out of range method: {}",
-                  stream.peerAddress, methodbin);
-        return;
-    }
-
     ubyte[1024] buffer = void;
     scope DeserializeDg reader = (size_t size) @safe
     {
         ensure(size < buffer.length, "Out of bound read");
-        scope (failure) assert(0);
         stream.read(buffer[0 .. size]);
         return buffer[0 .. size];
     };
+
+    string* method;
+    Hash methodbin;
+    while (true)
+    {
+        ensure(stream.connected(), "Connection closed");
+        stream.readTimeout = 10.minutes;
+        methodbin = deserializeFull!Hash(reader);
+        // after the initial data arrives, reduce the timeout to the configured amount
+        stream.readTimeout = timeout;
+        if (methodbin == hashFull("response")) // a response
+        {
+            stream.wlock.lock(); // acquire the write lock so no new request can be sent while we are waiting to get the rlock back
+            stream.rcond.wait(); // wait for reader Fiber to signal us its completion
+            stream.wlock.unlock();
+        }
+        else
+        {
+            method = methodbin in lookup;
+            ensure(method !is null, format("[{}] Calling out of range method: {}",
+                    stream.peerAddress, methodbin));
+            break;
+        }
+    }
 
     // Helper template for staticMap
     Target convert (Target) ()
     {
         return deserializeFull!Target(reader);
     }
+
+    log.trace("[{}] Handling a new request", stream.peerAddress);
 
     switch (*method)
     {
@@ -430,11 +477,13 @@ private void handleThrow (API) (scope API api, ref TCPConnection stream, Duratio
                       stream.peerAddress, member, (Parameters!ovrld).stringof);
 
             // Call functions + return
+            stream.wlock.lock();
+            scope (exit) stream.wlock.unlock();
+            stream.write(serializeFull(hashFull("response")));
             static if (is(ReturnType!ovrld == void))
             {
                 mixin(CallMixin);
                 log.trace("[SERVER] Goodbye {}", methodbin);
-                stream.write(methodbin[]);
             }
             else
             {

@@ -25,6 +25,7 @@ module agora.network.Manager;
 import agora.api.Handlers;
 import agora.api.Registry;
 import agora.api.Validator;
+import agora.api.FullNode;
 import agora.common.BanManager;
 import agora.common.Types;
 import agora.common.ManagedDatabase;
@@ -418,8 +419,10 @@ public class NetworkManager
     /// Proxy to be used for outgoing Agora connections
     protected URL proxy_url;
 
+    protected agora.api.FullNode.API owner_node;
+
     /// Ctor
-    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock)
+    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
@@ -432,6 +435,7 @@ public class NetworkManager
             node_config.data_dir);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
+        this.owner_node = owner_node;
         this.banman.load();
 
         this.cacheDB.execute(
@@ -1106,19 +1110,27 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected API getClient (Address address, Duration timeout)
+    protected agora.api.Validator.API getClient (Address address, Duration timeout)
     {
         import std.algorithm.searching;
-        import vibe.inet.url;
         const url = URL.parse(address);
 
         if (url.schema == "tcp")
         {
-            import agora.network.RPC;
-            return new RPCClient!API(
+            auto owner_validator = cast (agora.api.Validator.API) this.owner_node;
+
+            return owner_validator ?
+                new RPCClient!(agora.api.Validator.API)(
                 url.host, url.port,
                 /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/);
+                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
+                owner_validator)
+                :
+                new RPCClient!(agora.api.Validator.API)(
+                url.host, url.port,
+                /* Disabled, we have our own method: */ 0.seconds, 1,
+                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
+                this.owner_node);
         }
 
         if (url.schema.startsWith("http"))
@@ -1130,7 +1142,7 @@ public class NetworkManager
             settings.httpClientSettings.connectTimeout = timeout;
             settings.httpClientSettings.readTimeout = timeout;
             settings.httpClientSettings.proxyURL = this.proxy_url;
-            return new RestInterfaceClient!API(settings);
+            return new RestInterfaceClient!(agora.api.Validator.API)(settings);
         }
         assert(0, "Unknown agora schema");
     }
@@ -1180,8 +1192,8 @@ public class NetworkManager
     ***************************************************************************/
 
     public NetworkClient getNetworkClient (ITaskManager taskman,
-        BanManager banman, Address address, API api, Duration retry,
-        size_t max_retries)
+        BanManager banman, Address address, agora.api.Validator.API api,
+        Duration retry, size_t max_retries)
     {
         return new NetworkClient(taskman, banman, address, api, retry,
             max_retries);

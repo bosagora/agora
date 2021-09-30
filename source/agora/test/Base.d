@@ -1649,8 +1649,8 @@ private mixin template TestNodeMixin ()
     {
         assert(taskman !is null);
         return new TestNetworkManager(
-            this.config, this.cacheDB, taskman, clock, this.config.interfaces[0].address,
-            this.nregistry);
+            this.config, this.cacheDB, taskman, clock, this,
+            this.config.interfaces[0].address, this.nregistry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
