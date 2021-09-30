@@ -1012,6 +1012,36 @@ public class Ledger
 
     /***************************************************************************
 
+        Create a new block based on the current previous block.
+
+        This function only builds a block and will not externalize it.
+        See `acceptBlock` for this.
+
+        Params:
+          txs = An `InputRange` of `Transaction`s
+          time_offset = The `time_offset` of the block compared to the old one
+          enrollments = New enrollments for this block (can be `null`)
+          missing_validators = Indices of slashed validators (may be `null`)
+
+        Returns:
+          A newly created block based on the current block
+          (See `Ledger.getLastBlock()` and `Ledger.getBlockHeight()`)
+
+    ***************************************************************************/
+
+    public Block buildBlock (Transactions) (Transactions txs, ulong time_offset,
+        Enrollment[] enrollments, uint[] missing_validators)
+        @safe
+    {
+        const height = this.getBlockHeight() + 1;
+        Hash random_seed = this.getRandomSeed(height, missing_validators);
+        const validators = this.getValidators(height).length;
+        return this.last_block.makeNewBlock(
+            txs, time_offset, random_seed, validators, enrollments, missing_validators);
+    }
+
+    /***************************************************************************
+
         Get the random seed reduced from the preimages of validators
         except the provided 'missing_validators'.
 
