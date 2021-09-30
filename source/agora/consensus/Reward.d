@@ -222,7 +222,7 @@ public class Reward
             // This is done to minimize losses when calculating as we are using ulong not double
             reward_value = (reward_value * 9_369) / 10_000;
 
-            log.trace("allocatedValRewards(height={}): Reduced by 6.31%. Yearly is {} for year {}",
+            log.trace("allocatedValRewards(height={}): Reduced by 6.31 percent. Yearly is {} for year {}",
                 height, reward_value, y + 2);
         });
         // Now divide this year's reward by number of blocks in a year
@@ -255,7 +255,7 @@ public class Reward
         assert(percent_signed >= 0 && percent_signed <= 100);
         if (percent_signed < 50)
         {
-            log.info("Less than 50% signatures for payout period. The validators will get no rewards this payout!");
+            log.info("Less than 50 percent signatures for payout period. The validators will get no rewards this payout!");
             return 0.coins;
         }
         Amount actual = total_allocated;
@@ -267,7 +267,7 @@ public class Reward
             if (!actual.percentage(cast(ubyte) payout_percent))
                 assert(0, format!"Failed to get percentage %s of Amount %s"(payout_percent, actual));
 
-            log.info("Reduced validator reward is: {} as only {}% signed this block", actual, percent_signed);
+            log.info("Reduced validator reward is: {} as only {} percent signed this block", actual, percent_signed);
             assert(actual.isValid());
         }
 
