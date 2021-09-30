@@ -460,7 +460,7 @@ public class BlockStorage : IBlockStorage
         ensure(block_position != 0, "Cannot update signature for Genesis block");
 
         // Hardcoded values to ensure other invariant hold (such as no arrays)
-        enum SignatureOffset = 192;
+        enum SignatureOffset = Hash.sizeof * 2;
         enum ValidatorsOffset = SignatureOffset + Signature.sizeof;
         static assert(Block.header.signature.offsetof == SignatureOffset,
             "This code relies on the offset of `Block.header.signature` and need update");

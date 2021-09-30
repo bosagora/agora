@@ -51,9 +51,6 @@ public struct BlockHeader
     /// The hash of the merkle root of the transactions
     public Hash merkle_root;
 
-    /// Hash of random seed of the preimages for this height
-    public Hash random_seed;
-
     /// Schnorr multisig of all validators which signed this block
     public Signature signature;
 
@@ -63,11 +60,18 @@ public struct BlockHeader
     /// Block height (genesis is #0)
     public Height height;
 
+    /// The pre-images propagated in this block
+    public Hash[] preimages;
+
+    /// Convenience function
+    public Hash randomSeed () const scope @safe pure
+    {
+        auto rng = this.preimages.filter!(pi => pi !is Hash.init);
+        return rng.empty ? Hash.init : rng.reduce!((a, b) => hashMulti(a, b));
+    }
+
     /// Enrolled validators
     public Enrollment[] enrollments;
-
-    /// List of indices to the validator UTXO set which have not revealed the preimage
-    public uint[] missing_validators;
 
     /// Block seconds offset from Genesis Timestamp in `ConsensusParams`
     public ulong time_offset;
@@ -92,10 +96,7 @@ public struct BlockHeader
         dg(this.merkle_root[]);
         foreach (enrollment; this.enrollments)
             hashPart(enrollment, dg);
-        dg(this.random_seed[]);
-        hashPart(this.validators.count, dg); // Include just the count of possible signers
-        foreach (validator; this.missing_validators)
-            hashPart(validator, dg);
+        hashPart(this.preimages, dg);
         hashPart(this.time_offset, dg);
     }
 
@@ -139,8 +140,8 @@ unittest
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
-    auto exp_hash = Hash("0x311b65a2f0b637034df2f50ec2961bc9948fc89072b74b66816704246e3d41dfb45c1077938a8a5a0541528d80106a679bc117caf776079c8c06d4fe5c7ca45c");
-    assert(hash == exp_hash, hash.to!string);
+    auto exp_hash = Hash("0xb6319105c3f97e63df13081ee8cae7c7237b844907cfa3cb1342baf1bdf3c8d714b38dd4938836cb33a07e8cf2271ebe63b248aa6b3dabce94add0bde77ffe28");
+    assert(hash == exp_hash);
 }
 
 /*******************************************************************************
@@ -206,12 +207,11 @@ public struct Block
             BlockHeader(
                 this.header.prev_block,
                 this.header.merkle_root,
-                this.header.random_seed,
                 signature,
                 validators,
                 this.header.height,
+                this.header.preimages.dup,
                 this.header.enrollments.dup,
-                this.header.missing_validators.dup,
                 this.header.time_offset),
             // TODO: Optimize this by using dup for txs also
             this.txs.map!(tx =>
@@ -538,22 +538,16 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
         scope (failure) assert(0, "Reduce threw despite non-empty range");
         return preimages_rng.reduce!((a , b) => hashMulti(a, b));
     }();
-    auto missing_validators = preimages.enumerate.
-        filter!(en => en.value is Hash.init)
-        .map!(en => cast(uint) en.index)
-        .array;
 
     block.header.prev_block = prev_block.header.hashFull();
     block.header.height = prev_block.header.height + 1;
     block.header.time_offset = time_offset;
-    block.header.random_seed = random_seed;
+    block.header.preimages = preimages;
     block.header.validators = BitMask(preimages.length);
     block.header.enrollments = enrollments;
     block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
         ("a.utxo_key < b.utxo_key"));  // there cannot be duplicates either
-
-    block.header.missing_validators = missing_validators;
 
     txs.each!(tx => block.txs ~= tx);
     block.txs.sort;
