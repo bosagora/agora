@@ -395,14 +395,13 @@ private struct BlockHeaderFmt
     {
         try
         {
-            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %d/%d !(%(%s, %)),\nRandom seed: [%s],\nSlashed validators: [%(%s, %)]",
+            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %d/%d !(%(%s, %)),\nPre-images: [%(%s, %)]",
                 this.value.height.value, HashFmt(this.value.prev_block),
                 HashFmt(this.value.merkle_root),
                 this.value.enrollments.fold!((a, b) =>
                     format!"%s\n%s"(a, prettify(b)))(""),
                 this.value.signature, this.value.validators.setCount, this.value.validators.count, this.value.validators.notSetIndices,
-                HashFmt(this.value.random_seed),
-                this.value.missing_validators);
+                this.value.preimages.map!(h => HashFmt(h)));
         }
         catch (Exception ex)
         {
@@ -422,8 +421,7 @@ private struct BlockHeaderFmt
 { utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, sig: 0x07ff...4ad1 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
-Random seed: [0x0000...0000],
-Slashed validators: []`;
+Pre-images: []`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
     assert(GenesisHStr == actual);
 }
@@ -465,8 +463,7 @@ private struct BlockFmt
 { utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, sig: 0x07ff...4ad1 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
-Random seed: [0x0000...0000],
-Slashed validators: [],
+Pre-images: [],
 Transactions: 2
 Inputs: None
 Outputs (8):
@@ -520,8 +517,7 @@ Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
 { utxo: 0xdb76...2a0a, seed: 0x00eb...fb56, sig: 0x07ff...4ad1 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
-Random seed: [0x0000...0000],
-Slashed validators: [],
+Pre-images: [],
 Transactions: 2
 Inputs: None
 Outputs (8):
@@ -533,11 +529,10 @@ Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>
 ====================================================
-Height: 1, Prev: 0x4caf...ff86, Root: 0xb039...ee32, Enrollments: []
+Height: 1, Prev: 0xe9de...fbb5, Root: 0xb039...ee32, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
-Random seed: [0x6fde...1e09],
-Slashed validators: [],
+Pre-images: [0xe998...9b3f, 0x4afa...b699, 0x31a2...e601, 0x62c3...6572, 0x58a4...9659, 0x2787...82ae],
 Transactions: 2
 Inputs (1): 0xb979...d9ca:0x4b6e...a32f
 Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>

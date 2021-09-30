@@ -191,8 +191,8 @@ public class Validator : FullNode, API
         // externalized, so we can simply use the Ledger. Otherwise we need
         // to run from storage.
         const rand_seed = this.ledger.getBlockHeight() == height ?
-            this.ledger.getLastBlock().header.random_seed :
-            this.ledger.getBlocksFrom(height).front.header.random_seed;
+            this.ledger.getLastBlock().header.randomSeed() :
+            this.ledger.getBlocksFrom(height).front.header.randomSeed();
         foreach (utxo; utxos)
         {
             const idx = utxos.countUntil(utxo);

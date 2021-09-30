@@ -72,7 +72,7 @@ unittest
 
     assert(utxos.length == 1);
     auto block1 = nodes[0].getBlocksFrom(1, 1)[0];
-    assert(block1.header.missing_validators.length == 1);
+    assert(block1.header.preimages.filter!(pi => pi is Hash.init).count() == 1);
     auto cnt = nodes[0].countActive(block1.header.height + 1);
     assert(cnt == 5, format!"Invalid validator count, current: %s"(cnt));
 
@@ -123,5 +123,5 @@ unittest
     // block 1 was created with no slashed validator
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
     auto block1 = nodes[0].getBlocksFrom(1, 1)[0];
-    assert(block1.header.missing_validators.length == 0);
+    assert(block1.header.preimages.filter!(pi => pi is Hash.init).count() == 0);
 }
