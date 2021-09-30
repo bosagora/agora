@@ -2058,6 +2058,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             addresses_to_register : [self_address],
             registry_address : "name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
+            name_registration_interval : 10.seconds,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
             nomination_interval: 100.msecs,
             preimage_catchup_interval: test_conf.preimage_catchup_interval,

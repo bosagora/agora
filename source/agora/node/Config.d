@@ -379,6 +379,9 @@ public struct ValidatorConfig
     // If the enrollments will be renewed or not at the end of the cycle
     public bool recurring_enrollment = true;
 
+    /// How often we should check the name registry for our own address
+    public Duration name_registration_interval = 2.minutes;
+
     /// How often should the periodic preimage reveal timer trigger (in seconds)
     public Duration preimage_reveal_interval = 10.seconds;
 
