@@ -15,7 +15,7 @@
 *.exe
 build/
 tracy_build
-scripts/version_get
+scripts/version_gen
 source/scpp/cpp_build
 
 # DUB
