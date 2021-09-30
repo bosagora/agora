@@ -665,7 +665,7 @@ public class NetworkManager
                         auto payload = this.registry_client.getValidator(ckey);
                         if (payload == RegistryPayload.init)
                         {
-                            log.warn("Could not find mapping in registry for key {}", key);
+                            log.warn("Could not find mapping in registry for key {}", ckey);
                             return false;
                         }
 
@@ -678,7 +678,7 @@ public class NetworkManager
 
                         if (!payload.verifySignature(ckey))
                         {
-                            log.error("RegistryPayload signature is incorrect for {}: {}", key, payload);
+                            log.error("RegistryPayload signature is incorrect for {}: {}", ckey, payload);
                             return false;
                         }
                         foreach (addr; payload.data.addresses)
