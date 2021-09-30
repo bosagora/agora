@@ -112,7 +112,7 @@ unittest
     txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
 
     // Block 17
-    txs.each!(tx => nodes[0].postTransaction(tx));
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(17), network.blocks[0].header, 10.seconds);
 
     // Freeze builders
@@ -130,7 +130,7 @@ unittest
     assert(freeze_txs.length == 8);
 
     // Block 18
-    freeze_txs.each!(tx => nodes[0].postTransaction(tx));
+    freeze_txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(18), network.blocks[0].header, 5.seconds);
 
     // Block 19
@@ -138,7 +138,7 @@ unittest
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 3], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => nodes[0].postTransaction(tx));
+    new_txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(19), network.blocks[0].header, 5.seconds);
 
     // Now we re-enroll the first validator with a new UTXO but it will fail
@@ -162,7 +162,7 @@ unittest
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => nodes[0].postTransaction(tx));
+    new_txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(20), network.blocks[0].header);
     auto b20 = nodes[0].getBlocksFrom(20, 2)[0];
     assert(b20.header.enrollments.length == 5);
@@ -177,7 +177,7 @@ unittest
         .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
         .takeExactly(8)
         .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => nodes[0].postTransaction(tx));
+    new_txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(21), b20.header);
     auto b21 = nodes[0].getBlocksFrom(21, 2)[0];
     assert(b21.header.enrollments.length == 1);
