@@ -47,7 +47,6 @@ import scpd.types.Stellar_types : NodeID;
 import std.algorithm;
 import std.range : array, enumerate;
 
-import core.stdc.stdlib : abort;
 import core.time;
 
 /*******************************************************************************

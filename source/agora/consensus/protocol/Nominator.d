@@ -55,7 +55,6 @@ import scpd.types.XDRBase : opaque_array;
 import geod24.bitblob;
 
 import core.stdc.stdint;
-import core.stdc.stdlib : abort;
 
 import std.algorithm;
 import std.container : DList;
@@ -962,7 +961,7 @@ extern(D):
         catch (Exception exc)
         {
             log.fatal("Deserialization of C++ Value failed: {}", exc);
-            abort();
+            assert(0, exc.message);
         }
 
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
@@ -996,7 +995,7 @@ extern(D):
         catch (Exception exc)
         {
             log.fatal("Externalization of SCP data failed: {}", exc);
-            abort();
+            assert(0, exc.message);
         }
         this.nomination_start_time = 0;
         this.initial_missing_validators = [];
