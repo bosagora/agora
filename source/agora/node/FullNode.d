@@ -709,7 +709,7 @@ public class FullNode : API
 
     protected NetworkManager makeNetworkManager (ITaskManager taskman, Clock clock)
     {
-        return new NetworkManager(this.config, this.cacheDB, taskman, clock);
+        return new NetworkManager(this.config, this.cacheDB, taskman, clock, this);
     }
 
     protected TransactionRelayer makeTransactionRelayer ()
