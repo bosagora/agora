@@ -948,11 +948,11 @@ extern(D):
         ref const(Value) value) nothrow
     {
         Height height = Height(slot_idx);
-        const Block last_block = this.ledger.getLastBlock();
-        if (height != last_block.header.height + 1)
+        const Height last_height = this.ledger.getBlockHeight();
+        if (height != last_height + 1)
         {
             log.trace("valueExternalized: Will not externalize envelope with slot id {} as ledger is at height {}",
-                height, last_block.header.height);
+                height, last_height);
             return;  // slot was already externalized or envelope is too new
         }
         ConsensusData data = void;
@@ -967,21 +967,16 @@ extern(D):
         log.info("Externalized consensus data set at {}: {}", height, prettify(data));
         try
         {
-            const validators = this.ledger.getValidators(height);
-            Hash random_seed = this.ledger.getRandomSeed(
-                height, data.missing_validators);
             Transaction[] externalized_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(data,
-                externalized_tx_set))
+            if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set))
             {
                 log.info("Missing TXs while externalizing at Height {}: {}",
                     height, prettify(data));
                 return;
             }
-            const block = makeNewBlock(last_block,
-                externalized_tx_set, data.time_offset, random_seed,
-                validators.length,
-                data.enrolls, data.missing_validators);
+
+            const block = this.ledger.buildBlock(
+                externalized_tx_set, data.time_offset, data.enrolls, data.missing_validators);
 
             // Now we add our signature and gossip to other nodes
             log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
