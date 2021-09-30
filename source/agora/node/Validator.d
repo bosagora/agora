@@ -302,6 +302,17 @@ public class Validator : FullNode, API
 
         foreach (preimages; query)
         {
+            // FIXME: Since the above `getPreimages` request yield,
+            // we may be waking up as the node is shutting down.
+            // When that happens, the node nullify its fields for safety,
+            // which leads to a SEGV. It's a very rare case in the wild,
+            // but happens regularly in the test environment.
+            // A foolproof solution would be to either interrupt the task,
+            // or block until it returns. But the following `null` check
+            // should be enough to catch most of the SEGV without major
+            // effort on our asynchronous framework.
+            if (this.ledger is null) return;
+
             preimages.each!((PreImageInfo pi) {
                 if (this.ledger.addPreimage(pi))
                 {
