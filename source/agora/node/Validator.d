@@ -128,7 +128,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void regenerateQuorums (Height height) nothrow @safe
+    private void regenerateQuorums (Height height) @safe
     {
         this.last_shuffle_height = height;
         this.required_peer_utxos = typeof(this.required_peer_utxos).init;
@@ -181,31 +181,23 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     private void rebuildQuorumConfig (ref QuorumConfig[NodeID]quorums,
-        in Hash[] utxos, Height height) nothrow @safe
+        in Hash[] utxos, Height height) @safe
     {
         import std.algorithm;
         import std.array;
 
-        try
+        // We take random seed from last block as next is not available yet
+        // In the fast path, this is called immediately after a block has been
+        // externalized, so we can simply use the Ledger. Otherwise we need
+        // to run from storage.
+        const rand_seed = this.ledger.getBlockHeight() == height ?
+            this.ledger.getLastBlock().header.random_seed :
+            this.ledger.getBlocksFrom(height).front.header.random_seed;
+        foreach (utxo; utxos)
         {
-            // We take random seed from last block as next is not available yet
-            // In the fast path, this is called immediately after a block has been
-            // externalized, so we can simply use the Ledger. Otherwise we need
-            // to run from storage.
-            const rand_seed = this.ledger.getBlockHeight() == height ?
-                this.ledger.getLastBlock().header.random_seed :
-                this.ledger.getBlocksFrom(height).front.header.random_seed;
-            foreach (utxo; utxos)
-            {
-                const idx = utxos.countUntil(utxo);
-                quorums[idx] = buildQuorumConfig(idx, utxos,
-                    this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
-            }
-        }
-        catch (Exception e)
-        {
-            log.fatal("rebuildQuorumConfig: Exception thrown: {}", e);
-            assert(0);
+            const idx = utxos.countUntil(utxo);
+            quorums[idx] = buildQuorumConfig(idx, utxos,
+                this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
         }
     }
 
