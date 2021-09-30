@@ -36,7 +36,6 @@ import ocean.util.log.Event;
 import Ocean = ocean.util.log.Logger;
 
 import std.algorithm : min;
-import std.format;
 import std.stdio;
 import std.range : Cycle, cycle, isOutputRange, take, takeExactly, put;
 
@@ -399,7 +398,7 @@ public class PhobosFileAppender : Appender
         this.layout.format(event,
             (cstring content)
             {
-                formattedWrite(writer, content);
+                writer.put(content);
             });
         version (Windows) writer.put("\r\n");
         else              writer.put("\n");
