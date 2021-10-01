@@ -86,6 +86,25 @@ Store the `Enrollment` that haven't made it to a `Block` yet. Should be made rea
 | val          | BLOB     | Enrollment |             | Binary serialized `Enrollment`, should be converted to text |
 | avail_height | INTEGER  | Height     |             | It's not actually a hash but the key, should be `TEXT`      |
 
+### `registry_validator_signature` and `registry_flash_signature` tables
+
+Stores signature and last sequence number of the name registry.
+
+| Field Name | SQL Type | D type | Attributes | Comment                                               |
+|------------|----------|--------|------------|-------------------------------------------------------|
+| pubkey     | TEXT     | string | PRIMARY KEY | String representation of Node's PublicKey             |
+| signature  | TEXT     | string | NOT NULL   | String representation of Registry Payload's signature |
+| sequence   | INTEGER  | ulong  | NOT NULL   | Sequence number of Registry Payload                   |
+
+### `registry_validator_addresses` and `registry_flash_addresses` tables
+
+Stores Addresses and `TYPE` of the name registry. These table have relationship with [signature](###-`registry_validator_signature`-and-`registry_flash_signature`-tables) tables over `pubkey` attribute. `DELETE` on signature table is cascaded.
+
+| Field Name | SQL Type | D type | Attributes               | Comment                                          |
+|------------|----------|--------|--------------------------|--------------------------------------------------|
+| pubkey     | TEXT     | string | PRIMARY KEY, FOREIGN KEY | String representation of Node's PublicKey        |
+| address    | TEXT     | string | PRIMARY KEY, NOT NULL    | String representation of Node's registry address |
+| type       | INTEGER  | ushort | NOT NULL                 | Short representation for registry address' TYPE  |
 
 ## SCP envelope DB
 
