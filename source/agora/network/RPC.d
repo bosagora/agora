@@ -192,50 +192,42 @@ public class RPCClient (API) : API
         this.config = config;
         this.log = Log.lookup(
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
-        this.pool = new ConnectionPool!RPCConnection({
-            return new RPCConnection();
+        this.pool = new ConnectionPool!RPCConnection(() @safe {
+            uint attempts;
+            do
+            {
+                // If it's not the first time we loop, sleep before retry
+                if (attempts > 0)
+                {
+                    import vibe.core.core : sleep;
+                    sleep(this.config.retry_delay);
+                }
+
+                try
+                {
+                    auto conn = connectTCP(
+                        this.config.host, this.config.port,
+                        null, 0, // Bind interface / port, unused
+                        this.config.connection_timeout);
+                    conn.keepAlive = true;
+                    conn.readTimeout = this.config.read_timeout;
+
+                    if (conn.connected())
+                        return new RPCConnection(conn);
+                }
+                catch (Exception e) {}
+                attempts++;
+
+            } while (attempts < this.config.max_retries);
+
+            ensure(false, "Failed to connect to host");
+            assert(0);
         });
         this.pool.maxConcurrency = this.config.concurrency;
 
         static foreach (member; __traits(allMembers, API))
             static foreach (ovrld; __traits(getOverloads, API, member))
                 this.lookup[ovrld.mangleof] = hashFull(ovrld.mangleof);
-    }
-
-    /// Ensure that we are still connected, and implement retry logic
-    private void ensureConnected (RPCConnection rpc_conn) @trusted
-    {
-        uint attempts;
-        do
-        {
-            if (rpc_conn.conn.connected())
-                return;
-
-            // If it's not the first time we loop, sleep before retry
-            if (attempts > 0)
-            {
-                import vibe.core.core : sleep;
-                sleep(this.config.retry_delay);
-            }
-
-            try
-            {
-                rpc_conn.conn = connectTCP(
-                    this.config.host, this.config.port,
-                    null, 0, // Bind interface / port, unused
-                    this.config.connection_timeout);
-                rpc_conn.conn.keepAlive = true;
-                rpc_conn.conn.readTimeout = this.config.read_timeout;
-            }
-            catch (Exception e) {}
-            attempts++;
-
-        } while (attempts < this.config.max_retries);
-
-        ensure(rpc_conn.conn.connected(),
-            format("Failed to connect to {}:{} after {} attempts ({}:{})",
-                this.config.host, this.config.port, this.config.max_retries,
-                this.config.connection_timeout, this.config.retry_delay));
     }
 
     private struct Pack (T...) { T args; }
@@ -250,8 +242,7 @@ public class RPCClient (API) : API
                     this.log.trace("[CLIENT]: {}: {}", __PRETTY_FUNCTION__,
                                    Pack!(Parameters!ovrld)(params));
                     scope conn = this.pool.lockConnection();
-                    this.ensureConnected(conn);
-                    scope (failure) conn.close();
+                    scope (failure) this.pool.remove(conn);
 
                     ubyte[512] tmp = void;
                     Hash method = this.lookup[ovrld.mangleof];
@@ -298,6 +289,12 @@ private class RPCConnection
 
     ///
     alias conn this;
+
+    ///
+    this (TCPConnection conn) @safe
+    {
+        this.conn = conn;
+    }
 }
 
 /*******************************************************************************
