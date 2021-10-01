@@ -1558,7 +1558,7 @@ public class ValidatingLedger : Ledger
 
     version (unittest):
 
-    private bool externalize (ConsensusData data) @trusted
+    private string externalize (ConsensusData data) @trusted
     {
         import agora.utils.Test : WK;
 
@@ -1572,13 +1572,12 @@ public class ValidatingLedger : Ledger
         {
             log.info("Ledger.externalize, can not create new block at Height {} : {}. Fail reason : {}",
                 next_block, data.prettify, fail_reason);
-            return false;
+            return fail_reason;
         }
         const block = makeNewTestBlock(this.last_block,
             externalized_tx_set, key_pairs,
             data.enrolls, data.missing_validators, data.time_offset);
-        auto fail_reason = this.acceptBlock(block);
-        return !fail_reason;
+        return this.acceptBlock(block);
     }
 
     /// simulate block creation as if a nomination and externalize round completed
@@ -1622,10 +1621,10 @@ public class ValidatingLedger : Ledger
             else
                 assert(0, "Need a MockClock or time handled correctly to call forceCreateBlock");
         }
-        if (!this.externalize(data))
+        if (auto reason = this.externalize(data))
         {
-            assert(0, format!"Failure in unit test. Block %s should have been externalized!"(
-                       this.getBlockHeight() + 1));
+            assert(0, format!"Failure in unit test. Block %s should have been externalized: %s"(
+                       this.getBlockHeight() + 1, reason));
         }
     }
 
@@ -1864,7 +1863,7 @@ unittest
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
     data.time_offset = 1;
     mock_clock.setTime(ledger.params.GenesisTimestamp + 2000);
-    assert(ledger.externalize(data));
+    assert(ledger.externalize(data) is null);
 
     // if the clock is behind of the time_offset of the new block and
     // ahead of the time_offset of the last block and
@@ -1873,7 +1872,7 @@ unittest
     ledger = getLedger(mock_clock);
     data.time_offset = 1000;
     mock_clock.setTime(ledger.params.GenesisTimestamp + 500);
-    assert(ledger.externalize(data));
+    assert(ledger.externalize(data) is null);
 
     // if the clock is behind of the time_offset of the new block and
     // ahead of the time_offset of the last block and
@@ -1882,18 +1881,18 @@ unittest
     ledger = getLedger(mock_clock);
     data.time_offset = 1000;
     mock_clock.setTime(ledger.params.GenesisTimestamp + 100);
-    assert(!ledger.externalize(data));
+    assert(ledger.externalize(data) !is null);
     // if the time passes by and now we are within the tolerance interval, then
     // we will accept block
     mock_clock.setTime(ledger.params.GenesisTimestamp + 900);
-    assert(ledger.externalize(data));
+    assert(ledger.externalize(data) is null);
 
     // if the clock is behind of the time_offset of the latest accepted block, then
     // we reject the block regardless of the current time
     ledger = getLedger(mock_clock);
     data.time_offset = -1;
     mock_clock.setTime(ledger.params.GenesisTimestamp + 100);
-    assert(!ledger.externalize(data));
+    assert(ledger.externalize(data) !is null);
 }
 
 // Return Genesis block plus 'count' number of blocks
@@ -2396,7 +2395,7 @@ unittest
 
         // Now externalize the block
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
-        assert(ledger.externalize(data));
+        assert(ledger.externalize(data) is null);
         assert(ledger.getBlockHeight() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
