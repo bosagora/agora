@@ -36,7 +36,7 @@ import std.array : replace;
 import std.datetime;
 import std.format;
 import std.range : zip;
-import std.socket;
+import std.socket : InternetAddress;
 static import std.uni;
 
 /// Implementation of `NameRegistryAPI` using associative arrays
