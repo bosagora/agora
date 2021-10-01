@@ -17,10 +17,12 @@ import agora.api.FullNode : FullNodeAPI = API;
 import agora.api.Registry;
 import agora.common.DNS;
 import agora.common.Ensure;
+import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Hash;
 import agora.crypto.Key;
+import agora.crypto.Schnorr: Signature;
 import agora.node.Config;
 import agora.flash.api.FlashAPI;
 import agora.flash.Node;
@@ -32,12 +34,17 @@ import agora.utils.Log;
 import std.algorithm.comparison : among, equal;
 import std.algorithm.iteration : map, splitter;
 import std.algorithm.searching : endsWith;
-import std.array : replace;
+import std.array : array, replace;
+import std.conv;
 import std.datetime;
 import std.format;
 import std.range : zip;
 import std.socket : InternetAddress;
+import std.string;
+
 static import std.uni;
+
+import d2sqlite3 : ResultRange;
 
 /// Implementation of `NameRegistryAPI` using associative arrays
 public class NameRegistry: NameRegistryAPI
@@ -679,6 +686,170 @@ private struct ZoneData
 
     /// The content of the zone
     public TypedPayload[PublicKey] map;
+
+    /// Query for registry count interface
+    private string query_count;
+
+    /// Query for getting all registries
+    private string query_registry_get;
+
+    /// Query for getting payload
+    private string query_payload;
+
+    /// Query for adding registry signature table
+    private string query_signature_add;
+
+    /// Query for adding registry to addresses table
+    private string query_addresses_add;
+
+    /// Database to store data
+    private ManagedDatabase db;
+
+    /***************************************************************************
+
+         Params:
+           type_table_name = Registry table for table name
+           cache_db = Database instance
+
+    ***************************************************************************/
+
+    public this (string type_table_name, ManagedDatabase cache_db)
+    {
+        this.db = cache_db;
+
+        this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature", 
+            type_table_name);
+
+        this.query_registry_get = format("SELECT pubkey " ~
+            "FROM registry_%s_signature", type_table_name);
+
+        this.query_payload = format("SELECT signature, sequence, address, type " ~ 
+            "FROM registry_%s_addresses l " ~
+            "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
+            "WHERE l.pubkey = ?", type_table_name, type_table_name);
+
+        this.query_signature_add = format("REPLACE INTO registry_%s_signature " ~
+            "(pubkey, signature, sequence) VALUES (?, ?, ?)", type_table_name);
+
+        this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
+                    "(pubkey, address, type) VALUES (?, ?, ?)", type_table_name);
+
+        string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
+            "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
+            "PRIMARY KEY(pubkey))", type_table_name);
+        
+        string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
+            "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
+            "FOREIGN KEY(pubkey) REFERENCES registry_%s_signature(pubkey) ON DELETE CASCADE, " ~
+            "PRIMARY KEY(pubkey, address))", type_table_name, type_table_name);
+
+        this.db.execute(query_sig_create);
+        this.db.execute(query_addr_create);
+    }
+
+    /***************************************************************************
+
+         Returns:
+           Total number of name registries
+
+    ***************************************************************************/
+
+    public ulong count () @trusted
+    {
+        auto results = this.db.execute(this.query_count);
+        return results.empty ? 0 : results.oneValue!(ulong);
+    }
+
+    /***************************************************************************
+
+         Returns:
+           All registries in persistent storage
+
+    ***************************************************************************/
+
+    public ResultRange getRegistries () @trusted
+    {            
+        return this.db.execute(this.query_registry_get);
+    }
+
+    /***************************************************************************
+
+         Get payload data from persistent storage
+
+         Params:
+           public_key = the public key that was used to register
+                         the network addresses
+
+        Returns:
+            TypedPayload of name registry associated with `public_key`
+
+    ***************************************************************************/
+
+    public TypedPayload get (PublicKey public_key) @trusted
+    {
+        auto results = this.db.execute(this.query_payload, public_key);
+
+        if (results.empty)
+            return TypedPayload.init;
+
+        // Address loop consumes data, gather following first
+        const TYPE node_type = to!TYPE(results.front["type"].as!ushort);
+        const ulong sequence = results.front["sequence"].as!ulong;
+        const Signature signature = Signature.fromString(results.front["signature"].as!string);
+
+        const auto addresses = results.map!(r => r["address"].as!Address).array;
+
+        const RegistryPayload payload =
+        {
+            data:
+            {
+                public_key : public_key,
+                addresses : addresses,
+                seq : sequence,
+            },
+            signature: signature,
+        };
+
+        // CNAME and A cannot exist at the same time for a node
+        TypedPayload typed_payload =
+        {
+            type: node_type,
+            payload: payload,
+        };
+
+        return typed_payload;
+    }
+
+    /***************************************************************************
+
+         Updates matching payload in the persistent storage. Payload is added
+         to the persistent storage when no matching payload is found.
+
+         Params:
+           payload = Payload to update
+
+    ***************************************************************************/
+
+    public void update (TypedPayload payload) @trusted
+    {
+        if (payload.payload.data.addresses.length == 0)
+            return;
+
+        db.execute(this.query_signature_add, 
+            payload.payload.data.public_key,
+            payload.payload.signature,
+            payload.payload.data.seq);
+
+        // There is no need to check for stale addresses 
+        // since `REPLACE INTO` is used and `DELETE` is cascaded.
+        foreach (address; payload.payload.data.addresses)
+        {
+            db.execute(this.query_addresses_add,
+                payload.payload.data.public_key,
+                address,
+                payload.type.to!ushort);
+        }
+    }
 
     /// Fill this from the configuration
     public void fill (in string name, in ZoneConfig config, uint serial)
