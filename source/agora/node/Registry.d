@@ -71,13 +71,16 @@ public class NameRegistry: NameRegistryAPI
     private ValidatorInfo[] validator_info;
 
     ///
-    public this (string realm, RegistryConfig config, FullNodeAPI agora_node)
+    public this (string realm, RegistryConfig config, FullNodeAPI agora_node, 
+        ManagedDatabase cache_db)
     {
         assert(config.enabled, "Registry instantiated but not enabled");
 
         this.config = config;
         this.log = Logger(__MODULE__);
         this.agora_node = agora_node;
+        this.validators = ZoneData("validator", cache_db);
+        this.flash = ZoneData("flash", cache_db);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
 
         const vname = "validators." ~ realm;
@@ -112,21 +115,21 @@ public class NameRegistry: NameRegistryAPI
     private void collectStats (Collector collector)
     {
         RegistryStats stats;
-        stats.registry_validator_record_count = this.validators.map.length;
-        stats.registry_flash_record_count = this.flash.map.length;
+        stats.registry_validator_record_count = this.validators.count();
+        stats.registry_flash_record_count = this.flash.count();
         collector.collect(stats);
     }
 
     /// Returns: throws if payload is not valid
     protected TYPE ensureValidPayload (in RegistryPayload payload,
-        TypedPayload[PublicKey] map) @safe
+        TypedPayload previous) @safe
     {
         // verify signature
         ensure(payload.verifySignature(payload.data.public_key),
                 "Incorrect signature for payload");
 
         // check if we received stale data
-        if (auto previous = payload.data.public_key in map)
+        if (previous != TypedPayload.init)
             ensure(previous.payload.data.seq <= payload.data.seq,
                 "registry already has a more up-to-date version of the data");
 
@@ -165,10 +168,11 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
-        if (auto ptr = public_key in this.validators.map)
+        TypedPayload payload = this.validators.get(public_key);
+        if (payload != TypedPayload.init)
         {
-            log.trace("Successfull GET /validator: {} => {}", public_key, *ptr);
-            return (*ptr).payload;
+            log.trace("Successfull GET /validator: {} => {}", public_key, payload);
+            return payload.payload;
         }
         log.trace("Unsuccessfull GET /validators: {}", public_key);
         return RegistryPayload.init;
@@ -195,7 +199,8 @@ public class NameRegistry: NameRegistryAPI
     {
         import std.algorithm;
 
-        TYPE payload_type = this.ensureValidPayload(registry_payload, this.validators.map);
+        TYPE payload_type = this.ensureValidPayload(registry_payload,
+            this.validators.get(registry_payload.data.public_key));
 
         // Last step is to check the state of the chain
         auto last_height = this.agora_node.getBlockHeight() + 1;
@@ -210,8 +215,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering addresses {}: {} for public key: {}", payload_type,
                  registry_payload.data.addresses, registry_payload.data.public_key);
-        this.validators.map[registry_payload.data.public_key] =
-            TypedPayload(payload_type, registry_payload);
+        this.validators.update(TypedPayload(payload_type, registry_payload));
     }
 
     /***************************************************************************
@@ -233,10 +237,11 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getFlashNode (PublicKey public_key)
     {
-        if (auto ptr = public_key in this.flash.map)
+        TypedPayload payload = this.flash.get(public_key);
+        if (payload != TypedPayload.init)
         {
-            log.trace("Successfull GET /flash_node: {} => {}", public_key, *ptr);
-            return (*ptr).payload;
+            log.trace("Successfull GET /flash_node: {} => {}", public_key, payload);
+            return payload.payload;
         }
         log.trace("Unsuccessfull GET /flash_node: {}", public_key);
         return RegistryPayload.init;
@@ -259,7 +264,8 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        TYPE payload_type = this.ensureValidPayload(registry_payload, this.flash.map);
+        TYPE payload_type = this.ensureValidPayload(registry_payload, 
+            this.flash.get(registry_payload.data.public_key));
 
         ensure(isValidChannelOpen(channel.conf, this.agora_node.getBlock(channel.height)),
             "Not a valid channel");
@@ -267,8 +273,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
-        this.flash.map[registry_payload.data.public_key] =
-            TypedPayload(payload_type, registry_payload);
+        this.flash.update(TypedPayload(payload_type, registry_payload));
     }
 
     /***************************************************************************
@@ -366,14 +371,24 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    private void doAXFR (in ZoneData zone, ref Message reply) @safe
+    private void doAXFR (ZoneData zone, ref Message reply) @safe
     {
         log.info("Performing AXFR for {} ({} entries)",
-                 zone.root.value, zone.map.length);
+                 zone.root.value, zone.count());
         auto soa = zone.toRR();
         reply.answers ~= soa;
-        foreach (const ref key, const ref value; zone.map)
-            reply.answers ~= this.convertPayload(value, format("%s.%s", key, zone.root.value));
+
+        () @trusted {
+            // Row and ResultRange has `@system` methods
+            ResultRange registries = zone.getRegistries();
+            foreach (registry; registries)
+            {
+                PublicKey registry_pub_key = PublicKey.fromString(registry["pubkey"].as!(string));
+                TypedPayload payload = zone.get(registry_pub_key);
+                reply.answers ~= this.convertPayload(payload, format("%s.%s", registry_pub_key, zone.root.value));
+            }
+        } ();
+            
         reply.answers ~= soa;
         reply.header.RCODE = Header.RCode.NoError;
     }
@@ -409,12 +424,12 @@ public class NameRegistry: NameRegistryAPI
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
-        auto ptr = public_key in this.validators.map;
+        TypedPayload payload = this.validators.get(public_key);
         // We are authoritative, so we can set `NameError`
-        if (!ptr || !(*ptr).payload.data.addresses.length)
+        if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
             return Header.RCode.NameError;
 
-        reply.answers ~= this.convertPayload(*ptr, question.qname);
+        reply.answers ~= this.convertPayload(payload, question.qname);
         return Header.RCode.NoError;
     }
 
@@ -683,9 +698,6 @@ private struct ZoneData
 
     /// Whether we are authoritative or we're just caching
     public bool authoritative;
-
-    /// The content of the zone
-    public TypedPayload[PublicKey] map;
 
     /// Query for registry count interface
     private string query_count;
