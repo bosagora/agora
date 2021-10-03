@@ -426,7 +426,7 @@ Validators: 0/0 !(),
 Random seed: [0x0000...0000],
 Slashed validators: []`;
     const actual = format("%s", BlockHeaderFmt(GenesisBlock.header));
-    assert(GenesisHStr == actual, actual);
+    assert(GenesisHStr == actual);
 }
 
 /// Format a whole block
@@ -479,7 +479,7 @@ Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>`;
     const actual = format("%s", BlockFmt(GenesisBlock));
-    assert(ResultStr == actual, actual);
+    assert(ResultStr == actual);
 }
 
 /// Format inputRange (e.g. range of blocks)
@@ -568,7 +568,7 @@ Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
     const block2 = second_block.updateSignature(signature, validators);
     const(Block)[] blocks = [GenesisBlock, block2];
     const actual = format("%s", prettify(blocks));
-    assert(ResultStr == actual, actual);
+    assert(ResultStr == actual);
 }
 
 /// Formatting struct for `Enrollment`
