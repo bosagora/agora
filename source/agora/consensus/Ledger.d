@@ -1034,10 +1034,18 @@ public class Ledger
         @safe
     {
         const height = this.getBlockHeight() + 1;
-        Hash random_seed = this.getRandomSeed(height, missing_validators);
-        const validators = this.getValidators(height).length;
+        const validators = this.getValidators(height);
+
+        Hash[] preimages = validators.map!(
+            (in ValidatorInfo validator)
+            {
+                if (validator.preimage.height < height)
+                    return Hash.init;
+                return validator.preimage[height];
+            }).array;
+
         return this.last_block.makeNewBlock(
-            txs, time_offset, random_seed, validators, enrollments, missing_validators);
+            txs, time_offset, preimages, enrollments);
     }
 
     /***************************************************************************

@@ -47,7 +47,9 @@ private void main ()
     Transaction[] txs = genesisSpendable().map!(txb => txb.refund(WK.Keys.A.address).sign()).array();
     foreach (block_idx; 0 .. BlockCount)
     {
-        auto block = makeNewBlock(blocks[$ - 1], txs, blocks[$ - 1].header.time_offset + 1, Hash.init, genesis_validator_keys.length);
+        Height h = Height(block_idx + 1);
+        auto preimages = WK.PreImages.at(h, genesis_validator_keys);
+        auto block = makeNewBlock(blocks[$ - 1], txs, blocks[$ - 1].header.time_offset + 1, preimages);
         storage.saveBlock(block);
         blocks ~= block;
         // Prepare transactions for the next block

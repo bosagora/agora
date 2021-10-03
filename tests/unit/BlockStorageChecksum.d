@@ -55,8 +55,9 @@ private void writeBlocks (string path)
     foreach (block_idx; 0 .. BlockCount)
     {
         Transaction[8] txs;
-        auto block = makeNewBlock(blocks[$ - 1], txs[], blocks[$ - 1].header.time_offset + 1, Hash.init,
-            genesis_validator_keys.length);
+        const h = Height(block_idx + 1);
+        auto preimages = WK.PreImages.at(h, genesis_validator_keys);
+        auto block = makeNewBlock(blocks[$ - 1], txs[], blocks[$ - 1].header.time_offset + 1, preimages);
         storage.saveBlock(block);
         blocks ~= block;
     }

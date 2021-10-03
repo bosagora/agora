@@ -517,37 +517,43 @@ unittest
         prev_block = the previous block
         txs = the transactions that will be contained in the new block
         time_offset = the block time offset from Genesis timestamp in seconds
-        random_seed = Hash of random seed of the preimages
-        validators = count of validators who could potentially sign the block
+        preimages = Pre-images that have been revealed in this block
+                    Non-revealed pre-images must be passed as `Hash.init`
+                    in their respective positions.
         enrollments = the enrollments that will be contained in the new block
-        missing_validators = list of indices to the validator UTXO set
-            which have not revealed the preimage
 
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, ulong time_offset, Hash random_seed, size_t validators,
-    Enrollment[] enrollments = null, uint[] missing_validators = null)
+    Transactions txs, ulong time_offset, Hash[] preimages,
+    Enrollment[] enrollments = null)
     @safe nothrow
 {
     static assert (isInputRange!Transactions);
 
     Block block;
+    auto preimages_rng = preimages.filter!(pi => pi !is Hash.init);
+    assert(!preimages_rng.empty);
+    auto random_seed = () {
+        scope (failure) assert(0, "Reduce threw despite non-empty range");
+        return preimages_rng.reduce!((a , b) => hashMulti(a, b));
+    }();
+    auto missing_validators = preimages.enumerate.
+        filter!(en => en.value is Hash.init)
+        .map!(en => cast(uint) en.index)
+        .array;
 
     block.header.prev_block = prev_block.header.hashFull();
     block.header.height = prev_block.header.height + 1;
     block.header.time_offset = time_offset;
     block.header.random_seed = random_seed;
-    block.header.validators = BitMask(validators);
+    block.header.validators = BitMask(preimages.length);
     block.header.enrollments = enrollments;
     block.header.enrollments.sort!((a, b) => a.utxo_key < b.utxo_key);
     assert(block.header.enrollments.isStrictlyMonotonic!
         ("a.utxo_key < b.utxo_key"));  // there cannot be duplicates either
 
     block.header.missing_validators = missing_validators;
-    block.header.missing_validators.sort!((a, b) => a < b);
-    assert(block.header.missing_validators.isStrictlyMonotonic!
-        ("a < b"));  // there cannot be duplicates either
 
     txs.each!(tx => block.txs ~= tx);
     block.txs.sort;
@@ -569,20 +575,19 @@ version (unittest)
         uint[] missing_validators = null,
         ulong time_offset = 0) @safe nothrow
     {
-        auto revealed = key_pairs.enumerate.filter!(en => !missing_validators.canFind(en.index)).map!(en => en.value).array;
-        Hash[] pre_images = WK.PreImages.at(prev_block.header.height + 1, revealed);
-        assert(revealed.length == key_pairs.length - missing_validators.length);
+        Hash[] pre_images =
+            WK.PreImages.at(prev_block.header.height + 1, key_pairs)
+            .enumerate.map!(en => missing_validators.canFind(en.index) ? Hash.init : en.value)
+            .array;
         try
         {
-            Hash random_seed = pre_images.reduce!((a, b) => hashMulti(a, b));
-
             // the time_offset passed to makeNewBlock should really be
             // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
             // prev_block.header.time_offset + 1
             // however many tests calling makeNewTestBlock have no access to ConsensusParams
             auto block = makeNewBlock(prev_block, txs,
                     time_offset ? time_offset : prev_block.header.time_offset + 1,
-                    random_seed, key_pairs.length, enrollments, missing_validators);
+                    pre_images, enrollments);
             auto validators = BitMask(key_pairs.length);
             Signature[] sigs;
             ulong offset = 0;
@@ -592,7 +597,7 @@ version (unittest)
                 {
                     validators[i] = true;
                     sigs ~= block.header.createBlockSignature(k.secret,
-                        pre_images[i - missing_validators.filter!(m => m < i).count], offset);
+                        pre_images[i], offset);
                 }
             });
             auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
@@ -634,16 +639,14 @@ version (unittest)
             "7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395987")
     };
 
-    auto random_seed = Hash("0x47c993d409aa7d77651ecaa5a5d29e47a7aee609c7" ~
-                             "cb376f5f8ff2a868c738233a2df5ba11d635c8576a47" ~
-                             "3864fc1c8fd1469f4be80b853764da53f6a5b41661");
-    uint[] missing_validators = [];
+    Hash[] preimages =
+        WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys);
 
     auto block = makeNewBlock(GenesisBlock, [Transaction.init], 1,
-        random_seed, genesis_validator_keys.length, [enr_1, enr_2], missing_validators);
+        preimages, [enr_1, enr_2]);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ascending
     block = makeNewBlock(GenesisBlock, [Transaction.init], 1,
-        random_seed, genesis_validator_keys.length, [enr_2, enr_1], missing_validators);
+        preimages, [enr_2, enr_1]);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
 }
 
@@ -832,24 +835,23 @@ unittest
     import agora.utils.Test;
     import std.format;
 
-    Hash random_seed1 = "seed1".hashFull();
-    Hash random_seed2 = "seed2".hashFull();
-    Hash preimage = "preimage".hashFull();
-
     const TimeOffset = 1;
-    const Validators = genesis_validator_keys.length;
+    auto preimages =
+        WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys);
 
     // Generate two blocks at height 1
     auto block1 = GenesisBlock.makeNewBlock(
-        genesisSpendable().take(1).map!(txb => txb.sign()), TimeOffset, random_seed1, Validators);
+        genesisSpendable().take(1).map!(txb => txb.refund(WK.Keys.A.address).sign()),
+        TimeOffset, preimages);
     auto block2 = GenesisBlock.makeNewBlock(
-        genesisSpendable().take(1).map!(txb => txb.sign()), TimeOffset, random_seed2, Validators);
+        genesisSpendable().take(1).map!(txb => txb.refund(WK.Keys.Z.address).sign()),
+        TimeOffset, preimages);
 
     Scalar v = genesis_validator_keys[0].secret;
     assert(v.isValid(), "v is not a valid Scalar!");
     Point V = v.toPoint();
     const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
-    const Scalar r = rc + Scalar(preimage);
+    const Scalar r = rc + Scalar(preimages[0]);
     const Point R = r.toPoint();
 
     // Two messages
@@ -858,8 +860,8 @@ unittest
     assert(c1 != c2);
 
     // Sign with same r twice
-    Signature sig1 = block1.header.createBlockSignature(v, preimage);
-    Signature sig2 = block2.header.createBlockSignature(v, preimage);
+    Signature sig1 = block1.header.createBlockSignature(v, preimages[0]);
+    Signature sig2 = block2.header.createBlockSignature(v, preimages[0]);
 
     // Verify signatures
     assert(verify(sig1, c1, V));

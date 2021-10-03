@@ -21,6 +21,7 @@ import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
+import agora.consensus.validation.Block;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.crypto.ECC;
@@ -58,9 +59,10 @@ private void main ()
 
     void signBlockSig1 (Height h)
     {
-        block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, Hash.init, genesis_validator_keys.length);
+        auto preimages = WK.PreImages.at(h, genesis_validator_keys);
+        block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, preimages);
         block.header.signature = Signature(Scalar.random().toPoint(), Scalar.random());
-        block.header.validators = BitMask(6);
+        block.header.validators = BitMask(preimages.length);
         block.header.validators[1] = true;
         storage.saveBlock(block);
         // Prepare transactions for the next block

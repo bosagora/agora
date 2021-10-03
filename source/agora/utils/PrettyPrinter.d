@@ -536,7 +536,7 @@ boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, 
 Height: 1, Prev: 0x4caf...ff86, Root: 0xb039...ee32, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
-Random seed: [0x0000...0000],
+Random seed: [0x6fde...1e09],
 Slashed validators: [],
 Transactions: 2
 Inputs (1): 0xb979...d9ca:0x4b6e...a32f
@@ -557,7 +557,8 @@ Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
     }
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()), 0, Hash.init, genesis_validator_keys.length);
+        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()), 0,
+        WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys));
 
     auto validators = BitMask(6);
     only(0,2,3,5).each!(i => validators[i] = true);
