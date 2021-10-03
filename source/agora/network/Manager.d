@@ -864,8 +864,7 @@ public class NetworkManager
     ***************************************************************************/
 
     public void getBlocksFrom (Height height,
-        scope Height delegate(const(Block)[], const(PreImageInfo)[])
-            @safe onReceivedBlocks) nothrow
+        scope Height delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
         struct Pair { Height height; NetworkClient client; }
 
@@ -897,18 +896,6 @@ public class NetworkManager
             log.info("Retrieving blocks [{}..{}] from {}..",
                 height, pair.height, pair.client.address);
             const MaxBlocks = 1024;
-
-            auto start_height =
-                height < this.consensus_config.validator_cycle ?
-                    0 : height - this.consensus_config.validator_cycle;
-
-            log.info("Retrieving preimages from the height of {} from {}..",
-                start_height, pair.client.address);
-
-            auto preimages = pair.client.getPreimagesFrom(start_height);
-
-            log.info("Received {} preimages", preimages.length);
-
             auto blocks = pair.client.getBlocksFrom(height, MaxBlocks);
             if (blocks.length == 0)
                 continue;
@@ -919,7 +906,7 @@ public class NetworkManager
             try
             {
                 // update the height with the latest accepted height
-                const new_height = onReceivedBlocks(blocks, preimages);
+                const new_height = onReceivedBlocks(blocks);
                 if (new_height >= height)
                     height = new_height + 1;
             }

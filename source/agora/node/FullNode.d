@@ -516,24 +516,17 @@ public class FullNode : API
 
         Params:
             blocks = the blocks to be added
-            preimages = the preimages needed to check the validity of the blocks
 
         Returns:
             the last read block height, or 0 if none were accepted
 
     ***************************************************************************/
 
-    private Height addBlocks (const(Block)[] blocks, const(PreImageInfo)[] preimages)
+    private Height addBlocks (const(Block)[] blocks)
         @safe
     {
         foreach (const ref block; blocks)
         {
-            // ignore return value:
-            // there's at least two cases where preimages will be rejected:
-            // A) We already have a duplicate preimage
-            // B) The preimage is for a newer enrollment which is in one of the
-            //    `blocks` which we haven't read from yet
-            preimages.each!(pi => this.ledger.addPreimage(pi));
             // A block might have been externalized in the meantime,
             // so just skip older heights
             if (block.header.height <= this.ledger.getBlockHeight())
