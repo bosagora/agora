@@ -395,15 +395,14 @@ private struct BlockHeaderFmt
     {
         try
         {
-            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %d/%d !(%(%s, %)),\nRandom seed: [%s],\nSlashed validators: [%s]",
+            formattedWrite(sink, "Height: %d, Prev: %s, Root: %s, Enrollments: [%s]\nSignature: %s,\nValidators: %d/%d !(%(%s, %)),\nRandom seed: [%s],\nSlashed validators: [%(%s, %)]",
                 this.value.height.value, HashFmt(this.value.prev_block),
                 HashFmt(this.value.merkle_root),
                 this.value.enrollments.fold!((a, b) =>
                     format!"%s\n%s"(a, prettify(b)))(""),
                 this.value.signature, this.value.validators.setCount, this.value.validators.count, this.value.validators.notSetIndices,
                 HashFmt(this.value.random_seed),
-                this.value.missing_validators.fold!((a, b) =>
-                    format!"%s, %s"(a, prettify(b)))(""));
+                this.value.missing_validators);
         }
         catch (Exception ex)
         {
