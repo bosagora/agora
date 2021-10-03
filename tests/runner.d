@@ -15,9 +15,11 @@ module runner;
 
 import std.algorithm;
 import std.array;
+import std.exception;
 import std.file;
 import std.path;
 import std.process;
+import std.range;
 import std.stdio;
 import std.string : strip;
 
@@ -88,7 +90,14 @@ private string[] getLflags ()
     }
     else version (Posix)
     {
-        return [ "-lsodium" ];
+        auto pp = pipeProcess(["pkg-config", "--libs", "sqlite3"]);
+        if (pp.pid.wait() != 0)
+        {
+            pp.stderr.byLine.each!(a => writeln("[fatal]\t", a));
+            return null;
+        }
+        auto lsqlite3 = pp.stdout.byLine.take(1).map!strip.front.splitter(' ').array.assumeUnique;
+        return [ "-lsodium" ] ~ lsqlite3;
     }
     else version (Windows)
     {

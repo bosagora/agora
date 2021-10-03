@@ -57,7 +57,9 @@ private void main ()
                 Output(Amount(1_000), WK.Keys[idx % 8].address)
             ]
         );
-        blocks ~= makeNewBlock(blocks[$ - 1], [tx], blocks[$ - 1].header.time_offset + 1, Hash.init, genesis_validator_keys.length);
+        const h = Height(idx);
+        auto preimages = WK.PreImages.at(h, genesis_validator_keys);
+        blocks ~= makeNewBlock(blocks[$ - 1], [tx], blocks[$ - 1].header.time_offset + 1, preimages);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
     }
