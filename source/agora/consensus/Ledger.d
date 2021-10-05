@@ -1217,7 +1217,7 @@ public class Ledger
         {
             auto coinbase_tx = this.getCoinbaseTX(expect_height);
             auto coinbase_tx_hash = coinbase_tx.hashFull();
-            log.info("getValidTXSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
+            log.trace("getValidTXSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
             assert(coinbase_tx.outputs.length > 0);
 
             // Because CB TXs are never in the pool, they will always end up in
