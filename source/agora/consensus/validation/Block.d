@@ -551,45 +551,6 @@ version (unittest)
     import std.array;
     import std.range;
 
-    PreImageCycle[] wellKnownPreimageCycles;
-    ulong[PublicKey] publicKeyToIndex;
-
-    public ref PreImageCycle getWellKnownPreimages (KeyPair kp) @safe nothrow
-    {
-        const uint Cycle = 20;
-        if (kp.address !in publicKeyToIndex)
-        {
-            publicKeyToIndex[kp.address] = wellKnownPreimageCycles.length;
-            wellKnownPreimageCycles ~= PreImageCycle(kp.secret, Cycle);
-        }
-        return wellKnownPreimageCycles[publicKeyToIndex[kp.address]];
-    }
-
-    public Hash[] wellKnownPreimages (Keys)(Height height, Keys key_pairs) @safe nothrow
-    in
-    {
-        static assert(isInputRange!Keys);
-        static assert (is(ElementType!Keys : KeyPair));
-    }
-    do
-    {
-        return key_pairs.map!(kp => getWellKnownPreimages(kp)[height]).array;
-    }
-
-    // Check that cached cycles can handle being used with previous cycle heights
-    unittest
-    {
-        auto only_node2 = only(WK.Keys.NODE2);
-        Hash[] preimages_height_0 = wellKnownPreimages(Height(0), only_node2);
-        Hash[] preimages_height_1 = wellKnownPreimages(Height(1), only_node2);
-        // fetch from previous height within the first cycle
-        assert(wellKnownPreimages(Height(0), only_node2) == preimages_height_0);
-        // preimage from second cycle
-        Hash[] preimages_height_21 = wellKnownPreimages(Height(21), only_node2);
-        // check we can fetch preimages from previous cycle
-        assert(wellKnownPreimages(Height(1), only_node2) == preimages_height_1);
-    }
-
     public string isValidcheck (in Block block, Engine engine, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,

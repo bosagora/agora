@@ -560,7 +560,7 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
 version (unittest)
 {
     import agora.consensus.data.genesis.Test: genesis_validator_keys;
-    import agora.consensus.validation.Block: wellKnownPreimages;
+    import agora.utils.Test;
 
     public Block makeNewTestBlock (Transactions)(const ref Block prev_block,
         Transactions txs,
@@ -570,7 +570,7 @@ version (unittest)
         ulong time_offset = 0) @safe nothrow
     {
         auto revealed = key_pairs.enumerate.filter!(en => !missing_validators.canFind(en.index)).map!(en => en.value).array;
-        Hash[] pre_images = wellKnownPreimages(prev_block.header.height + 1, revealed);
+        Hash[] pre_images = WK.PreImages.at(prev_block.header.height + 1, revealed);
         assert(revealed.length == key_pairs.length - missing_validators.length);
         try
         {
