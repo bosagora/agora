@@ -111,26 +111,21 @@ public struct BlockHeader
         Params:
             secret_key = node's secret
             preimage = preimage at the block height for the signing validator
-            offset = enrollment cycle offset
 
         Returns:
             A new signature derived from the provided parameters
 
     ***************************************************************************/
 
-    public Signature sign (in Scalar secret_key, in Hash preimage,
-        ulong offset = 0) const @safe nothrow
+    public Signature sign (in Scalar secret_key, in Hash preimage)
+        const @safe nothrow
     {
-        static import agora.crypto.Schnorr;
-
         // challenge = Hash(block) to Scalar
         const Scalar challenge = this.hashFull();
-        // rc = r used in signing the commitment
-        const Scalar rc = Scalar(hashMulti(secret_key, "consensus.signature.noise", offset));
-        const Scalar reduced_preimage = Scalar(preimage);
-        const Scalar r = rc + reduced_preimage; // make it unique for block height
-        const Point R = r.toPoint();
-        return agora.crypto.Schnorr.sign(secret_key, R, r, challenge);
+        const Scalar s = Scalar(preimage);
+        const Scalar rc = s - secret_key;
+        const Scalar r = rc * challenge.invert();
+        return Signature(r.toPoint(), s);
     }
 
     /***************************************************************************
@@ -143,7 +138,8 @@ public struct BlockHeader
 
         Params:
           pubkey = Public key of the signing node
-          sig = Signature to verify
+          preimage = Pre-image for pubkey for this round
+          sig = The `R` of the signature to verify (`s` is `preimage`)
           challenge = The hash of the block header to verify
 
         Returns:
@@ -151,19 +147,35 @@ public struct BlockHeader
 
     ***************************************************************************/
 
-    public bool verify (in Point pubkey, in Signature sig)
+    public bool verify (in Point pubkey, in Scalar preimage, in Point sig)
         const @safe nothrow
     {
         const Scalar challenge = this.hashFull();
-        return BlockHeader.verify(pubkey, sig, challenge);
+        return BlockHeader.verify(pubkey, preimage, sig, challenge);
     }
 
     /// Ditto
-    public static bool verify (in Point pubkey, in Signature sig, in Scalar challenge)
+    public bool verify (in Point pubkey, in Hash preimage, in Point sig)
+        const @safe nothrow
+    {
+        const Scalar challenge = this.hashFull();
+        return BlockHeader.verify(pubkey, Scalar(preimage), sig, challenge);
+    }
+
+    /// Ditto
+    public static bool verify (
+        in Point pubkey, in Hash preimage, in Point sig, in Hash challenge)
         @safe nothrow
     {
-        static import agora.crypto.Schnorr;
-        return agora.crypto.Schnorr.verify(sig, challenge, pubkey);
+        return BlockHeader.verify(pubkey, Scalar(preimage), sig, Scalar(challenge));
+    }
+
+    /// Ditto
+    public static bool verify (
+        in Point pubkey, in Scalar preimage, in Point sig, in Scalar challenge)
+        @safe nothrow
+    {
+        return preimage.toPoint() == (challenge * sig + pubkey);
     }
 }
 
@@ -622,13 +634,12 @@ version (unittest)
                     pre_images, enrollments);
             auto validators = BitMask(key_pairs.length);
             Signature[] sigs;
-            ulong offset = 0;
             key_pairs.enumerate.each!((i, k)
             {
                 if (!missing_validators.canFind(i))
                 {
                     validators[i] = true;
-                    sigs ~= block.header.sign(k.secret, pre_images[i], offset);
+                    sigs ~= block.header.sign(k.secret, pre_images[i]);
                 }
             });
             auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
@@ -877,33 +888,37 @@ unittest
         genesisSpendable().take(1).map!(txb => txb.refund(WK.Keys.Z.address).sign()),
         TimeOffset, preimages);
 
-    Scalar v = genesis_validator_keys[0].secret;
-    const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
-    const Scalar r = rc + Scalar(preimages[0]);
-    const Point R = r.toPoint();
-
     // Two messages
-    Scalar c1 = block1.hashFull();
-    Scalar c2 = block2.hashFull();
+    auto c1 = block1.hashFull();
+    auto c2 = block2.hashFull();
     assert(c1 != c2);
 
-    // Sign with same r twice
-    Signature sig1 = block1.header.sign(v, preimages[0]);
-    Signature sig2 = block2.header.sign(v, preimages[0]);
+    // Sign with same s twice
+    auto key = genesis_validator_keys[0].secret;
+    Signature sig1 = block1.header.sign(key, preimages[0]);
+    Signature sig2 = block2.header.sign(key, preimages[0]);
 
     // Verify signatures
-    assert(block1.header.verify(genesis_validator_keys[0].address, sig1));
-    assert(block2.header.verify(genesis_validator_keys[0].address, sig2));
+    assert(block1.header.verify(genesis_validator_keys[0].address, block1.header.preimages[0], sig1.R));
+    assert(block2.header.verify(genesis_validator_keys[0].address, block1.header.preimages[0], sig2.R));
 
     // Calculate the private key by subtraction
-    // `s = r + (v * c)`
-    // `s1 - s2 = r + (v * c1) - (r + v * c2) = v(c1 - c2)`
-    // `v = (s1 - s2) / (c1 - c2)`
-    Scalar s = (sig1.s - sig2.s);
-    Scalar c = (c1 - c2);
+    // `s = (c * r) + v`
+    // Reusing the same `s` (pre-image) means we end up with the following system:
+    // s = (c1 * r1) + v
+    // s = (c2 * r2) + v
+    // We know `s`, `c1` and `c2`.
 
-    Scalar secret = s * c.invert();
-    assert(secret == v,
-        format!"Key %s is not matching key %s"
-        (secret.toString(PrintMode.Clear), v.toString(PrintMode.Clear)));
+    // Note: Since the scheme was changed, `r` is not reused, and this might
+    // not be possible anymore, and could require an on-chain mechanism for slashing.
+    version (none)
+    {
+        Scalar s = (sig1.s - sig2.s);
+        Scalar c = (c1 - c2);
+
+        Scalar secret = s * c.invert();
+        assert(secret == v,
+               format!"Key %s is not matching key %s"
+               (secret.toString(PrintMode.Clear), v.toString(PrintMode.Clear)));
+    }
 }
