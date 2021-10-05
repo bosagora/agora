@@ -25,10 +25,15 @@ import std.typecons;
 
 import core.stdc.string;
 
+import vibe.data.json;
+
 /// simplified Set() code with some convenience methods,
 /// could use a drop-in implementation later.
 public struct Set (T)
 {
+    /// Helper type for `toString`
+    private alias SinkT = void delegate(scope const(char)[] v) @safe;
+
     ///
     bool[T] _set;
     alias _set this;
@@ -51,11 +56,33 @@ public struct Set (T)
     /// https://github.com/dlang/druntime/pull/3412
     public string toString () const
     {
-        import std.format;
+        string ret;
+        scope SinkT dg = (scope v) { ret ~= v; };
+        this.toString(dg);
+        return ret;
+    }
 
-        return format("%(%s, %)",
-                      this._set.byKeyValue.filter!(tup => tup.value)
-                      .map!(tup => tup.key));
+    /// Ditto
+    public void toString (scope void delegate(const(char)[]) @safe sink) const
+    {
+        import std.format : formattedWrite;
+
+        formattedWrite(sink, "[%(%s, %)]", this._set.byKeyValue().filter!(
+            kv => kv.value).map!(kv => kv.key));
+    }
+
+    /// Support for Vibe.d deserialization
+    public static SetT fromString (SetT = Set) (string str) @safe
+    {
+        alias SerPolicy = DefaultPolicy;
+
+        auto array = str.deserializeWithPolicy!(
+            JsonStringSerializer!string, SerPolicy, T[]);
+        SetT set_t;
+        foreach (ref item; array)
+            set_t.put(item);
+        
+        return set_t;
     }
 
     /// Walk over all elements and call dg(elem)
@@ -231,6 +258,30 @@ unittest
     auto old_set = Set!string.from(["foo", "bar", "agora"]);
     auto bytes = old_set.serializeFull();
     auto new_set = deserializeFull!(Set!string)(bytes);
+
+    assert(new_set.length == old_set.length);
+    old_set.each!(value => assert(value in new_set));
+}
+
+/// toString and fromString test for Set!int
+unittest
+{    
+    auto old_set = Set!uint.from([1, 3, 5, 7, 9]);
+    auto str = old_set.toString();
+    assert(str == "[7, 5, 3, 1, 9]");
+    auto new_set = Set!uint.fromString(str);
+    
+    assert(new_set.length == old_set.length);
+    old_set.each!(value => assert(value in new_set));
+}
+
+/// toString and fromString test for Set!string
+unittest
+{
+    auto old_set = Set!string.from(["hello", "world"]);
+    auto str = old_set.toString();
+    assert(str == "[\"world\", \"hello\"]");
+    auto new_set = Set!string.fromString(str);
 
     assert(new_set.length == old_set.length);
     old_set.each!(value => assert(value in new_set));
