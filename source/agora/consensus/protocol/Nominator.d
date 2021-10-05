@@ -746,8 +746,7 @@ extern(D):
     public Signature signBlock (in Block block) @safe nothrow
     {
         return block.header.sign(this.kp.secret,
-            this.enroll_man.getOurPreimage(block.header.height),
-            ulong((block.header.height - 1) / this.params.ValidatorCycle));
+            this.enroll_man.getOurPreimage(block.header.height));
     }
 
     extern (C++):
@@ -867,21 +866,16 @@ extern(D):
             return false;
         }
 
-        const Scalar block_challenge = block_hash;
         if (validator.preimage.height < block_sig.height)
         {
             log.warn("collectBlockSignature: Validator {} has preimage at height {} but sig: {}",
                      validator.utxo(), validator.preimage.height, block_sig);
             return false;
         }
-        // Fetch the R from enrollment commitment for signing validator
-        const CR = this.enroll_man.getCommitmentNonce(validator.address, block_sig.height);
-        // Determine the R of signature (R, s)
-        Point R = CR + Scalar(validator.preimage[block_sig.height]).toPoint();
-        // Compose the signature (R, s)
-        const sig = Signature(R, block_sig.signature);
-        // Check this signature is valid for this block and signing validator
-        if (!BlockHeader.verify(validator.address, sig, block_challenge))
+
+        if (!BlockHeader.verify(
+                validator.address, validator.preimage[block_sig.height],
+                block_sig.signature, block_hash))
         {
             log.warn("collectBlockSignature: INVALID Block signature received for slot {} from node {}",
                 block_sig.height, block_sig.utxo);
@@ -890,7 +884,8 @@ extern(D):
         log.trace("collectBlockSignature: VALID block signature at height {} for node {}",
             block_sig.height, block_sig.utxo);
         // collect the signature
-        this.slot_sigs[block_sig.height][block_sig.utxo] = Signature(R, block_sig.signature);
+        const Scalar s = validator.preimage[block_sig.height];
+        this.slot_sigs[block_sig.height][block_sig.utxo] = Signature(block_sig.signature, s);
         return true;
     }
 
@@ -983,7 +978,7 @@ extern(D):
             const self = this.enroll_man.getEnrollmentKey();
             this.slot_sigs[height][self] = this.signBlock(block);
             this.gossipBlockSignature(ValidatorBlockSig(height, self,
-                this.slot_sigs[height][self].s));
+                this.slot_sigs[height][self].R));
             this.ledger.addHeightAsExternalizing(height);
             this.verifyBlock(this.updateMultiSignature(block));
         }

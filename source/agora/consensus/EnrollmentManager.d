@@ -388,27 +388,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Retrieves the R from the (R, s) of the signature in the commitment
-        for the associated public key
-
-        Params:
-            key = the public key to look up
-            height = height of block the R will be used to check the signature
-
-        Returns:
-            The `R` used in the signature of the Enrollment,
-            or `Point.init` if one is not found
-
-    ***************************************************************************/
-
-    public Point getCommitmentNonce (in PublicKey key, in Height height)
-        @trusted nothrow
-    {
-        return this.validator_set.getCommitmentNonce(key, height);
-    }
-
-    /***************************************************************************
-
         Get all the enrolled validator's UTXO keys.
 
         Params:

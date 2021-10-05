@@ -935,7 +935,7 @@ public class Ledger
         import agora.crypto.ECC;
 
         Point sum_K;
-        Point sum_R;
+        Scalar sum_s;
         const Scalar challenge = hashFull(block);
         ValidatorInfo[] validators;
         try
@@ -967,29 +967,27 @@ public class Ledger
                 continue;
             }
 
-            const CR = this.enroll_man.getCommitmentNonce(K, block.header.height);  // commited R
-            if (CR == Point.init)
-            {
-                log.error("Block#{}: Validator {} (idx: {}) Couldn't find commitment for this validator",
-                          block.header.height, K, idx);
-                return "Block: Couldn't find commitment for this validator";
-            }
-            assert(validator.preimage.height >= block.header.height);
-            const hash = validator.preimage[block.header.height];
-            Point R = CR + Scalar(hash).toPoint();
+            const pi = block.header.preimages[idx];
+            // TODO: Currently we consider that validators slashed at this height
+            // can sign the block (e.g. they have a space in the bit field),
+            // however without their pre-image they can't sign the block.
+            if (pi is Hash.init)
+                continue;
+
             sum_K = sum_K + K;
-            sum_R = sum_R + R;
+            sum_s = sum_s + Scalar(pi);
         }
 
         assert(sum_K != Point.init, "Block has validators but no signature");
 
-        if (sum_R != block.header.signature.R)
+        // If this doesn't match, the block is not self-consistent
+        if (sum_s != block.header.signature.s)
         {
-            log.error("Block#{}: Signature's `R` mismatch: Expected {}, got {}",
-                      block.header.height, sum_R, block.header.signature.R);
-            return "Block: Invalid schnorr signature (R)";
+            log.error("Block#{}: Signature's `s` mismatch: Expected {}, got {}",
+                      block.header.height, sum_s, block.header.signature.s);
+            return "Block: Invalid schnorr signature (s)";
         }
-        if (!BlockHeader.verify(sum_K, block.header.signature, challenge))
+        if (!BlockHeader.verify(sum_K, sum_s, block.header.signature.R, challenge))
         {
             log.error("Block#{}: Invalid signature: {}", block.header.height,
                       block.header.signature);

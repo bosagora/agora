@@ -426,46 +426,6 @@ public class ValidatorSet
 
     /***************************************************************************
 
-        Extract the `R` used in the signing of the associated enrollment
-        We do not check the active flag as we may get block signatures afer
-        the next cycle has started
-
-        Params:
-            key = The public key of the validator
-            height = height of block being signed
-
-        Returns:
-            the `R` that was used in the signing of the Enrollment,
-            or `Point.init` if one was not found
-
-    ***************************************************************************/
-
-    public Point getCommitmentNonce (const ref PublicKey key, in Height height) @trusted nothrow
-    {
-        try
-        {
-            auto results = this.db.execute("SELECT nonce FROM validator " ~
-                "WHERE public_key = ? AND enrolled_height >= ? " ~
-                "AND enrolled_height < ?",
-                key, this.minEnrollmentHeight(height), height);
-
-            if (!results.empty && results.oneValue!(string).length != 0)
-            {
-                auto row = results.front;
-                return Point(row.peek!(string)(0));
-            }
-        }
-        catch (Exception ex)
-        {
-            log.error("Exception occured on getCommitmentNonce: {}, " ~
-                "for public key: {}", ex.msg, key);
-        }
-
-        return Point.init;
-    }
-
-    /***************************************************************************
-
         Get validator's pre-image from the validator set
 
         Params:
