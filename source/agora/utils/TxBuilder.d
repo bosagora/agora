@@ -393,7 +393,7 @@ public struct TxBuilder
     ***************************************************************************/
 
     public ref typeof(this) refund (in PublicKey toward)
-        @safe return
+        return @safe nothrow
     {
         assert(this.inputs.length > 0);
 
