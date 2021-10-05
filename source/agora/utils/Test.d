@@ -160,6 +160,38 @@ public struct WK
             return wellKnownKeyByIndex(idx);
         }
     }
+
+    public static struct PreImages
+    {
+        import agora.consensus.PreImage;
+
+        private static PreImageCycle[] cycles;
+        private static ulong[PublicKey] publicKeyToIndex;
+
+        public static ref PreImageCycle opIndex (KeyPair kp)
+            @safe nothrow
+        {
+            const uint Cycle = 20;
+            if (kp.address !in publicKeyToIndex)
+            {
+                publicKeyToIndex[kp.address] = cycles.length;
+                cycles ~= PreImageCycle(kp.secret, Cycle);
+            }
+            return cycles[publicKeyToIndex[kp.address]];
+        }
+
+        public static Hash[] at (Keys)(Height height, Keys key_pairs)
+            @safe nothrow
+        in
+        {
+            static assert(isInputRange!Keys);
+            static assert (is(ElementType!Keys : KeyPair));
+        }
+        do
+        {
+            return key_pairs.map!(kp => opIndex(kp)[height]).array;
+        }
+    }
 }
 
 /// Consistency checks
@@ -252,6 +284,20 @@ unittest
             .each!(tx => tx.outputs
                 .each!(output => assert(WK.Keys.Genesis.address == output.address)));
     }
+}
+
+// Check that cached cycles can handle being used with previous cycle heights
+unittest
+{
+    auto only_node2 = only(WK.Keys.NODE2);
+    Hash[] preimages_height_0 = WK.PreImages.at(Height(0), only_node2);
+    Hash[] preimages_height_1 = WK.PreImages.at(Height(1), only_node2);
+    // fetch from previous height within the first cycle
+    assert(WK.PreImages.at(Height(0), only_node2) == preimages_height_0);
+    // preimage from second cycle
+    Hash[] preimages_height_21 = WK.PreImages.at(Height(21), only_node2);
+    // check we can fetch preimages from previous cycle
+    assert(WK.PreImages.at(Height(1), only_node2) == preimages_height_1);
 }
 
 /***************************************************************************

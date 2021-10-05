@@ -1352,7 +1352,7 @@ public class Ledger
                     log.info("Skip add preimage for validator idx {} at height {} as requested by test", idx, height);
                 else
                     addPreimageLog(val.address, PreImageInfo(val.preimage.utxo,
-                        getWellKnownPreimages(WK.Keys[val.address])[height], height));
+                        WK.PreImages[WK.Keys[val.address]][height], height));
             });
         } catch (Exception e)
         {
@@ -1689,7 +1689,6 @@ public class ValidatingLedger : Ledger
 version (unittest)
 {
     import agora.consensus.PreImage;
-    import agora.consensus.validation.Block: getWellKnownPreimages;
     import agora.node.Config;
     version (unittest) import agora.test.Base;
     import core.stdc.time : time;
