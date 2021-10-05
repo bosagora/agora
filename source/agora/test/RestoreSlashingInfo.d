@@ -49,15 +49,16 @@ unittest
 
     const keys = set_b.map!(node => node.getPublicKey().key).array;
 
-    auto blocks = nodes[0].getAllBlocks();
+    Amount expected = Amount.MinFreezeAmount;
+    assert(expected.mul(keys.length));
+    auto utxos = nodes[0].getSpendable(expected, OutputType.Payment);
 
     // Block 19 we add the freeze utxos for set_b validators
     // prepare frozen outputs for outsider validators to enroll
-    blocks[0].spendable().drop(1).takeExactly(1)
-        .map!(txb => txb
-            .split(keys).sign(OutputType.Freeze))
-            .each!(tx => set_a[0].postTransaction(tx));
-
+    TxBuilder txb = TxBuilder(WK.Keys.AAA.address); // Refund
+    utxos.each!(pair => txb.attach(pair.utxo.output, pair.hash));
+    auto to_send = txb.draw(Amount.MinFreezeAmount, keys).sign(OutputType.Freeze);
+    network.postAndEnsureTxInPool(iota(GenesisValidators + 1), to_send);
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // wait for other nodes to get to same block height

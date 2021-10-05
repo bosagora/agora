@@ -42,33 +42,16 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    Transaction[] txs;
-
-    void createAndExpectNewBlock (Height new_height)
-    {
-        // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().map!(txb => txb.sign()).array();
-
-        // send it to one node
-        txs.each!(tx => node_0.postTransaction(tx));
-
-        network.expectHeightAndPreImg(new_height, blocks[0].header);
-
-        // add next block
-        blocks ~= node_0.getBlocksFrom(new_height, 1);
-    }
-
     // create GenesisValidatorCycle - 1 blocks
-    foreach (block_idx; 1 .. GenesisValidatorCycle)
-    {
-        createAndExpectNewBlock(Height(block_idx));
-    }
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // Create one last block
     // if Validators don't re-enroll, this would fail
-    createAndExpectNewBlock(Height(GenesisValidatorCycle));
+    network.generateBlocks(Height(GenesisValidatorCycle));
     // Check if all validators in genesis are enrolled again
-    assert(blocks[blocks.length - 1].header.enrollments.length == blocks[0].header.enrollments.length);
+    auto enrollment_block = node_0.getBlocksFrom(GenesisValidatorCycle, 1);
+    assert(enrollment_block.length == 1);
+    assert(enrollment_block[0].header.enrollments.length == blocks[0].header.enrollments.length);
 }
 
 // Recurring enrollment with wrong `commitment`
@@ -118,32 +101,11 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    Transaction[] txs;
-
-    void createAndExpectNewBlock (Height new_height)
-    {
-        // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().map!(txb => txb.sign())
-            .array();
-
-        // send it to one node
-        txs.each!(tx => node_0.postTransaction(tx));
-
-        network.expectHeightAndPreImg(new_height, blocks[0].header);
-
-        // add next block
-        blocks ~= node_0.getBlocksFrom(new_height, 1);
-    }
-
     // create GenesisValidatorCycle - 1 blocks
-    foreach (block_idx; 1 .. GenesisValidatorCycle)
-    {
-        createAndExpectNewBlock(Height(block_idx));
-    }
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // Try creating one last block, should fail
-    assertThrown!AssertError(createAndExpectNewBlock(
-        Height(GenesisValidatorCycle)));
+    assertThrown!AssertError(network.generateBlocks(Height(GenesisValidatorCycle)));
 }
 
 // Not all validators can enroll at the same height again. They should enroll

@@ -20,6 +20,8 @@ import agora.test.Base;
 
 import core.thread;
 
+import std.typecons;
+
 private class SameKeyValidator : TestValidatorNode
 {
     mixin ForwardCtor!();
@@ -94,52 +96,24 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
 
-    // generate 16 blocks
-    network.generateBlocks(Height(16));
-    assert(network.blocks[0].header.enrollments.length >= 1);
-    network.expectHeightAndPreImg(Height(16), network.blocks[0].header, 5.seconds);
+    // generate 17 blocks
+    network.generateBlocks(Height(17));
 
-    // Discarded UTXOs (just to trigger block creation)
-    auto spendable = network.blocks[$ - 1].spendable().array;
-    auto txs = spendable[0 .. 4]
-        .map!(txb => txb.refund(WK.Keys.Genesis.address).sign())
-        .array;
+    // get utxo to create frozen output for new enrollment
+    auto utxo_pairs = nodes[0].getSpendable(Amount.MinFreezeAmount, OutputType.Payment);
 
-    // 8 utxos for freezing, 24 utxos for creating a block later
-    txs ~= spendable[4].split(genesis_validator_keys[0].address.repeat(8)).sign();
-    txs ~= spendable[5].split(WK.Keys.Z.address.repeat(8)).sign();
-    txs ~= spendable[6].split(WK.Keys.Z.address.repeat(8)).sign();
-    txs ~= spendable[7].split(WK.Keys.Z.address.repeat(8)).sign();
-
-    // Block 17
-    txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(17), network.blocks[0].header, 10.seconds);
-
-    // Freeze builders
-    auto freezable = txs[$ - 4]
-        .outputs.length.iota
-        .takeExactly(8)
-        .map!(idx => TxBuilder(txs[$ - 4], cast(uint)idx));
-
-    // Create 8 freeze TXs
-    auto freeze_txs = freezable
-        .enumerate
-        .map!(pair => pair.value.refund(genesis_validator_keys[0].address)
-            .sign(OutputType.Freeze))
-        .array;
-    assert(freeze_txs.length == 8);
+    // create and send tx to all nodes
+    network.postAndEnsureTxInPool(
+        TxBuilder(genesis_validator_keys[0].address)
+        .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
+        .draw(Amount.MinFreezeAmount, only(genesis_validator_keys[0].address))
+        .sign(OutputType.Freeze));
 
     // Block 18
-    freeze_txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(18), network.blocks[0].header, 5.seconds);
 
     // Block 19
-    auto new_txs = txs[$ - 3]
-        .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 3], cast(uint)idx))
-        .takeExactly(8)
-        .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(19), network.blocks[0].header, 5.seconds);
+    network.generateBlocks(Height(19));
 
     // Now we re-enroll the first validator with a new UTXO but it will fail
     // because an enrollment with same public key of the first validator is
@@ -158,12 +132,7 @@ unittest
     }
 
     // Block 20
-    new_txs = txs[$ - 2]
-        .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 2], cast(uint)idx))
-        .takeExactly(8)
-        .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(20), network.blocks[0].header);
+    network.generateBlocks(Height(20));
     auto b20 = nodes[0].getBlocksFrom(20, 2)[0];
     assert(b20.header.enrollments.length == 5);
 
@@ -173,12 +142,7 @@ unittest
         retryFor(node.getEnrollment(new_enroll.utxo_key) == new_enroll, 5.seconds));
 
     // Block 21 created with the new enrollment
-    new_txs = txs[$ - 1]
-        .outputs.length.iota.map!(idx => TxBuilder(txs[$ - 1], cast(uint)idx))
-        .takeExactly(8)
-        .map!(txb => txb.refund(WK.Keys.Z.address).sign()).array;
-    new_txs.each!(tx => network.postAndEnsureTxInPool(tx));
-    network.expectHeightAndPreImg(Height(21), b20.header);
+    network.generateBlocks(Height(21));
     auto b21 = nodes[0].getBlocksFrom(21, 2)[0];
     assert(b21.header.enrollments.length == 1);
     assert(b21.header.enrollments[0] == new_enroll);

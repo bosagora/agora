@@ -15,6 +15,8 @@ module agora.test.Fee;
 
 import agora.test.Base;
 
+import std.typecons: tuple;
+
 // Normal operation, every `payout_period`th block should
 // include coinbase outputs to validators
 unittest
@@ -35,16 +37,16 @@ unittest
     auto blocks = node_1.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    Transaction[] txs;
-
     void createAndExpectNewBlock (Height new_height)
     {
-        // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().map!(txb => txb
-            .deduct(Amount.UnitPerCoin).sign()).array();
+        // create tx for a single block
+        auto utxo_pairs = node_1.getSpendable(100.coins, OutputType.Payment);
 
-        // send them to all nodes
-        txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));
+        // create and send tx to all nodes
+        network.postAndEnsureTxInPool(
+            TxBuilder(WK.Keys.AAA.address)
+            .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
+            .deduct(1.coins).sign());
 
         network.expectHeightAndPreImg(new_height, blocks[0].header);
 
@@ -179,16 +181,16 @@ unittest
     auto blocks = valid_nodes.front.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    Transaction[] txs;
-
     void createAndExpectNewBlock (Height new_height)
     {
-        // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().takeExactly(1).map!(txb => txb
-            .deduct(Amount.UnitPerCoin).sign()).array();
+        // create tx for a single block
+        auto utxo_pairs = valid_nodes.front.getSpendable(100.coins, OutputType.Payment);
 
-        // send them to all valid nodes
-        txs.each!(tx => valid_nodes.each!(node => node.postTransaction(tx)));
+        // create and send tx to all nodes
+        network.postAndEnsureTxInPool(
+            TxBuilder(WK.Keys.AAA.address)
+            .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
+            .deduct(1.coins).sign());
 
         network.expectHeightAndPreImg(iota(1, GenesisValidators),
             new_height, blocks[0].header);

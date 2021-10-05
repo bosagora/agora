@@ -28,47 +28,54 @@ import agora.test.Base;
 ///     process of set B have finished, a new block is being nominated,
 ///     and a consensus round for the new block is being made.
 /// Expectation: The new block is approved and inserted into the ledger.
-version(none) unittest
+unittest
 {
     TestConf conf = {
-        timeout : 10.seconds,
         outsider_validators : 3,
         recurring_enrollment : false
     };
+    conf.node.timeout = 10.seconds;
+    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.retry_delay = 250.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto nodes = network.clients;
-    auto set_a = network.clients[0 .. GenesisValidators];
-    auto set_b = network.clients[GenesisValidators .. $];
+    auto nodes = network.nodes;
+    auto set_a = network.nodes[0 .. GenesisValidators];
+    auto set_b = network.nodes[GenesisValidators .. $];
 
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = set_b.map!(node => node.getPublicKey()).array;
+    const keys = set_b.map!(node => node.getPublicKey().key).array;
 
     Amount expected = Amount.MinFreezeAmount;
     assert(expected.mul(keys.length));
-    auto utxos = nodes[0].getUTXOs(expected);
+    auto utxos = nodes[0].getSpendable(expected, OutputType.Payment);
 
     // Block 19 we add the freeze utxos for set_b validators
     // prepare frozen outputs for outsider validators to enroll
     TxBuilder txb = TxBuilder(WK.Keys.AAA.address); // Refund
     utxos.each!(pair => txb.attach(pair.utxo.output, pair.hash));
     auto to_send = txb.draw(Amount.MinFreezeAmount, keys).sign(OutputType.Freeze);
-    set_a.each!(n => n.postTransaction(to_send));
+    network.postAndEnsureTxInPool(iota(GenesisValidators + 1), to_send);
+    network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
     // wait for other nodes to get to same block height
-    network.assertSameBlocks(Height(GenesisValidatorCycle - 1));
+    set_b.enumerate.each!((idx, node) =>
+        retryFor(node.getBlockHeight() == GenesisValidatorCycle - 1, 5.seconds,
+            format!"Expected block height %s but outsider %s has height %s."
+                (GenesisValidatorCycle - 1, idx, node.getBlockHeight())));
 
     // Now we enroll the set B validators.
     set_b.enumerate.each!((idx, _) => network.enroll(GenesisValidators + idx));
 
     // Block 20, After this the Genesis block enrolled validators will be expired.
-    network.generateBlocks(Height(GenesisValidatorCycle));
+    network.generateBlocks(iota(GenesisValidators, GenesisValidators + conf.outsider_validators),
+        Height(GenesisValidatorCycle));
 
     // Sanity check
     auto b20 = set_a[0].getBlocksFrom(GenesisValidatorCycle, 1)[0];
@@ -76,7 +83,7 @@ version(none) unittest
 
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
-    set_b.each!(node => network.restart(node));
+    set_b.each!(node => network.restart(node.client));
     network.expectHeight(Height(GenesisValidatorCycle));
 
     // Sanity check
@@ -98,7 +105,7 @@ version(none) unittest
             5.seconds));
 
     // Make all the validators of the set A disable to respond
-    set_a.each!(node => node.ctrl.sleep(6.seconds, true));
+    set_a.each!(node => node.client.ctrl.sleep(6.seconds, true));
 
     // Block 21 with the new validators in the set B
     network.generateBlocks(iota(GenesisValidators, cast(size_t) nodes.length),
