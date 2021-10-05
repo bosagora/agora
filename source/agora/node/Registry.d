@@ -793,12 +793,26 @@ private struct ZoneData
         if (range.empty || range.front.length < 1)
             return null;
 
-        // Slice past the dot
         const child = range.front;
-        const parentDomain = input[child.length + 1 .. $];
         range.popFront();
         if (range.empty)
             return null;
+        // Slice past the dot, after making sure there is one (bosagora/agora#2551)
+        const parentDomain = input[child.length + 1 .. $];
         return this.matches(parentDomain) ? child : null;
+    }
+
+    ///
+    unittest
+    {
+        ZoneData zone;
+        zone.root = Domain("example.com");
+        assert(zone.owns("a.example.com"));
+        // Owns is only about sub-domain
+        assert(!zone.owns("example.com"));
+        // But only direct sub-domain
+        assert(!zone.owns("a.b.exampld.com"));
+        // bosagora/agora#2551
+        assert(!zone.owns("oops"));
     }
 }
