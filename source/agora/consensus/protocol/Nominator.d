@@ -881,7 +881,7 @@ extern(D):
         // Compose the signature (R, s)
         const sig = Signature(R, block_sig.signature);
         // Check this signature is valid for this block and signing validator
-        if (!verify(sig, block_challenge, validator.address))
+        if (!BlockHeader.verify(validator.address, sig, block_challenge))
         {
             log.warn("collectBlockSignature: INVALID Block signature received for slot {} from node {}",
                 block_sig.height, block_sig.utxo);
