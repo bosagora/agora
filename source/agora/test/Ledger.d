@@ -53,11 +53,8 @@ unittest
         Transaction[] txs = blocks[block_idx].spendable().map!(txb => txb.sign()).array;
 
         // send each tx to one node
-        txs.each!(tx => node_1.postTransaction(tx));
-        // wait for all nodes get the txs
-        txs.each!(tx =>
-            nodes.each!(node =>
-                node.hasTransactionHash(hashFull(tx)).retryFor(2.seconds)));
+        txs.each!(tx => network.postAndEnsureTxInPool(tx));
+
         // now create the next block
         network.expectHeightAndPreImg(Height(block_idx + 1), blocks[0].header);
 
