@@ -68,6 +68,7 @@ import geod24.Registry;
 import std.array;
 import std.exception;
 import std.range;
+import std.typecons;
 
 import core.atomic : atomicLoad, atomicStore;
 import core.exception;
@@ -1090,6 +1091,37 @@ public class TestAPIManager
         const enroll_block = first_client.getBlock(enrolled_height);
         this.expectHeightAndPreImg(client_idxs, target_height,
             enroll_block.header, 10.seconds, file, line);
+    }
+
+    /**************************************************************************
+
+        Prepare frozen utxo for outsiders to enroll
+
+        This is a helper function to find unspent utxo and make a transaction
+            with frozen outputs to be used to enroll.
+
+        Params:
+            client_idxs = client indices for the outsider validators
+
+    ***************************************************************************/
+
+    Transaction freezeUTXO (Idxs)(Idxs client_idxs)
+    {
+        static assert (isInputRange!Idxs);
+
+        auto first_client = this.clients[0];
+
+        const keys = client_idxs.map!(i => this.nodes[i].getPublicKey().key).array;
+
+        // Collect enough utxo for all to enroll
+        Amount expected = Amount.MinFreezeAmount;
+        assert(expected.mul(keys.length));
+        auto utxo_pairs = first_client.getSpendables(expected, OutputType.Payment);
+
+        return TxBuilder(utxo_pairs[0].utxo.output.address) // refund
+            .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
+            .draw(Amount.MinFreezeAmount, keys) // draw min freeze to enroll for each
+            .sign(OutputType.Freeze);
     }
 
     /***************************************************************************
