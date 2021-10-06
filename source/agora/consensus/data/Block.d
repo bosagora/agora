@@ -105,18 +105,24 @@ public struct BlockHeader
         Create the block signature for the given keypair
 
         This signature will be combined with other validator's signatures
-        using Schnorr multisig.
+        using Schnorr multisig. The signature is only returned,
+        the current list of signer (`validators`) is not modified.
 
         Params:
             secret_key = node's secret
             preimage = preimage at the block height for the signing validator
             offset = enrollment cycle offset
 
+        Returns:
+            A new signature derived from the provided parameters
+
     ***************************************************************************/
 
-    public Signature createBlockSignature (in Scalar secret_key, in Hash preimage,
+    public Signature sign (in Scalar secret_key, in Hash preimage,
         ulong offset = 0) const @safe nothrow
     {
+        static import agora.crypto.Schnorr;
+
         // challenge = Hash(block) to Scalar
         const Scalar challenge = this.hashFull();
         // rc = r used in signing the commitment
@@ -124,7 +130,7 @@ public struct BlockHeader
         const Scalar reduced_preimage = Scalar(preimage);
         const Scalar r = rc + reduced_preimage; // make it unique for block height
         const Point R = r.toPoint();
-        return sign(secret_key, R, r, challenge);
+        return agora.crypto.Schnorr.sign(secret_key, R, r, challenge);
     }
 }
 
@@ -589,8 +595,7 @@ version (unittest)
                 if (!missing_validators.canFind(i))
                 {
                     validators[i] = true;
-                    sigs ~= block.header.createBlockSignature(k.secret,
-                        pre_images[i], offset);
+                    sigs ~= block.header.sign(k.secret, pre_images[i], offset);
                 }
             });
             auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
@@ -852,8 +857,8 @@ unittest
     assert(c1 != c2);
 
     // Sign with same r twice
-    Signature sig1 = block1.header.createBlockSignature(v, preimages[0]);
-    Signature sig2 = block2.header.createBlockSignature(v, preimages[0]);
+    Signature sig1 = block1.header.sign(v, preimages[0]);
+    Signature sig2 = block2.header.sign(v, preimages[0]);
 
     // Verify signatures
     assert(verify(sig1, c1, V));

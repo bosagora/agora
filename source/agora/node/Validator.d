@@ -385,7 +385,7 @@ public class Validator : FullNode, API
         }
 
         const this_utxo = this.enroll_man.getEnrollmentKey();
-        auto sig = this.nominator.createBlockSignature(block);
+        auto sig = this.nominator.signBlock(block);
         assert(node_validator_index < block.header.validators.count,
             format!"The validator index %s is invalid"(node_validator_index));
         if (signed_validators[node_validator_index])

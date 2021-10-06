@@ -734,18 +734,18 @@ extern(D):
 
     /***************************************************************************
 
-        Create the block signature for this node.
-        This signature will be combined with other validator's signatures
-        using Schnorr multisig.
+        Sign this block using our private key / pre-image.
+
+        This will only returns the new signature, the block won't be modified.
 
         Params:
             block = the block to sign
 
     ***************************************************************************/
 
-    public Signature createBlockSignature (in Block block) @safe nothrow
+    public Signature signBlock (in Block block) @safe nothrow
     {
-        return block.header.createBlockSignature(this.kp.secret,
+        return block.header.sign(this.kp.secret,
             this.enroll_man.getOurPreimage(block.header.height),
             ulong((block.header.height - 1) / this.params.ValidatorCycle));
     }
@@ -981,7 +981,7 @@ extern(D):
             // Now we add our signature and gossip to other nodes
             log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
             const self = this.enroll_man.getEnrollmentKey();
-            this.slot_sigs[height][self] = this.createBlockSignature(block);
+            this.slot_sigs[height][self] = this.signBlock(block);
             this.gossipBlockSignature(ValidatorBlockSig(height, self,
                 this.slot_sigs[height][self].s));
             this.ledger.addHeightAsExternalizing(height);
