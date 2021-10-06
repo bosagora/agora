@@ -1443,16 +1443,42 @@ public interface TestAPI : API
 
     /***************************************************************************
 
-        Provides access to the state of the UTXO set
+        Get unspent outputs from the test UTXO set
+
+        Params:
+            minimum = minimum Amount needed in the returned unspent UTXOs
+            output_type = output type (payment / freeze) of desired utxos
+
+        Returns:
+            Array of `UTXOPair` that can be used by calling test code to create
+            a `Transaction` using `TxBuilder`
 
     ***************************************************************************/
 
-    public UTXOPair[] getUTXOs (Amount minimum);
+    public UTXOPair[] getSpendables (Amount minimum);
 
-    ///
+    /***************************************************************************
+
+        Params:
+            owner = PublicKey of utxo owner
+
+        Returns:
+            Array of `UTXOPair` that belong to the provided owner
+
+    ***************************************************************************/
+
     public UTXOPair[] getUTXOs (PublicKey owner);
 
-    /// Ditto
+    /***************************************************************************
+
+        Params:
+            hash = utxo hash value
+
+        Returns:
+            UTXO for provided hash value
+
+    ***************************************************************************/
+
     public UTXO getUTXO (Hash hash);
 
     /***************************************************************************
@@ -1603,7 +1629,7 @@ private mixin template TestNodeMixin ()
     }
 
     ///
-    public override UTXOPair[] getUTXOs (Amount minimum)
+    public override UTXOPair[] getSpendables (Amount minimum)
     {
         UTXOPair[] result;
         Amount accumulated;
