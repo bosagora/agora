@@ -603,32 +603,35 @@ public class FullNode : API
         // The relayer depends on the NetworkManager and the pool,
         // so shut its timers down first.
         this.transaction_relayer.shutdown();
-        this.transaction_relayer = null;
+        version (none) this.transaction_relayer = null;
 
         // Now tear down the network
         this.network.shutdown();
-        this.network = null;
+        version (none) this.network = null;
 
         // If the teardown process is out of order / has race conditions,
         // one is likely to see segv thanks to those fields being `null`.
         // But a SEGV is better than memory corruption.
-        this.taskman = null;
-        this.clock = null;
-        this.pool = null;
-        this.ledger = null;
-        this.enroll_man = null;
-        this.utxo_set = null;
-        this.engine = null;
+        version (none)
+        {
+            this.taskman = null;
+            this.clock = null;
+            this.pool = null;
+            this.ledger = null;
+            this.enroll_man = null;
+            this.utxo_set = null;
+            this.engine = null;
 
-        // Finalized by `ManagedDatabase`
-        this.storage = null;
-        this.stateDB = null;
-        this.cacheDB = null;
+            // Finalized by `ManagedDatabase`
+            this.storage = null;
+            this.stateDB = null;
+            this.cacheDB = null;
 
-        this.block_handlers = null;
-        this.block_header_handlers = null;
-        this.preimage_handlers = null;
-        this.transaction_handlers = null;
+            this.block_handlers = null;
+            this.block_header_handlers = null;
+            this.preimage_handlers = null;
+            this.transaction_handlers = null;
+        }
     }
 
     /// Make a new instance of the consensus parameters based on the config
