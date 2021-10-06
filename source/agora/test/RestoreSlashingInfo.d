@@ -47,16 +47,10 @@ unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = set_b.map!(node => node.getPublicKey().key).array;
-
-    auto blocks = nodes[0].getAllBlocks();
-
     // Block 19 we add the freeze utxos for set_b validators
     // prepare frozen outputs for outsider validators to enroll
-    blocks[0].spendable().drop(1).takeExactly(1)
-        .map!(txb => txb
-            .split(keys).sign(OutputType.Freeze))
-            .each!(tx => set_a[0].postTransaction(tx));
+    network.postAndEnsureTxInPool(iota(GenesisValidators + 1),
+        network.freezeUtxo(iota(GenesisValidators, GenesisValidators + 3)));
 
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
 
