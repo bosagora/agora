@@ -165,7 +165,7 @@ public class TransactionPool
 
         Params:
             tx = the transaction to remove
-            rm_double_spent = remove the TXs that use the same inputs
+            rm_double_spent = remove the TXs that use the same utxo
 
     ***************************************************************************/
 
@@ -178,18 +178,18 @@ public class TransactionPool
         if (rm_double_spent)
         {
             // Incoming TX is accepted into the chain, so any other TXs in the pool
-            // that use the same inputs are now invalid, remove them too
+            // that use the same utxos are now invalid, remove them too
             Set!Hash inv_txs;
 
             this.gatherDoubleSpentTXs(tx, inv_txs);
             foreach (input; tx.inputs)
-                this.spenders.remove(input.hashFull());
+                this.spenders.remove(input.utxo);
 
             inv_txs.each!(inv_tx_hash => this.remove(inv_tx_hash, false));
         }
         else
             foreach (input; tx.inputs)
-                if (auto list = input.hashFull() in this.spenders)
+                if (auto list = input.utxo in this.spenders)
                     (*list).remove(tx_hash);
     }
 
@@ -222,11 +222,11 @@ public class TransactionPool
         // insert each input information of the transaction
         foreach (const ref input; tx.inputs)
         {
-            const in_hash = input.hashFull();
+            const utxo = input.utxo;
             // Update the spenders list
-            if (in_hash !in this.spenders)
-                this.spenders[in_hash] = Set!Hash();
-            this.spenders[in_hash].put(tx_hash);
+            if (utxo !in this.spenders)
+                this.spenders[utxo] = Set!Hash();
+            this.spenders[utxo].put(tx_hash);
         }
     }
 
@@ -251,8 +251,8 @@ public class TransactionPool
         const tx_hash = tx.hashFull();
         foreach (const ref input; tx.inputs)
         {
-            const in_hash = input.hashFull();
-            if (auto cur_spenders = in_hash in this.spenders)
+            const utxo = input.utxo;
+            if (auto cur_spenders = utxo in this.spenders)
                 foreach (spender; *cur_spenders)
                     if (spender != tx_hash)
                         double_spent_txs.put(spender);
@@ -637,6 +637,37 @@ unittest
     // create second transaction
     Transaction tx2 = Transaction(
         [Input(Hash.init, 0)],
+        [Output(Amount(0), WK.Keys.C.address)]);
+
+    // add txs to the pool
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
+
+    assert(pool.length == 2);
+    pool.remove(tx1);
+    assert(pool.length == 0);
+
+    assert(pool.add(tx1, 0.coins));
+    assert(pool.add(tx2, 0.coins));
+    assert(pool.length == 2);
+    pool.remove(tx2);
+    assert(pool.length == 0);
+}
+
+/// test double-spending on the Transaction pool with different unlock age
+unittest
+{
+    // create first transaction pool
+    auto pool = new TransactionPool();
+
+    // create first transaction
+    Transaction tx1 = Transaction(
+        [Input(Hash.init, 0, 1)],
+        [Output(Amount(0), WK.Keys.A.address)]);
+
+    // create second transaction
+    Transaction tx2 = Transaction(
+        [Input(Hash.init, 0, 2)],
         [Output(Amount(0), WK.Keys.C.address)]);
 
     // add txs to the pool
