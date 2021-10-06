@@ -183,13 +183,13 @@ public class TransactionPool
 
             this.gatherDoubleSpentTXs(tx, inv_txs);
             foreach (input; tx.inputs)
-                this.spenders.remove(input.hashFull());
+                this.spenders.remove(input.utxo);
 
             inv_txs.each!(inv_tx_hash => this.remove(inv_tx_hash, false));
         }
         else
             foreach (input; tx.inputs)
-                if (auto list = input.hashFull() in this.spenders)
+                if (auto list = input.utxo in this.spenders)
                     (*list).remove(tx_hash);
     }
 
@@ -222,7 +222,7 @@ public class TransactionPool
         // insert each input information of the transaction
         foreach (const ref input; tx.inputs)
         {
-            const in_hash = input.hashFull();
+            const in_hash = input.utxo;
             // Update the spenders list
             if (in_hash !in this.spenders)
                 this.spenders[in_hash] = Set!Hash();
@@ -251,7 +251,7 @@ public class TransactionPool
         const tx_hash = tx.hashFull();
         foreach (const ref input; tx.inputs)
         {
-            const in_hash = input.hashFull();
+            const in_hash = input.utxo;
             if (auto cur_spenders = in_hash in this.spenders)
                 foreach (spender; *cur_spenders)
                     if (spender != tx_hash)
