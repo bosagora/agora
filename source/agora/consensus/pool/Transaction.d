@@ -504,6 +504,12 @@ public class TransactionPool
         return txs;
     }
 
+    /// Can be used in unit tests to prevent spending the same utxo
+    version (unittest) public bool spending (in Hash utxo) @safe nothrow
+    {
+        return !!(utxo in this.spenders);
+    }
+
     /***************************************************************************
 
         Callback used

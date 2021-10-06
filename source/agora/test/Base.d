@@ -1455,7 +1455,8 @@ public interface TestAPI : API
 
     ***************************************************************************/
 
-    public UTXOPair[] getSpendables (Amount minimum);
+    public UTXOPair[] getSpendables (Amount minimum,
+        OutputType output_type = OutputType.Payment);
 
     /***************************************************************************
 
@@ -1629,16 +1630,20 @@ private mixin template TestNodeMixin ()
     }
 
     ///
-    public override UTXOPair[] getSpendables (Amount minimum)
+    public override UTXOPair[] getSpendables (Amount minimum,
+        OutputType output_type = OutputType.Payment)
     {
         UTXOPair[] result;
         Amount accumulated;
         foreach (const ref Hash key, const ref UTXO value; this.utxo_set)
         {
-            result ~= UTXOPair(key, value);
-            accumulated += value.output.value;
-            if (accumulated >= minimum)
-                return result;
+            if (value.output.type == output_type && !this.pool.spending(key))
+            {
+                result ~= UTXOPair(key, value);
+                accumulated += value.output.value;
+                if (accumulated >= minimum)
+                    return result;
+            }
         }
         throw new Exception("Exhausted UTXO without finding enough coins!");
     }
