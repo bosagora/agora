@@ -45,7 +45,7 @@ private extern(C++) class BadBlockSigningNominator : Nominator
         this.reason = reason;
     }
 
-    extern(D) override protected Signature createBlockSignature(in Block block)
+    extern(D) override protected Signature signBlock (in Block block)
         @trusted nothrow
     {
         import agora.crypto.Hash;
