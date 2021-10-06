@@ -52,7 +52,7 @@ version(none) unittest
 
     Amount expected = Amount.MinFreezeAmount;
     assert(expected.mul(keys.length));
-    auto utxos = nodes[0].getUTXOs(expected);
+    auto utxos = nodes[0].getSpendables(expected);
 
     // Block 19 we add the freeze utxos for set_b validators
     // prepare frozen outputs for outsider validators to enroll
