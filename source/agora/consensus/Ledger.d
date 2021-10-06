@@ -933,7 +933,6 @@ public class Ledger
     private string validateBlockSignature (in Block block) @safe nothrow
     {
         import agora.crypto.ECC;
-        import agora.crypto.Schnorr;
 
         Point sum_K;
         Point sum_R;
@@ -990,7 +989,7 @@ public class Ledger
                       block.header.height, sum_R, block.header.signature.R);
             return "Block: Invalid schnorr signature (R)";
         }
-        if (!verify(block.header.signature, challenge, sum_K))
+        if (!BlockHeader.verify(sum_K, block.header.signature, challenge))
         {
             log.error("Block#{}: Invalid signature: {}", block.header.height,
                       block.header.signature);

@@ -132,6 +132,39 @@ public struct BlockHeader
         const Point R = r.toPoint();
         return agora.crypto.Schnorr.sign(secret_key, R, r, challenge);
     }
+
+    /***************************************************************************
+
+        Verify that the provided signature is a valid signature for `pubkey`
+
+        This function only checks that `sig` is valid for `pubkey`.
+        Whether or not `pubkey` is allowed to sign this block should be checked
+        by the caller.
+
+        Params:
+          pubkey = Public key of the signing node
+          sig = Signature to verify
+          challenge = The hash of the block header to verify
+
+        Returns:
+            `true` if the signature is valid for `pubkey`.
+
+    ***************************************************************************/
+
+    public bool verify (in Point pubkey, in Signature sig)
+        const @safe nothrow
+    {
+        const Scalar challenge = this.hashFull();
+        return BlockHeader.verify(pubkey, sig, challenge);
+    }
+
+    /// Ditto
+    public static bool verify (in Point pubkey, in Signature sig, in Scalar challenge)
+        @safe nothrow
+    {
+        static import agora.crypto.Schnorr;
+        return agora.crypto.Schnorr.verify(sig, challenge, pubkey);
+    }
 }
 
 /// hashing test
@@ -845,8 +878,6 @@ unittest
         TimeOffset, preimages);
 
     Scalar v = genesis_validator_keys[0].secret;
-    assert(v.isValid(), "v is not a valid Scalar!");
-    Point V = v.toPoint();
     const Scalar rc = Scalar(hashMulti(v, "consensus.signature.noise", 0));
     const Scalar r = rc + Scalar(preimages[0]);
     const Point R = r.toPoint();
@@ -861,8 +892,8 @@ unittest
     Signature sig2 = block2.header.sign(v, preimages[0]);
 
     // Verify signatures
-    assert(verify(sig1, c1, V));
-    assert(verify(sig2, c2, V));
+    assert(block1.header.verify(genesis_validator_keys[0].address, sig1));
+    assert(block2.header.verify(genesis_validator_keys[0].address, sig2));
 
     // Calculate the private key by subtraction
     // `s = r + (v * c)`
