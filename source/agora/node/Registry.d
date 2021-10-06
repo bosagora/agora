@@ -378,16 +378,11 @@ public class NameRegistry: NameRegistryAPI
         auto soa = zone.toRR();
         reply.answers ~= soa;
 
-        () @trusted {
-            // Row and ResultRange has `@system` methods
-            ResultRange registries = zone.getRegistries();
-            foreach (registry; registries)
-            {
-                PublicKey registry_pub_key = PublicKey.fromString(registry["pubkey"].as!(string));
-                TypedPayload payload = zone.get(registry_pub_key);
-                reply.answers ~= this.convertPayload(payload, format("%s.%s", registry_pub_key, zone.root.value));
-            }
-        } ();
+        foreach (payload; zone)
+        {
+            reply.answers ~= this.convertPayload(payload, format("%s.%s", 
+                payload.payload.data.public_key, zone.root.value));
+        }
             
         reply.answers ~= soa;
         reply.header.RCODE = Header.RCode.NoError;
@@ -772,16 +767,23 @@ private struct ZoneData
         return results.empty ? 0 : results.oneValue!(ulong);
     }
 
-    /***************************************************************************
+    public int opApply(scope int delegate(TypedPayload) dg) @trusted
+    {
+        int result = 0;
 
-         Returns:
-           All registries in persistent storage
+        auto query_results = this.db.execute(this.query_registry_get);
 
-    ***************************************************************************/
+        foreach (row; query_results)
+        {
+            auto registry_pub_key = PublicKey.fromString(row["pubkey"].as!string);
+            auto payload = this.get(registry_pub_key);
+            result = dg(payload);
 
-    public ResultRange getRegistries () @trusted
-    {            
-        return this.db.execute(this.query_registry_get);
+            if (result)
+                break;
+        }
+
+        return result;
     }
 
     /***************************************************************************
