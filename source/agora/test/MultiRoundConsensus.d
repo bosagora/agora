@@ -82,7 +82,7 @@ unittest
     }
 
     TestConf conf;
-    conf.consensus.quorum_threshold = 51;
+    conf.consensus.quorum_threshold = 100;
     conf.node.timeout = 5.seconds;
 
     auto network = makeTestNetwork!CustomAPIManager(conf);
@@ -93,8 +93,8 @@ unittest
     auto nodes = network.clients;
     auto validator = network.clients[0];
 
-    // Make four of six validators stop responding for a while
-    nodes.drop(1).take(4).each!(node => node.ctrl.sleep(conf.node.timeout, true));
+    // Make one of six validators stop responding for a while
+    nodes.drop(1).take(1).each!(node => node.ctrl.sleep(conf.node.timeout, true));
 
     // Block 1 with multiple consensus rounds
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
