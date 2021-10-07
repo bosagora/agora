@@ -391,7 +391,7 @@ private void handleThrow (API) (scope API api, ref TCPConnection stream, Duratio
     // use the existing readTimeout in leastSize()
     // if this is a new connection, handle() will have set it to the configuration value
     // if it is a reused connection it will be set to the keep alive period.
-    log.info("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
+    log.trace("[{}] Handling a new request: {}", stream.peerAddress, stream.leastSize());
     // after the initial data arrives, reduce the timeout to the configured amount
     stream.readTimeout = timeout;
     // We will reuse this connection, keep the connection alive for 10 minutes after handling a request
