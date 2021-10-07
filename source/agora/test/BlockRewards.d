@@ -173,7 +173,10 @@ unittest
         .each!((Height h)
     {
         network.generateBlocks(iota(activeValidators), h, true); // Don't include node 5
-        network.assertSameBlocks(h, last_height + 1);
+        // To ensure we have expected percentage of signatures at each height wait long enough for first node to have them
+        auto required_sigs = (h % 2 == 0) ? 5 : 4;
+        retryFor(node_1.getBlocksFrom(h, 1).front.header.validators.setCount() == required_sigs, 5.seconds,
+            format!"First node failed to achieve desired signature count of %s at height %s"(required_sigs, h));
         last_height = h;
     });
 
