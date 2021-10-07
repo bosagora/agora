@@ -90,11 +90,7 @@ unittest
         Height(GenesisValidatorCycle - 2));
 
     // prepare frozen outputs for the outsider validator to enroll
-    const key = outsider.getPublicKey().key;
-    network.blocks[0].spendable().drop(1).takeExactly(1)
-        .map!(txb => txb
-            .split([key]).sign(OutputType.Freeze))
-            .each!(tx => network.nodes[delayed_node].postTransaction(tx));
+    network.postAndEnsureTxInPool(network.freezeUTXO(only(GenesisValidators)));
 
     // the delayed validator becomes unresponsive
     network.clients[delayed_node].filter!(API.postTransaction);
