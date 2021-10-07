@@ -515,7 +515,10 @@ public struct NodePair
     private shared(TimePoint)* cur_time;
 
     ///
-    public TestAPI api;
+    public inout(TestAPI) api () inout @safe pure nothrow @nogc
+    {
+        return this.client;
+    }
 
     alias api this;
 
@@ -834,7 +837,7 @@ public class TestAPIManager
         foreach (ref interf; conf.interfaces)
         {
             assert(this.registry.register(interf.address, api.listener()));
-            this.nodes ~= NodePair(interf.address, api, time, api);
+            this.nodes ~= NodePair(interf.address, api, time);
         }
         return api;
     }
