@@ -108,7 +108,7 @@ public class NetworkClient
     }
 
     /// Address of the node we're interacting with (for logging)
-    public const Address address;
+    public Address[] address;
 
     /// Caller's retry delay
     /// TODO: This should be done at the client object level,
@@ -125,7 +125,7 @@ public class NetworkClient
     private BanManager banman;
 
     /// API client to the node
-    protected API api;
+    public API[] api;
 
     /// Reusable exception
     private Exception exception;
@@ -164,8 +164,8 @@ public class NetworkClient
         this.log = Log.lookup(__MODULE__);
         this.taskman = taskman;
         this.banman = banman;
-        this.address = address;
-        this.api = api;
+        this.address = [address];
+        this.api = [api];
         this.retry_delay = retry;
         this.max_retries = max_retries;
         this.exception = new Exception(
@@ -532,13 +532,15 @@ public class NetworkClient
 
     protected auto attemptRequest (alias endpoint, Throw DT,
         LogLevel log_level = LogLevel.Trace, API, Args...)
-        (API api, auto ref Args args, string file = __FILE__, uint line = __LINE__)
+        (API[] apis, auto ref Args args, string file = __FILE__, uint line = __LINE__)
     {
         import std.traits;
         enum name = __traits(identifier, endpoint);
-        alias T = ReturnType!(__traits(getMember, api, name));
+        alias T = ReturnType!(__traits(getMember, API, name));
 
         foreach (idx; 0 .. this.max_retries)
+        foreach (api_idx, api; apis)
+        if (!this.banman.isBanned(this.address[api_idx]))
         {
             try
             {
@@ -558,7 +560,7 @@ public class NetworkClient
                 try
                 {
                     this.log.format(log_level, "Request '{}' to {} failed: {}",
-                        name, this.address, ex.message);
+                        name, this.address[api_idx], ex.message);
                 }
                 catch (Exception ex)
                 {
@@ -571,7 +573,8 @@ public class NetworkClient
         }
 
         // request considered failed after max retries reached
-        this.banman.onFailedRequest(this.address);
+        foreach (addr; this.address)
+            this.banman.onFailedRequest(addr);
 
         static if (DT == Throw.Yes)
         {
@@ -581,5 +584,12 @@ public class NetworkClient
         }
         else static if (!is(T == void))
             return T.init;
+    }
+
+    ///
+    public void addApi (API api, Address address)
+    {
+        this.api ~= api;
+        this.address ~= address;
     }
 }
