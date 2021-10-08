@@ -28,6 +28,9 @@ public struct ValidatorBlockSig
     /// The block height of this signature
     public Height height;
 
+    /// The hash of the block this signs
+    public Hash block_hash;
+
     /// The stake of the validator
     public Hash utxo;
 

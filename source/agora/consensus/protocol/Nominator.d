@@ -121,8 +121,8 @@ public extern (C++) class Nominator : SCPDriver
     /// SCPEnvelopeStore instance
     protected SCPEnvelopeStore store;
 
-    // Height => Point (UTXO hash) => Signature
-    private Signature[Hash][Height] slot_sigs;
+    // Block hash => UTXO hash => Signature
+    private Signature[Hash][Hash] slot_sigs;
 
     /// Enrollment manager
     public EnrollmentManager enroll_man;
@@ -648,6 +648,14 @@ extern(D):
                     scpPrettify(&envelope, &this.getQSet));
                 return; // We dont have all the TXs for this block. Try to catchup
             }
+            // Sign the block signature and gossip it
+            const block = this.ledger.buildBlock(
+                received_tx_set, con_data.time_offset, con_data.enrolls, con_data.missing_validators);
+            const block_hash = block.hashFull();
+            const self = this.enroll_man.getEnrollmentKey();
+            this.slot_sigs[block_hash][self] = this.signBlock(block);
+            this.gossipBlockSignature(ValidatorBlockSig(block.header.height, block_hash, self,
+                this.slot_sigs[block_hash][self].R));
         }
         else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
@@ -679,8 +687,8 @@ extern(D):
     public void receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
         const cur_height = this.ledger.getBlockHeight();
-        log.trace("Received BLOCK SIG {} from node {} for block {}",
-                    block_sig.signature, block_sig.utxo, block_sig.height);
+        log.trace("Received BLOCK SIG {} from node {} for block height {} block hash {}",
+                    block_sig.signature, block_sig.utxo, block_sig.height, block_sig.block_hash);
         if (block_sig.height > cur_height)
             return;
 
@@ -839,10 +847,10 @@ extern(D):
     private bool collectBlockSignature (in ValidatorBlockSig block_sig,
         in Hash block_hash) @safe nothrow
     {
-        auto sigs = block_sig.height in this.slot_sigs;
-        if (block_sig.height in this.slot_sigs && block_sig.utxo in this.slot_sigs[block_sig.height])
+        if (block_sig.block_hash in this.slot_sigs && block_sig.utxo in this.slot_sigs[block_hash])
         {
-            log.trace("Signature already collected for this node at height {}", block_sig.height);
+            log.trace("Signature already collected for this node at height {} for block hash {}",
+                block_sig.height, block_hash);
             return false;
         }
 
@@ -885,7 +893,7 @@ extern(D):
             block_sig.height, block_sig.utxo);
         // collect the signature
         const Scalar s = validator.preimage[block_sig.height];
-        this.slot_sigs[block_sig.height][block_sig.utxo] = Signature(block_sig.signature, s);
+        this.slot_sigs[block_hash][block_sig.utxo] = Signature(block_sig.signature, s);
         return true;
     }
 
@@ -924,6 +932,32 @@ extern(D):
             return ValidationLevel.kInvalidValue;
         }
 
+        if (!nomination) // If ballot protocol
+        {
+            // Check if majority have signed this block yet
+            Transaction[] tx_set;
+            auto err = this.ledger.getValidTXSet(data, tx_set);
+            assert(!err); // Already validated above in validateConsensusData
+            try
+            {
+                const block = this.ledger.buildBlock(
+                    tx_set, data.time_offset, data.enrolls, data.missing_validators);
+                const block_hash = block.hashFull();
+                const sigs = block_hash in this.slot_sigs;
+                if (sigs && sigs.length < block.header.validators.count / 2)
+                {
+                    log.trace("Waiting for more signatures {}/{}.",
+                        sigs ? sigs.length : 0, block.header.validators.count);
+                    return ValidationLevel.kMaybeValidValue; // wait till more signatures are added
+                }
+            }
+            catch (Exception ex)
+            {
+                log.error("validateValue(): buildBlock failed. " ~
+                    "Error: {}", ex.msg);
+                return ValidationLevel.kInvalidValue;
+            }
+        }
         return ValidationLevel.kFullyValidatedValue;
     }
 
@@ -973,12 +1007,16 @@ extern(D):
             const block = this.ledger.buildBlock(
                 externalized_tx_set, data.time_offset, data.enrolls, data.missing_validators);
 
-            // Now we add our signature and gossip to other nodes
-            log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
+            const block_hash = block.hashFull();
             const self = this.enroll_man.getEnrollmentKey();
-            this.slot_sigs[height][self] = this.signBlock(block);
-            this.gossipBlockSignature(ValidatorBlockSig(height, self,
-                this.slot_sigs[height][self].R));
+            if (self !in this.slot_sigs[block_hash])
+            {
+                // If we have not signed this block we add our signature and gossip to other nodes
+                log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
+                this.slot_sigs[block_hash][self] = this.signBlock(block);
+                this.gossipBlockSignature(ValidatorBlockSig(height, block_hash, self,
+                    this.slot_sigs[block_hash][self].R));
+            }
             this.ledger.addHeightAsExternalizing(height);
             this.verifyBlock(this.updateMultiSignature(block));
         }
@@ -1020,12 +1058,14 @@ extern(D):
     {
         const validators = this.ledger.getValidators(block.header.height);
 
-        if (block.header.height !in this.slot_sigs)
+        const block_hash = block.hashFull();
+        if (block_hash !in this.slot_sigs)
         {
-            log.warn("No signatures at height {}", block.header.height);
+            log.warn("No signatures at height {} for block_hash {}",
+                block.header.height, block_hash);
             return Block.init;
         }
-        const Signature[Hash] block_sigs = this.slot_sigs[block.header.height];
+        const Signature[Hash] block_sigs = this.slot_sigs[block_hash];
 
         auto validator_mask = BitMask(validators.length);
         foreach (idx, const ref val; validators)

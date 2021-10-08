@@ -494,11 +494,13 @@ components:
     ValidatorBlockSig:
       type: object
       properties:
-        public_key:
+        height:
+          type: string
+        block_hash:
+          type: string
+        utxo:
           type: string
         signature:
-          type: string
-        height:
           type: string
 
     Nominate:
