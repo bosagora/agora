@@ -40,6 +40,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Clock;
 import agora.network.Client;
+import agora.network.RPC;
 import agora.node.Config;
 import agora.consensus.Ledger;
 import agora.utils.InetUtils;
@@ -57,7 +58,7 @@ import std.datetime.stopwatch;
 import std.exception;
 import std.format;
 import std.random;
-import std.range : walkLength;
+import std.range : walkLength, zip;
 
 import core.stdc.time;
 import core.time;
@@ -78,7 +79,7 @@ public class NetworkManager
         NetworkClient client;
 
         /// Convenience function to access the client's address
-        public Address address () const scope @safe pure nothrow @nogc
+        public const(Address[]) address () const scope @safe pure nothrow @nogc
         {
             return this.client.address;
         }
@@ -110,6 +111,8 @@ public class NetworkManager
         /// to send requests to this node, or false (e.g. if the node is banned)
         private bool delegate (in Address) onFailedRequest;
 
+        ///
+        private agora.api.Validator.API api;
 
         /***********************************************************************
 
@@ -129,7 +132,16 @@ public class NetworkManager
             bool delegate (in Address address) onFailedRequest)
             @safe pure nothrow @nogc
         {
+            this(address, null, onHandshakeComplete, onFailedRequest);
+        }
+
+        public this (Address address, agora.api.Validator.API api,
+            void delegate (scope ref NodeConnInfo node) onHandshakeComplete,
+            bool delegate (in Address address) onFailedRequest)
+            @safe pure nothrow @nogc
+        {
             this.address = address;
+            this.api = api;
             this.onHandshakeComplete = onHandshakeComplete;
             this.onFailedRequest = onFailedRequest;
         }
@@ -173,6 +185,7 @@ public class NetworkManager
         {
             auto client = this.outer.getNetworkClient(this.outer.taskman,
                 this.outer.banman, this.address,
+                this.api ? this.api :
                 this.outer.getClient(this.address,
                     this.outer.node_config.timeout),
                 this.outer.node_config.retry_delay,
@@ -224,7 +237,7 @@ public class NetworkManager
             const is_validator = key != PublicKey.init;
             if (is_validator)
             {
-                if (key == this.outer.validator_config.key_pair.address)
+                if (address.length && key == this.outer.validator_config.key_pair.address)
                 {
                     // either we connected to ourself, or someone else is pretending
                     // to be us
@@ -356,7 +369,7 @@ public class NetworkManager
                 }
                 finally
                 {
-                    if (!this.outer.banman.isBanned(client.address))
+                    if (!client.address.all!(addr => this.outer.banman.isBanned(addr)))
                         this.clients.insertBack(client);
                 }
             }
@@ -468,23 +481,49 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
-        this.connection_tasks.remove(node.client.address);
-
-        auto existing_peer = this.peers[].find!(p => p.address == node.address);
-        if (!existing_peer.empty())
-            existing_peer.front().utxo = node.utxo;
-
-        if (this.peerLimitReached())
-            return;
-
-        if (existing_peer.empty())
-        {
-            this.peers.insertBack(node);
-            this.discovery_task.add(node.client);
-        }
-
+        node.client.address.each!(address => this.connection_tasks.remove(address));
         if (node.isValidator())
             this.required_peers.remove(node.utxo);
+
+        if (this.tryMerge(node) || this.peerLimitReached())
+            return;
+
+        this.peers.insertBack(node);
+        this.discovery_task.add(node.client);
+    }
+
+    ///
+    private bool tryMerge (scope ref NodeConnInfo node)
+    {
+        auto existing_peers = this.peers[].find!(p => p.key == node.key);
+        if (!node.isValidator() || existing_peers.empty())
+            return false;
+
+        existing_peers.front().utxo = node.utxo;
+
+        if (!this.tryMergeRPC(node, existing_peers.front()))
+            foreach(api, address; zip(node.client.api, node.client.address))
+                existing_peers.front().client.addApi(api, address);
+        return true;
+    }
+
+    /// Try to merge an incoming RPC connection to an existing one if possible
+    private bool tryMergeRPC (scope ref NodeConnInfo node, scope ref NodeConnInfo existing_peer)
+    {
+        assert(node.client.api.length == 1);
+        RPCClient!(agora.api.Validator.API) incoming_peer =
+            cast (RPCClient!(agora.api.Validator.API)) node.client.api[0];
+        if (incoming_peer is null)
+            return false;
+
+        auto rpc_idx = existing_peer.client.api.countUntil!(api => (cast (RPCClient!(agora.api.Validator.API)) api) !is null);
+        if (rpc_idx < 0)
+            return false;
+        auto existing_rpc = cast (RPCClient!(agora.api.Validator.API)) existing_peer.client.api[rpc_idx];
+        existing_rpc.merge(incoming_peer);
+        if (existing_peer.client.address[rpc_idx] == Address.init)
+            existing_peer.client.address[rpc_idx] = node.client.address[0];
+        return true;
     }
 
     /***************************************************************************
@@ -761,7 +800,7 @@ public class NetworkManager
 
     private bool shouldEstablishConnection (Address address)
     {
-        auto existing_peer = this.peers[].find!(p => p.address == address);
+        auto existing_peer = this.peers[].find!(p => p.address.canFind(address));
         return !this.banman.isBanned(address) &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
@@ -1060,9 +1099,10 @@ public class NetworkManager
             peer.client.shutdown();
         this.banman.dump();
         foreach (const ref peer; this.peers)
+        foreach (addr; peer.address.filter!(addr => addr != Address.init))
             this.cacheDB.execute(
                 "REPLACE INTO network_manager(address, utxo, pubkey) VALUES(?, ?, ?)",
-                peer.address, peer.utxo, peer.key);
+                addr, peer.utxo, peer.key);
     }
 
     ///
@@ -1071,16 +1111,16 @@ public class NetworkManager
         return this.required_peers.length == 0 &&
             this.peers[].walkLength >= this.node_config.min_listeners &&
             this.validators().filter!(node =>
-                !this.banman.isBanned(node.client.address)).count != 0;
+                !node.client.address.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peers.length == 0 &&
             this.peers[].filter!(node =>
-                !this.banman.isBanned(node.client.address)).count >= this.node_config.max_listeners &&
+                !node.client.address.all!(addr => this.banman.isBanned(addr))).count >= this.node_config.max_listeners &&
             this.validators().filter!(node =>
-                !this.banman.isBanned(node.client.address)).count != 0;
+                !node.client.address.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
 
     /// Returns: the list of node IPs this node is connected to
@@ -1304,7 +1344,7 @@ public class NetworkManager
     public void whitelist (Hash utxo)
     {
         this.peers[].filter!(p => p.utxo == utxo)
-            .each!(p => this.banman.whitelist(p.client.address));
+            .each!(p => p.client.address.each!(addr => this.banman.whitelist(addr)));
     }
 
     /***************************************************************************
@@ -1319,7 +1359,14 @@ public class NetworkManager
     public void unwhitelist (Hash utxo)
     {
         this.peers[].filter!(p => p.utxo == utxo)
-            .each!(p => this.banman.unwhitelist(p.client.address));
+            .each!(p => p.client.address.each!(addr => this.banman.unwhitelist(addr)));
+    }
+
+    ///
+    public void discoverFromClient (agora.api.Validator.API api) @trusted nothrow
+    {
+        new ConnectionTask(Address.init, api, &onHandshakeComplete,
+                           (in Address addr) { return false; }).start();
     }
 }
 

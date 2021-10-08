@@ -19,7 +19,9 @@
 
 module agora.network.RPC;
 
+static import agora.api.Validator;
 import agora.common.Ensure;
+import agora.common.Types;
 import agora.crypto.Hash;
 import agora.utils.Log;
 import agora.serialization.Serializer;
@@ -129,7 +131,7 @@ public class RPCClient (API) : API
         public Duration retry_delay;
 
         ///
-        public uint concurrency;
+        public uint concurrency = 3;
     }
 
     /// Config instance for this client
@@ -194,6 +196,7 @@ public class RPCClient (API) : API
         this.log = Log.lookup(
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
         this.pool = new ConnectionPool!RPCConnection(() @safe {
+            ensure(this.config != Config.init, "Can not connect on unidentified client");
             uint attempts;
             do
             {
@@ -230,12 +233,22 @@ public class RPCClient (API) : API
 
             ensure(false, "Failed to connect to host");
             assert(0);
-        });
-        this.pool.maxConcurrency = this.config.concurrency;
+        }, this.config.concurrency);
 
         static foreach (member; __traits(allMembers, API))
             static foreach (ovrld; __traits(getOverloads, API, member))
                 this.lookup[ovrld.mangleof] = hashFull(ovrld.mangleof);
+    }
+
+    /// Ditto
+    public this (ThisEndAPI) (RPCConnection conn, ThisEndAPI impl) @trusted
+    {
+        this(Config.init, impl);
+        assert(this.pool.add(conn));
+        static import vibe.core.core;
+        vibe.core.core.runTask({
+            conn.startListening(impl);
+        });
     }
 
     private struct Pack (T...) { T args; }
@@ -278,6 +291,7 @@ public class RPCClient (API) : API
                         conn.rlock.unlock();
                         conn.rcond.notify();
                     }
+                    ensure(conn.connected(), "Connection closed");
                     static if (!is(typeof(return) == void))
                     {
                         version (all)
@@ -292,6 +306,23 @@ public class RPCClient (API) : API
                 }
             });
         }
+
+    ///
+    bool addConnection (RPCConnection conn) nothrow
+    {
+        return this.pool.add(conn);
+    }
+
+    ///
+    void merge (RPCClient!API rhs)
+    {
+        if (this.config == Config.init)
+            this.config = rhs.config;
+        rhs.pool.removeUnused((RPCConnection conn) @trusted nothrow {
+            if (!this.addConnection(conn))
+                conn.close();
+        });
+    }
 }
 
 ///
@@ -356,12 +387,19 @@ private class RPCConnection
 *******************************************************************************/
 
 public TCPListener listenRPC (API) (API impl, string address, ushort port,
-    Duration timeout)
+    Duration timeout, void delegate (agora.api.Validator.API api) @safe nothrow discoverFromClient)
 {
     auto callback = (TCPConnection stream) @safe nothrow {
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
-        new RPCConnection(stream).startListening(impl);
+        try
+            discoverFromClient(new RPCClient!(agora.api.Validator.API)(new RPCConnection(stream), impl));
+        catch (Exception ex)
+        {
+            try log.trace("Exception caught while trying to create a client from incoming conn: {}", ex);
+            catch (Exception e) {}
+            return;
+        }
     };
     return listenTCP(port, callback, address);
 }
@@ -463,7 +501,7 @@ private void handleThrow (API) (scope API api, RPCConnection stream, Duration ti
         return deserializeFull!Target(reader);
     }
 
-    log.trace("[{}] Handling a new request", stream.peerAddress);
+    log.trace("[{} - {}] Handling a new request", stream.peerAddress, stream.localAddress);
 
     switch (*method)
     {

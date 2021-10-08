@@ -59,10 +59,12 @@
             "mainSourceFile": "source/agora/cli/client/main.d",
             "excludedSourceFiles": [
                 "source/agora/api/Validator.d",
+                "source/agora/common/BanManager.d",
                 "source/agora/common/SCPHash.d",
                 "source/agora/consensus/Quorum.d",
                 "source/agora/network/Client.d",
                 "source/agora/network/Manager.d",
+                "source/agora/network/RPC.d",
                 "source/agora/api/Registry.d",
                 "source/agora/node/*",
                 "source/agora/flash/*",
