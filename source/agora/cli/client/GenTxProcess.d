@@ -16,7 +16,6 @@
 module agora.client.GenTxProcess;
 
 import agora.api.FullNode;
-import agora.client.Result;
 import agora.common.Amount;
 import agora.common.VibeTask;
 import agora.common.Types;
@@ -122,14 +121,14 @@ public int genTxProcess (string[] args, ref string[] outputs,
         if (res.helpWanted)
         {
             printGenTxHelp(outputs);
-            return CLIENT_SUCCESS;
+            return 0;
         }
     }
     catch (Exception ex)
     {
         writeln("Exception while generating transactions: ", ex);
         printGenTxHelp(outputs);
-        return CLIENT_EXCEPTION;
+        return 1;
     }
 
     if (op.count > 8 || op.count <= 0)
@@ -137,7 +136,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
         printGenTxHelp(outputs);
         outputs ~= format("Cannot send more than 8 transactions. %d requested."
                           , op.count);
-        return CLIENT_INVALID_ARGUMENTS;
+        return 1;
     }
 
     // connect to the node
@@ -170,7 +169,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
         txs.each!(tx => outputs ~= format("%s", prettify(tx)));
         outputs ~= format("Hash =");
         txs.each!(tx => outputs ~= format("%s", hashFull(tx)));
-        return CLIENT_SUCCESS;
+        return 0;
     }
 
     genTxs();
