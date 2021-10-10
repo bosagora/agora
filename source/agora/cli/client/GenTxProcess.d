@@ -16,6 +16,7 @@
 module agora.client.GenTxProcess;
 
 import agora.api.FullNode;
+import agora.client.Common;
 import agora.common.Amount;
 import agora.common.VibeTask;
 import agora.common.Types;
@@ -40,11 +41,11 @@ import vibe.core.core;
 /// Option required to generate and send transactions
 private struct GenTxOption
 {
-    /// IP address of node
-    public string host;
+    /// Common arguments
+    public ClientCLIArgs base;
 
-    /// Port of node
-    public ushort port;
+    /// For convenience
+    public alias base this;
 
     /// Interval of sending transactions
     public Duration interval = 5.seconds;
@@ -54,33 +55,29 @@ private struct GenTxOption
 
     /// dump output option
     public bool dump;
-}
 
-/// Parse the command-line arguments of gentx
-public GetoptResult parseGenTxOption (ref GenTxOption op, string[] args)
-{
-    return getopt(
-        args,
-        "ip|i",
-            "IP address of node",
-            &op.host,
+    /// Parse the command-line arguments of gentx
+    public GetoptResult parse (string[] args)
+    {
+        auto intermediate = this.base.parse(args);
+        if (intermediate.helpWanted)
+            return intermediate;
 
-        "port|p",
-            "Port of node",
-            &op.port,
+        return getopt(
+            args,
+            "interval|t",
+              "Interval of sending transactions (default: 5 seconds)",
+              (string option, string value) { this.interval = value.to!int.seconds; },
 
-        "interval|t",
-            "Interval of sending transactions (default: 5 seconds)",
-            (string option, string value) { op.interval = value.to!int.seconds; },
+            "count|c",
+              "Number of transactions sent at once (default: 8)",
+              &this.count,
 
-        "count|c",
-            "Number of transactions sent at once (default: 8)",
-            &op.count,
-
-        "dump|o",
-            "Dump output option",
-            &op.dump
-            );
+            "dump|o",
+              "Dump output option",
+              &this.dump,
+        );
+    }
 }
 
 /// Print help
@@ -110,14 +107,13 @@ public void printGenTxHelp (ref string[] outputs)
 *******************************************************************************/
 
 public int genTxProcess (string[] args, ref string[] outputs,
-                         API delegate (string address) api_maker)
+                         APIMaker api_maker)
 {
     GenTxOption op;
-    GetoptResult res;
 
     try
     {
-        res = parseGenTxOption(op, args);
+        auto res = op.parse(args);
         if (res.helpWanted)
         {
             printGenTxHelp(outputs);
