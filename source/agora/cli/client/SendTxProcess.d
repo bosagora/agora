@@ -95,12 +95,11 @@ private struct SendTxOption
 /// Print help
 public void printSendTxHelp (ref string[] outputs)
 {
-    outputs ~= "usage: agora-client sendtx [--dump] [--host addr] [--port port] --txhash --index --amount --dest --key";
+    outputs ~= "usage: agora-client sendtx [--dump] [--address addr] --txhash --index --amount --dest --key";
     outputs ~= "";
     outputs ~= "   sendtx      Send a transaction to node";
     outputs ~= "";
-    outputs ~= "        -i --host    IP address or hostname of node";
-    outputs ~= "        -p --port    Port of node";
+    outputs ~= "        -i --address Address of a node (e.g. http://agora.example.com)";
     outputs ~= "        -t --txhash  Hash of the previous transaction that";
     outputs ~= "                     contains the Output which the new ";
     outputs ~= "                     transaction will spend";
@@ -199,8 +198,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     }
 
     // connect to the node
-    string ip_address = format("http://%s:%s", op.host, op.port);
-    auto node = api_maker(ip_address);
+    auto node = api_maker(op.address);
 
     // send the transaction
     node.postTransaction(tx);
@@ -245,8 +243,7 @@ unittest
     string[] args =
         [
             "sendtx",
-            "--host=localhost",
-            "--port=2826",
+            "--address=localhost:2826",
             format("--txhash=%s", txhash),
             format("--index=%d", index),
             format("--amount=%d", amount),

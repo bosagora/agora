@@ -33,11 +33,8 @@ public struct ClientCLIArgs
     /// For convenience
     public alias base this;
 
-    /// Address of node (IP address or domain, not including the protocol)
-    public string host;
-
-    /// TCP port
-    public ushort port = 2826;
+    /// Address of node, including protocol and port, if necessary
+    public string address;
 
     ///
     public GetoptResult parse (ref string[] args, bool passThrough = true)
@@ -53,13 +50,9 @@ public struct ClientCLIArgs
             passThrough ? config.keepEndOfOptions : config.caseInsensitive,
             passThrough ? config.passThrough : config.noPassThrough,
 
-            "host",
-              "Address of node (IP address or domain, not including the protocol)",
-              &this.host,
-
-            "port",
-              "Port on host to connect to (default:2826)",
-              &this.port,
+            "address",
+              "Address of a node to send to (including protocol and optionally the port if non-standard)",
+              &this.address,
         );
     }
 }
