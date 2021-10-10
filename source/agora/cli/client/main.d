@@ -27,16 +27,8 @@ import std.stdio;
 /// Application entry point
 private int main (string[] args)
 {
-    CLIArgs cmdln;
-    auto help = cmdln.parse(args);
-    if (help.helpWanted)
-    {
-        defaultGetoptPrinter("Agora client tool", help.options);
-        return 0;
-    }
-
     string[] outputs;
-    auto res = runProcess(args[1 .. $], cmdln, outputs);
+    auto res = runProcess(args[1 .. $], outputs);
     foreach (ref line; outputs)
         writeln(line);
 
@@ -44,7 +36,7 @@ private int main (string[] args)
 }
 
 ///
-int runProcess (string[] args, in CLIArgs cmdln, ref string[] outputs)
+int runProcess (string[] args, ref string[] outputs)
 {
     if (args.length == 0)
     {
@@ -67,6 +59,9 @@ int runProcess (string[] args, in CLIArgs cmdln, ref string[] outputs)
         default:
             outputs ~= "Invalid command: '" ~ args[0] ~ "'";
             outputs ~= "";
+            goto case;
+    case "-h":
+    case "--help":
             outputs.printDefaultHelp();
             return 1;
     }
