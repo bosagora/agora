@@ -14,7 +14,6 @@
 module agora.client.SendTxProcess;
 
 import agora.api.FullNode;
-import agora.client.Result;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -143,13 +142,13 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
         if (res.helpWanted)
         {
             printSendTxHelp(outputs);
-            return CLIENT_SUCCESS;
+            return 0;
         }
     }
     catch (Exception ex)
     {
         printSendTxHelp(outputs);
-        return CLIENT_EXCEPTION;
+        return 1;
     }
 
     bool isValid = true;
@@ -183,7 +182,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     }
 
     if (!isValid)
-        return CLIENT_INVALID_ARGUMENTS;
+        return 1;
 
     // create the transaction
     auto key_pair = KeyPair.fromSeed(SecretKey.fromString(op.key));
@@ -202,7 +201,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
         outputs ~= format("address = %s", op.address);
         outputs ~= format("key = %s", op.key);
         outputs ~= format("hash of new transaction = %s", hashFull(tx).toString);
-        return CLIENT_SUCCESS;
+        return 0;
     }
 
     // connect to the node
@@ -212,7 +211,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     // send the transaction
     node.postTransaction(tx);
 
-    return CLIENT_SUCCESS;
+    return 0;
 }
 
 /// Test of send transaction
@@ -251,7 +250,6 @@ unittest
 
     string[] args =
         [
-            "program-name",
             "sendtx",
             "--ip=localhost",
             "--port=2826",
@@ -268,7 +266,7 @@ unittest
     auto res = sendTxProcess(args, outputs, (address) {
         return node;
     });
-    assert (res == CLIENT_SUCCESS);
+    assert (res == 0);
 
     Transaction tx = Transaction([Input(Hash.fromString(txhash), index)],
         [Output(Amount(amount), PublicKey.fromString(address))]);
