@@ -14,27 +14,22 @@ Node implementation for BOA CoinNet
 We provide a public build of this repository (see above).
 The easiest way to get agora is to run `docker pull bosagora/agora`.
 
+This will pull the `latest` tag, which is the one our team deploys internally.
+Previous versions can be pulled via their version, e.g. `docker pull bosagora/agora:v0.24.0`.
+
 The `Dockerfile` lives at the root of this repository,
 so one can run `docker build -t agora .` to build it.
 Note that you need to initialize submodules (`git submodule update --init`)
 before you first build agora.
 
-For a test run, try:
-```console
-docker run -p 127.0.0.1:4000:2826/tcp -v `pwd`/doc/:/agora/etc/ agora -c etc/config.example.yaml
-```
-This will start a node with the example config file,
-and make the port locally accessible (See http://127.0.0.1:4000/) .
-
 # Building on POSIX
 
 ## Dependencies
 
-You need a recent C++ compiler (g++ with N4387 fixed), a recent (>=1.26.0) version of the LDC compiler, and `dub`.
-On Linux, we recommend gcc-9. On OSX, the latest `llvm` package available on Homebrew.
+You need a recent `clang++` (with N4387 fixed), a recent (>=1.26.0) version of the LDC compiler, and `dub`.
 
 Additionally, the following are dependencies:
-- `libsodium`:  Development library
+- `libsodium >= 1.0.18`:  Development library
 - `pkg-config`: For DUB to find the correct `sqlite3` and other system libraries
 - `openssl`:    Binary (to detect the version) and development library
 - `sqlite3`:    Development library
@@ -48,10 +43,20 @@ export PKG_CONFIG_PATH="/usr/local/opt/sqlite/lib/pkgconfig:/usr/local/opt/opens
 Since this setting does not persist, we recommend you follow Homebrew's instructions
 and add it to your `.bashrc`, `.zshrc`, etc...
 
+The following can be used on Ubuntu 20.04 to get the required dependencies:
+```console
+sudo apt-get update && sudo apt-get install build-essential clang libsodium-dev libssl-dev libsqlite3-dev zlib1g-dev
+```
+
+On older distributions (e.g. Ubuntu 18.04), `libsodium` might not be at version v1.0.18.
+
 ## Build instructions
 
 ```console
-# Install the LDC compiler (you might want to use a newer version)
+# First, make sure you have the package listed in the Dependencies section installed.
+#
+# Then, install the LDC compiler (you might want to use a newer version)
+# This will also install dub, the D package manager / build tool
 curl https://dlang.org/install.sh | bash -s ldc-1.26.0
 # Add LDC to the $PATH
 source ~/dlang/ldc-1.26.0/activate
@@ -102,20 +107,17 @@ Of those submodules, few are internally managed libraries (`crypto`, `serializat
 of externally managed libraries (either because the library is unmaintained or because specific tweaks were needed).
 A [README](submodules/README.md) provides more details.
 
-## Running single test node using TESTNET GenesisBlock
-- `rm -rfv .single && dub run -- -c devel/config-single.yaml` : Run a single node for testing purposes
+## Running single test node using TestNet GenesisBlock
 
-# Debugging memory usage
-
-Agora integrates its own GC in [agora.utils.gc.GC](source/agora/utils/gc/), which is mostly a copy of
-[the default D garbage collector](https://github.com/dlang/druntime/blob/84db3c620dfe1b17e63645a64b55ddffd455bad5/src/core/internal/gc/impl/conservative/gc.d).
-
-This GC comes with a [Tracy](https://github.com/wolfpld/tracy) integration,
-allowing one to monitor what and where memory is allocated and freed.
-It is not enabled by default, but can be by starting agora with `--DRT-gcopt="gc:tracking-conservative"` or
-`--DRT-gcopt="gc:tracking-precise"` if you wish to use the precise GC.
-
-For example:
-```shell
-$ ./build/agora --DRT-gcopt="gc:tracking-conservative" -c /etc/agora.conf
+For a test of a full node connecting to testnet, try:
+```console
+docker run -p 2826:2826 -p 9111:9111 -v `pwd`/devel/config-fullnode.yaml:/agora/etc/config.yaml bosagora/agora -c /agora/etc/config.yaml
+```
+The node API will be locally available. It can be accessed with:
+```console
+curl http://127.0.0.1:2826/blocks/0
+```
+Likewise, the metrics endpoint will be exposed:
+```console
+curl http://127.0.0.1:9111/metrics
 ```
