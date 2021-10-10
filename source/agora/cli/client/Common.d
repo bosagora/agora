@@ -50,7 +50,7 @@ public struct ClientCLIArgs
             passThrough ? config.keepEndOfOptions : config.caseInsensitive,
             passThrough ? config.passThrough : config.noPassThrough,
 
-            "address",
+            config.required, "address",
               "Address of a node to send to (including protocol and optionally the port if non-standard)",
               &this.address,
         );

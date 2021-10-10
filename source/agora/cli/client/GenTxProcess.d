@@ -120,7 +120,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
     }
     catch (Exception ex)
     {
-        writeln("Exception while generating transactions: ", ex);
+        writeln("Error: ", ex.msg);
         printGenTxHelp(outputs);
         return 1;
     }
