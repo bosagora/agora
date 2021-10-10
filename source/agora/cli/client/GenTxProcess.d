@@ -84,14 +84,12 @@ private struct GenTxOption
 public void printGenTxHelp (ref string[] outputs)
 {
     outputs ~= "usage: agora-client gentx [--dump] [--interval <interval>]";
-    outputs ~= "                          [--count <count>] --ip <host>";
-    outputs ~= "                          --port <port>";
+    outputs ~= "                          [--count <count>] --address <addr>";
     outputs ~= "";
     outputs ~= "   gentx      Generate and send a transaction to node";
     outputs ~= "";
     outputs ~= "        -o --dump       Dump output option";
-    outputs ~= "        -i --ip         IP address of node";
-    outputs ~= "        -p --port       Port of node";
+    outputs ~= "        -i --address    Address of a node (e.g. http://agora.example.com)";
     outputs ~= "        -t --interval   Interval of sending transactions";
     outputs ~= "        -c --count      Number of transactions sent at once";
     outputs ~= "";
@@ -136,8 +134,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
     }
 
     // connect to the node
-    string ip_address = format("http://%s:%s", op.host, op.port);
-    auto node = api_maker(ip_address);
+    auto node = api_maker(op.address);
     auto taskman = new VibeTaskManager;
     auto last_block = node.getBlocksFrom(node.getBlockHeight(), 1)[0];
     auto txs = last_block.spendable().take(op.count)
@@ -150,15 +147,14 @@ public int genTxProcess (string[] args, ref string[] outputs,
     {
         txs.each!(tx => node.postTransaction(tx));
         writefln("%s transactions sent to %s.\nTransactions:",
-            op.count, ip_address);
+            op.count, op.address);
         txs.each!(tx => writeln(prettify(tx)));
         txs = txs.map!(txb => TxBuilder(txb).sign()).array();
     }
 
     if (op.dump)
     {
-        outputs ~= format("IP = %s", op.host);
-        outputs ~= format("Port = %s", op.port);
+        outputs ~= format("Address = %s", op.address);
         outputs ~= format("Interval = %s", op.interval);
         outputs ~= format("Count = %s", op.count);
         outputs ~= format("Transactions =");
