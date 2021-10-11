@@ -26,8 +26,6 @@ import agora.crypto.Key;
 import agora.flash.Config;
 import agora.utils.Log;
 
-import vibe.inet.url;
-
 import std.algorithm.iteration : splitter;
 import std.algorithm.searching : all;
 import std.exception;

@@ -47,7 +47,6 @@ import agora.utils.Utility;
 
 import vibe.http.common;
 import vibe.web.rest;
-import vibe.inet.url;
 
 import std.algorithm;
 import std.array;
