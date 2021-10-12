@@ -1309,6 +1309,24 @@ public class Ledger
         return lastPaidHeight(this.getBlockHeight, this.params.PayoutPeriod);
     }
 
+    /***************************************************************************
+
+        Get an UTXO, no double-spend protection.
+
+        Params:
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
+            value = the UTXO
+
+        Returns:
+            true if the UTXO was found
+
+    ***************************************************************************/
+
+    public bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
+    {
+        return this.utxo_set.peekUTXO(utxo, value);
+    }
+
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated
@@ -1545,24 +1563,6 @@ public class ValidatingLedger : Ledger
         return result;
     }
 
-    /***************************************************************************
-
-        Get an UTXO, no double-spend protection.
-
-        Params:
-            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
-            value = the UTXO
-
-        Returns:
-            true if the UTXO was found
-
-    ***************************************************************************/
-
-    public bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
-    {
-        return this.utxo_set.peekUTXO(utxo, value);
-    }
-
     version (unittest):
 
     private string externalize (ConsensusData data) @trusted
@@ -1588,7 +1588,7 @@ public class ValidatingLedger : Ledger
     }
 
     /// simulate block creation as if a nomination and externalize round completed
-    private void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock)
+    public void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock)
     {
         const next_block = this.getBlockHeight() + 1;
         this.simulatePreimages(next_block);
@@ -1671,7 +1671,7 @@ version (unittest)
     import core.stdc.time : time;
 
     /// A `Ledger` with sensible defaults for `unittest` blocks
-    private final class TestLedger : ValidatingLedger
+    public final class TestLedger : ValidatingLedger
     {
         public this (KeyPair key_pair,
             const(Block)[] blocks = null,
