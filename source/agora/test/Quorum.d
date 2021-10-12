@@ -43,15 +43,8 @@ unittest
     // generate 18 blocks, 1 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = nodes.map!(node => node.getPublicKey().key)
-        .dropExactly(GenesisValidators)
-        .takeExactly(conf.outsider_validators)
-        .array;
-
-    // Freeze outputs for outsiders
-    genesisSpendable.drop(2).takeExactly(1)
-        .map!(txb => txb.split(keys).sign(OutputType.Freeze))
-        .each!(tx => nodes[0].postTransaction(tx));
+    // prepare frozen outputs for the outsider validator to enroll
+    network.postAndEnsureTxInPool(network.freezeUTXO(iota(GenesisValidators, validators)));
 
     // at block height 19 the freeze tx's are available
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
