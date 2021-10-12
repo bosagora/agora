@@ -224,30 +224,31 @@ private UnitTestResult customModuleUnitTester ()
         if (fp is null)
             continue;
 
-        if (mod.name.startsWith("agora") ||
-            mod.name.startsWith("scpd"))
-        {
-            if (filter.length > 0 &&
-                !canFind(mod.name.toLower(), filter.save))
-            {
-                filtered++;
-                continue;
-            }
+        // If it's not in the agora or scpd package, we don't care about it,
+        // because it's one of our dependency (e.g. vibe.d or even Phobos)
+        if (!mod.name.startsWith("agora") &&
+            !mod.name.startsWith("scpd"))
+            continue;
 
-            // this test checks GC usage stats before / after tests,
-            // but other threads can change the outcome of the GC usage stats
-            if (all_single_threaded || mod.name == "agora.common.Serializer")
-                single_threaded ~= ModTest(mod.name, fp);
-            else if (mod.name == "agora.test.ManyValidators")
-                heavy_tests ~= ModTest(mod.name, fp);
-            else
-                // due to problems with the parallelism test,
-                // the test is performed with single threads
-                version (Windows)
-                    single_threaded ~= ModTest(mod.name, fp);
-                else
-                    parallel_tests ~= ModTest(mod.name, fp);
+        if (filter.length > 0 && !canFind(mod.name.toLower(), filter.save))
+        {
+            filtered++;
+            continue;
         }
+
+        // this test checks GC usage stats before / after tests,
+        // but other threads can change the outcome of the GC usage stats
+        if (all_single_threaded || mod.name == "agora.common.Serializer")
+            single_threaded ~= ModTest(mod.name, fp);
+        else if (mod.name == "agora.test.ManyValidators")
+            heavy_tests ~= ModTest(mod.name, fp);
+        else
+            // due to problems with the parallelism test,
+            // the test is performed with single threads
+            version (Windows)
+                single_threaded ~= ModTest(mod.name, fp);
+        else
+            parallel_tests ~= ModTest(mod.name, fp);
     }
 
     shared size_t executed;
