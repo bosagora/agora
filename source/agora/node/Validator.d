@@ -333,8 +333,9 @@ public class Validator : FullNode, API
 
         this.recordReq("public_key");
 
+        auto enroll_key = this.enroll_man.getEnrollmentKey();
         Identity id = Identity(this.config.validator.key_pair.address,
-                               this.enroll_man.getEnrollmentKey());
+            enroll_key == Hash.init ? this.getFrozenUTXO() : enroll_key);
         if (key == PublicKey.init)
             return id;
 
@@ -699,14 +700,14 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private Hash getFrozenUTXO () @safe
+    private Hash getFrozenUTXO () @safe nothrow
     {
         const pub_key = this.config.validator.key_pair.address;
-        foreach (key, utxo; this.utxo_set.getUTXOs(pub_key))
+        foreach (utxo; this.utxo_set.getUTXOs(pub_key).byKeyValue)
         {
-            if (utxo.output.type == OutputType.Freeze &&
-                utxo.output.value.integral() >= Amount.MinFreezeAmount.integral())
-                return key;
+            if (utxo.value.output.type == OutputType.Freeze &&
+                utxo.value.output.value.integral() >= Amount.MinFreezeAmount.integral())
+                return utxo.key;
         }
 
         return Hash.init;
