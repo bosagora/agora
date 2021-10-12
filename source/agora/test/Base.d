@@ -211,10 +211,25 @@ private UnitTestResult customModuleUnitTester ()
         void function() test;
     }
 
-    ModTest[] single_threaded;
-    ModTest[] parallel_tests;
-    ModTest[] heavy_tests;
+    struct Tests
+    {
+        /// Simple tests are every tests not in 'agora.tests' package
+        /// They run serially and first, as they might be checking GC usage
+        ModTest[] simple;
 
+        /// Integrations test that should run single-threaded
+        ModTest[] serial;
+
+        /// Integration tests that run multi-threaded (unless disabled)
+        ModTest[] parallel;
+
+        /// Integrations test that should run single-threaded even in a multi-threaded
+        /// settings (heavy tests) - They are separate from serial because
+        /// they must run last
+        ModTest[] heavy;
+    }
+
+    Tests allTests;
     foreach (ModuleInfo* mod; ModuleInfo)
     {
         if (mod is null)
@@ -236,19 +251,23 @@ private UnitTestResult customModuleUnitTester ()
             continue;
         }
 
-        // this test checks GC usage stats before / after tests,
-        // but other threads can change the outcome of the GC usage stats
-        if (all_single_threaded || mod.name == "agora.common.Serializer")
-            single_threaded ~= ModTest(mod.name, fp);
+        // We first run "simple" tests (e.g. those outside of this package)
+        if (!mod.name.startsWith("agora.test."))
+        {
+            allTests.simple ~= ModTest(mod.name, fp);
+            continue;
+        }
+
+        if (all_single_threaded)
+            allTests.serial ~= ModTest(mod.name, fp);
         else if (mod.name == "agora.test.ManyValidators")
-            heavy_tests ~= ModTest(mod.name, fp);
+            allTests.heavy ~= ModTest(mod.name, fp);
+        // due to problems with the parallelism test,
+        // the test is performed with single threads
+        else version (Windows)
+            allTests.serial ~= ModTest(mod.name, fp);
         else
-            // due to problems with the parallelism test,
-            // the test is performed with single threads
-            version (Windows)
-                single_threaded ~= ModTest(mod.name, fp);
-        else
-            parallel_tests ~= ModTest(mod.name, fp);
+            allTests.parallel ~= ModTest(mod.name, fp);
     }
 
     shared size_t executed;
@@ -297,12 +316,14 @@ private UnitTestResult customModuleUnitTester ()
         return false;
     }
 
-    // Run single-threaded tests
-    bool failed_early;
-    foreach (mod; single_threaded)
-        if (!runTest(mod))
-            if ((failed_early = should_fail_early) == true)
-                break;
+    bool runSerially (ModTest[] thoseTests)
+    {
+        foreach (mod; thoseTests)
+            if (!runTest(mod))
+                if (should_fail_early)
+                    return false;
+        return true;
+    }
 
     auto available_cores = new Semaphore(totalCPUs);
     auto finished_tasks_num = new Semaphore(0);
@@ -342,13 +363,16 @@ private UnitTestResult customModuleUnitTester ()
         }
     }
 
+    // Run single-threaded tests
+    const failed_early = !runSerially(allTests.simple) || !runSerially(allTests.serial);
     if (!failed_early)
     {
-        runInParallel(parallel_tests);
-        runInParallel(heavy_tests);
+        // Then multi-threaded tests
+        runInParallel(allTests.parallel);
+        runInParallel(allTests.heavy);
 
         // waiting for all parallel tasks to finish
-        iota(parallel_tests.length + heavy_tests.length).each!(x => finished_tasks_num.wait());
+        iota(allTests.parallel.length).each!(x => finished_tasks_num.wait());
     }
 
     UnitTestResult result = { executed : executed, passed : passed };
@@ -358,7 +382,9 @@ private UnitTestResult customModuleUnitTester ()
     if (failed_early)
     {
         writefln("Single threaded test failed early. Only %s/%s tests have been run",
-                 executed, single_threaded.length + parallel_tests.length + heavy_tests.length);
+                 executed,
+                 allTests.simple.length + allTests.serial.length +
+                 allTests.parallel.length + allTests.heavy.length);
     }
 
     // result.summarize = true;
