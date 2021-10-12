@@ -199,7 +199,7 @@ public class NameRegistry: NameRegistryAPI
     public override void postValidator (RegistryPayload registry_payload)
     {
         import std.algorithm;
-
+        import agora.consensus.data.UTXO;
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.validators.get(registry_payload.data.public_key));
 
@@ -210,8 +210,14 @@ public class NameRegistry: NameRegistryAPI
             this.validator_info = this.ledger.getValidators(last_height);
             this.validator_info_height = last_height;
         }
+        UTXO utxo;
         ensure(this.validator_info.map!(info => info.address)
-            .canFind(registry_payload.data.public_key), "Not an enrolled validator");
+            .canFind(registry_payload.data.public_key) ||
+            this.ledger.enrollment_manager.enroll_pool
+                .getEnrollments(last_height).canFind!(
+                    enroll => this.ledger.peekUTXO(enroll.utxo_key, utxo)
+                        && (utxo.output.address == registry_payload.data.public_key)
+                ), "Not an enrolled validator");
 
         // register data
         log.info("Registering addresses {}: {} for public key: {}", payload_type,
@@ -1002,4 +1008,48 @@ private struct ZoneData
         // bosagora/agora#2551
         assert(!zone.owns("oops"));
     }
+}
+
+unittest
+{
+    import std.algorithm;
+    import agora.consensus.Ledger;
+    import agora.utils.Test;
+    import agora.consensus.data.genesis.Test: genesis_validator_keys;
+    import agora.consensus.data.Transaction;
+    import agora.consensus.data.Enrollment;
+    import agora.consensus.data.UTXO;
+
+    scope ledger = new TestLedger(genesis_validator_keys[0]);
+    // Generate payment transactions to the first 8 well-known keypairs
+    auto txs = genesisSpendable().enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
+        .array;
+    txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 1);
+
+    scope registry = new NameRegistry("", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
+    auto payload = RegistryPayload(RegistryPayloadData(WK.Keys[0].address, ["address"], 0));
+    payload.signPayload(WK.Keys[0]);
+
+    try
+    {
+        registry.postValidator(payload);
+        assert(0);
+    }
+    catch (Exception e)
+        assert(e.message == "Not an enrolled validator");
+
+    auto enroll = Enrollment(
+        UTXO.getHash(txs[0].hashFull(), 0),
+        Hash.init,
+    );
+    enroll.enroll_sig = WK.Keys[0].sign(enroll);
+    assert(ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[0].address, Height(2), &ledger.peekUTXO));
+
+    try
+        registry.postValidator(payload);
+    catch (Exception e)
+        assert(0, e.message);
 }
