@@ -464,16 +464,22 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
+        this.connection_tasks.remove(node.client.address);
+
         if (this.peerLimitReached())
             return;
 
-        this.peers.insertBack(node);
+        auto existing_peer = this.peers[].find!(p => p.address == node.address);
+        if (!existing_peer.empty())
+            existing_peer.front().utxo = node.utxo;
+        else
+        {
+            this.peers.insertBack(node);
+            this.discovery_task.add(node.client);
+        }
 
         if (node.isValidator())
             this.required_peers.remove(node.utxo);
-
-        this.discovery_task.add(node.client);
-        this.connection_tasks.remove(node.client.address);
     }
 
     /***************************************************************************
@@ -750,10 +756,12 @@ public class NetworkManager
 
     private bool shouldEstablishConnection (Address address)
     {
+        auto existing_peer = this.peers[].find!(p => p.address == address);
         return !this.banman.isBanned(address) &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
-            !this.peers[].map!(p => p.address).canFind(address);
+            (existing_peer.empty || // either does not exist or a validator with no stake
+                (existing_peer.front.isValidator() && existing_peer.front.utxo == Hash.init));
     }
 
     /// Received new set of addresses, put them in the todo address list
