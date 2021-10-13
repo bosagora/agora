@@ -553,9 +553,7 @@ public class FullNode : API
 
     protected string acceptBlock (in Block block) @trusted
     {
-        auto old_validators = block.header.height > 1 ?
-            this.ledger.getValidators(this.ledger.getBlockHeight()) :
-            null;
+        auto old_validators = this.ledger.getValidators(this.ledger.getBlockHeight());
         // Attempt to add block to the ledger (it may be there by other means)
         if (auto fail_msg = this.ledger.acceptBlock(block))
             return fail_msg;
@@ -1324,8 +1322,6 @@ public class FullNode : API
     public ValidatorInfo[] getValidators (ulong height)
     {
         this.recordReq("validators");
-        if (height == 0)
-            return null;
         return this.ledger.getValidators(Height(height), true);
     }
 
