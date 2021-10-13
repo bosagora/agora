@@ -18,6 +18,7 @@ import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
+import agora.consensus.data.Block;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorInfo;
 import agora.consensus.Ledger;
@@ -483,6 +484,26 @@ public class NameRegistry: NameRegistryAPI
 
         return answer;
     }
+
+    /***************************************************************************
+
+        Callback for block creation
+
+        Params:
+          block = New block
+          validators_changed = if the validator set has changed with this block
+
+    ***************************************************************************/
+
+    public void onAcceptedBlock (in Block block, bool validators_changed)
+        @safe
+    {
+        UTXO utxo;
+        this.validators.each!((TypedPayload tpayload) {
+            if (!this.ledger.peekUTXO(tpayload.utxo, utxo))
+                this.validators.remove(tpayload.payload.data.public_key);
+       });
+    }
 }
 
 /***************************************************************************
@@ -718,6 +739,9 @@ private struct ZoneData
     /// Query for adding registry to addresses table
     private string query_addresses_add;
 
+    /// Query for removing from registry signature table
+    private string query_remove_sig;
+
     /// Database to store data
     private ManagedDatabase db;
 
@@ -749,6 +773,9 @@ private struct ZoneData
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
                     "(pubkey, address, type) VALUES (?, ?, ?)", type_table_name);
+
+        this.query_remove_sig = format("DELETE FROM registry_%s_signature WHERE pubkey = ?",
+            type_table_name);
 
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
             "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
@@ -843,6 +870,21 @@ private struct ZoneData
         };
 
         return typed_payload;
+    }
+
+    /***************************************************************************
+
+         Remove payload data from persistent storage
+
+         Params:
+           public_key = the public key that was used to register
+                         the network addresses
+
+    ***************************************************************************/
+
+    public void remove (PublicKey public_key) @trusted
+    {
+        this.db.execute(this.query_remove_sig, public_key);
     }
 
     /***************************************************************************
@@ -1024,7 +1066,11 @@ unittest
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.UTXO;
 
-    scope ledger = new TestLedger(genesis_validator_keys[0]);
+    NameRegistry registry;
+    scope ledger = new TestLedger(genesis_validator_keys[0], null, null, 600.seconds, null, (in Block block, bool changed) @safe {
+        registry.onAcceptedBlock(block, changed);
+    });
+    registry = new NameRegistry("", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
     // Generate payment transactions to the first 8 well-known keypairs
     auto txs = genesisSpendable().enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
@@ -1033,7 +1079,6 @@ unittest
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
 
-    scope registry = new NameRegistry("", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
     auto payload = RegistryPayload(RegistryPayloadData(WK.Keys[0].address, ["address"], 0));
     payload.signPayload(WK.Keys[0]);
 
@@ -1056,4 +1101,14 @@ unittest
         registry.postValidator(payload);
     catch (Exception e)
         assert(0, e.message);
+
+    // externalize enrollment
+    ledger.forceCreateBlock(0);
+    assert(ledger.getBlockHeight() == 2);
+    assert(RegistryPayload.init != registry.getValidator(WK.Keys[0].address));
+
+    ledger.forceCreateBlock(0);
+    assert(ledger.getBlockHeight() == 3);
+    // frozen UTXO is spent (slashed), entry should have been deleted
+    assert(RegistryPayload.init == registry.getValidator(WK.Keys[0].address));
 }
