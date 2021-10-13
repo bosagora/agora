@@ -243,6 +243,11 @@ public class Ledger
     public ValidatorInfo[] getValidators (in Height height, bool empty = false)
         scope @safe
     {
+        // There are no validators at Genesis, and no one able to sign the block
+        // This is by design, and to allow calling code to work correctly without
+        // special-casing height == 0, we just return `null`.
+        if (height == 0) return null;
+
         auto result = this.enroll_man.validator_set.getValidators(height);
         ensure(empty || result.length > 0,
                "Ledger.getValidators didn't find any validator at height {}", height);
