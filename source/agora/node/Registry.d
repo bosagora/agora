@@ -18,6 +18,7 @@ import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
+import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorInfo;
 import agora.consensus.Ledger;
 import agora.crypto.Hash;
@@ -31,14 +32,12 @@ import agora.stats.Registry;
 import agora.stats.Utils;
 import agora.utils.Log;
 
-import std.algorithm.comparison : among, equal;
-import std.algorithm.iteration : map, splitter;
-import std.algorithm.searching : endsWith;
+import std.algorithm;
 import std.array : array, replace;
 import std.conv;
 import std.datetime;
 import std.format;
-import std.range : zip;
+import std.range;
 import std.socket : InternetAddress;
 import std.string;
 
@@ -198,8 +197,6 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
-        import std.algorithm;
-        import agora.consensus.data.UTXO;
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.validators.get(registry_payload.data.public_key));
 
@@ -211,18 +208,19 @@ public class NameRegistry: NameRegistryAPI
             this.validator_info_height = last_height;
         }
         UTXO utxo;
-        ensure(this.validator_info.map!(info => info.address)
-            .canFind(registry_payload.data.public_key) ||
-            this.ledger.enrollment_manager.enroll_pool
-                .getEnrollments(last_height).canFind!(
-                    enroll => this.ledger.peekUTXO(enroll.utxo_key, utxo)
-                        && (utxo.output.address == registry_payload.data.public_key)
-                ), "Not an enrolled validator");
-
+        auto validator_info = this.validator_info
+            .find!(info => info.address == registry_payload.data.public_key);
+        auto enrollment = this.ledger.enrollment_manager.enroll_pool
+            .getEnrollments(last_height).find!(
+                enroll => this.ledger.peekUTXO(enroll.utxo_key, utxo)
+                    && (utxo.output.address == registry_payload.data.public_key));
+        ensure(!validator_info.empty || !enrollment.empty, "Not an enrolled validator");
+        auto stake = validator_info.empty ? enrollment.front.utxo_key : validator_info.front.utxo;
+        assert(stake != Hash.init);
         // register data
         log.info("Registering addresses {}: {} for public key: {}", payload_type,
                  registry_payload.data.addresses, registry_payload.data.public_key);
-        this.validators.update(TypedPayload(payload_type, registry_payload));
+        this.validators.update(TypedPayload(payload_type, registry_payload, stake));
     }
 
     /***************************************************************************
@@ -688,6 +686,9 @@ private struct TypedPayload
 
     /// The payload itself
     public RegistryPayload payload;
+
+    /// UTXO
+    public Hash utxo;
 }
 
 /// Contains infos related to either `validators` or `flash`
@@ -738,20 +739,20 @@ private struct ZoneData
         this.query_registry_get = format("SELECT pubkey " ~
             "FROM registry_%s_signature", type_table_name);
 
-        this.query_payload = format("SELECT signature, sequence, address, type " ~
+        this.query_payload = format("SELECT signature, sequence, address, type, utxo " ~
             "FROM registry_%s_addresses l " ~
             "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", type_table_name, type_table_name);
 
         this.query_signature_add = format("REPLACE INTO registry_%s_signature " ~
-            "(pubkey, signature, sequence) VALUES (?, ?, ?)", type_table_name);
+            "(pubkey, signature, sequence, utxo) VALUES (?, ?, ?, ?)", type_table_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
                     "(pubkey, address, type) VALUES (?, ?, ?)", type_table_name);
 
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
             "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
-            "PRIMARY KEY(pubkey))", type_table_name);
+            "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", type_table_name);
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
@@ -818,6 +819,7 @@ private struct ZoneData
         const TYPE node_type = to!TYPE(results.front["type"].as!ushort);
         const ulong sequence = results.front["sequence"].as!ulong;
         const Signature signature = Signature.fromString(results.front["signature"].as!string);
+        const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
 
         const auto addresses = results.map!(r => r["address"].as!Address).array;
 
@@ -837,6 +839,7 @@ private struct ZoneData
         {
             type: node_type,
             payload: payload,
+            utxo: utxo,
         };
 
         return typed_payload;
@@ -860,7 +863,8 @@ private struct ZoneData
         db.execute(this.query_signature_add,
             payload.payload.data.public_key,
             payload.payload.signature,
-            payload.payload.data.seq);
+            payload.payload.data.seq,
+            payload.utxo);
 
         // There is no need to check for stale addresses
         // since `REPLACE INTO` is used and `DELETE` is cascaded.
