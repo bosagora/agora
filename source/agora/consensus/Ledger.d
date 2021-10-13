@@ -1582,12 +1582,19 @@ public class ValidatingLedger : Ledger
             return fail_reason;
         }
 
-        auto key_pairs = this.getValidators(height)
-            .map!(vi => WK.Keys[vi.address])
-            .array();
-        const block = makeNewTestBlock(this.last_block,
-            externalized_tx_set, key_pairs,
-            data.enrolls, data.missing_validators, data.time_offset);
+        auto block = this.buildBlock(externalized_tx_set, data.time_offset,
+            data.enrolls, data.missing_validators);
+
+        this.getValidators(height).enumerate.each!((i, v)
+        {
+            if (!data.missing_validators.canFind(i))
+            {
+                block.header.validators[i] = true;
+                auto tmp = block.header.sign(WK.Keys[v.address].secret, block.header.preimages[i]);
+                block.header.signature.R += tmp.R;
+                block.header.signature.s += tmp.s;
+            }
+        });
         return this.acceptBlock(block);
     }
 
