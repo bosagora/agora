@@ -1677,7 +1677,8 @@ version (unittest)
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null,
             Duration block_time_offset_tolerance_dur = 600.seconds,
-            Clock mock_clock = null)
+            Clock mock_clock = null,
+            void delegate (in Block, bool) @safe onAcceptedBlock = null)
         {
             const params = (params_ !is null)
                 ? params_
@@ -1712,7 +1713,7 @@ version (unittest)
                 new TransactionPool(cacheDB),
                 stateDB,
                 mock_clock,
-                block_time_offset_tolerance_dur, null);
+                block_time_offset_tolerance_dur, onAcceptedBlock);
         }
 
         ///

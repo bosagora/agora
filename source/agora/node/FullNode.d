@@ -1137,6 +1137,8 @@ public class FullNode : API
         @safe
     {
         this.pushBlock(block);
+        if (this.registry)
+            this.registry.onAcceptedBlock(block, validators_changed);
     }
 
     /***************************************************************************
