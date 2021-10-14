@@ -1572,20 +1572,19 @@ public class ValidatingLedger : Ledger
 
     private string externalize (ConsensusData data) @trusted
     {
-        import agora.utils.Test : WK;
-
-        auto next_block = Height(this.last_block.header.height + 1);
-        auto key_pairs = this.getValidators(next_block)
-            .map!(vi => WK.Keys[vi.address])
-            .array();
+        const height = Height(this.last_block.header.height + 1);
 
         Transaction[] externalized_tx_set;
         if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
         {
-            log.info("Ledger.externalize, can not create new block at Height {} : {}. Fail reason : {}",
-                next_block, data.prettify, fail_reason);
+            log.info("Ledger.externalize: can not create new block at Height {} : {}. Fail reason : {}",
+                height, data.prettify, fail_reason);
             return fail_reason;
         }
+
+        auto key_pairs = this.getValidators(height)
+            .map!(vi => WK.Keys[vi.address])
+            .array();
         const block = makeNewTestBlock(this.last_block,
             externalized_tx_set, key_pairs,
             data.enrolls, data.missing_validators, data.time_offset);
