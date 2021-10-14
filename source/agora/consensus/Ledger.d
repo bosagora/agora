@@ -1798,11 +1798,6 @@ unittest
 
     Block invalid_block;  // default-initialized should be invalid
     assert(ledger.acceptBlock(invalid_block));
-
-    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    const block = makeNewTestBlock(ledger.params.Genesis, txs);
-    ledger.simulatePreimages(ledger.getBlockHeight() + 1);
-    assert(!ledger.acceptBlock(block));
 }
 
 /// Situation: Ledger is constructed with blocks present in storage
