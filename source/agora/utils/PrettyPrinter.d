@@ -529,7 +529,7 @@ Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>
 ====================================================
-Height: 1, Prev: 0xe9de...fbb5, Root: 0xb039...ee32, Enrollments: []
+Height: 1, Prev: 0x67a4...e11c, Root: 0xb039...ee32, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
 Pre-images: [0xe998...9b3f, 0x4afa...b699, 0x31a2...e601, 0x62c3...6572, 0x58a4...9659, 0x2787...82ae],

@@ -2072,11 +2072,11 @@ unittest
     {
         assert(ex.message ==
                "Genesis block loaded from disk " ~
-               "(0xe9de4d480b4f141634634e1d977a938115c894b2eb6c12bef9961584ff6ff6b" ~
-               "bb4d4bcd0486496eae2dd7dc9334e913b34a3fafafc166eeec4fc2c5d06c4fbb5) " ~
+               "(0x67a40d4e4149c9c64efdbeabcb35d466bff111d7298f80ab310a514c15ba0e1" ~
+               "63c6ff78b1c60ad7fcb7e125a4738163343b62462ba9ce24ae576f01bbc5ce11c) " ~
                "is different from the one in the config file " ~
-               "(0x8d8c0e7d98b346bb7431417384b026c6010f44fce05d4bbca96105fff2a3fbe" ~
-               "d27f72cae8f71bb9b8dcedf44b5a7768cacfe9104db52c9e4d5b9b3397aab3419)");
+               "(0xa8382c87eed66f5468b41a81a448b1c8056ed8fccd0934acd3440b3457f8fdc" ~
+               "0e49b6388815cf8caef50be2c00dc72a001c53f8ba56aed2fb5cdd1d3a47307d7)");
     }
 
     immutable good_params = new immutable(ConsensusParams)();

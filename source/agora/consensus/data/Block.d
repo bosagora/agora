@@ -92,11 +92,12 @@ public struct BlockHeader
         @safe pure nothrow @nogc
     {
         dg(this.prev_block[]);
-        hashPart(this.height.value, dg);
         dg(this.merkle_root[]);
+        hashPart(this.height.value, dg);
+        foreach (const ref h; this.preimages)
+            dg(h[]);
         foreach (enrollment; this.enrollments)
             hashPart(enrollment, dg);
-        hashPart(this.preimages, dg);
         hashPart(this.time_offset, dg);
     }
 
@@ -191,7 +192,7 @@ unittest
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
-    auto exp_hash = Hash("0xb6319105c3f97e63df13081ee8cae7c7237b844907cfa3cb1342baf1bdf3c8d714b38dd4938836cb33a07e8cf2271ebe63b248aa6b3dabce94add0bde77ffe28");
+    auto exp_hash = Hash("0xde4132329e5e3d7acb2efc075c0d67f4e29995d49a813445cf7ad74f66140df014f411dc71529142e2f0223578195a6cb22662ee990992b510b74e56a02dae87");
     assert(hash == exp_hash);
 }
 
