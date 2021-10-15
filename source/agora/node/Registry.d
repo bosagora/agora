@@ -381,14 +381,14 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    private void doAXFR (ZoneData zone, ref Message reply) @safe
+    private void doAXFR (ref ZoneData zone, ref Message reply) @safe
     {
         log.info("Performing AXFR for {} ({} entries)",
                  zone.root.value, zone.count());
         auto soa = zone.toRR();
         reply.answers ~= soa;
 
-        foreach (payload; zone)
+        foreach (const ref payload; zone)
         {
             reply.answers ~= this.convertPayload(payload, format("%s.%s",
                 payload.payload.data.public_key, zone.root.value));
@@ -523,7 +523,7 @@ public class NameRegistry: NameRegistryAPI
     ***************************************************************************/
 
 private PublicKey parsePublicKeyFromDomain (in char[] domain,
-    ZoneData zone) @safe
+    in ZoneData zone) @safe
 {
     // In the future, we may allow things like:
     // `admin.$PUBKEY.domain`, but for the moment, restrict it to
@@ -806,23 +806,29 @@ private struct ZoneData
         return results.empty ? 0 : results.oneValue!(ulong);
     }
 
-    public int opApply(scope int delegate(TypedPayload) dg) @trusted
-    {
-        int result = 0;
 
+    /***************************************************************************
+
+        Iterates over all registered payloads
+
+        This function supports iterating over all payload, allowing for zone
+        transfer or any other zone-wide operation.
+
+    ***************************************************************************/
+
+    public int opApply (scope int delegate(ref const TypedPayload) dg) @trusted
+    {
         auto query_results = this.db.execute(this.query_registry_get);
 
         foreach (row; query_results)
         {
             auto registry_pub_key = PublicKey.fromString(row["pubkey"].as!string);
             auto payload = this.get(registry_pub_key);
-            result = dg(payload);
-
-            if (result)
-                break;
+            if (auto res = dg(payload))
+                return res;
         }
 
-        return result;
+        return 0;
     }
 
     /***************************************************************************
