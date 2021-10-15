@@ -75,6 +75,9 @@ public class NameRegistry: NameRegistryAPI
         ManagedDatabase cache_db)
     {
         assert(config.enabled, "Registry instantiated but not enabled");
+        assert(realm.length > 0, "No 'realm' provided");
+        assert(ledger !is null);
+        assert(cache_db !is null);
 
         this.config = config;
         this.log = Logger(__MODULE__);
@@ -1070,7 +1073,7 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], null, null, 600.seconds, null, (in Block block, bool changed) @safe {
         registry.onAcceptedBlock(block, changed);
     });
-    registry = new NameRegistry("", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
+    registry = new NameRegistry("test", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
     // Generate payment transactions to the first 8 well-known keypairs
     auto txs = genesisSpendable().enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
