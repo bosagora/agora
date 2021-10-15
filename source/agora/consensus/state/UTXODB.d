@@ -181,6 +181,46 @@ package class UTXODB
 
     /***************************************************************************
 
+        Get UTXOs from the UTXO set by the output type
+
+        Params:
+            type = the output type by which to search UTXOs in UTXOSet
+
+        Returns:
+            the associative array for UTXOs
+
+    ***************************************************************************/
+
+    public UTXO[Hash] getUTXOs (in OutputType type) @trusted nothrow
+    {
+        scope(failure) assert(0);
+        UTXO[Hash] utxos;
+
+        auto results = this.db.execute(
+            "SELECT hash, unlock_height, type, amount, lock FROM utxo WHERE " ~
+            "type = ? ORDER BY hash", type);
+
+        foreach (row; results)
+        {
+            auto hash = Hash(row.peek!(const(char)[], PeekMode.slice)(0));
+            auto unlock_height = Height(row.peek!ulong(1));
+            // DMD BUG, see above
+            Output output;
+            output.type = row.peek!OutputType(2);
+            output.value = Amount(row.peek!ulong(3));
+            output.lock  = Lock(LockType.Key, row.peek!(ubyte[])(4));
+            UTXO value = {
+                unlock_height: unlock_height,
+                output: output,
+            };
+            utxos[hash] = value;
+        }
+
+        return utxos;
+    }
+
+    /***************************************************************************
+
         Add an UTXO to the map
 
         Params:

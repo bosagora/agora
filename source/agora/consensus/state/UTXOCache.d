@@ -115,6 +115,20 @@ abstract class UTXOCache
 
     /***************************************************************************
 
+        Get UTXOs from the UTXO set by the output type
+
+        Params:
+            type = the output type by which to search UTXOs in UTXOSet
+
+        Returns:
+            the associative array for UTXOs
+
+    ***************************************************************************/
+
+    public abstract UTXO[Hash] getUTXOs (in OutputType type) nothrow @safe;
+
+    /***************************************************************************
+
         Get an UTXO from the UTXO set.
 
         Params:
@@ -320,6 +334,16 @@ public class TestUTXOSet : UTXOCache
         UTXO[Hash] utxos;
         foreach (const ref key_val; storage.byKeyValue)
             if (key_val.value.output.lock.bytes[] == pubkey[])
+                utxos[key_val.key] = key_val.value;
+        return utxos;
+    }
+
+    ///
+    public override UTXO[Hash] getUTXOs (in OutputType type) nothrow @safe
+    {
+        UTXO[Hash] utxos;
+        foreach (const ref key_val; storage.byKeyValue)
+            if (key_val.value.output.type == type)
                 utxos[key_val.key] = key_val.value;
         return utxos;
     }

@@ -83,6 +83,12 @@ public class UTXOSet : UTXOCache
     }
 
     ///
+    public override UTXO[Hash] getUTXOs (in OutputType type) nothrow @safe
+    {
+        return this.utxo_db.getUTXOs(type);
+    }
+
+    ///
     public override bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
     {
         return this.utxo_db.find(utxo, value);
