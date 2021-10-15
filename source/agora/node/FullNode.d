@@ -911,7 +911,9 @@ public class FullNode : API
         if (auto reason = this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct,
             config.node.min_fee_pct))
         {
-            log.info("Rejected tx. Reason: {}. Tx: {}, txHash: {}",
+            this.log.format(
+                this.hasTransactionHash(hashFull(tx)) ? LogLevel.Trace : LogLevel.Info,
+                "Rejected tx. Reason: {}. Tx: {}, txHash: {}",
                 reason, tx, hashFull(tx));
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return;
