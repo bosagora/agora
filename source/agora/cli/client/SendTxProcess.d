@@ -14,7 +14,7 @@
 module agora.client.SendTxProcess;
 
 import agora.api.FullNode;
-import agora.client.Result;
+import agora.client.Common;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
@@ -29,16 +29,14 @@ import std.format;
 import std.getopt;
 import std.stdio;
 
-public alias APIMaker = API delegate (string address);
-
 /// Option required to send transaction
 private struct SendTxOption
 {
-    /// IP address of node
-    public string host = "localhost";
+    /// Common arguments
+    public ClientCLIArgs base;
 
-    /// Port of node
-    public ushort port = 2826;
+    /// For convenience
+    public alias base this;
 
     /// Hash of the previous transaction
     public string txhash;
@@ -57,57 +55,51 @@ private struct SendTxOption
 
     /// dump output option
     public bool dump;
-}
 
-/// Parse the ommand-line arguments of sendtx (--version, --help)
-public GetoptResult parseSendTxOption (ref SendTxOption op, string[] args)
-{
-    return getopt(
-        args,
-        "ip|i",
-            "IP address of node (default: localhost)",
-            &op.host,
+    /// Parse the command-line arguments of sendtx
+    public GetoptResult parse (string[] args)
+    {
+        auto intermediate = this.base.parse(args);
+        if (intermediate.helpWanted)
+            return intermediate;
 
-        "port|p",
-            "Port of node (default: 2826)",
-            &op.port,
+        return getopt(
+            args,
+            "txhash|t",
+              "Hash of the previous transaction",
+              &this.txhash,
 
-        "txhash|t",
-            "Hash of the previous transaction",
-            &op.txhash,
+            "index|n",
+              "The index of the output in the previous transaction",
+              &this.index,
 
-        "index|n",
-            "The index of the output in the previous transaction",
-            &op.index,
+            "amount|a",
+              "The amount to spend",
+              &this.amount,
 
-        "amount|a",
-            "The amount to spend",
-            &op.amount,
+            "dest|d",
+              "The address key to send the output",
+              &this.address,
 
-        "dest|d",
-            "The address key to send the output",
-            &op.address,
+            "key|k",
+              "The seed used to sign the new transaction",
+              &this.key,
 
-        "key|k",
-            "The seed used to sign the new transaction",
-            &op.key,
-
-        "dump|o",
-            "dump output option",
-            &op.dump
-            );
-
+            "dump|o",
+              "dump output option",
+              &this.dump,
+        );
+    }
 }
 
 /// Print help
 public void printSendTxHelp (ref string[] outputs)
 {
-    outputs ~= "usage: agora-client sendtx [--dump] [--ip addr] [--port port] --txhash --index --amount --dest --key";
+    outputs ~= "usage: agora-client sendtx [--dump] [--address addr] --txhash --index --amount --dest --key";
     outputs ~= "";
     outputs ~= "   sendtx      Send a transaction to node";
     outputs ~= "";
-    outputs ~= "        -i --ip      IP address of node";
-    outputs ~= "        -p --port    Port of node";
+    outputs ~= "        -i --address Address of a node (e.g. http://agora.example.com)";
     outputs ~= "        -t --txhash  Hash of the previous transaction that";
     outputs ~= "                     contains the Output which the new ";
     outputs ~= "                     transaction will spend";
@@ -128,28 +120,28 @@ public void printSendTxHelp (ref string[] outputs)
         args = client command line arguments
         outputs = Array in which to append user-readable output
                   (1 line will be one entry)
-        api_maker = A delegate that makes an API object based on the IP
+        api_maker = A delegate that makes an API object based on the address
 
 *******************************************************************************/
 
 public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_maker)
 {
     SendTxOption op;
-    GetoptResult res;
 
     try
     {
-        res = parseSendTxOption(op, args);
+        auto res = op.parse(args);
         if (res.helpWanted)
         {
             printSendTxHelp(outputs);
-            return CLIENT_SUCCESS;
+            return 0;
         }
     }
     catch (Exception ex)
     {
+        outputs ~= "Error: " ~ ex.msg;
         printSendTxHelp(outputs);
-        return CLIENT_EXCEPTION;
+        return 1;
     }
 
     bool isValid = true;
@@ -183,7 +175,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     }
 
     if (!isValid)
-        return CLIENT_INVALID_ARGUMENTS;
+        return 1;
 
     // create the transaction
     auto key_pair = KeyPair.fromSeed(SecretKey.fromString(op.key));
@@ -202,17 +194,16 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
         outputs ~= format("address = %s", op.address);
         outputs ~= format("key = %s", op.key);
         outputs ~= format("hash of new transaction = %s", hashFull(tx).toString);
-        return CLIENT_SUCCESS;
+        return 0;
     }
 
     // connect to the node
-    string ip_address = format("http://%s:%s", op.host, op.port);
-    auto node = api_maker(ip_address);
+    auto node = api_maker(op.address);
 
     // send the transaction
     node.postTransaction(tx);
 
-    return CLIENT_SUCCESS;
+    return 0;
 }
 
 /// Test of send transaction
@@ -251,10 +242,8 @@ unittest
 
     string[] args =
         [
-            "program-name",
             "sendtx",
-            "--ip=localhost",
-            "--port=2826",
+            "--address=localhost:2826",
             format("--txhash=%s", txhash),
             format("--index=%d", index),
             format("--amount=%d", amount),
@@ -268,7 +257,7 @@ unittest
     auto res = sendTxProcess(args, outputs, (address) {
         return node;
     });
-    assert (res == CLIENT_SUCCESS);
+    assert (res == 0);
 
     Transaction tx = Transaction([Input(Hash.fromString(txhash), index)],
         [Output(Amount(amount), PublicKey.fromString(address))]);

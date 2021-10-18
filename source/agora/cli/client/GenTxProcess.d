@@ -16,7 +16,7 @@
 module agora.client.GenTxProcess;
 
 import agora.api.FullNode;
-import agora.client.Result;
+import agora.client.Common;
 import agora.common.Amount;
 import agora.common.VibeTask;
 import agora.common.Types;
@@ -41,11 +41,11 @@ import vibe.core.core;
 /// Option required to generate and send transactions
 private struct GenTxOption
 {
-    /// IP address of node
-    public string host;
+    /// Common arguments
+    public ClientCLIArgs base;
 
-    /// Port of node
-    public ushort port;
+    /// For convenience
+    public alias base this;
 
     /// Interval of sending transactions
     public Duration interval = 5.seconds;
@@ -55,47 +55,41 @@ private struct GenTxOption
 
     /// dump output option
     public bool dump;
-}
 
-/// Parse the command-line arguments of gentx
-public GetoptResult parseGenTxOption (ref GenTxOption op, string[] args)
-{
-    return getopt(
-        args,
-        "ip|i",
-            "IP address of node",
-            &op.host,
+    /// Parse the command-line arguments of gentx
+    public GetoptResult parse (string[] args)
+    {
+        auto intermediate = this.base.parse(args);
+        if (intermediate.helpWanted)
+            return intermediate;
 
-        "port|p",
-            "Port of node",
-            &op.port,
+        return getopt(
+            args,
+            "interval|t",
+              "Interval of sending transactions (default: 5 seconds)",
+              (string option, string value) { this.interval = value.to!int.seconds; },
 
-        "interval|t",
-            "Interval of sending transactions (default: 5 seconds)",
-            (string option, string value) { op.interval = value.to!int.seconds; },
+            "count|c",
+              "Number of transactions sent at once (default: 8)",
+              &this.count,
 
-        "count|c",
-            "Number of transactions sent at once (default: 8)",
-            &op.count,
-
-        "dump|o",
-            "Dump output option",
-            &op.dump
-            );
+            "dump|o",
+              "Dump output option",
+              &this.dump,
+        );
+    }
 }
 
 /// Print help
 public void printGenTxHelp (ref string[] outputs)
 {
     outputs ~= "usage: agora-client gentx [--dump] [--interval <interval>]";
-    outputs ~= "                          [--count <count>] --ip <host>";
-    outputs ~= "                          --port <port>";
+    outputs ~= "                          [--count <count>] --address <addr>";
     outputs ~= "";
     outputs ~= "   gentx      Generate and send a transaction to node";
     outputs ~= "";
     outputs ~= "        -o --dump       Dump output option";
-    outputs ~= "        -i --ip         IP address of node";
-    outputs ~= "        -p --port       Port of node";
+    outputs ~= "        -i --address    Address of a node (e.g. http://agora.example.com)";
     outputs ~= "        -t --interval   Interval of sending transactions";
     outputs ~= "        -c --count      Number of transactions sent at once";
     outputs ~= "";
@@ -111,25 +105,24 @@ public void printGenTxHelp (ref string[] outputs)
 *******************************************************************************/
 
 public int genTxProcess (string[] args, ref string[] outputs,
-                         API delegate (string address) api_maker)
+                         APIMaker api_maker)
 {
     GenTxOption op;
-    GetoptResult res;
 
     try
     {
-        res = parseGenTxOption(op, args);
+        auto res = op.parse(args);
         if (res.helpWanted)
         {
             printGenTxHelp(outputs);
-            return CLIENT_SUCCESS;
+            return 0;
         }
     }
     catch (Exception ex)
     {
-        writeln("Exception while generating transactions: ", ex);
+        writeln("Error: ", ex.msg);
         printGenTxHelp(outputs);
-        return CLIENT_EXCEPTION;
+        return 1;
     }
 
     if (op.count > 8 || op.count <= 0)
@@ -137,12 +130,11 @@ public int genTxProcess (string[] args, ref string[] outputs,
         printGenTxHelp(outputs);
         outputs ~= format("Cannot send more than 8 transactions. %d requested."
                           , op.count);
-        return CLIENT_INVALID_ARGUMENTS;
+        return 1;
     }
 
     // connect to the node
-    string ip_address = format("http://%s:%s", op.host, op.port);
-    auto node = api_maker(ip_address);
+    auto node = api_maker(op.address);
     auto taskman = new VibeTaskManager;
     auto last_block = node.getBlocksFrom(node.getBlockHeight(), 1)[0];
     auto txs = last_block.spendable().take(op.count)
@@ -155,22 +147,21 @@ public int genTxProcess (string[] args, ref string[] outputs,
     {
         txs.each!(tx => node.postTransaction(tx));
         writefln("%s transactions sent to %s.\nTransactions:",
-            op.count, ip_address);
+            op.count, op.address);
         txs.each!(tx => writeln(prettify(tx)));
         txs = txs.map!(txb => TxBuilder(txb).sign()).array();
     }
 
     if (op.dump)
     {
-        outputs ~= format("IP = %s", op.host);
-        outputs ~= format("Port = %s", op.port);
+        outputs ~= format("Address = %s", op.address);
         outputs ~= format("Interval = %s", op.interval);
         outputs ~= format("Count = %s", op.count);
         outputs ~= format("Transactions =");
         txs.each!(tx => outputs ~= format("%s", prettify(tx)));
         outputs ~= format("Hash =");
         txs.each!(tx => outputs ~= format("%s", hashFull(tx)));
-        return CLIENT_SUCCESS;
+        return 0;
     }
 
     genTxs();
