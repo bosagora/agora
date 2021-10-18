@@ -222,8 +222,8 @@ unittest
         checker);
     assert(reason is null, reason);
     txs.each!(tx => node_1.postTransaction(tx));
+    txs.each!(tx => network.ensureTxInPool(tx.hashFull()));
 
-    Thread.sleep(2.seconds);  // wait for propagation
     network.expectHeight(Height(2));  // no new block yet (1 rejected tx)
 
     node_1.postTransaction(backup_tx);
