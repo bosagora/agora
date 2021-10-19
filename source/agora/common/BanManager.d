@@ -61,7 +61,7 @@ public class BanManager
     private static struct BannedList
     {
         /// Internal implementation relies on AA
-        private Status[Address] data;
+        private Status[string] data;
 
         /// Serialization hook
         public void serialize (scope SerializeDg dg) const @safe
@@ -86,7 +86,7 @@ public class BanManager
             size_t length = deserializeLength(dg, opts.maxLength);
             foreach (idx; 0 .. length)
             {
-                Address key = deserializeFull!Address(dg);
+                string key = deserializeFull!string(dg);
                 Status value = deserializeFull!Status(dg);
                 ret.data[key] = value;
             }
@@ -196,9 +196,9 @@ public class BanManager
                     {
                        auto resolved_address = addr_info.address.toAddrString();
                        if (addr_info.address.addressFamily == AddressFamily.INET6)
-                           resolved_address = InetUtils.expandIPv6(resolved_address);
+                           resolved_address = "[" ~ InetUtils.expandIPv6(resolved_address) ~ "]";
 
-                       this.ban(resolved_address);
+                       this.ban(Address(address.schema ~ resolved_address));
                     }
             }
             catch (Exception e)
@@ -303,9 +303,9 @@ public class BanManager
 
     ***************************************************************************/
 
-    public bool isBanned (Address address) @safe nothrow @nogc
+    public bool isBanned (Address address) @safe nothrow
     {
-        if (auto stats = address in this.ips.data)
+        if (auto stats = address.host in this.ips.data)
             return stats.banned_until > this.getCurTime();
 
         return false;
@@ -324,9 +324,9 @@ public class BanManager
 
     ***************************************************************************/
 
-    public TimePoint getUnbanTime (Address address) @safe nothrow pure @nogc
+    public TimePoint getUnbanTime (Address address) @safe nothrow pure
     {
-        if (auto stats = address in this.ips.data)
+        if (auto stats = address.host in this.ips.data)
             return stats.banned_until;
 
         return 0;
@@ -365,7 +365,7 @@ public class BanManager
     private Status* get (Address address) @trusted nothrow pure
     {
         scope(failure) assert(0);  // it will never throw
-        return &this.ips.data.require(address, Status.init);
+        return &this.ips.data.require(address.host, Status.init);
     }
 }
 
@@ -381,9 +381,9 @@ unittest
         public override void load () { }
     }
 
-    const node1 = "node-1";
-    const node2 = "node-2";
-    const whitelistNode = "whitelist-node";
+    const node1 = Address("agora://node-1");
+    const node2 = Address("agora://node-2");
+    const whitelistNode = Address("agora://whitelist-node");
 
     auto banman = new UnitBanMan();
     banman.whitelist(whitelistNode);

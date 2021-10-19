@@ -124,7 +124,7 @@ public struct Config
     {
         if (this.validator.enabled)
             enforce(this.network.length ||
-                    this.validator.registry_address != "disabled" ||
+                    this.validator.registry_address != string.init ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.limit_test_validators == 1,
                     "Either the network section must not be empty, or 'validator.registry_address' must be set");
@@ -374,7 +374,7 @@ public struct ValidatorConfig
     public @Optional immutable string[] addresses_to_register;
 
     // Registry address
-    public string registry_address;
+    public @Optional string registry_address;
 
     // If the enrollments will be renewed or not at the end of the cycle
     public bool recurring_enrollment = true;
@@ -615,7 +615,6 @@ validator:
         immutable conf_str = `
 validator:
   enabled: true
-  registry_address: disabled
   seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   recurring_enrollment: true
   preimage_reveal_interval:

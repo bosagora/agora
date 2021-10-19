@@ -17,8 +17,16 @@ import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
 public import agora.crypto.Types;
+import agora.serialization.Serializer;
+
+import vibe.inet.url;
 
 import geod24.bitblob;
+
+shared static this () 
+{
+    registerCommonInternetSchema("agora"); // TODO default port: 2826
+}
 
 /// Represents a specific point in time, it should be changed to time_t
 /// after time_t became platform independent
@@ -27,8 +35,39 @@ public alias TimePoint = ulong;
 /// An array of const characters
 public alias cstring = const(char)[];
 
-/// A network address
-public alias Address = string;
+/// A network address, extended version of Vibe.d's URL with serialization
+public struct Address 
+{
+@safe:
+    URL inner;
+
+    public this (URL url) immutable
+    {
+        this.inner = url;
+    }
+
+    public this (string url)
+    {
+        this.inner = URL(url);
+    }
+
+    /// Serialization hook
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(inner.toString(), dg);
+    }
+
+    /// Deserialization hook
+    public static T fromBinary (T) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        return () @trusted {
+            return T(deserializeFull!string(dg));
+        }();
+    }
+
+    public alias inner this;
+}
 
 /// The definition of a Quorum
 public struct QuorumConfig

@@ -230,7 +230,7 @@ public interface FlashAPI
     ***************************************************************************/
 
     public Result!PublicNonce openChannel (/* in */ ChannelConfig chan_conf,
-        /* in */ PublicNonce peer_nonce, /* in */ string funder_address);
+        /* in */ PublicNonce peer_nonce, /* in */ Address funder_address);
 
     /***************************************************************************
 

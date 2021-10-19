@@ -145,7 +145,7 @@ public class NameRegistry: NameRegistryAPI
         TYPE payload_type;
         foreach (idx, const ref addr; payload.data.addresses)
         {
-            const this_type = addr.guessAddressType();
+            const this_type = addr.host.guessAddressType();
             ensure(this_type != TYPE.CNAME || payload.data.addresses.length == 1,
                     "Can only have one domain name (CNAME) for payload, not: {}",
                     payload);
@@ -475,7 +475,7 @@ public class NameRegistry: NameRegistryAPI
         {
             foreach (idx, addr; tp.payload.data.addresses)
             {
-                uint ip4addr = InternetAddress.parse(addr);
+                uint ip4addr = InternetAddress.parse(addr.host);
                 ensure(ip4addr != InternetAddress.ADDR_NONE,
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, tp);
@@ -771,7 +771,7 @@ private struct ZoneData
         const Signature signature = Signature.fromString(results.front["signature"].as!string);
         const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
 
-        const auto addresses = results.map!(r => r["address"].as!Address).array;
+        const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
 
         const RegistryPayload payload =
         {
@@ -1002,7 +1002,7 @@ unittest
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
 
-    auto payload = RegistryPayload(RegistryPayloadData(WK.Keys[0].address, ["address"], 0));
+    auto payload = RegistryPayload(RegistryPayloadData(WK.Keys[0].address, [Address("agora://address")], 0));
     payload.signPayload(WK.Keys[0]);
 
     try

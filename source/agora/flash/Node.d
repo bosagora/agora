@@ -154,7 +154,7 @@ public class FlashNode : FlashControlAPI
     {
         ChannelConfig conf;
         ChannelUpdate update;
-        string peer_addr;
+        Address peer_addr;
     }
 
     /// List of channels which are pending to be opened
@@ -179,7 +179,7 @@ public class FlashNode : FlashControlAPI
     protected const(Block) delegate (ulong _height) @safe getBlock;
 
     ///
-    protected NameRegistryAPI delegate (Address address, Duration timeout) getNameRegistryClient;
+    protected NameRegistryAPI delegate (string address, Duration timeout) getNameRegistryClient;
 
     /***************************************************************************
 
@@ -200,7 +200,7 @@ public class FlashNode : FlashControlAPI
     public this (FlashConfig conf, string db_path, Hash genesis_hash,
         Engine engine, ITaskManager taskman, void delegate (in Transaction tx) postTransaction,
         const(Block) delegate (ulong _height) @safe getBlock,
-        NameRegistryAPI delegate (Address address, Duration timeout) getNameRegistryClient)
+        NameRegistryAPI delegate (string address, Duration timeout) getNameRegistryClient)
     {
         this.conf = conf;
         this.genesis_hash = genesis_hash;
@@ -250,7 +250,7 @@ public class FlashNode : FlashControlAPI
     {
         if (this.conf.listener_address.length != 0)
             this.listener = this.getFlashListenerClient(
-                this.conf.listener_address, this.conf.timeout);
+                Address(this.conf.listener_address), this.conf.timeout);
         else  // avoid null checks & segfaults
             this.listener = new BlackHole!FlashListenerAPI();
 
@@ -282,7 +282,9 @@ public class FlashNode : FlashControlAPI
                 data:
                 {
                     public_key : pair.key,
-                    addresses : this.conf.addresses_to_register,
+                    addresses : this.conf.addresses_to_register.map!(
+                        addr => Address(addr)
+                    ).array,
                     seq : time(null)
                 }
             };
@@ -585,14 +587,14 @@ public class FlashNode : FlashControlAPI
     ***************************************************************************/
 
     protected FlashAPI getFlashClient (in PublicKey peer_pk,
-        Duration timeout, string address = null) @trusted
+        Duration timeout, Address address = Address.init) @trusted
     {
         if (auto peer = peer_pk in this.known_peers)
             return *peer;
 
         log.info("getFlashClient searching peer: {}", peer_pk);
 
-        if (address.length == 0)
+        if (address == Address.init)
         {
             auto payload = this.registry_client.getFlashNode(peer_pk);
             if (payload == RegistryPayload.init)
@@ -624,13 +626,13 @@ public class FlashNode : FlashControlAPI
     }
 
     /// Ditto
-    protected FlashAPI createFlashClient (in string address, in Duration timeout) @trusted
+    protected FlashAPI createFlashClient (in Address address, in Duration timeout) @trusted
     {
         import vibe.http.client;
 
         auto settings = new RestInterfaceSettings;
         // todo: this is obviously wrong, need proper connection handling later
-        settings.baseURL = URL(address);
+        settings.baseURL = address;
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;
@@ -641,7 +643,7 @@ public class FlashNode : FlashControlAPI
     /// See `FlashAPI.openChannel`
     public override Result!PublicNonce openChannel (
         /*in*/ ChannelConfig chan_conf, /*in*/ PublicNonce peer_nonce,
-        /* in */ string funder_address) @trusted
+        /* in */ Address funder_address) @trusted
     {
         log.info("openChannel()");
 
@@ -1205,7 +1207,7 @@ public class FlashNode : FlashControlAPI
     public override Result!Hash openNewChannel (/* in */ UTXO funding_utxo,
         /* in */ Hash funding_utxo_hash, /* in */ Amount capacity,
         /* in */ uint settle_time, /* in */ Point recv_pk,
-        /* in */ bool is_private, /* in */ string peer_address)
+        /* in */ bool is_private, /* in */ Address peer_address)
     {
         log.info("openNewChannel({}, {}, {})",
                  capacity, settle_time, recv_pk.flashPrettify);
@@ -1290,7 +1292,7 @@ public class FlashNode : FlashControlAPI
         PublicNonce pub_nonce = priv_nonce.getPublicNonce();
 
         auto result = peer.openChannel(chan_conf, pub_nonce,
-            this.conf.addresses_to_register[0]);
+            Address(this.conf.addresses_to_register[0]));
         if (result.error != ErrorCode.None)
         {
             log.error("Peer ({}) rejected channel open with error: {}",
@@ -1506,12 +1508,12 @@ public class FlashNode : FlashControlAPI
     ***************************************************************************/
 
     protected FlashListenerAPI getFlashListenerClient (
-        string address, Duration timeout) @trusted
+        Address address, Duration timeout) @trusted
     {
         import vibe.http.client;
 
         auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
+        settings.baseURL = address;
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;

@@ -237,7 +237,8 @@ public class NetworkManager
             const is_validator = key != PublicKey.init;
             if (is_validator)
             {
-                if (address.length && key == this.outer.validator_config.key_pair.address)
+                if (address !is Address.init 
+                    && key == this.outer.validator_config.key_pair.address)
                 {
                     // either we connected to ourself, or someone else is pretending
                     // to be us
@@ -460,7 +461,7 @@ public class NetworkManager
         foreach (ref row; results)
         {
             const address = row.peek!(string)(0);
-            this.addAddress(address);
+            this.addAddress(Address(address));
         }
 
         // add the IP seeds
@@ -818,10 +819,11 @@ public class NetworkManager
     /// Ditto
     private void addAddress (Address address)
     {
+        // TODO normalize
         // Ensure we do not have a trailing slash for address
-        while (address.length && address[$ - 1] == '/')
-            address.length -= 1;
-        if (!address.length) return;
+        auto path = address.path;
+        path.endsWithSlash = false;
+        address.path = path;
 
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
@@ -863,9 +865,13 @@ public class NetworkManager
         if (this.registry_client is null)
             return;
 
-        const(Address)[] addresses = this.validator_config.addresses_to_register;
+        const(Address)[] addresses = this.validator_config.addresses_to_register.map!(
+            addr => Address(addr)
+        ).array;
         if (!addresses.length)
-            addresses = InetUtils.getPublicIPs();
+            addresses = InetUtils.getPublicIPs().map!(
+                ip => Address("agora://"~ip)
+            ).array;
 
         RegistryPayload payload =
         {
@@ -1150,10 +1156,9 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected agora.api.Validator.API getClient (Address address, Duration timeout)
+    protected agora.api.Validator.API getClient (Address url, Duration timeout)
     {
         import std.algorithm.searching;
-        const url = URL.parse(address);
 
         if (url.schema == "tcp")
         {
@@ -1205,13 +1210,13 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
+    public NameRegistryAPI getNameRegistryClient (string address, Duration timeout)
     {
         import vibe.http.client;
-        if (address == "disabled")
+        if (address == string.init)
             return null;
         auto settings = new RestInterfaceSettings();
-        settings.baseURL = URL(address);
+        settings.baseURL = Address(address);
         settings.httpClientSettings = new HTTPClientSettings();
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;
@@ -1324,7 +1329,7 @@ public class NetworkManager
         import vibe.http.client;
 
         auto settings = new RestInterfaceSettings;
-        settings.baseURL = URL(address);
+        settings.baseURL = address;
         settings.httpClientSettings = new HTTPClientSettings;
         settings.httpClientSettings.connectTimeout = this.node_config.timeout;
         settings.httpClientSettings.readTimeout = this.node_config.timeout;
@@ -1411,10 +1416,10 @@ private Set!Address resolveDNSSeeds (in string[] dns_seeds, ref Logger log)
                 continue;
             }
 
-            // if the port is set to zero, assume default Boa port
-            auto ip = addr_info.address.to!string.replace(":0", ":2826");
+            // if the port is set to zero, assume default Boa schema
+            auto ip = "agora://" ~ addr_info.address.to!string;
             log.info("DNS: accepted IP {}", ip);
-            resolved_ips.put(ip);
+            resolved_ips.put(Address(ip));
         }
     }
     catch (Exception ex)

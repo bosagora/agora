@@ -115,7 +115,7 @@ public class Channel
 
     /// Fetch the Flash Client for the peer
     private FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
-        string address = null) getFlashClient;
+        Address address = Address.init) getFlashClient;
 
     /// Retry delay algorithm
     private Backoff backoff;
@@ -210,7 +210,8 @@ public class Channel
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete,
         GetFeeUTXOs getFeeUTXOs,
-        FlashAPI delegate (in PublicKey peer_pk, Duration timeout, string address = null) getFlashClient,
+        FlashAPI delegate (in PublicKey peer_pk, Duration timeout, 
+            Address address = Address.init) getFlashClient,
         ManagedDatabase db)
     {
         this.db = db;
@@ -254,7 +255,8 @@ public class Channel
 
     public static Channel[Hash] loadChannels (FlashConfig flash_conf,
         ManagedDatabase db,
-        FlashAPI delegate (in PublicKey peer_pk, Duration timeout, string address = null) getFlashClient,
+        FlashAPI delegate (in PublicKey peer_pk, Duration timeout, 
+            Address address = Address.init) getFlashClient,
         Engine engine, ITaskManager taskman,
         void delegate (in Transaction) txPublisher, PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
