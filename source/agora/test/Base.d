@@ -532,7 +532,7 @@ public class TestBanManager : BanManager
 public struct NodePair
 {
     ///
-    public Address address;
+    public string address;
 
     ///
     public RemoteAPI!TestAPI client;
@@ -1333,7 +1333,7 @@ public class TestNetworkManager : NetworkManager
     protected final override TestAPI getClient (Address address,
         Duration timeout)
     {
-        auto tid = this.registry.locate!TestAPI(address);
+        auto tid = this.registry.locate!TestAPI(address.host);
         if (tid != typeof(tid).init)
             return new RemoteAPI!TestAPI(tid, timeout);
         assert(0, format("Trying to access node at address '%s' from '%s' without first creating it",
@@ -1341,9 +1341,11 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    public override RemoteAPI!NameRegistryAPI getNameRegistryClient (Address address, Duration timeout)
+    public override RemoteAPI!NameRegistryAPI getNameRegistryClient (string address, Duration timeout)
     {
-        auto tid = this.registry.locate!NameRegistryAPI(address);
+        assert(address != string.init, "Requested address for registry is empty");
+        const url = Address(address);
+        auto tid = this.registry.locate!NameRegistryAPI(url.host);
         if (tid != typeof(tid).init)
             return new RemoteAPI!NameRegistryAPI(tid, timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
@@ -1373,7 +1375,7 @@ public class TestNetworkManager : NetworkManager
         (Address address)
     {
         import std.typecons : BlackHole;
-        auto tid = this.registry.locate!BlockExternalizedHandler(address);
+        auto tid = this.registry.locate!BlockExternalizedHandler(address.toString);
         if (tid != typeof(tid).init)
             return new RemoteAPI!BlockExternalizedHandler(tid, 5.seconds);
 
@@ -2112,7 +2114,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return result;
     }
 
-    InterfaceConfig makeInterfaceConfig (Address address)
+    InterfaceConfig makeInterfaceConfig (string address)
     {
         InterfaceConfig conf =
         {
@@ -2166,8 +2168,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         const ValidatorConfig validator = {
             enabled : true,
             key_pair : key_pair,
-            addresses_to_register : [self_address],
-            registry_address : "name.registry",
+            addresses_to_register : [self_address.toString],
+            registry_address : "http://name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
             name_registration_interval : 10.seconds,
             preimage_reveal_interval : 1.seconds,  // check revealing frequently
@@ -2181,10 +2183,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : makeNodeConfig(),
-            interfaces: [ makeInterfaceConfig(self_address) ],
+            interfaces: [ makeInterfaceConfig(self_address.host) ],
             consensus: makeConsensusConfig(),
             validator : validator,
-            network : makeNetworkConfig(idx, addresses),
+            network : cast(immutable) makeNetworkConfig(idx, addresses).map!(addr => addr.toString).array,
             logging: test_conf.logging,
             event_handlers : test_conf.event_handlers,
         };
@@ -2199,9 +2201,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         {
             banman : ban_conf,
             node : makeNodeConfig(),
-            interfaces: [ makeInterfaceConfig(self_address) ],
+            interfaces: [ makeInterfaceConfig(self_address.host) ],
             consensus: makeConsensusConfig(),
-            network : makeNetworkConfig(idx, addresses),
+            network : cast(immutable) makeNetworkConfig(idx, addresses).map!(addr => addr.toString).array,
             logging: test_conf.logging,
             event_handlers : test_conf.event_handlers,
         };
@@ -2209,14 +2211,14 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         return conf;
     }
 
-    string validatorAddress (size_t idx, KeyPair key)
+    Address validatorAddress (size_t idx, KeyPair key)
     {
-        return format("Validator-%s.%s.localrest", idx, key.address);
+        return Address(format("http://Validator-%s.%s.localrest", idx, key.address));
     }
 
-    string fullNodeAddress (size_t idx)
+    Address fullNodeAddress (size_t idx)
     {
-        return format("FullNode-%s.localrest", idx);
+        return Address(format("http://FullNode-%s.localrest", idx));
     }
 
     auto outsider_validators_keys = WK.Keys.byRange()
@@ -2234,7 +2236,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     auto full_node_addresses = test_conf.full_nodes.iota.map!(
-        idx => fullNodeAddress(idx)).array ~ ["name.registry"];
+        idx => fullNodeAddress(idx)).array ~ [Address("http://name.registry")];
 
     // full nodes and enrolled validators will connect to other enrolled validators
     // and other full nodes (but not to outsider nodes)
@@ -2271,7 +2273,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
       node : makeNodeConfig(),
       interfaces: [ makeInterfaceConfig("name.registry") ],
       consensus: makeConsensusConfig(),
-      network : net.nodes.map!(pair => pair.address).array.dup,
+      network : net.nodes.map!(pair => "http://"~pair.address).array.idup,
       logging: test_conf.logging,
       event_handlers : test_conf.event_handlers,
       registry: { enabled: true, },

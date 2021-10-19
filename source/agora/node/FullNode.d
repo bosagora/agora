@@ -386,26 +386,34 @@ public class FullNode : API
             // Make `BlockExternalizedHandler`s from config
             config.event_handlers.filter!(h => h.type == HandlerType.BlockExternalized)
                 .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.block_handlers[address] = this.network.getBlockExternalizedHandler(address)));
+                    .each!((string address) {
+                        auto url = Address(address); // TODO normalize
+                        this.block_handlers[url] = this.network.getBlockExternalizedHandler(url);
+                    }));
 
             // Make `BlockHeaderUpdatedHandler`s from config
             config.event_handlers.filter!(h => h.type == HandlerType.BlockHeaderUpdated)
                 .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.block_header_handlers[address] = this.network.getBlockHeaderUpdatedHandler(address)));
+                    .each!((string address) {
+                        auto url = Address(address); // TODO normalize
+                        this.block_header_handlers[url] = this.network.getBlockHeaderUpdatedHandler(url);   
+                    }));
 
             // Make `PreImageReceivedHandler`s from config
             config.event_handlers.filter!(h => h.type == HandlerType.PreimageReceived)
                 .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.preimage_handlers[address] = this.network.getPreImageReceivedHandler(address)));
+                    .each!((string address) {
+                        auto url = Address(address); // TODO normalize
+                        this.preimage_handlers[url] = this.network.getPreImageReceivedHandler(url);
+                    }));
 
             // Make `TransactionReceivedHandler`s from config
             config.event_handlers.filter!(h => h.type == HandlerType.TransactionReceived)
                 .each!(handler => handler.addresses
-                    .each!((string address) =>
-                        this.transaction_handlers[address] = this.network.getTransactionReceivedHandler(address)));
+                    .each!((string address) {
+                        auto url = Address(address); // TODO normalize
+                        this.transaction_handlers[url] = this.network.getTransactionReceivedHandler(url);
+                    }));
         }
 
         if (config.node.stats_listening_port != 0)

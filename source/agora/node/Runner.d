@@ -18,6 +18,7 @@ import agora.api.Validator;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.Task : Periodic;
+import agora.common.Types : Address;
 import agora.flash.api.FlashAPI;
 import agora.flash.Node;
 import agora.network.RPC;
@@ -139,7 +140,10 @@ public Listeners runNode (Config config)
     }
 
     bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
-        return result.node.getBanManager().isBanned(address.toAddressString());
+        try
+            return result.node.getBanManager().isBanned(Address("agora://" ~ address.toAddressString()));
+        catch (Exception e)
+            assert(false, e.msg);
     };
 
     setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous

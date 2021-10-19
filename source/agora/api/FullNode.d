@@ -42,7 +42,7 @@ public struct NodeInfo
     public NetworkState state;
 
     /// Partial or full view of the addresses of the node's quorum (based on is_complete)
-    public Set!string addresses;
+    public Set!Address addresses;
 }
 
 /// Identity of a Validator node

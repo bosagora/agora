@@ -14,6 +14,7 @@
 module unit.BanManager;
 
 import agora.common.BanManager;
+import agora.common.Types : Address;
 import agora.network.Clock;
 import agora.utils.Test;
 
@@ -37,7 +38,7 @@ private void main ()
     auto banman = new BanManager(conf, new Clock(null, null), buildPath(path, "banned.dat"));
     banman.load();  // should not throw
 
-    const IP = "127.0.0.1";
+    const IP = Address("http://127.0.0.1");
     10.iota.each!(_ => banman.onFailedRequest(IP));
     banman.isBanned(IP);
     assert(banman.isBanned(IP));

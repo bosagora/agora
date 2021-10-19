@@ -13,6 +13,7 @@
 
 module agora.utils.InetUtils;
 
+import agora.common.Types;
 import agora.utils.Log;
 
 import vibe.inet.url : URL;
@@ -25,7 +26,6 @@ import std.conv;
 import std.range : zip, iota;
 import std.regex : matchFirst, regex;
 import std.string : indexOf, strip;
-import std.socket;
 import std.typecons : tuple, Tuple;
 
 import core.stdc.string;
@@ -208,73 +208,50 @@ struct InetUtils
 
     ****************************************************************************/
 
-    public static HostPortTup extractHostAndPort (string url) @safe
+    public static HostPortTup extractHostAndPort (Address url) @safe
     {
-        url = url.strip();
-        // detect wether url has valid schema and append 'http' if not
-        auto idx = url.indexOf(':');
-        if (idx < 1 || (url.length && !url[0].isAlpha()))
-            url = "http://" ~ url;
-
-        // parse url
-        URL parsed_url;
-        try
-        {
-            parsed_url = URL.parse(url);
-        }
-        catch(Exception e)
-        {
-            return HostPortTup.init;
-        }
-
         HostType host_type = HostType.Domain;
-        if (parsed_url.host.canFind(':'))
+        if (url.host.canFind(':'))
             host_type = HostType.IPv6;
-        else if (parsed_url.host.all!(c => c.isDigit() || c == '.'))
+        else if (url.host.all!(c => c.isDigit() || c == '.'))
             host_type = HostType.IPv4;
 
-        return HostPortTup(parsed_url.host, parsed_url.port, host_type, parsed_url.schema);
+        return HostPortTup(url.host, url.port, host_type, url.schema);
     }
 
     unittest
     {
         // IPv6 tests
-        assert(extractHostAndPort("https://[1:2:3:4:5:6]:12345/blabla/blabla/")
+        assert(extractHostAndPort(Address("https://[1:2:3:4:5:6]:12345/blabla/blabla/"))
                 == HostPortTup("1:2:3:4:5:6", 12345, HostType.IPv6, "https"));
 
-        assert(extractHostAndPort("https://[1:2:3:4:5:6]/blabla")
+        assert(extractHostAndPort(Address("https://[1:2:3:4:5:6]/blabla"))
             == HostPortTup("1:2:3:4:5:6", 443, HostType.IPv6, "https"));
 
-        assert(extractHostAndPort("https://[3::1]/blabla")
+        assert(extractHostAndPort(Address("https://[3::1]/blabla"))
             == HostPortTup("3::1", 443, HostType.IPv6, "https"));
 
-        assert(extractHostAndPort("https://[::1]/blabla")
+        assert(extractHostAndPort(Address("https://[::1]/blabla"))
             == HostPortTup("::1", 443, HostType.IPv6, "https"));
 
-        assert(extractHostAndPort("http://[::]:1234")
+        assert(extractHostAndPort(Address("http://[::]:1234"))
             == HostPortTup("::", 1234, HostType.IPv6, "http"));
 
-        assert(extractHostAndPort("[::]")
-            == HostPortTup("::", 80, HostType.IPv6, "http"));
-
         // IPv4 tests
-        assert(extractHostAndPort("https://1.2.3.4:12345/blabla/blabla")
+        assert(extractHostAndPort(Address("https://1.2.3.4:12345/blabla/blabla"))
                 == HostPortTup("1.2.3.4", 12345, HostType.IPv4, "https"));
 
-        assert(extractHostAndPort("https://1.2.3.4/blabla")
+        assert(extractHostAndPort(Address("https://1.2.3.4/blabla"))
             == HostPortTup("1.2.3.4", 443, HostType.IPv4, "https"));
 
-        assert(extractHostAndPort("http://1.2.3.4")
-            == HostPortTup("1.2.3.4", 80, HostType.IPv4, "http"));
-
-        assert(extractHostAndPort("1.2.3.4")
+        assert(extractHostAndPort(Address("http://1.2.3.4"))
             == HostPortTup("1.2.3.4", 80, HostType.IPv4, "http"));
 
         // Domain tests
-        assert(extractHostAndPort("http://node-0:1826/blabla/blabla/")
+        assert(extractHostAndPort(Address("http://node-0:1826/blabla/blabla/"))
             == HostPortTup("node-0", 1826, HostType.Domain, "http"));
 
-        assert(extractHostAndPort("seed.bosagora.io/blabla")
+        assert(extractHostAndPort(Address("http://seed.bosagora.io/blabla"))
             == HostPortTup("seed.bosagora.io", 80, HostType.Domain, "http"));
     }
 
