@@ -1923,8 +1923,8 @@ unittest
 
     // an even older update can not be externalized anymore
     update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 1);
-    network.postAndEnsureTxInPool(update_tx);
-    assertThrown!Exception(network.expectTxExternalization(update_tx));
+    network.clients[0].postTransaction(update_tx);
+    assert(!network.clients[0].hasTransactionHash(update_tx.hashFull()));
 
     // allow normal node operation again
     alice.setPublishEnable(true);

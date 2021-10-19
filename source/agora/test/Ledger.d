@@ -188,12 +188,12 @@ unittest
     auto node_1 = nodes[0];
 
     auto txs = network.blocks[0].spendable.map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.postTransaction(tx));
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
 
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_1.postTransaction(tx));
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
     txs = txs.map!(tx => TxBuilder(tx).sign()).array();
@@ -203,7 +203,7 @@ unittest
 
     // create a double-spend tx
     txs[0].inputs[0] = txs[1].inputs[0];
-    txs[0].outputs[0].value = Amount(100);
+    txs[0].outputs[0].value = txs[1].outputs[0].value - Amount(1);
     auto signature = WK.Keys.Genesis.sign(txs[0].getChallenge());
     txs[0].inputs[0].unlock = genKeyUnlock(signature);
 
@@ -222,11 +222,10 @@ unittest
         checker);
     assert(reason is null, reason);
     txs.each!(tx => node_1.postTransaction(tx));
-    txs.each!(tx => network.ensureTxInPool(tx.hashFull()));
 
     network.expectHeight(Height(2));  // no new block yet (1 rejected tx)
 
-    node_1.postTransaction(backup_tx);
+    network.postAndEnsureTxInPool(backup_tx);
     network.expectHeightAndPreImg(Height(3), network.blocks[0].header);  // new block finally created
 }
 
