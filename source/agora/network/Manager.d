@@ -466,13 +466,14 @@ public class NetworkManager
     {
         this.connection_tasks.remove(node.client.address);
 
-        if (this.peerLimitReached())
-            return;
-
         auto existing_peer = this.peers[].find!(p => p.address == node.address);
         if (!existing_peer.empty())
             existing_peer.front().utxo = node.utxo;
-        else
+
+        if (this.peerLimitReached())
+            return;
+
+        if (existing_peer.empty())
         {
             this.peers.insertBack(node);
             this.discovery_task.add(node.client);
