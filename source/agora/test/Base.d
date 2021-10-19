@@ -1285,7 +1285,7 @@ public class TestAPIManager
     /// Ensure that a transaction has been put in the tx pools of the client indices
     public void ensureTxInPool (Idxs) (Idxs clients_idxs, in Hash hash)
     {
-        retryFor(clients_idxs.each!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
+        retryFor(clients_idxs.all!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
     }
 
     /// Ditto
