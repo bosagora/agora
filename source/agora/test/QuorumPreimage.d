@@ -91,14 +91,8 @@ unittest
                     idx, node.getQuorumConfig(), quorums_1[idx])));
     }
 
-    const keys = network.nodes.map!(node => node.getPublicKey().key)
-        .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
-        .array;
-
-    // prepare frozen outputs for outsider validators to enroll
-    genesisSpendable().dropExactly(1).takeExactly(1)
-        .map!(txb => txb.split(keys).sign(OutputType.Freeze))
-        .each!(tx => network.clients[0].postTransaction(tx));
+    // prepare frozen outputs for the outsider validator to enroll
+    network.postAndEnsureTxInPool(network.freezeUTXO(only(GenesisValidators, GenesisValidators + 1)));
 
     // block 19
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
@@ -123,28 +117,28 @@ unittest
 
     enum quorums_2 = [
         // 0
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
 
         // 1
-        QuorumConfig(6, [0, 1, 2, 3, 5, 6, 7]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 2
-        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
 
         // 3
         QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 4
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 5
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
 
         // 6
-        QuorumConfig(6, [0, 1, 2, 3, 4, 6, 7]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 7
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
     ];
 
     static assert(quorums_1 != quorums_2);
@@ -172,28 +166,28 @@ unittest
     // which use a different preimage
     enum quorums_3 = [
         // 0
-        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
-
-        // 1
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
-
-        // 2
-        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
-
-        // 3
         QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
 
-        // 4
+        // 1
         QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
+        // 2
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+
+        // 3
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+
+        // 4
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+
         // 5
-        QuorumConfig(6, [0, 1, 2, 3, 5, 6, 7]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 6
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
 
         // 7
-        QuorumConfig(6, [0, 1, 2, 3, 4, 6, 7]),
+        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
     ];
 
     static assert(quorums_2 != quorums_3);

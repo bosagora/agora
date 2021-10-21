@@ -35,17 +35,8 @@ void manyValidators (size_t validators)
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = network.nodes.map!(node => node.getPublicKey().key)
-        .dropExactly(GenesisValidators).takeExactly(conf.outsider_validators)
-        .array;
-
-    if (keys.length > 0)
-    {
-        // prepare frozen outputs for outsider validators to enroll
-        genesisSpendable().dropExactly(1).takeExactly(1)
-            .map!(txb => txb.split(keys).sign(OutputType.Freeze))
-            .each!(tx => network.clients[0].postTransaction(tx));
-    }
+    // prepare frozen outputs for the outsider validator to enroll
+    network.postAndEnsureTxInPool(network.freezeUTXO(iota(GenesisValidators, GenesisValidators + conf.outsider_validators)));
 
     // block 19
     network.generateBlocks(Height(GenesisValidatorCycle - 1));
