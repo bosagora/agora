@@ -357,24 +357,18 @@ public class Ledger
         if (this.pool.hasTransactionHash(tx_hash))
             return "Transaction already in the pool";
 
-        Amount fee_rate;
-        auto checkAndSave = (in Transaction tx, Amount tx_fee)
-        {
-            fee_rate = tx_fee;
-            fee_rate.div(tx.sizeInBytes());
-
-            return this.fee_man.check(tx, tx_fee);
-        };
-
         if (auto reason = tx.isInvalidReason(this.engine,
                 this.utxo_set.getUTXOFinder(),
-                expected_height, checkAndSave))
+                expected_height, &this.fee_man.check))
             return reason;
 
         auto min_fee = this.pool.getAverageFeeRate();
         if (!min_fee.percentage(min_fee_pct))
             assert(0);
 
+        Amount fee_rate;
+        if (auto err = this.fee_man.getTxFeeRate(tx, this.utxo_set.getUTXOFinder(), fee_rate))
+            return err;
         if (fee_rate < min_fee)
             return "Fee rate is lower than this node's configured relative threshold (min_fee_pct)";
         if (!this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))

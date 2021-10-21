@@ -194,11 +194,21 @@ public class FeeManager
     /// Parameters for consensus-critical constants
     public immutable(ConsensusParams) params;
 
-    /// Block fees at each height
-    private Amount[Height] block_fees;
+    /// Holds amounts of various fee types in a block
+    static struct BlockFees
+    {
+        /// Total of all fees
+        public Amount tx_fee;
 
-    /// Block data fees at each height
-    private Amount[Height] block_data_fees;
+        /// Data fees only
+        public Amount data_fee;
+
+        /// Freeze fees only
+        public Amount freeze_fee;
+    }
+
+    /// Block fees at each height
+    private BlockFees[Height] block_fees;
 
     /// Ctor
     public this (ManagedDatabase db, immutable(ConsensusParams) params)
@@ -212,18 +222,18 @@ public class FeeManager
     private void initialize ()
     {
         this.db.execute("CREATE TABLE IF NOT EXISTS block_fees " ~
-            "(height INTEGER, fee INTEGER, data_fee INTEGER, " ~
-            "CHECK (height >= 0 AND fee >= 0 AND data_fee >=0))");
+            "(height INTEGER, fee INTEGER, data_fee INTEGER, freeze_fee INTEGER, " ~
+            "CHECK (height >= 0 AND fee >= 0 AND data_fee >=0 AND freeze_fee >=0))");
 
-        auto results = this.db.execute("SELECT height, fee, data_fee FROM block_fees");
+        auto results = this.db.execute("SELECT height, fee, data_fee, freeze_fee FROM block_fees");
 
         foreach (ref row; results)
         {
             const height = Height(row.peek!(ulong)(0));
             const fee = Amount(row.peek!(ulong)(1));
             const data_fee = Amount(row.peek!(ulong)(2));
-            this.block_fees[height] = fee;
-            this.block_data_fees[height] = data_fee;
+            const freeze_fee = Amount(row.peek!(ulong)(3));
+            this.block_fees[height] = BlockFees(fee, data_fee, freeze_fee);
         }
     }
 
@@ -250,6 +260,11 @@ public class FeeManager
         Amount minimumFee = params.MinFee;
         if (!minimumFee.mul(tx.sizeInBytes()))
             return "Fee: Transaction size overflows fee cap";
+
+        auto freeze_fee = this.getFreezeFee(tx);
+        if (!freeze_fee.isValid() || !minimumFee.add(freeze_fee))
+            return "The sum of minimum fee and freezing fee is more than maximum Amount allowed";
+
         if (tx_fee < minimumFee)
             return "Transaction: Fee rate is less than minimum";
 
@@ -280,6 +295,14 @@ public class FeeManager
         return calculateDataFee(data_size, this.params.TxPayloadFeeFactor);
     }
 
+    /// Calculates the fee of freeze outputs
+    public Amount getFreezeFee (in Transaction tx) pure nothrow @safe @nogc
+    {
+        Amount freeze_fee = this.params.SlashPenaltyAmount;
+        freeze_fee.mul(tx.outputs.count!(output => output.type == OutputType.Freeze));
+        return freeze_fee;
+    }
+
     /***************************************************************************
 
         Calculate the `Amount` of fees and rewards that should be paid to each
@@ -302,9 +325,9 @@ public class FeeManager
     {
         import std.numeric : gcd;
 
-        // tx_fees = (tot_fee - tot_data_fee) * (ValidatorTXFeeCut / 100)
-        Amount tx_fees = this.block_fees.get(height, 0.coins);
-        tx_fees -= this.block_data_fees.get(height, 0.coins);
+        // tx_fees = (tot_fee - tot_data_fee - freeze_fee) * (ValidatorTXFeeCut / 100)
+        auto fees = this.block_fees.get(height, BlockFees.init);
+        Amount tx_fees = fees.tx_fee - fees.data_fee - fees.freeze_fee;
         tx_fees.percentage(this.params.ValidatorTXFeeCut);
 
         // Add the block rewards to the Validator payouts
@@ -365,8 +388,12 @@ public class FeeManager
             assert(0, "getCommonsBudgetPayout: Failed to add rewards for Commons Budget");
 
         // Add the total fees (inputs - outputs)
-        if (!total_payout.add(this.block_fees.get(height, 0.coins)))
+        if (!total_payout.add(this.getBlockFees(height)))
             assert(0, "getCommonsBudgetPayout: Failed to add total fees");
+
+        // Subtract the freeze fees
+        if (!total_payout.sub(this.getBlockFreezeFees(height)))
+            assert(0, "getCommonsBudgetPayout: Failed to subtract freeze fees");
 
         // Subtract each validator payout
         validator_payouts.each!((Amount payout)
@@ -396,15 +423,11 @@ public class FeeManager
         if (block.header.height == 0) // No fees for Genesis Block
             return;
 
-        Amount txs_fees;
-        Amount txs_data_fees;
-        this.getTXSetFees(block.txs, peekUTXO, txs_fees, txs_data_fees);
-
-        this.block_fees[block.header.height] = txs_fees;
-        this.block_data_fees[block.header.height] = txs_data_fees;
+        auto fees = this.getTXSetFees(block.txs, peekUTXO);
+        this.block_fees[block.header.height] = fees;
         this.db.execute(
-                "REPLACE INTO block_fees (height, fee, data_fee) VALUES (?, ?, ?)",
-                block.header.height, txs_fees, txs_data_fees);
+                "REPLACE INTO block_fees (height, fee, data_fee, freeze_fee) VALUES (?, ?, ?, ?)",
+                block.header.height, fees.tx_fee, fees.data_fee, fees.freeze_fee);
     }
 
     /***************************************************************************
@@ -427,7 +450,7 @@ public class FeeManager
 
     public Amount getBlockFees (in Height height) @safe
     {
-        return this.block_fees.get(height, 0.coins);
+        return this.block_fees.get(height, BlockFees.init).tx_fee;
     }
 
     /***************************************************************************
@@ -445,7 +468,25 @@ public class FeeManager
 
     public Amount getBlockDataFees (in Height height) @safe
     {
-        return this.block_data_fees.get(height, 0.coins);
+        return this.block_fees.get(height, BlockFees.init).data_fee;
+    }
+
+    /***************************************************************************
+
+        Returns the `Amount` of freeze fees included in the transaction set of a
+        block
+
+        Params:
+            height = height of block
+
+        Return:
+            `Amount` of freeze fees required at given height
+
+    ***************************************************************************/
+
+    public Amount getBlockFreezeFees (in Height height) @safe
+    {
+        return this.block_fees.get(height, BlockFees.init).freeze_fee;
     }
 
     /***************************************************************************
@@ -469,7 +510,6 @@ public class FeeManager
                 .map!(h => Height(h)).each!((Height h)
                     {
                         this.block_fees.remove(h);
-                        this.block_data_fees.remove(h);
                     }
                 );
         }
@@ -501,8 +541,12 @@ public class FeeManager
         out Amount rate) nothrow @safe
     {
         try
+        {
             // At this point, we get a fee, not a rate, but we divide it below.
-            rate = tx.getFee(peekUTXO);
+            auto freeze_fee = this.getFreezeFee(tx);
+            ensure(freeze_fee.isValid(), "Can't calculate freeze fee");
+            rate = tx.getFee(peekUTXO) - freeze_fee;
+        }
         catch (Exception exc)
             return "Exception happened while calling `getTxFeeRate`";
 
@@ -524,14 +568,16 @@ public class FeeManager
 
     ***************************************************************************/
 
-    private void getTXSetFees (in Transaction[] tx_set,
-        scope UTXOFinder peekUTXO, ref Amount tot_fee, ref Amount tot_data_fee) @safe
+    private BlockFees getTXSetFees (in Transaction[] tx_set, scope UTXOFinder peekUTXO) @safe
     {
+        BlockFees fees;
         foreach (const ref tx; tx_set)
         {
-            tot_fee += tx.getFee(peekUTXO);
-            tot_data_fee += this.getDataFee(tx.payload.length);
+            fees.tx_fee += tx.getFee(peekUTXO);
+            fees.data_fee += this.getDataFee(tx.payload.length);
+            fees.freeze_fee += this.getFreezeFee(tx);
         }
+        return fees;
     }
 
     /// For unittest
@@ -573,7 +619,8 @@ public class FeeManager
 
         // Create block with some fees
         Transaction gen_tx = Transaction(
-            [ Output(Amount(20_000_000L), WK.Keys.NODE2.address) ]);
+            [ Output(Amount(20_000_000L), WK.Keys.NODE2.address),
+              Output(Amount.MinFreezeAmount + 10_000.coins, WK.Keys.NODE2.address) ]);
         utxoset.put(gen_tx);
 
         Transaction spend_tx = Transaction(
@@ -615,9 +662,14 @@ public class FeeManager
             data_paylod);
         assert(utxoset.peekUTXO(txs_with_data.inputs[0].utxo, utxo));
 
+        Transaction freeze_tx = Transaction(
+            [ Input(gen_tx.hashFull(), 1)],
+            [ Output(Amount.MinFreezeAmount, WK.Keys.NODE2.address, OutputType.Freeze) ]);
+        assert(utxoset.peekUTXO(freeze_tx.inputs[0].utxo, utxo));
+
         Block block_with_data;
         block_with_data.header.height = Height(2);
-        block_with_data.txs ~= txs_with_data;
+        block_with_data.txs ~= [txs_with_data, freeze_tx];
 
         // store the fees from this block
         man.storeBlockFees(block_with_data, &utxoset.peekUTXO);
@@ -642,8 +694,8 @@ public class FeeManager
         foreach (fee; w_data_fees)
             tot_fee -= fee;
 
-        // None wasted, none created
-        assert(tot_fee == Amount(0));
+        // None wasted, none created (Freeze fee is withheld)
+        assert(tot_fee == 10_000.coins);
     }
 }
 
@@ -734,4 +786,20 @@ unittest
         [ Input(spend_tx.hashFull(), 0)],
         [ Output(Amount(1_000_000L), WK.Keys.NODE3.address) ]);
     assertThrown(getFee(tx, &utxo_set.peekUTXO));
+}
+
+unittest
+{
+    import agora.consensus.state.UTXOCache;
+    import agora.crypto.Hash;
+    import agora.utils.Test;
+    import std.exception;
+
+    auto fee_man = new FeeManager();
+
+    Transaction freeze_tx = Transaction(
+        [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze) ]);
+
+    assert(fee_man.check(freeze_tx, 1_000.coins) !is null);
+    assert(fee_man.check(freeze_tx, 11_000.coins) is null);
 }

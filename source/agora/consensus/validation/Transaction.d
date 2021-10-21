@@ -381,7 +381,8 @@ unittest
     {
         storage.clear;
         // Create the previous transaction with type `OutputType.Payment`
-        Transaction previousTx = Transaction([ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
+        Transaction previousTx = Transaction([ Output(Amount.MinFreezeAmount +
+        10_000.coins, key_pairs[0].address) ]);
         previousHash = hashFull(previousTx);
         foreach (idx, output; previousTx.outputs)
         {
@@ -478,12 +479,39 @@ unittest
         // Creates the freezing transaction.
         secondTx = Transaction(
             [Input(previousHash, 0)],
-            [Output(Amount(500_000_000_000L), key_pairs[1].address, OutputType.Freeze)]
+            [Output(Amount(500_000_000_000L) - 10_000.coins, key_pairs[1].address, OutputType.Freeze)]
         );
         secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
 
         // Second Transaction is valid.
         assert(secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+    }
+
+    // When the freeze TX does not include enough freezing fees
+    {
+        storage.clear;
+        // Create the previous transaction with type `OutputType.Payment`
+        Transaction previousTx = Transaction([ Output((Amount.MinFreezeAmount + 9_999.coins) * 2, key_pairs[0].address) ]);
+        previousHash = hashFull(previousTx);
+        foreach (idx, output; previousTx.outputs)
+        {
+            const Hash utxo_hash = hashMulti(previousHash, idx);
+            const UTXO utxo_value = {
+                unlock_height: 0,
+                output: output
+            };
+            storage[utxo_hash] = utxo_value;
+        }
+
+        // Creates the freezing transaction.
+        secondTx = Transaction(
+            [Input(previousHash, 0)],
+            [Output(Amount.MinFreezeAmount, key_pairs[1].address, OutputType.Freeze),
+            Output(Amount.MinFreezeAmount, key_pairs[1].address, OutputType.Freeze)]
+        );
+        secondTx.inputs[0].unlock = signUnlock(key_pairs[0], secondTx);
+        // Second Transaction is invalid.
+        assert(!secondTx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
     }
 }
 
@@ -528,7 +556,7 @@ unittest
     {
         height = 0;
         Transaction previousTx = Transaction(
-            [ Output(Amount.MinFreezeAmount, key_pairs[0].address) ]);
+            [ Output(Amount.MinFreezeAmount + 10_000.coins, key_pairs[0].address) ]);
 
         // Save to UTXOSet
         previousHash = hashFull(previousTx);

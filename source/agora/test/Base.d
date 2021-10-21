@@ -1128,7 +1128,7 @@ public class TestAPIManager
         const keys = client_idxs.map!(i => this.nodes[i].getPublicKey().key).array;
 
         // Collect enough utxo for all to enroll
-        Amount expected = Amount.MinFreezeAmount;
+        Amount expected = Amount.MinFreezeAmount + 10_000.coins;
         assert(expected.mul(keys.length));
         auto utxo_pairs = first_client.getSpendables(expected, OutputType.Payment);
 

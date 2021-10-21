@@ -335,7 +335,8 @@ public struct TxBuilder
     ***************************************************************************/
 
     public Transaction sign (
-        in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0) @safe nothrow
+        in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0,
+        Amount freeze_fee = 10_000.coins) @safe nothrow
     {
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
@@ -353,6 +354,11 @@ public struct TxBuilder
             o.type = outputs_type;
 
         auto total_fees = this.minFees();
+        auto freeze_outputs = this.data.outputs.count!(o => o.type == OutputType.Freeze);
+        if (outputs_type == OutputType.Freeze && this.data.outputs.length == 0) // Single freeze output must be frozen
+            freeze_outputs++;
+        freeze_fee.mul(freeze_outputs);
+        assert(total_fees.add(freeze_fee));
         assert(this.leftover.value >= total_fees);
         if (this.leftover.value.sub(total_fees) && this.leftover.value > this.MinRefundAmount)
         {
@@ -762,7 +768,7 @@ unittest
 {
     const result = TxBuilder(GenesisBlock.payments.front)
         .draw(Amount.UnitPerCoin * 50_000, WK.Keys.byRange.map!(k => k.address).take(3))
-        .sign(OutputType.Freeze);
+        .sign(OutputType.Freeze, 0, 10_000.coins);
 
     // This transaction has 4 outputs (3 freeze + 1 refund)
     assert(result.inputs.length == 8);
@@ -773,7 +779,7 @@ unittest
         Output(Amount(50_000_0000_000L), WK.Keys.A.address, OutputType.Freeze),
         Output(Amount(50_000_0000_000L), WK.Keys.C.address, OutputType.Freeze),
         Output(Amount(50_000_0000_000L), WK.Keys.D.address, OutputType.Freeze),
-        Output(Amount(487_849_999_9129_200L), WK.Keys.Genesis.address),
+        Output(Amount(487_849_999_9129_200L) - 30_000.coins, WK.Keys.Genesis.address),
     ].sort.array);
 }
 
@@ -785,13 +791,13 @@ unittest
     const result = TxBuilder(GenesisBlock.payments.front)
         .feeRate(fee_rate)
         .draw(freezeAmount, WK.Keys.byRange.map!(k => k.address).takeExactly(1))
-        .sign(OutputType.Freeze);
+        .sign(OutputType.Freeze, 0, 10_000.coins);
 
     // This transaction has 2 outputs (1 freeze + 1 refund)
     assert(result.inputs.length == 8);
     assert(result.outputs.length == 2);
 
-    auto fees = fee_rate * result.sizeInBytes;
+    auto fees = (fee_rate * result.sizeInBytes) + 10_000.coins;
     assert(result.outputs.count!(o => o.value == freezeAmount && o.type == OutputType.Freeze) == 1);
     auto refund = sumOfGenesisFirstTxOutputs() - freezeAmount - fees;
     assert(result.outputs.count!(o => o.value == refund && o.type == OutputType.Payment) == 1);
