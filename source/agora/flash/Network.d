@@ -276,7 +276,7 @@ unittest
     import std.range;
     import std.algorithm;
 
-    auto ln = new Network((Hash chan_id, Point from) {
+    auto ln = new Network((Hash chan_id, Point) {
         return ChannelUpdate(chan_id, PaymentDirection.TowardsPeer, Amount(1), Amount(0));
     });
     Point[] pks;

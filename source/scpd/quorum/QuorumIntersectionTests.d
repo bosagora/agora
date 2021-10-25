@@ -334,7 +334,7 @@ unittest
     // its search to nothing before bothering to look in detail at a single
     // min-quorum. This is a bit weird but, I think, correct.
     auto orgs = generateOrgs(4);
-    auto qm = interconnectOrgs(orgs, (size_t i, size_t j) { return true; });
+    auto qm = interconnectOrgs(orgs, (size_t, size_t) { return true; });
     auto qic = QuorumIntersectionChecker.create(qm);
     assert(qic.networkEnjoysQuorumIntersection());
 }
@@ -693,7 +693,7 @@ unittest
 unittest
 {
     auto orgs = generateOrgs(6, [3]);
-    auto qm = interconnectOrgs(orgs, (size_t i, size_t j) { return true; });
+    auto qm = interconnectOrgs(orgs, (size_t, size_t) { return true; });
     auto qic = QuorumIntersectionChecker.create(qm);
     assert(qic.networkEnjoysQuorumIntersection());
 }
@@ -705,7 +705,7 @@ unittest
     // Same as above but with 3-or-5-own-node orgs, so more possible nodes,
     // bigger search space for performance testing.
     auto orgs = generateOrgs(6);
-    auto qm = interconnectOrgs(orgs, (size_t i, size_t j) { return true; });
+    auto qm = interconnectOrgs(orgs, (size_t, size_t) { return true; });
     auto qic = QuorumIntersectionChecker.create(qm);
     assert(qic.networkEnjoysQuorumIntersection());
 }

@@ -624,7 +624,7 @@ private void verifyQuorumsSanity (in QuorumConfig[NodeID] quorums)
 
 version (unittest):
 version (Windows)
-private void verifyQuorumsIntersect (QuorumConfig[NodeID] quorums)
+private void verifyQuorumsIntersect (QuorumConfig[NodeID])
 {
     // @bug@: Need to fix linking issues with QuorumIntersectionChecker.create()
 }

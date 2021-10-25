@@ -251,7 +251,7 @@ public class FullNode : API
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
         this.taskman = this.makeTaskManager();
-        this.clock = this.makeClock(this.taskman);
+        this.clock = this.makeClock();
         this.network = this.makeNetworkManager(this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
         this.utxo_set = this.makeUTXOSet();
@@ -739,17 +739,15 @@ public class FullNode : API
     /***************************************************************************
 
         Returns an instance of a Clock
-        May be overriden in unittests to allow test-adjusted clock times.
 
-        Params:
-            taskman = a TaskManager instance
+        May be overriden in unittests to allow test-adjusted clock times.
 
         Returns:
             an instance of a Clock
 
     ***************************************************************************/
 
-    protected Clock makeClock (ITaskManager taskman)
+    protected Clock makeClock ()
     {
         // non-synchronizing clock (for now)
         return new Clock(

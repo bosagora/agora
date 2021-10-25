@@ -137,7 +137,7 @@ nothrow:
     }
 
     // `toStrKey` returns StrKey encoded string representation
-    std_string toStrKey(ref const(NodeID) pk, bool fullKey = true) const
+    std_string toStrKey(ref const(NodeID) pk, bool = true) const
     {
         try
         {

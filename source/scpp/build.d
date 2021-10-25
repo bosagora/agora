@@ -127,7 +127,7 @@ struct FileInfo
     SysTime lastModified;
 }
 
-int main(string[] args)
+int main ()
 {
     // Make sure we're in the right directory
     if (!std.file.exists(BuildPath) || !std.file.isDir(BuildPath))

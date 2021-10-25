@@ -214,7 +214,7 @@ unittest
     // even if it's double spending
     const genesis_block = node_1.getBlocksFrom(0, 1)[0];
     auto reason = txs[0].isInvalidReason(new Engine(16_384, 512),
-        (in Hash utxo, out UTXO value)
+        (in Hash, out UTXO value)
         {
             value = UTXO(0, txs[0].outputs[0]);
             return true;

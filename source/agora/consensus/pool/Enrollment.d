@@ -364,8 +364,7 @@ unittest
     Enrollment[] enrollments;
     Height avail_height;
 
-    bool findEnrollment (in Hash enroll_key,
-                            out EnrollmentState state) @trusted nothrow
+    bool findEnrollment (in Hash, out EnrollmentState) @trusted nothrow
     {
         return false;
     }
