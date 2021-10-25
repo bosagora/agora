@@ -100,7 +100,7 @@ public interface TestFlashAPI : FlashControlAPI
     public Transaction getLastSettleTx (in PublicKey pk, in Hash chan_id);
 
     /// Print out the contents of the log
-    public abstract void printLog ();
+    public void printLog ();
 
     /// Shut down any timers (forwards to ThinFlashNode.shutdown)
     public void shutdownNode ();

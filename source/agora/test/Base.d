@@ -1435,7 +1435,7 @@ public interface TestAPI : API
 
     ***************************************************************************/
 
-    public abstract void start ();
+    public void start ();
 
     /***************************************************************************
 
@@ -1449,7 +1449,7 @@ public interface TestAPI : API
 
     ***************************************************************************/
 
-    public abstract void printLog ();
+    public void printLog ();
 
     /***************************************************************************
 
@@ -1460,7 +1460,7 @@ public interface TestAPI : API
 
     ***************************************************************************/
 
-    public abstract void clearLog ();
+    public void clearLog ();
 
     /***************************************************************************
 
@@ -1478,7 +1478,7 @@ public interface TestAPI : API
 
     ***************************************************************************/
 
-    public abstract Enrollment setRecurringEnrollment (bool doIt);
+    public Enrollment setRecurringEnrollment (bool doIt);
 
     ///
     public QuorumConfig getQuorumConfig ();
