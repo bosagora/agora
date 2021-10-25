@@ -381,50 +381,54 @@ unittest
         public override void load () { }
     }
 
+    const node1 = "node-1";
+    const node2 = "node-2";
+    const whitelistNode = "whitelist-node";
+
     auto banman = new UnitBanMan();
-    banman.whitelist("whitelist-node");
+    banman.whitelist(whitelistNode);
     foreach (idx; 0 .. 9)
     {
-        banman.onFailedRequest("node-1");
-        banman.onFailedRequest("whitelist-node");
-        assert(banman.get("node-1").fail_count == idx + 1);
-        assert(!banman.isBanned("node-1"));
+        banman.onFailedRequest(node1);
+        banman.onFailedRequest(whitelistNode);
+        assert(banman.get(node1).fail_count == idx + 1);
+        assert(!banman.isBanned(node1));
     }
 
-    assert(banman.getUnbanTime("node-1") == 0);  // not banned yet
+    assert(banman.getUnbanTime(node1) == 0);  // not banned yet
 
-    banman.onFailedRequest("node-1");
-    assert(banman.get("node-1").fail_count == 0);  // reset counter on ban
-    assert(banman.isBanned("node-1"));
-    assert(banman.getUnbanTime("node-1") == 86400);  // banned until "next day"
+    banman.onFailedRequest(node1);
+    assert(banman.get(node1).fail_count == 0);  // reset counter on ban
+    assert(banman.isBanned(node1));
+    assert(banman.getUnbanTime(node1) == 86400);  // banned until "next day"
 
-    banman.onFailedRequest("whitelist-node");
-    assert(!banman.isBanned("whitelist-node"));
+    banman.onFailedRequest(whitelistNode);
+    assert(!banman.isBanned(whitelistNode));
 
     // stop counting failed requests during the ban
-    banman.onFailedRequest("node-1");
-    assert(banman.get("node-1").fail_count == 0);
+    banman.onFailedRequest(node1);
+    assert(banman.get(node1).fail_count == 0);
 
     banman.time = 86401;  // "next day"
-    assert(!banman.isBanned("node-1"));
+    assert(!banman.isBanned(node1));
 
     // banUntil
-    banman.banUntil("node-1", 86500);
+    banman.banUntil(node1, 86500);
     banman.time = 86499;
-    assert(banman.isBanned("node-1"));
+    assert(banman.isBanned(node1));
     banman.time = 86500;
-    assert(!banman.isBanned("node-1"));
+    assert(!banman.isBanned(node1));
 
     // banFor
-    banman.banFor("node-1", 10.seconds);
+    banman.banFor(node1, 10.seconds);
     banman.time = 86509;
-    assert(banman.isBanned("node-1"));
+    assert(banman.isBanned(node1));
     banman.time++;
-    assert(!banman.isBanned("node-1"));
+    assert(!banman.isBanned(node1));
 
     banman.time = 0;
-    banman.ban("node-2");  // use default ban time
-    assert(banman.getUnbanTime("node-2") == 86400);
+    banman.ban(node2);  // use default ban time
+    assert(banman.getUnbanTime(node2) == 86400);
 
     // Serialization tests
     testSymmetry(banman.ips);
