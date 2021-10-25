@@ -417,7 +417,7 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public void storeBlockFees (in Block block, scope UTXOFinder peekUTXO)
+    public void storeValidatedBlockFees (in Block block, scope UTXOFinder peekUTXO)
     @trusted
     {
         if (block.header.height == 0) // No fees for Genesis Block
@@ -635,7 +635,7 @@ public class FeeManager
         block.txs ~= spend_tx;
 
         // store the fees from this block
-        man.storeBlockFees(block, &utxoset.peekUTXO);
+        man.storeValidatedBlockFees(block, &utxoset.peekUTXO);
 
         // When stakes are equal they should receive the same amount
         BlockRewards rewards = BlockRewards(10_000.coins, 50_000.coins);
@@ -672,7 +672,7 @@ public class FeeManager
         block_with_data.txs ~= [txs_with_data, freeze_tx];
 
         // store the fees from this block
-        man.storeBlockFees(block_with_data, &utxoset.peekUTXO);
+        man.storeValidatedBlockFees(block_with_data, &utxoset.peekUTXO);
 
         // Initialize tot_fee as fees (which includes the data fees)
         Amount tot_fee = man.getBlockFees(Height(2));
@@ -769,7 +769,7 @@ unittest
     block.txs ~= spend_tx;
 
     block.header.height = Height(1);
-    fee_man.storeBlockFees(block , &utxo_set.peekUTXO);
+    fee_man.storeValidatedBlockFees(block , &utxo_set.peekUTXO);
 
     immutable Params = new immutable(ConsensusParams);
     auto fee_man_2 = new FeeManager(fee_man.db, Params);
