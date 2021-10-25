@@ -56,15 +56,15 @@ private void writecode (ref string[] outputs)
 
     static foreach (name; VTableCheckClasses)
     {
-        outputs ~= writeMethod_getVMOffset_each!(name)(name);
-        outputs ~= writeMethod_checkVMOffset_each!(name)(name);
+        outputs ~= writeMethod_getVMOffset_each!(name)();
+        outputs ~= writeMethod_checkVMOffset_each!(name)();
     }
 
-    outputs ~= writeMethod_checkVMOffset!(VTableCheckClasses)(VTableCheckClasses);
+    outputs ~= writeMethod_checkVMOffset!(VTableCheckClasses)();
 }
 
 /// Writes a method getVMOffset******** of a class
-private string[] writeMethod_getVMOffset_each (string CTName)(string RTName)
+private string[] writeMethod_getVMOffset_each (string CTName)()
 {
     string[] outputs;
     mixin(
@@ -98,7 +98,7 @@ public:
 }
 
 /// Writes a method checkVMOffset******** of a class
-private string[] writeMethod_checkVMOffset_each (string CTName)(string RTName)
+private string[] writeMethod_checkVMOffset_each (string CTName)()
 {
     string[] outputs;
     outputs ~= format(
@@ -142,7 +142,7 @@ int checkVMOffset%s (const char* offsets)
 }
 
 /// Writes a method checkVMOffset
-private string[] writeMethod_checkVMOffset (immutable(string[]) CTName)(immutable(string[]) RTName)
+private string[] writeMethod_checkVMOffset (immutable(string[]) CTName)()
 {
     string[] outputs;
 
@@ -249,7 +249,7 @@ long getVMOffsetTestA (const char* name)
     return -1;
 }
 `;
-    static assert (expected == join(writeMethod_getVMOffset_each!("TestA")("TestA"), "\n"));
+    static assert (expected == join(writeMethod_getVMOffset_each!("TestA")(), "\n"));
 }
 
 // Test whether the output of `writeMethod_checkVMOffset_each` is equal to the expected value.
@@ -292,7 +292,7 @@ int checkVMOffsetTestA (const char* offsets)
     return 0;
 }
 `;
-    static assert (expected == join(writeMethod_checkVMOffset_each!("TestA")("TestA"), "\n"));
+    static assert (expected == join(writeMethod_checkVMOffset_each!("TestA")(), "\n"));
 }
 
 // Test whether the output of `writeMethod_checkVMOffset` is equal to the expected value.
@@ -316,5 +316,5 @@ static unittest
 
     return -1;
 }`;
-    static assert (expected == join(writeMethod_checkVMOffset!(CheckClasses)(CheckClasses), "\n"));
+    static assert (expected == join(writeMethod_checkVMOffset!(CheckClasses)(), "\n"));
 }
