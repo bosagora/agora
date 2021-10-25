@@ -552,7 +552,7 @@ version (unittest)
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment,
-        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
+        ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
         Duration block_time_tolerance = 100.seconds) nothrow @safe
     {
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
@@ -567,13 +567,13 @@ version (unittest)
         (in Block block, Engine engine, Height prev_height, Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment,
-        ulong enrollment_cycle = 0, ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
+        ulong prev_time_offset = 0, ulong curr_time_offset = ulong.max,
         Duration block_time_tolerance = 100.seconds,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, engine, prev_height, prev_hash, findUTXO,
             enrolled_validators, checkFee, findEnrollment,
-            enrollment_cycle, prev_time_offset, curr_time_offset,
+            prev_time_offset, curr_time_offset,
             block_time_tolerance);
 
         bool success = mustBeValid ? (reason is null) : (reason !is null);
@@ -582,10 +582,9 @@ version (unittest)
             try {
                 writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block.prettify);
                 writefln("prev: %s (%s), enrolled: %s, " ~
-                         "cycle: %s, prev_time_offset: %s, curr_time_offset: %s, tolerance: %s",
+                         "prev_time_offset: %s, curr_time_offset: %s, tolerance: %s",
                          prev_height, prev_hash, enrolled_validators,
-                         enrollment_cycle, prev_time_offset,
-                         curr_time_offset, block_time_tolerance);
+                         prev_time_offset, curr_time_offset, block_time_tolerance);
                 writefln("Called from: %s:%s", file, line);
             } catch (Exception e) { /* Shouldn't happen */ }
             assert(0, mustBeValid ?
