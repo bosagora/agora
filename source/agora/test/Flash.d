@@ -489,12 +489,12 @@ private class FlashListener : TestFlashListenerAPI
         this.agora_node = new RemoteAPI!TestAPI(tid, 5.seconds);
     }
 
-    public void onPaymentSuccess (PublicKey pk, Invoice invoice)
+    public void onPaymentSuccess (PublicKey, Invoice invoice)
     {
         this.invoices[invoice] = ErrorCode.None;
     }
 
-    public void onPaymentFailure (PublicKey pk, Invoice invoice, ErrorCode error)
+    public void onPaymentFailure (PublicKey, Invoice invoice, ErrorCode error)
     {
         this.invoices[invoice] = error;
     }
@@ -538,7 +538,7 @@ private class FlashListener : TestFlashListenerAPI
     }
 
     public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
-        ErrorCode error, Height height = Height(0))
+        ErrorCode error, Height = Height(0))
     {
         if (chan_id !in this.channel_state)
             this.channel_state[chan_id] = typeof(this.channel_state[chan_id]).init;

@@ -67,7 +67,7 @@ private struct GenTxOption
             args,
             "interval|t",
               "Interval of sending transactions (default: 5 seconds)",
-              (string option, string value) { this.interval = value.to!int.seconds; },
+              (string options, string value) { this.interval = value.to!int.seconds; },
 
             "count|c",
               "Number of transactions sent at once (default: 8)",

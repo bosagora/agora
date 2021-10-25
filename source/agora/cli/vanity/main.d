@@ -75,7 +75,7 @@ immutable string[] SpecialNames = [
 __gshared Scalar[KeyCountTarget + SpecialNames.length] result;
 __gshared bool[KeyCountTarget + SpecialNames.length] foundMap;
 
-void main (string[] args)
+void main ()
 {
     shared size_t found;
 

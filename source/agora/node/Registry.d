@@ -498,7 +498,7 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    public void onAcceptedBlock (in Block block, bool validators_changed)
+    public void onAcceptedBlock (in Block, bool)
         @safe
     {
         UTXO utxo;

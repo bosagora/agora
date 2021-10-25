@@ -1802,7 +1802,7 @@ public class TestFullNode : FullNode, TestAPI
     }
 
     /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock makeClock (ITaskManager taskman)
+    protected override TestClock makeClock ()
     {
         return new TestClock(this.taskman,
             (out long time_offset) { return true; }, this.cur_time);
@@ -1890,7 +1890,7 @@ public class TestValidatorNode : Validator, TestAPI
     }
 
     /// Provides a unittest-adjusted clock source for the node
-    protected override TestClock makeClock (ITaskManager taskman)
+    protected override TestClock makeClock ()
     {
         return new TestClock(this.taskman,
             (out long time_offset)

@@ -59,7 +59,7 @@ public class StatsServer
 
     ///
     private void handle_metrics (
-        scope HTTPServerRequest req, scope HTTPServerResponse res)
+        scope HTTPServerRequest, scope HTTPServerResponse res)
     {
         res.writeBody(cast(const(ubyte[])) Utils.getCollectorRegistry().collect(),
                       "text/plain");

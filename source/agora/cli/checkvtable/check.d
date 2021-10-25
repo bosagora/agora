@@ -30,7 +30,7 @@ version (unittest) { } else:
 extern(C++) int checkVMOffset (const char* classname, const char* offsets);
 
 /// This is agora-checkvtable sub-function for checking virtual method offset
-private int main (string[] args)
+private int main ()
 {
     /// Associated array to store offset of members
     long[string] offsets;

@@ -255,7 +255,7 @@ public struct TxBuilder
     }
 
     /// Sign with a given key and append ubytes if given
-    public static Unlock signWithSpecificKey (KeyPair key, ubyte[] append = null) (in Transaction tx, in OutputRef out_ref)
+    public static Unlock signWithSpecificKey (KeyPair key, ubyte[] append = null) (in Transaction tx, in OutputRef)
         @safe nothrow
     {
         auto pair = SigPair(key.sign(tx.getChallenge()), SigHash.All);

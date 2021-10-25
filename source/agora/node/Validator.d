@@ -508,7 +508,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override Clock makeClock (ITaskManager taskman)
+    protected override Clock makeClock ()
     {
         return new Clock((out long time_offset)
             {

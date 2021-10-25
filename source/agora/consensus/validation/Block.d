@@ -310,7 +310,7 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
         return false;
     }
 
-    bool findEnrollment (in Hash enroll_key, out EnrollmentState state) @trusted nothrow
+    bool findEnrollment (in Hash, out EnrollmentState) @trusted nothrow
     {
         return false;
     }

@@ -424,7 +424,7 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    private static size_t defaultSelector (Transaction[] txs)
+    private static size_t defaultSelector (Transaction[])
     {
         return 0;
     }
