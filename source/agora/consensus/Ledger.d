@@ -405,7 +405,7 @@ public class Ledger
 
         // Store the fees for this block if not Genesis
          if (block.header.height > 0)
-            this.fee_man.storeBlockFees(block, this.utxo_set.getUTXOFinder);
+            this.fee_man.storeValidatedBlockFees(block, this.utxo_set.getUTXOFinder);
 
         ManagedDatabase.beginBatch();
         {
