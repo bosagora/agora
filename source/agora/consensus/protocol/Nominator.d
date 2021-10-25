@@ -202,7 +202,7 @@ extern(D):
         this.enroll_man.getEnrolledUTXOs(Height(1), utxo_keys);
         const this_utxo = this.enroll_man.getEnrollmentKey();
         NodeID node_id = utxo_keys.countUntil(this_utxo);
-        this.updateSCPObject(Height(0), node_id);
+        this.updateSCPObject(node_id);
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
@@ -235,12 +235,11 @@ extern(D):
         existing SCP object, this just change the node id for the SCP object.
 
         Params:
-            height = block height for creating SCP
             node_id = the node id of this validator
 
     ***************************************************************************/
 
-    public void updateSCPObject (in Height height, in NodeID node_id)
+    public void updateSCPObject (in NodeID node_id)
         nothrow @safe
     {
         import scpd.types.Stellar_types;
