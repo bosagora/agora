@@ -82,7 +82,8 @@ public auto prettify (T) (const auto ref T input) nothrow
     {
         struct Formatted
         {
-            public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+            public void toString (scope void delegate (scope const char[]) @safe sink)
+                const @safe nothrow
             {
                 import std.traits;
                 try
@@ -143,7 +144,8 @@ private struct AmountFmt
 {
     private Amount value;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const @safe nothrow
     {
         try
         {
@@ -183,7 +185,8 @@ private struct HashFmt
 {
     private const(Hash) value;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const @safe nothrow
     {
         try
         {
@@ -224,7 +227,8 @@ private struct PubKeyFmt
 {
     private const(PublicKey) value;
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const @safe nothrow
     {
         try
         {
@@ -270,7 +274,8 @@ private struct InputFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const @safe nothrow
     {
         try
         {
@@ -304,7 +309,8 @@ private struct OutputFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) @safe nothrow
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const @safe nothrow
     {
         try
         {
@@ -335,7 +341,7 @@ private struct TransactionFmt
     }
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @safe nothrow
+        const @safe nothrow
     {
         try
         {
@@ -390,8 +396,8 @@ private struct BlockHeaderFmt
         this.value = r;
     }
 
-    public void toString (scope void delegate (scope const char[]) @safe sink) nothrow
-        @safe
+    public void toString (scope void delegate (scope const char[]) @safe sink)
+        const @safe nothrow
     {
         try
         {
@@ -437,7 +443,7 @@ private struct BlockFmt
     }
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @safe nothrow
+        const @safe nothrow
     {
         try
         {
@@ -489,7 +495,7 @@ private struct RangeFmt (R)
     }
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @safe nothrow
+        const @safe nothrow
     {
         try
         {
@@ -572,7 +578,7 @@ private struct EnrollmentFmt
     private const(Enrollment) enroll;
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @safe nothrow
+        const @safe nothrow
     {
         try
         {
@@ -618,7 +624,7 @@ private struct ConsensusDataFmt
     private const(ConsensusData) data;
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @safe nothrow
+        const @safe nothrow
     {
         try
         {
@@ -678,7 +684,7 @@ private struct QuorumConfigFmt
     private const(QuorumConfig) data;
 
     public void toString (scope void delegate (scope const char[]) @safe sink)
-        @safe nothrow
+        const @safe nothrow
     {
         try
         {
