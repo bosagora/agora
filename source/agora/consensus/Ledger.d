@@ -1070,12 +1070,22 @@ public class Ledger
         const height = this.getBlockHeight() + 1;
         const validators = this.getValidators(height);
 
-        Hash[] preimages = validators.map!(
-            (in ValidatorInfo validator)
+        Hash[] preimages = validators.enumerate.map!(
+            (in entry)
             {
-                if (validator.preimage.height < height)
+                if (missing_validators.canFind(entry.index))
                     return Hash.init;
-                return validator.preimage[height];
+
+                if (entry.value.preimage.height < height)
+                {
+                    ensure(false,
+                           "buildBlock: Missing pre-image ({} < {}) for index {} ('{}') " ~
+                           "but index is not in missing_validators ({})",
+                           entry.value.preimage.height, height,
+                           entry.index, entry.value.utxo, missing_validators);
+                }
+
+                return entry.value.preimage[height];
             }).array;
 
         return this.last_block.makeNewBlock(
