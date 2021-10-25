@@ -286,7 +286,7 @@ public struct Result (T)
     }
 
     /// Convenience
-    public string toString ()
+    public string toString () const @safe
     {
         if (this.error == ErrorCode.None)
             return format("%s", this.value);
