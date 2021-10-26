@@ -67,20 +67,21 @@ public struct Set (T)
     {
         import std.format : formattedWrite;
 
-        formattedWrite(sink, "[%(%s, %)]", this._set.byKeyValue().filter!(
+        formattedWrite(sink, `[%-("%s", %)"]`, this._set.byKeyValue().filter!(
             kv => kv.value).map!(kv => kv.key));
     }
 
     /// Support for Vibe.d deserialization
     public static SetT fromString (SetT = Set) (string str) @safe
     {
+        import std.conv : to;
         alias SerPolicy = DefaultPolicy;
 
         auto array = str.deserializeWithPolicy!(
-            JsonStringSerializer!string, SerPolicy, T[]);
+            JsonStringSerializer!string, SerPolicy, string[]);
         SetT set_t;
         foreach (ref item; array)
-            set_t.put(item);
+            set_t.put(item.to!T);
         
         return set_t;
     }
@@ -268,7 +269,7 @@ unittest
 {    
     auto old_set = Set!uint.from([1, 3, 5, 7, 9]);
     auto str = old_set.toString();
-    assert(str == "[7, 5, 3, 1, 9]");
+    assert(str == `["7", "5", "3", "1", "9"]`);
     auto new_set = Set!uint.fromString(str);
     
     assert(new_set.length == old_set.length);
@@ -280,7 +281,7 @@ unittest
 {
     auto old_set = Set!string.from(["hello", "world"]);
     auto str = old_set.toString();
-    assert(str == "[\"world\", \"hello\"]");
+    assert(str == `["world", "hello"]`);
     auto new_set = Set!string.fromString(str);
 
     assert(new_set.length == old_set.length);
