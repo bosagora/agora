@@ -41,6 +41,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Clock;
 import agora.network.Client;
+import agora.network.DNSResolver;
 import agora.network.RPC;
 import agora.node.Config;
 import agora.node.Registry : NameRegistry;
@@ -455,6 +456,7 @@ public class NetworkManager
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
         this.cacheDB = cache;
+        this.resolver = new DNSResolver();
         this.banman = this.getBanManager(config.banman, clock, cache);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;

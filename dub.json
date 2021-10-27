@@ -136,6 +136,14 @@
             ]
         },
         {
+            "name": "dns-resolver",
+            "targetName": "dns-resolver",
+            "versions": [ "AgoraStandaloneDNSResolver" ],
+            "excludedSourceFiles": [
+                "source/agora/utils/gc/*"
+            ]
+        },
+        {
             "name": "vanity",
             "targetName": "agora-vanity-generator",
             "mainSourceFile": "source/agora/cli/vanity/main.d",
