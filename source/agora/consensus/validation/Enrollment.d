@@ -57,16 +57,18 @@ version (unittest)
 
 public string isInvalidReason (in Enrollment enrollment,
     scope UTXOFinder findUTXO, in Height height,
-    scope EnrollmentFinder findEnrollment) nothrow @safe
+    scope EnrollmentFinder findEnrollment,
+    scope GetPenaltyDeposit getPenaltyDeposit) nothrow @safe
 {
     Amount stake; // The stake is not always needed by the caller, hence this overload
-    return isInvalidReason(enrollment, findUTXO, height, findEnrollment, stake);
+    return isInvalidReason(enrollment, findUTXO, height, findEnrollment, getPenaltyDeposit, stake);
 }
 
 /// Ditto
 public string isInvalidReason (in Enrollment enrollment,
     scope UTXOFinder findUTXO, in Height height,
-    scope EnrollmentFinder findEnrollment, out Amount stake) nothrow @safe
+    scope EnrollmentFinder findEnrollment,
+    scope GetPenaltyDeposit getPenaltyDeposit, out Amount stake) nothrow @safe
 {
     UTXO utxo_set_value;
     if (!findUTXO(enrollment.utxo_key, utxo_set_value))
@@ -93,6 +95,9 @@ public string isInvalidReason (in Enrollment enrollment,
         return Message;
     }
 
+    if (getPenaltyDeposit(enrollment.utxo_key) == 0.coins)
+        return "Enrollment: UTXO does not have penalty deposit";
+
     EnrollmentState enroll_state;
     if (findEnrollment(enrollment.utxo_key, enroll_state))
     {
@@ -117,9 +122,11 @@ public string isInvalidReason (in Enrollment enrollment,
 version (unittest)
 public bool isValid (in Enrollment enrollment,
     scope UTXOFinder findUTXO, in Height height,
-    scope EnrollmentFinder findEnrollment) nothrow @safe
+    scope EnrollmentFinder findEnrollment,
+    scope GetPenaltyDeposit getPenaltyDeposit) nothrow @safe
 {
-    return isInvalidReason(enrollment, findUTXO, height, findEnrollment) is null;
+    return isInvalidReason(enrollment, findUTXO, height,
+        findEnrollment, getPenaltyDeposit) is null;
 }
 
 ///
@@ -130,6 +137,8 @@ unittest
     import agora.consensus.state.UTXOSet;
 
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
+
+    Amount delegate(Hash utxo) @safe nothrow getPenaltyDeposit = (utxo) { return 10_000.coins; };
 
     auto params = new immutable(ConsensusParams)();
     auto stateDB = new ManagedDatabase(":memory:");
@@ -194,13 +203,17 @@ unittest
     enroll4.enroll_sig = sign(node_key_pair_invalid, signature_noise, enroll4);
 
     assert(!enroll1.isValid(utxoFinder, Height(0),
-                                    &validator_set.findRecentEnrollment));
+                                    &validator_set.findRecentEnrollment,
+                                    getPenaltyDeposit));
     assert(!enroll2.isValid(utxoFinder, Height(0),
-                                    &validator_set.findRecentEnrollment));
+                                    &validator_set.findRecentEnrollment,
+                                    getPenaltyDeposit));
     assert(!enroll3.isValid(utxoFinder, Height(0),
-                                    &validator_set.findRecentEnrollment));
+                                    &validator_set.findRecentEnrollment,
+                                    getPenaltyDeposit));
     assert(!enroll4.isValid(utxoFinder, Height(0),
-                                    &validator_set.findRecentEnrollment));
+                                    &validator_set.findRecentEnrollment,
+                                    getPenaltyDeposit));
 
     utxo_set.updateUTXOCache(tx1, Height(0), params.CommonsBudgetAddress);
     utxo_set.updateUTXOCache(tx2, Height(0), params.CommonsBudgetAddress);
@@ -209,23 +222,27 @@ unittest
 
     // Nomal
     assert(enroll1.isValid(utxoFinder, Height(0),
-                                        &validator_set.findRecentEnrollment));
+                                        &validator_set.findRecentEnrollment,
+                                        getPenaltyDeposit));
 
     // Unspent frozen UTXO not found for the validator.
     assert(!enroll1.isValid( utxoFinder, Height(0),
-                                        &validator_set.findRecentEnrollment));
+                                        &validator_set.findRecentEnrollment,
+                                        getPenaltyDeposit));
 
     // UTXO is not frozen.
     assert(canFind(enroll2.isInvalidReason(utxoFinder,
-        Height(0), &validator_set.findRecentEnrollment), "UTXO is not frozen"));
+        Height(0), &validator_set.findRecentEnrollment, getPenaltyDeposit), "UTXO is not frozen"));
 
     // The frozen amount must be equal to or greater than 40,000 BOA.
     assert(!enroll3.isValid(utxoFinder, Height(0),
-                                        &validator_set.findRecentEnrollment));
+                                        &validator_set.findRecentEnrollment,
+                                        getPenaltyDeposit));
 
     // Enrollment signature verification has an error.
     assert(!enroll4.isValid(utxoFinder, Height(0),
-                                        &validator_set.findRecentEnrollment));
+                                        &validator_set.findRecentEnrollment,
+                                        getPenaltyDeposit));
 
     const utxoPeek = &utxo_set.peekUTXO;
     auto cycle = PreImageCycle(key_pairs[0].secret, params.ValidatorCycle);
@@ -234,7 +251,7 @@ unittest
     enroll1.commitment = cycle[Height(0)];
     enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
 
-    assert(validator_set.add(Height(0), utxoPeek, enroll1,
+    assert(validator_set.add(Height(0), utxoPeek, getPenaltyDeposit, enroll1,
                                                 key_pairs[0].address) is null);
 
     assert(validator_set.countActive(Height(params.ValidatorCycle + 1)) == 0);
@@ -245,13 +262,13 @@ unittest
         enroll1.commitment = cycle[Height(params.ValidatorCycle + offset)];
         enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
         assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),
-                            utxoPeek, enroll1, key_pairs[0].address) is null));
+                            utxoPeek, getPenaltyDeposit, enroll1, key_pairs[0].address) is null));
     }
     assert(validator_set.countActive(Height(params.ValidatorCycle + 1)) == 1);
 
     Enrollment invalid;
     assert(isInvalidReason(invalid,
         (in Hash, out UTXO utxo) { utxo.output.type = OutputType.Freeze; return true; },
-        Height(0), null)
+        Height(0), null, null)
         == "Enrollment: Address is not a valid point on Curve25519");
 }

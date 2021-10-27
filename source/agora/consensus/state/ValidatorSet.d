@@ -118,6 +118,7 @@ public class ValidatorSet
     ***************************************************************************/
 
     public string add (in Height height, scope UTXOFinder finder,
+        scope GetPenaltyDeposit getPenaltyDeposit,
         in Enrollment enroll, in PublicKey pubkey) @safe nothrow
     {
         import agora.consensus.validation.Enrollment : isInvalidReason;
@@ -125,7 +126,7 @@ public class ValidatorSet
         Amount stake;
         // check validaty of the enrollment data and fetch stake `Amount`
         if (auto reason = isInvalidReason(enroll, finder, height,
-            &this.findRecentEnrollment, stake))
+            &this.findRecentEnrollment, getPenaltyDeposit, stake))
             return reason;
 
         // check if already exists
@@ -630,6 +631,11 @@ unittest
 
     const FirstEnrollHeight = Height(1);
     scope storage = new TestUTXOSet;
+    auto getPenaltyDeposit = (Hash utxo)
+    {
+        UTXO val;
+        return storage.peekUTXO(utxo, val) ? 10_000.coins : 0.coins;
+    };
     scope set = new ValidatorSet(new ManagedDatabase(":memory:"),
         new immutable(ConsensusParams)());
 
@@ -647,24 +653,24 @@ unittest
     getCycleSeed(WK.Keys[0], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     auto enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight,
         cycle_seed, cycle_seed_height);
-    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[0].address) is null);
     assert(set.countActive(FirstEnrollHeight) == 0);
     assert(set.countActive(FirstEnrollHeight + 1) == 1);    // Will be active next block
     ExpiringValidator[] ex_validators;
     assert(set.hasEnrollment(FirstEnrollHeight, utxos[0]));
-    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) == "Already enrolled at this height");
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[0].address) == "Already enrolled at this height");
 
     getCycleSeed(WK.Keys[1], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     auto enroll2 = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight,
         cycle_seed, cycle_seed_height);
-    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll2, WK.Keys[1].address) is null);
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll2, WK.Keys[1].address) is null);
     assert(set.countActive(FirstEnrollHeight + 1) == 2);
 
     const SecondEnrollHeight = Height(9);
     getCycleSeed(WK.Keys[2], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     auto enroll3 = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight,
         cycle_seed, cycle_seed_height);
-    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll3, WK.Keys[2].address) is null);
+    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll3, WK.Keys[2].address) is null);
     assert(set.countActive(SecondEnrollHeight + 1) == 3);
 
     // check if enrolled heights are not set
@@ -693,7 +699,8 @@ unittest
     // Reverse ordering
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (i, ordered_enroll; ordered_enrollments)
-        assert(set.add(FirstEnrollHeight, storage.getUTXOFinder(), ordered_enroll, WK.Keys[i].address) is null);
+        assert(set.add(FirstEnrollHeight, storage.getUTXOFinder(),
+            getPenaltyDeposit, ordered_enroll, WK.Keys[i].address) is null);
     set.getEnrolledUTXOs(FirstEnrollHeight + 1, keys);
     assert(keys.length == 3);
     assert(keys.isStrictlyMonotonic!("a < b"));
@@ -714,7 +721,7 @@ unittest
     getCycleSeed(WK.Keys[3], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight,
         cycle_seed, cycle_seed_height);
-    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[3].address) is null);
+    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[3].address) is null);
     keys.length = 0;
     assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle + 8), keys));
     assert(keys.length == 1);
@@ -729,7 +736,7 @@ unittest
     getCycleSeed(WK.Keys[0], set.params.ValidatorCycle, cycle_seed, cycle_seed_height);
     enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight,
         cycle_seed, cycle_seed_height);
-    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, enroll, WK.Keys[0].address) is null);
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[0].address) is null);
 
     // still active at height 1008
     keys.length = 0;

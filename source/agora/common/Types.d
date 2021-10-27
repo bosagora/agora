@@ -13,6 +13,7 @@
 
 module agora.common.Types;
 
+import agora.common.Amount;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
@@ -179,3 +180,6 @@ unittest
     auto blob = sig.toBlob();
     assert(sig == blob.toSignature());
 }
+
+/// Delegate type to query the penalty deposit of a utxo
+public alias GetPenaltyDeposit = Amount delegate (Hash utxo) @safe nothrow;

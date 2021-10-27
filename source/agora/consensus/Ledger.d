@@ -121,7 +121,7 @@ public class Ledger
             storage = the block storage
             enroll_man = the enrollmentManager
             pool = the transaction pool
-            stateDB = The state database
+            fee_man = the FeeManager
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
@@ -130,7 +130,7 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        ManagedDatabase stateDB,
+        FeeManager fee_man,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
         this.log = Logger(__MODULE__);
@@ -141,7 +141,7 @@ public class Ledger
         this.enroll_man = enroll_man;
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
-        this.fee_man = new FeeManager(stateDB, params);
+        this.fee_man = fee_man;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
 
@@ -540,7 +540,7 @@ public class Ledger
                 assert(0);
 
             if (auto r = this.enroll_man.addValidator(enrollment, utxo.output.address,
-                block.header.height, &this.utxo_set.peekUTXO, utxos))
+                block.header.height, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, utxos))
             {
                 log.fatal("Error while adding a new validator: {}", r);
                 log.fatal("Enrollment #{}: {}", idx, enrollment);
@@ -677,6 +677,18 @@ public class Ledger
         }
     }
 
+    ///
+    public Amount getPenaltyDeposit (Hash utxo) @safe nothrow
+    {
+        UTXO utxo_val;
+        if (!this.peekUTXO(utxo, utxo_val) || utxo_val.output.type != OutputType.Freeze)
+            return 0.coins;
+        EnrollmentState last_enrollment;
+        if (this.enroll_man.getEnrollmentFinder()(utxo, last_enrollment) && last_enrollment.slashed_height != 0)
+            return 0.coins;
+        return this.params.SlashPenaltyAmount;
+    }
+
     /// Error message describing the reason of validation failure
     public static enum InvalidConsensusDataReason : string
     {
@@ -749,7 +761,7 @@ public class Ledger
             if (!this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value))
                 return InvalidConsensusDataReason.NoUTXO;
             if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
-                enroll, utxo_value.output.address, validating, utxo_finder))
+                enroll, utxo_value.output.address, validating, utxo_finder, &this.getPenaltyDeposit))
                 return fail_reason;
         }
 
@@ -813,6 +825,7 @@ public class Ledger
                 this.utxo_set.getUTXOFinder(),
                 &this.fee_man.check,
                 this.enroll_man.getEnrollmentFinder(),
+                &this.getPenaltyDeposit,
                 block.header.validators.count))
             return reason;
 
@@ -1354,7 +1367,28 @@ public class Ledger
 
     public Enrollment[] getCandidateEnrollments (in Height height) @safe
     {
-        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO);
+        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit);
+    }
+
+    /***************************************************************************
+
+        Add an enrollment data to the enrollment pool
+
+        Params:
+            enroll = the enrollment data to add
+            pubkey = the public key of the enrollment
+            height = block height for enrollment
+
+        Returns:
+            true if the enrollment data has been added to the enrollment pool
+
+    ***************************************************************************/
+
+    public bool addEnrollment (in Enrollment enroll, in PublicKey pubkey,
+        in Height height) @safe nothrow
+    {
+        return this.enroll_man.addEnrollment(enroll, pubkey, height,
+            &this.peekUTXO, &this.getPenaltyDeposit);
     }
 
     version (unittest):
@@ -1417,10 +1451,10 @@ public class ValidatingLedger : Ledger
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        ManagedDatabase stateDB,
+        FeeManager fee_man,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
-        super(params, engine, utxo_set, storage, enroll_man, pool, stateDB,
+        super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
             onAcceptedBlock);
     }
 
@@ -1698,7 +1732,7 @@ version (unittest)
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
-                stateDB,
+                new FeeManager(stateDB, params),
                 onAcceptedBlock);
         }
 
@@ -1907,7 +1941,7 @@ unittest
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
-                stateDB);
+                new FeeManager(stateDB, params));
         }
 
         ///
@@ -2156,8 +2190,8 @@ unittest
         auto enroll = EnrollmentManager.makeEnrollment(
             utxos[idx], kp, Height(params.ValidatorCycle),
             cycle_seed, cycle_seed_height);
-        assert(ledger.enrollment_manager.addEnrollment(enroll, kp.address,
-            Height(params.ValidatorCycle), &ledger.utxo_set.peekUTXO));
+        assert(ledger.addEnrollment(enroll, kp.address,
+            Height(params.ValidatorCycle)));
         enrollments ~= enroll;
     }
 
