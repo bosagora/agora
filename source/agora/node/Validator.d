@@ -99,7 +99,7 @@ public class Validator : FullNode, API
         // This is especially important on initialization, as replaying blocks
         // does not call `onAcceptedBlock`.
         PreImageInfo self;
-        if (this.ledger.enrollment_manager.getNextPreimage(self, this.ledger.getBlockHeight()))
+        if (this.enroll_man.getNextPreimage(self, this.ledger.getBlockHeight()))
             this.ledger.addPreimage(self);
 
         // currently we are not saving preimage info,

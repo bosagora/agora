@@ -89,12 +89,6 @@ public class Ledger
     /// Enrollment manager
     private EnrollmentManager enroll_man;
 
-    /// Property for Enrollment manager
-    @property public EnrollmentManager enrollment_manager () @safe nothrow
-    {
-        return this.enroll_man;
-    }
-
     /// If not null call this delegate
     /// A block was externalized
     private void delegate (in Block, bool) @safe onAcceptedBlock;
@@ -1352,6 +1346,17 @@ public class Ledger
         return this.getEnrolledUTXOs(this.getBlockHeight() + 1);
     }
 
+    /***************************************************************************
+
+        Returns: A list of Enrollments that can be used for the next block
+
+    ***************************************************************************/
+
+    public Enrollment[] getCandidateEnrollments (in Height height) @safe
+    {
+        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO);
+    }
+
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated
@@ -1499,18 +1504,6 @@ public class ValidatingLedger : Ledger
                 : "Node is attempting to slash itself";
         }
         return null;
-    }
-
-
-    /***************************************************************************
-
-        Returns: A list of Enrollments that can be used for the next block
-
-    ***************************************************************************/
-
-    public Enrollment[] getCandidateEnrollments (in Height height) @safe
-    {
-        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO);
     }
 
     /***************************************************************************
@@ -1715,6 +1708,12 @@ version (unittest)
             if (block.header.height > 0)
                 this.simulatePreimages(block.header.height);
             super.replayStoredBlock(block);
+        }
+
+        /// Property for Enrollment manager
+        @property public EnrollmentManager enrollment_manager () @safe nothrow
+        {
+            return this.enroll_man;
         }
     }
 
@@ -2157,14 +2156,14 @@ unittest
         auto enroll = EnrollmentManager.makeEnrollment(
             utxos[idx], kp, Height(params.ValidatorCycle),
             cycle_seed, cycle_seed_height);
-        assert(ledger.enroll_man.addEnrollment(enroll, kp.address,
+        assert(ledger.enrollment_manager.addEnrollment(enroll, kp.address,
             Height(params.ValidatorCycle), &ledger.utxo_set.peekUTXO));
         enrollments ~= enroll;
     }
 
     foreach (idx, hash; utxos)
     {
-        Enrollment stored_enroll = ledger.enroll_man.getEnrollment(hash);
+        Enrollment stored_enroll = ledger.enrollment_manager.getEnrollment(hash);
         assert(stored_enroll == enrollments[idx]);
     }
 
