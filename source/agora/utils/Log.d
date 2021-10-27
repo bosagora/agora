@@ -120,6 +120,38 @@ public struct Logger
     {
         this.logger = initRef;
     }
+
+    /***************************************************************************
+
+        Enable console or file logging for this logger
+
+        Those routines are useful for quick debugging. As the underlying logger
+        is not accessible, the only way to enable an appender is to call
+        `configureLogger`, however this can be unnecessarily complicated.
+
+        Note that those methods are additive only: Calling `enableConsole` twice
+        will have unintended consequences (messages being written twice).
+
+        Hence, for production / advanced scenario, prefer `configureLogger`.
+
+    ***************************************************************************/
+
+    public void enableConsole (bool additive = false)
+    {
+        this.logger.additive = additive;
+        auto appender = new AppendConsole();
+        appender.layout(new AgoraLayout());
+        this.logger.add(appender);
+    }
+
+    /// Ditto
+    public void enableFile (string path, bool additive = false)
+    {
+        this.logger.additive = additive;
+        auto appender = new PhobosFileAppender(path);
+        appender.layout(new AgoraLayout());
+        this.logger.add(appender);
+    }
 }
 
 /// Insert a logger in the current scope, named log
