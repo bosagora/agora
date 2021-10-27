@@ -126,7 +126,9 @@ public class Reward
         this.payout_period = payout_period;
         this.block_interval_sec = block_interval.total!"seconds";
 
-        this.commonsCoinsPerBlock = 50.coins * (this.block_interval_sec / 5);
+        // 50 coins every 5 secs is 10 coins per sec
+        this.commonsCoinsPerBlock = 10.coins * (this.block_interval_sec);
+
 
         // Calculate expected blocks per year from block interval
         this.blocks_per_year = yearOfSecs / this.block_interval_sec;
@@ -183,6 +185,8 @@ public class Reward
     {
         // Calculate maximum height we will payout from 1.8 billion allocation
         // Using tupleOf trick to access private ulong value for calculation
+        log.trace("commonsBudgetRewards(height={}): total = {}, per block = {}",
+                height, this.totalCommonsBudgetRewards.tupleof[0], this.commonsCoinsPerBlock.tupleof[0]);
         auto max_height = this.totalCommonsBudgetRewards.tupleof[0]
                 / this.commonsCoinsPerBlock.tupleof[0];
 
