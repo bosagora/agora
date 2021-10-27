@@ -62,14 +62,14 @@ int main (string[] args)
     // keep polling the nodes for a complete network discovery, until a timeout
     writefln("%s waitForDiscovery", PREFIX);
     const discovery_duration = 60.seconds;
-    clients.enumerate.each!((idx, client) =>
+    clients.enumerate.each!((idx, client)
     {
         retryFor(client.getNodeInfo().ifThrown(NodeInfo.init)
             .state == NetworkState.Complete,
             discovery_duration,
             format("%s %s has not completed discovery after %s.",
                 PREFIX, nodeFromClientIndex(idx), discovery_duration * (idx + 1)));
-    }());
+    });
 
     /// Check block generation
     size_t assertBlockHeightAtleast (ulong height)
@@ -111,13 +111,13 @@ int main (string[] args)
         return tx_count;
     }
 
-    clients.enumerate.each!((idx, client) =>
+    clients.enumerate.each!((idx, client)
     {
         writefln("%s %s info: %s", PREFIX, nodeFromClientIndex(idx), client.getNodeInfo());
         const height = client.getBlockHeight();
         writefln("%s %s has block height %s", PREFIX, nodeFromClientIndex(idx), height);
         writefln("%s ----------------------------------------", PREFIX);
-    }());
+    });
 
     // Make sure the nodes use the test genesis block
     const blocks = clients[0].getBlocksFrom(0, 1);
