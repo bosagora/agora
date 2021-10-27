@@ -1251,22 +1251,30 @@ public class TestAPIManager
     /// Expect a TX to be externalized within certain number of blocks
     void expectTxExternalization (Transaction tx, ulong n_blocks = 3)
     {
-        this.expectTxExternalization(tx.hashFull(), n_blocks);
+        this.expectTxExternalization(only(tx.hashFull()), n_blocks);
     }
 
     /// Ditto
     void expectTxExternalization (Hash tx_hash, ulong n_blocks = 3)
     {
+        this.expectTxExternalization(only(tx_hash), n_blocks);
+    }
+
+    /// Ditto
+    void expectTxExternalization (Hashes)(Hashes tx_hashes, ulong n_blocks = 3)
+    {
+        Set!Hash hashes = Set!Hash.from(tx_hashes);
         auto last_height = Height(this.clients.map!(client => client.getBlockHeight()).maxElement);
         foreach (idx; 0 .. n_blocks)
         {
             auto next_height = Height(last_height + idx + 1);
             this.expectHeightAndPreImg(next_height);
             auto block = this.clients[0].getBlock(next_height);
-            if (block.txs.any!(tx => tx.hashFull() == tx_hash))
+            block.txs.each!(tx => hashes.remove(tx.hashFull()));
+            if (hashes.length == 0)
                 return;
         }
-        throw new Exception(format!"TX (%s) was not externalized in %d blocks!"(tx_hash, n_blocks));
+        throw new Exception(format!"TXs %s were not externalized in %d blocks!"(tx_hashes, n_blocks));
     }
 
     /// Post a transaction to clients and ensure it is accepted by them (put in the tx pool)
