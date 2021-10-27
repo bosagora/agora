@@ -1231,6 +1231,7 @@ extern(D):
             CandidateHolder[] candidate_holders;
             foreach (ref const cand; candidates)
             {
+                auto skip_candidate = false;
                 auto candidate = cand.getValue();
                 auto data = deserializeFull!ConsensusData(candidate[]);
                 log.trace("Consensus data: {}", data.prettify);
@@ -1240,12 +1241,25 @@ extern(D):
                         msg));
 
                 Amount total_rate;
+
+                // If payout block we do not check fees for coinbase tx (which is last in set)
+                auto payout = slot_idx >= 2 * this.params.PayoutPeriod && slot_idx % this.params.PayoutPeriod == 0;
+
                 foreach (const ref tx_hash; data.tx_set)
                 {
+                    if (payout && tx_hash == data.tx_set[$ - 1])
+                        continue;   // This is the coinbase tx so has no fees
+
                     Amount rate;
+
                     auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
                     if (errormsg == Ledger.InvalidConsensusDataReason.NotInPool)
-                        continue; // most likely a CoinBase Transaction
+                    {
+                        log.error("combineCandidates: tx {} not in local pool but included in candidate",
+                            tx_hash);
+                        skip_candidate = true; // We will not include this candidate
+                        continue;
+                    }
                     else if (errormsg)
                         assert(0);
                     total_rate += rate;
@@ -1257,7 +1271,8 @@ extern(D):
                     hash: data.hashFull(),
                     total_rate = total_rate,
                 };
-                candidate_holders ~= candidate_holder;
+                if (!skip_candidate)
+                    candidate_holders ~= candidate_holder;
             }
 
             auto chosen_consensus_data = candidate_holders.sort().front;

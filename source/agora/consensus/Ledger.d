@@ -1243,7 +1243,8 @@ public class Ledger
         if (local_unknown_txs.length > 0)
         {
             local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
-            log.warn("getValidTXSet: local_unknown_txs.length={}", local_unknown_txs.length);
+            log.warn("getValidTXSet: unknown_txs in this set: {}, all unknown_txs: {}",
+                local_unknown_txs, this.unknown_txs);
             return InvalidConsensusDataReason.MayBeValid;
         }
 
