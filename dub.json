@@ -78,7 +78,6 @@
                 "source/agora/consensus/protocol/Nominator.d",
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/vanity/*",
                 "source/agora/test/*",
                 "source/agora/utils/gc/*"
             ]
@@ -122,7 +121,6 @@
             ],
 
             "excludedSourceFiles": [
-                "source/agora/cli/vanity/*",
                 "source/agora/cli/version/*"
             ],
             "debugVersions": [ "ConfigFillerDebug" ]
@@ -134,7 +132,14 @@
             "excludedSourceFiles": [
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/client/*",
-                "source/agora/cli/vanity/*",
+                "source/agora/utils/gc/*"
+            ]
+        },
+        {
+            "name": "vanity",
+            "targetName": "agora-vanity-generator",
+            "mainSourceFile": "source/agora/cli/vanity/main.d",
+            "excludedSourceFiles": [
                 "source/agora/utils/gc/*"
             ]
         },
@@ -148,7 +153,6 @@
                 "source/agora/cli/checkvtable/check.d",
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/vanity/*",
                 "source/agora/utils/gc/*"
             ]
         },
@@ -163,7 +167,6 @@
                 "source/agora/cli/checkvtable/generate.d",
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
-                "source/agora/cli/vanity/*",
                 "source/agora/utils/gc/*"
             ]
         }
