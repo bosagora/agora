@@ -83,6 +83,13 @@ public class NameRegistry: NameRegistryAPI
     ];
 
     ///
+    private static immutable ResourceRecord[] nsRecords = [
+        immutable(ResourceRecord)(
+            Domain.fromSafeString("testnet.bosagora.io."), TYPE.NS, CLASS.IN, 600,
+            immutable(ResourceRecord.RDATA)(Domain.fromSafeString("ns1.bosagora.io."))),
+    ];
+
+    ///
     public this (Domain realm, RegistryConfig config, NodeLedger ledger,
         ManagedDatabase cache_db)
     {
