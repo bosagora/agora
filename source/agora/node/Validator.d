@@ -504,7 +504,7 @@ public class Validator : FullNode, API
     {
         return new ValidatingLedger(this.params, this.engine,
             this.utxo_set, this.storage, this.enroll_man, this.pool,
-            this.stateDB, &this.onAcceptedBlock);
+            this.fee_man, &this.onAcceptedBlock);
     }
 
     /***************************************************************************
@@ -713,7 +713,8 @@ public class Validator : FullNode, API
         foreach (utxo; this.utxo_set.getUTXOs(pub_key).byKeyValue)
         {
             if (utxo.value.output.type == OutputType.Freeze &&
-                utxo.value.output.value.integral() >= Amount.MinFreezeAmount.integral())
+                utxo.value.output.value.integral() >= Amount.MinFreezeAmount.integral() &&
+                this.ledger.getPenaltyDeposit(utxo.key) > 0.coins)
                 return utxo.key;
         }
 

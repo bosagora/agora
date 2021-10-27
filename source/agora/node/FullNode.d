@@ -31,6 +31,7 @@ import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.VibeTask;
 import agora.common.Types;
+import agora.consensus.Fee;
 import agora.consensus.data.Enrollment;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
@@ -122,6 +123,9 @@ public class FullNode : API
 
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
+
+    /// Fee manager
+    protected FeeManager fee_man;
 
     /// Set of unspent transaction outputs
     protected UTXOSet utxo_set;
@@ -250,6 +254,7 @@ public class FullNode : API
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
+        this.fee_man = this.makeFeeManager();
         this.taskman = this.makeTaskManager();
         this.clock = this.makeClock();
         this.network = this.makeNetworkManager(this.taskman, this.clock);
@@ -856,6 +861,20 @@ public class FullNode : API
 
     /***************************************************************************
 
+        Returns an instance of a FeeManager
+
+        Returns:
+            the fee manager
+
+    ***************************************************************************/
+
+    protected FeeManager makeFeeManager ()
+    {
+        return new FeeManager(this.stateDB, this.params);
+    }
+
+    /***************************************************************************
+
         Returns an instance of a Ledger to be used for a `Fullnode`.
 
         It is overridden in `Validator` and also Test-suites can inject
@@ -869,7 +888,7 @@ public class FullNode : API
     protected Ledger makeLedger ()
     {
         return new Ledger(params, this.engine, this.utxo_set, this.storage,
-            this.enroll_man, this.pool, this.stateDB, &this.onAcceptedBlock);
+            this.enroll_man, this.pool, this.fee_man, &this.onAcceptedBlock);
     }
 
     /*+*************************************************************************
@@ -993,6 +1012,7 @@ public class FullNode : API
         UTXO utxo;
         Output found_output;
         scope UTXOFinder utxo_finder;
+        scope GetPenaltyDeposit getPenaltyDeposit;
         if (this.utxo_set.peekUTXO(enroll.utxo_key, utxo))
         {
             utxo_finder = (in Hash hash, out UTXO found_utxo)
@@ -1004,6 +1024,7 @@ public class FullNode : API
                 }
                 return false;
             };
+            getPenaltyDeposit = &this.ledger.getPenaltyDeposit;
         }
         else
         {
@@ -1035,6 +1056,7 @@ public class FullNode : API
                                     }
                                     return false;
                                 };
+                                getPenaltyDeposit = (Hash utxo) { return this.params.SlashPenaltyAmount; };
                                 break;
                             }
                         }
@@ -1054,7 +1076,7 @@ public class FullNode : API
 
         const utxo_address = utxo.output.address;
         if (this.enroll_man.addEnrollment(enroll, utxo_address,
-            this.ledger.getBlockHeight() + 1, utxo_finder))
+            this.ledger.getBlockHeight() + 1, utxo_finder, getPenaltyDeposit))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
             this.network.peers.each!(p => p.client.sendEnrollment(enroll));

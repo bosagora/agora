@@ -16,6 +16,7 @@
 
 module agora.consensus.pool.Enrollment;
 
+import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.crypto.Key;
@@ -81,11 +82,12 @@ public class EnrollmentPool
     ***************************************************************************/
 
     public bool add (in Enrollment enroll, in Height avail_height,
-        scope UTXOFinder finder, scope EnrollmentFinder findEnrollment) @safe nothrow
+        scope UTXOFinder finder, scope EnrollmentFinder findEnrollment,
+        scope GetPenaltyDeposit getPenaltyDeposit) @safe nothrow
     {
         // check validity of the enrollment data
         if (auto reason = isInvalidReason(enroll, finder,
-                                            avail_height, findEnrollment))
+                                            avail_height, findEnrollment, getPenaltyDeposit))
         {
             log.info("Invalid enrollment data: {}, Data was: {}, height: {}", reason, enroll, avail_height);
             return false;
@@ -369,6 +371,11 @@ unittest
         return false;
     }
 
+    Amount getPenaltyDeposit (Hash) @trusted nothrow
+    {
+        return 10_000.coins;
+    }
+
     genesisSpendable().map!(txb => txb.refund(key_pair.address).sign(OutputType.Freeze))
         .each!(tx => storage.put(tx));
 
@@ -381,11 +388,11 @@ unittest
         enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height,
             NodeCycleSeeds[index], Height(params.ValidatorCycle * 2 - 1));
         assert(pool.add(enrollments[$ - 1], avail_height,
-                                storage.getUTXOFinder(), &findEnrollment));
+                                storage.getUTXOFinder(), &findEnrollment, &getPenaltyDeposit));
         assert(pool.count() == index + 1);
         assert(pool.hasEnrollment(utxo_hash, avail_height));
         assert(!pool.add(enrollments[$ - 1], avail_height,
-                                storage.getUTXOFinder(), &findEnrollment));
+                                storage.getUTXOFinder(), &findEnrollment, &getPenaltyDeposit));
     }
 
     // check if enrolled heights are not set
@@ -423,7 +430,7 @@ unittest
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
         assert(pool.add(ordered_enroll, Height(1),
-                        &storage.peekUTXO, &findEnrollment));
+                        &storage.peekUTXO, &findEnrollment, &getPenaltyDeposit));
     enrolls = pool.getEnrollments(Height(1));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));

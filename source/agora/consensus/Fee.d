@@ -21,6 +21,7 @@ import agora.common.Types;
 import agora.common.Amount;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
+import agora.common.Set;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.Transaction;
@@ -28,6 +29,7 @@ import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorInfo;
 import agora.consensus.Reward;
 import agora.consensus.state.UTXOCache;
+import agora.crypto.Hash;
 import agora.crypto.Key;
 
 import std.math;
