@@ -919,13 +919,12 @@ public class FullNode : API
         {
             this.log.format(
                 this.hasTransactionHash(hashFull(tx)) ? LogLevel.Trace : LogLevel.Info,
-                "Rejected tx. Reason: {}. Tx: {}, txHash: {}",
-                reason, tx, hashFull(tx));
+                "Rejected tx: {}, txHash: {}, Reason: {}.", prettify(tx), hashFull(tx), reason);
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return;
         }
 
-        log.info("Accepted transaction: {} ({})", prettify(tx), hashFull(tx));
+        log.info("Accepted tx: {}, txHash: {}", prettify(tx), hashFull(tx));
         this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         this.transaction_relayer.addTransaction(tx);
         this.pushTransaction(tx);
