@@ -17,6 +17,7 @@ module agora.test.LocalTransactions;
 version (unittest):
 
 import agora.crypto.Hash;
+import agora.common.Set;
 import agora.consensus.Ledger;
 import agora.test.Base;
 import agora.utils.Log;
@@ -66,14 +67,14 @@ unittest
     assert(blocks.length == 1);
 
     // Create 6 transactions - one for each validator
-    auto txs = blocks[0].spendable().map!(txb => txb.sign());
+    auto txs = blocks[0].spendable().map!(txb => txb.sign()).takeExactly(6);
     // Distribute them to different clients
-    txs.takeExactly(6).enumerate.each!(
+    txs.enumerate.each!(
         (idx, tx) {
             network.postAndEnsureTxInPool((idx % network.clients.length).only, tx);
         });
-    network.expectHeightAndPreImg(Height(1));
-    network.assertSameBlocks(Height(1));
+    network.expectTxExternalization(
+        Set!Hash.from(txs.map!(tx => tx.hashFull())), 6);
 }
 
 // A node never receives the TXs that was externalized. It should be able to
