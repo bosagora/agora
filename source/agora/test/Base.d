@@ -1261,7 +1261,7 @@ public class TestAPIManager
         foreach (idx; 0 .. n_blocks)
         {
             auto next_height = Height(last_height + idx + 1);
-            this.expectHeight(next_height);
+            this.expectHeightAndPreImg(next_height);
             auto block = this.clients[0].getBlock(next_height);
             if (block.txs.any!(tx => tx.hashFull() == tx_hash))
                 return;
