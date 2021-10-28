@@ -48,6 +48,9 @@ public struct EnrollmentState
 
     /// The most recently revealed PreImage
     PreImageInfo preimage;
+
+    /// The Height the validator was slashed at
+    Height slashed_height;
 }
 
 /// Delegate type to query the history of Enrollments
@@ -579,13 +582,14 @@ public class ValidatorSet
     {
         try
         {
-            auto results = this.db.execute("SELECT enrolled_height " ~
+            auto results = this.db.execute("SELECT enrolled_height, slashed_height " ~
                 "FROM validator WHERE key = ? ORDER BY enrolled_height DESC", enroll_key);
 
             if (!results.empty && results.oneValue!(byte[]).length != 0)
             {
                 auto row = results.front;
                 state.enrolled_height = Height(row.peek!(size_t)(0));
+                state.slashed_height = Height(row.peek!(size_t)(1));
                 state.preimage = this.getPreimage(enroll_key);
                 return true;
             }
