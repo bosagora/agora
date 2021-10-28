@@ -19,19 +19,15 @@ import agora.consensus.data.Transaction;
 import agora.consensus.Fee;
 import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
+import agora.crypto.Key;
+import agora.crypto.Schnorr;
 import agora.script.Engine;
 import agora.script.Lock;
 import agora.script.Signature;
-import agora.crypto.Schnorr;
 
-version (unittest)
-{
-    import agora.crypto.Key;
-
-    import std.array;
-    import std.algorithm;
-    import std.format;
-}
+import std.algorithm;
+import std.array;
+import std.format;
 
 version (unittest)
 public Unlock signUnlock (KeyPair key_pair, Transaction tx)
@@ -127,6 +123,9 @@ public string isInvalidReason (
     {
         if (tx.outputs.count!(o => o.type == OutputType.Payment) > 1)
             return "Transaction: Freeze cannot have multiple refund payment outputs";
+
+        if (tx.outputs.filter!(o => o.type == OutputType.Freeze).any!(o => o.address() == PublicKey.init))
+            return "Transaction: Freeze outputs can only use Key locks";
 
         if (tx.payload.length != 0)
             return "Transaction: Freeze cannot have data payload";
@@ -1047,4 +1046,37 @@ unittest
         null);
     assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker) ==
         null);
+}
+
+// test non LockType.Key Freeze outputs
+unittest
+{
+    import std.traits : EnumMembers;
+    import agora.script.Opcodes;
+
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope storage = new TestUTXOSet;
+    scope payload_checker = new FeeManager();
+    scope checker = &payload_checker.check;
+
+    KeyPair kp = KeyPair.random();
+
+    Transaction prev_tx = Transaction([Output(Amount.MinFreezeAmount + 10_000.coins, kp.address)]);
+    storage.put(prev_tx);
+
+    Lock[LockType] locks;
+    locks[LockType.Key] = Lock(LockType.Key, PublicKey.init[]);
+    locks[LockType.KeyHash] = Lock(LockType.KeyHash, hashFull(kp.address)[]);
+    locks[LockType.Script] = Lock(LockType.Script, [OP.TRUE]);
+    locks[LockType.Redeem] = Lock(LockType.Redeem, hashFull("script")[]);
+
+    foreach(locktype; EnumMembers!LockType)
+    {
+        Transaction tx = Transaction(
+            [Input(hashFull(prev_tx), 0)],
+            [Output(Amount.MinFreezeAmount, locks[locktype], OutputType.Freeze)]);
+        tx.lock_height = Height(0);
+        tx.inputs[0].unlock = signUnlock(kp, tx);
+        assert(!tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
+    }
 }
