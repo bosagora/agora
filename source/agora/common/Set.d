@@ -67,7 +67,7 @@ public struct Set (T)
     {
         import std.format : formattedWrite;
 
-        formattedWrite(sink, `[%-("%s", %)"]`, this._set.byKeyValue().filter!(
+        formattedWrite(sink, `[%-("%s"%|, %)]`, this._set.byKeyValue().filter!(
             kv => kv.value).map!(kv => kv.key));
     }
 
@@ -82,7 +82,7 @@ public struct Set (T)
         SetT set_t;
         foreach (ref item; array)
             set_t.put(item.to!T);
-        
+
         return set_t;
     }
 
@@ -266,14 +266,23 @@ unittest
 
 /// toString and fromString test for Set!int
 unittest
-{    
+{
     auto old_set = Set!uint.from([1, 3, 5, 7, 9]);
     auto str = old_set.toString();
     assert(str == `["7", "5", "3", "1", "9"]`);
     auto new_set = Set!uint.fromString(str);
-    
+
     assert(new_set.length == old_set.length);
     old_set.each!(value => assert(value in new_set));
+}
+
+/// toString and fromString test for Set!int when empty
+unittest
+{
+    Set!uint empty_set;
+    assert(empty_set.toString() == `[]`);
+    auto new_set = Set!uint.fromString(`[]`);
+    assert(new_set.length == 0);
 }
 
 /// toString and fromString test for Set!string
