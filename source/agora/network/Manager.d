@@ -45,6 +45,7 @@ import agora.node.Config;
 import agora.consensus.Ledger;
 import agora.utils.InetUtils;
 import agora.utils.Log;
+import agora.utils.PrettyPrinter;
 import agora.utils.Utility;
 
 import vibe.http.common;
@@ -1007,10 +1008,12 @@ public class NetworkManager
                 {
                     ledger.acceptTransaction(tx);
                     unknown_txs.remove(tx.hashFull());
+                    log.trace("getUnknownTXs: Found unknown TX with hash {}, tx = {}, unknown tx hashes now {}",
+                        tx.hashFull(), tx.prettify, ledger.getUnknownTXHashes());
                 }
                 catch (Exception e)
                 {
-                    log.info("Unknown TX {} threw {}", tx, e.msg);
+                    log.warn("getUnknownTXs: Unknown TX {} threw {}", tx, e.msg);
                 }
             }
         }
