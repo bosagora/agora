@@ -43,6 +43,7 @@ import agora.script.Script;
 import agora.serialization.Serializer;
 import agora.test.Base;
 import agora.utils.Log;
+import agora.utils.PrettyPrinter;
 
 import geod24.LocalRest : Listener;
 import geod24.Registry;
@@ -1323,7 +1324,8 @@ unittest
     close_tx = alice.getClosingTx(WK.Keys.A.address, alice_charlie_chan_id);
     assert(close_tx.outputs.length == 2);
     assert(close_tx.outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
-    assert(close_tx.outputs.count!(o => o.value == Amount(2010 - close_tx.sizeInBytes)) == 1);
+    assert(close_tx.outputs.count!(o => o.value == Amount(2010 - close_tx.sizeInBytes)) == 1,
+        format!"Expected close_tx with Amount %s. close_tx = %s"(Amount(2010 - close_tx.sizeInBytes), close_tx.prettify));
     network.expectTxExternalization(close_tx);
     network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
