@@ -1,0 +1,56 @@
+# two node setup without docker
+#
+# Run from the root with:
+# dub run -- -c devel/two-nodes/config-v3.yaml
+
+node:
+  realm: "localhost"
+  testing: true
+  limit_test_validators: 2
+  data_dir: .two-nodes/3/data/
+  # Can be used with curl or just a browser
+  stats_listening_port: 4443
+  block_catchup_interval:
+    seconds: 2
+
+interfaces:
+  - type:    http
+    address: 0.0.0.0
+    port:    2223
+  - type:    tcp
+    address: 0.0.0.0
+    port:    5553
+
+consensus:
+  block_interval:
+    seconds: 2
+  validator_cycle: 20
+  payout_period: 12
+
+validator:
+  enabled: true
+  # val3: boa1xzval3ah8z7ewhuzx6mywveyr79f24w49rdypwgurhjkr8z2ke2mycftv9n
+  seed: SC3H3ADGT3YGLMDWCLKZ2GILDHDTC4WDE7M3G4URQPWJZZM43TTAM2QG
+
+admin:
+  enabled: false
+  tls: false
+  address: 0.0.0.0
+  port:    3333
+  username: admin
+  pwd: s3cr3t
+
+network:
+  - tcp://127.0.0.1:5555
+
+logging:
+  root:
+    level: Info
+    console: true
+  agora.consensus.state.Ledger:
+    level: Info
+    console: true
+  agora:
+    level: Debug
+    console: false
+    file: .two-nodes/3/agora.log
