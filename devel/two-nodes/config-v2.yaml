@@ -1,0 +1,49 @@
+# two node setup without docker
+#
+# Run from the root with:
+# dub run -- -c devel/two-nodes/config-v2.yaml
+
+node:
+  realm: "localhost"
+  testing: true
+  limit_test_validators: 2
+  data_dir: .two-nodes/data-v2/
+  # Can be used with curl or just a browser
+  stats_listening_port: 4442
+
+interfaces:
+  - type:    http
+    address: 0.0.0.0
+    port:    2222
+
+consensus:
+  block_interval:
+    seconds: 2
+  validator_cycle: 20
+  payout_period: 12
+
+validator:
+  enabled: true
+  # val2: boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2
+  seed: SAQXRDHTWME4GUIVNYCKPN433VJ4BJP2L2T7UWHGSSW47VFC67EQFY3S
+
+admin:
+  enabled: true
+  tls: false
+  address: 0.0.0.0
+  port:    3332
+  username: admin
+  pwd: s3cr3t
+
+# The node will self-ban but this section needs at least one entry
+network:
+  - http://127.0.0.1:2227
+
+logging:
+  root:
+    level: Info
+    console: true
+  agora.consensus:
+    level: Trace
+    console: false
+    file: .two-nodes/log/agora.consensus-v2.log
