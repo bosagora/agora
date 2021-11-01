@@ -718,7 +718,7 @@ public class FeeManager
 
 *******************************************************************************/
 
-private Amount getFee (in Transaction tx, scope UTXOFinder peekUTXO) @safe
+public Amount getFee (in Transaction tx, scope UTXOFinder peekUTXO) @safe
 {
     // Coinbase TXs are not subject to fees
     if (tx.isCoinbase)

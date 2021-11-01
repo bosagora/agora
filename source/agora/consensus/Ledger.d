@@ -484,19 +484,6 @@ public class Ledger
             log.warn("Slashing validator {} at height {}: {} (UTXO: {})",
                      idx, header.height, validator, utxo_value);
             this.enroll_man.validator_set.slashValidator(validator.utxo, header.height);
-
-            auto remain_amount = utxo_value.output.value;
-            remain_amount.sub(this.params.SlashPenaltyAmount);
-            Transaction slashing_tx = Transaction(
-                [Input(validator.utxo)],
-                [
-                    Output(this.params.SlashPenaltyAmount,
-                        this.params.CommonsBudgetAddress),
-                    Output(remain_amount, utxo_value.output.address),
-                ]);
-
-            this.utxo_set.updateUTXOCache(slashing_tx, header.height,
-                this.params.CommonsBudgetAddress);
         }
     }
 
@@ -631,6 +618,18 @@ public class Ledger
                         // the block as they will not get paid for this block
                         auto validators = this.getValidators(header.height)
                             .enumerate.filter!(en => header.validators[en.index]).map!(en => en.value);
+
+                        // penalty for utxos slashed on this height
+                        auto slashed_penaly = this.params.SlashPenaltyAmount *
+                            header.preimages.enumerate.filter!(en => en.value is Hash.init).walkLength;
+                        payouts.update(this.params.CommonsBudgetAddress,
+                            { return slashed_penaly; },
+                            (ref Amount so_far)
+                            {
+                                so_far += slashed_penaly;
+                                return so_far;
+                            }
+                        );
 
                         // Calculate the block rewards using the percentage of validators who signed
                         auto rewards = this.rewards.calculateBlockRewards(header.height, header.validators.percentage());
@@ -2314,34 +2313,13 @@ unittest
 
     auto tx_set_fees = Amount(0);
     auto total_fees = Amount(0);
-    auto next_payout_total = Amount(0);
+    Amount[] next_payout_total;
     // Create blocks from height 1 to 11 (only block 5 and 10 should have a coinbase tx)
     foreach (height; 1..11)
     {
         auto txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
         txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
-        // The txs are all the same size so each set will be same fees at each height so we just calculate at height 1
-        if (height == 1)
-        {
-            tx_set_fees = txs.map!((tx)
-            {
-                auto tx_inputs = tx.inputs.map!((i)
-                {
-                    UTXO output_utxo;
-                    ledger.utxo_set.peekUTXO(i.utxo, output_utxo);
-                    return output_utxo.output.value;
-                }).reduce!((a,b) => a + b);
-                auto tx_outputs = tx.outputs.map!(o => o.value).reduce!((a,b) => a + b);
-                assert(tx_inputs > tx_outputs);
-                return tx_inputs - tx_outputs;
-            }).reduce!((a,b) => a + b);
-        }
-
-        if (height % testPayoutPeriod == 0)
-        {
-            next_payout_total = total_fees + total_rewards;
-            total_fees = Amount(0);
-        }
+        tx_set_fees = txs.map!(tx => tx.getFee(&ledger.utxo_set.peekUTXO)).reduce!((a,b) => a + b);
 
         // Add the fees for this height
         total_fees += tx_set_fees;
@@ -2362,6 +2340,14 @@ unittest
 
         // Now externalize the block
         ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+
+        total_fees += ledger.params.SlashPenaltyAmount * data.missing_validators.length;
+        if (height % testPayoutPeriod == 0)
+        {
+            next_payout_total ~= total_fees + total_rewards;
+            total_fees = Amount(0);
+        }
+
         assert(ledger.externalize(data) is null);
         assert(ledger.getBlockHeight() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
@@ -2372,7 +2358,8 @@ unittest
             assert(cb_txs.length == 1);
             // Payout block should pay the CommonsBudget + all validators (excluding slashed validators)
             assert(cb_txs[0].outputs.length == 1 + genesis_validator_keys.length - skip_indexes.length);
-            assert(cb_txs[0].outputs.map!(o => o.value).reduce!((a,b) => a + b) ==  next_payout_total);
+            assert(cb_txs[0].outputs.map!(o => o.value).reduce!((a,b) => a + b) == next_payout_total[0]);
+            next_payout_total = next_payout_total[1 .. $];
             // Slashed validators should never be paid
             mpv_stakes.each!((mpv_stake)
             {

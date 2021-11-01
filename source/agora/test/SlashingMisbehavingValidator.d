@@ -50,6 +50,7 @@ unittest
     TestConf conf = {
         recurring_enrollment : false,
     };
+    conf.consensus.payout_period = 3;
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -60,13 +61,9 @@ unittest
     auto spendable = network.blocks[$ - 1].spendable().array;
     auto bad_address = nodes[5].getPublicKey().key;
 
-    // discarded UTXOs (just to trigger block creation)
-    auto txs = spendable[0 .. 8].map!(txb => txb.sign()).array;
-
     auto utxos = nodes[0].getUTXOs(bad_address);
-    auto original_stake = utxos[0].utxo.output.value;
+    assert(nodes[0].getPenaltyDeposit(utxos[0].hash) != 0.coins);
     // block 1
-    txs.each!(tx => nodes[0].postTransaction(tx));
     // Node index is 5 for bad node so we do not expect pre-image from it
     network.expectHeightAndPreImg(iota(0, 5), Height(1), network.blocks[0].header);
 
@@ -76,21 +73,13 @@ unittest
     auto cnt = nodes[0].countActive(block1.header.height + 1);
     assert(cnt == 5, format!"Invalid validator count, current: %s"(cnt));
 
-    // check if the frozen UTXO is refunded to the owner and
-    // the penalty is re-routed to the `CommonsBudget`
+    // check if the frozen UTXO is still present but has no associated penalty deposit
     auto refund = nodes[0].getUTXOs(bad_address);
     assert(refund.length == 1);
-    auto penalty = nodes[0].getUTXOs(WK.Keys.CommonsBudget.address);
-    assert(penalty.length == 1);
-    auto total = refund[0].utxo.output.value;
-    total += penalty[0].utxo.output.value;
-    // Check that the two amounts add up to the original stake
-    // TODO: Check for 40k, not just the total.
-    assert(total == original_stake);
+    assert(utxos[0] == refund[0]);
+    assert(nodes[0].getPenaltyDeposit(utxos[0].hash) == 0.coins);
 
-    // check the leftover UTXO is melting and the penalty UTXO is unfrozen
-    assert(refund[0].utxo.unlock_height == 2017);
-    assert(penalty[0].utxo.unlock_height == 2);
+    network.generateBlocks(iota(0, 5), Height(conf.consensus.payout_period * 3), true);
 }
 
 /// Situation: All the validators do not reveal their pre-images for

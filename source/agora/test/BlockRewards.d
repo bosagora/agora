@@ -203,6 +203,10 @@ unittest
 
             Amount val_fees = validatorsFees;
 
+            auto slashed_penaly = 10_000.coins *
+                block.header.preimages.enumerate.filter!(en => en.value is Hash.init).walkLength;
+            total_fees += slashed_penaly;
+
             // Node 0 only signed half the blocks
             if (block.header.height % 2 == 0)
             {
@@ -213,7 +217,7 @@ unittest
                 val_payout_node0 += val_payout;
                 val_payout_rest += val_payout;
                 Amount leftover = ValRewards - (val_payout * activeValidators);
-                commons_payout += CommonsReward + fees + leftover;
+                commons_payout += CommonsReward + fees + leftover + slashed_penaly;
             } else
             {
                 // For first block all nodes will be included but afterwards node 5 is slashed
@@ -228,7 +232,7 @@ unittest
                 Amount val_payout = val_fees + reduced_val_reward;
                 val_payout_rest += val_payout;
                 Amount leftover = ValRewards - (val_payout * (activeValidators - 1));
-                commons_payout += CommonsReward + fees + leftover;
+                commons_payout += CommonsReward + fees + leftover + slashed_penaly;
             }
         });
         auto cb_tx = node_1.getBlocksFrom(height, 1).front.txs.filter!(tx => tx.isCoinbase).front;
