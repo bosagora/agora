@@ -1,0 +1,39 @@
+# Download the GeoIP database and cache it for the current month
+#
+# The GeoIP database needs to be downloaded with credentials,
+# because the GDPR clause about RTBF (Right to be forgotten).
+# Those credentials are stored as secrets in Github,
+# which cannot be accessed by pull requests.
+# We could store GeoIP indefinitely, but run the risk of it getting
+# outdated, so instead we cache it for the month.
+#
+# When a new month start, we need to download it, which can only happen
+# from the upstream repository (`bosagora/agora`), as otherwise secrets
+# are not available. To remedy this problem, this action will trigger
+# one minute past midnight every first day of the month and re-download
+# the database.
+name: GeoIP
+on:
+  schedule:
+    # Minute (1), Hour (0), day of the month (1), month (any), day of the week (any)
+    # https://crontab.guru/
+    - cron: "1 0 1 * *"
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: 'Get the current date'
+        id: get-date
+        shell: bash
+        run: |
+          echo "::set-output name=date::$(/bin/date -u "+%Y%m")"
+
+    - name: 'Download GeoIP database'
+      env:
+        GEOIP_OUTPUT_DIR: ${{ github.workspace }}/build/geoip/
+      run: |
+        mkdir ${GEOIP_OUTPUT_DIR}
+        wget --no-verbose -O  ${GEOIP_OUTPUT_DIR}/geoip.city.tar.gz 'https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=${{ secrets.GEOIP_SECRET }}&suffix=tar.gz'
+        tar -xzvf ${GEOIP_OUTPUT_DIR}/geoip.city.tar.gz --directory ${GEOIP_OUTPUT_DIR} --strip-components 1
