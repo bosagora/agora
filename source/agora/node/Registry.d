@@ -346,12 +346,9 @@ public class NameRegistry: NameRegistryAPI
             }
             else if (q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
             {
-                auto rcode = this.getValidatorDNSRecord(q, reply);
-                if (rcode != Header.RCode.NoError)
-                {
-                    reply.header.RCODE = rcode;
+                reply.header.RCODE = this.getValidatorDNSRecord(q, reply);
+                if (reply.header.RCODE != Header.RCode.NoError)
                     break;
-                }
             }
             else
             {

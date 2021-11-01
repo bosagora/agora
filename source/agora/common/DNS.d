@@ -359,7 +359,10 @@ public struct Header
         return cast(RCode) val;
     }
     /// Ditto
-    public void RCODE (RCode val) scope { this.field2 |= val; }
+    public void RCODE (RCode val) scope
+    {
+        this.field2 = (0xfff0 & this.field2) | val;
+    }
 
     /// 16 bits backing the second "line" of the header, see RFC1035, 4.1.1
     private ushort field2;
