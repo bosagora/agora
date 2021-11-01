@@ -1530,6 +1530,18 @@ public interface TestAPI : API
     ***************************************************************************/
 
     public bool isBanned (Address address);
+
+    /***************************************************************************
+
+        Params:
+            utxo = the frozen utxo
+
+        Returns:
+            if `utxo` still has penalty deposit or not
+
+    ***************************************************************************/
+
+    public Amount getPenaltyDeposit (Hash utxo);
 }
 
 /// Return type for `TestAPI.getUTXOs`
@@ -1708,6 +1720,13 @@ private mixin template TestNodeMixin ()
     {
         return this.network.getBanManager().isBanned(address);
     }
+
+    ///
+    public override Amount getPenaltyDeposit (Hash utxo)
+    {
+        return this.ledger.getPenaltyDeposit(utxo);
+    }
+
 }
 
 ///

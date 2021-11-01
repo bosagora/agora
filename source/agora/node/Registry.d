@@ -14,6 +14,7 @@
 module agora.node.Registry;
 
 import agora.api.Registry;
+import agora.common.Amount;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
@@ -464,9 +465,8 @@ public class NameRegistry: NameRegistryAPI
         @safe
     {
         auto validators_zone = this.validators in this.zones;
-        UTXO utxo;
         validators_zone.each!((TypedPayload tpayload) {
-            if (!this.ledger.peekUTXO(tpayload.utxo, utxo))
+            if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
                 validators_zone.remove(tpayload.payload.data.public_key);
        });
     }
