@@ -43,6 +43,7 @@ import agora.network.Clock;
 import agora.network.Client;
 import agora.network.RPC;
 import agora.node.Config;
+import agora.node.Registry : NameRegistry;
 import agora.consensus.Ledger;
 import agora.utils.InetUtils;
 import agora.utils.Log;
@@ -682,7 +683,7 @@ public class NetworkManager
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
-    public void discover (UTXO[Hash] required_peer_utxos = null) nothrow
+    public void discover (NameRegistry registry = null, UTXO[Hash] required_peer_utxos = null) nothrow
     {
         this.quorum_set_keys.from(Set!Hash.init);
         this.required_peers.from(Set!Hash.init);
@@ -757,6 +758,16 @@ public class NetworkManager
 
             return true;
         }
+
+        try
+        {
+            if (registry !is null)
+                foreach(addr; registry.getValidatorsAddresses())
+                    this.addAddress(addr);
+        }
+        catch (Exception ex)
+            log.info("Cannot fetch validator addresses from our registry {}",
+                ex);
 
         while (this.todo_addresses.length)
         {

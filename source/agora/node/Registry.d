@@ -184,6 +184,20 @@ public class NameRegistry: NameRegistryAPI
 
     /***************************************************************************
 
+        Get all network addresses of all validators
+
+        Returns:
+            Network addresses of all validators
+
+    ***************************************************************************/
+
+    public Address[] getValidatorsAddresses ()
+    {
+        return this.validators.getAddresses();
+    }
+
+    /***************************************************************************
+
         Register network addresses corresponding to a public key
 
         Params:
@@ -535,6 +549,9 @@ private struct ZoneData
     /// Query for removing from registry signature table
     private string query_remove_sig;
 
+    /// Query for getting all registered network addresses
+    private string query_addresses_get;
+
     /// Database to store data
     private ManagedDatabase db;
 
@@ -570,6 +587,9 @@ private struct ZoneData
 
         this.query_remove_sig = format("DELETE FROM registry_%s_signature WHERE pubkey = ?",
             type_table_name);
+
+        this.query_addresses_get = format("SELECT address " ~
+            "FROM registry_%s_addresses", type_table_name);
 
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
             "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
@@ -754,6 +774,16 @@ private struct ZoneData
         };
 
         return typed_payload;
+    }
+
+    public Address[] getAddresses ()
+    {
+        auto results = this.db.execute(this.query_addresses_get);
+
+        if (results.empty)
+            return null;
+
+        return results.map!(r => Address(r["address"].as!string)).array;
     }
 
     /***************************************************************************
