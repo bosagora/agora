@@ -760,13 +760,12 @@ public class NetworkManager
 
         while (this.todo_addresses.length)
         {
-            scope (success)
-                this.taskman.wait(this.node_config.retry_delay);
-
             if (this.connection_tasks.length >= MaxConnectionTasks)
             {
                 log.info("Connection task limit reached. Trying again in {}..",
                     this.node_config.retry_delay);
+
+                this.taskman.wait(this.node_config.retry_delay);
                 continue;
             }
 
