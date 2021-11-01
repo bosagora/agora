@@ -252,7 +252,7 @@ public struct Header
     /// query (0), or a response (1).
     public bool QR () const scope { return !!(this.field2 & 0b1_0000_0_0_0_0_000_0000); }
     /// Ditto
-    public void QR (bool val) scope { this.field2 |= 1 << (ushort.sizeof * 8 - 1); }
+    public void QR (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 1); }
 
     /// A four bit field that specifies kind of query in this message.
     /// This value is set by the originator of a query and copied into the response.
@@ -294,13 +294,13 @@ public struct Header
 
     public bool AA () const scope { return !!(this.field2 & 0b0_0000_1_0_0_0_000_0000); }
     /// Ditto
-    public void AA (bool val) scope { this.field2 |= 1 << (ushort.sizeof * 8 - 6); }
+    public void AA (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 6); }
 
     /// TrunCation - specifies that this message was truncated
     /// due to length greater than that permitted on the transmission channel.
     public bool TC () const scope { return !!(this.field2 & 0b0_0000_0_1_0_0_000_0000); }
     /// Ditto
-    public void TC (bool val) scope { this.field2 |= 1 << (ushort.sizeof * 8 - 7); }
+    public void TC (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 7); }
 
     /// Recursion Desired
     /// This bit may be set in a query and is copied into the response.
@@ -308,14 +308,14 @@ public struct Header
     /// Recursive query support is optional.
     public bool RD () const scope { return !!(this.field2 & 0b0_0000_0_0_1_0_000_0000); }
     /// Ditto
-    public void RD (bool val) scope { this.field2 |= 1 << (ushort.sizeof * 8 - 8); }
+    public void RD (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 8); }
 
     /// Recursion Available
     /// This bit is set or cleared in a response, and denotes whether recursive
     /// query support is available in the name server.
     public bool RA () const scope { return !!(this.field2 & 0b0_0000_0_0_0_1_000_0000); }
     /// Ditto
-    public void RA (bool val) scope { this.field2 |= 1 << (ushort.sizeof * 8 - 9); }
+    public void RA (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 9); }
 
     /// Reserved for future use. Must be zero in all queries and responses.
     public ubyte Z () const scope { return (this.field2 & 0b0_0000_0_0_0_0_111_0000) >> 4; }
