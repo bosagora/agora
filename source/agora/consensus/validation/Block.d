@@ -121,7 +121,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
 
     foreach (const ref tx; block.txs)
         if (auto fail_reason = VTx.isInvalidReason(tx, engine, findUTXO,
-            block.header.height, checkFee))
+            block.header.height, checkFee, getPenaltyDeposit))
             return fail_reason;
 
     Hash[] merkle_tree;

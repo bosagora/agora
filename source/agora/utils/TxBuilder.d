@@ -189,11 +189,13 @@ public struct TxBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) attach (in Output utxo, in Hash hash)
+    public ref typeof(this) attach (in Output utxo, in Hash hash, Amount freeze_fee = 10_000.coins)
         @safe pure nothrow return
     {
         this.inputs ~= OutputRef(utxo, hash);
         if (!this.leftover.value.add(utxo.value))
+            assert(0, "Adding utxo/hash led to overflow");
+        if (utxo.type == OutputType.Freeze && !this.leftover.value.add(freeze_fee))
             assert(0, "Adding utxo/hash led to overflow");
         return this;
     }

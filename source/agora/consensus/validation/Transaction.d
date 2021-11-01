@@ -30,9 +30,14 @@ import std.array;
 import std.format;
 
 version (unittest)
-public Unlock signUnlock (KeyPair key_pair, Transaction tx)
 {
-    return genKeyUnlock(key_pair.sign(tx.getChallenge()));
+    import std.functional : toDelegate;
+    public Unlock signUnlock (KeyPair key_pair, Transaction tx)
+    {
+        return genKeyUnlock(key_pair.sign(tx.getChallenge()));
+    }
+
+    auto utGetPenaltyDeposit = (Hash hash) => 0.coins;
 }
 
 /*******************************************************************************
@@ -54,7 +59,8 @@ public Unlock signUnlock (KeyPair key_pair, Transaction tx)
 
 public string isInvalidReason (
     in Transaction tx, Engine engine, scope UTXOFinder findUTXO, in Height height,
-    scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
+    scope string delegate (in Transaction, Amount) @safe nothrow checkFee,
+    scope GetPenaltyDeposit getPenaltyDeposit)
     @safe nothrow
 {
     import std.algorithm;
@@ -94,11 +100,16 @@ public string isInvalidReason (
     }
 
     string isInvalidInput (in Input input, ref UTXO utxo_value,
-        ref Amount sum_unspent)
+        ref Amount sum_unspent, ref Amount sum_penalty_deposit,
+        scope GetPenaltyDeposit getPenaltyDeposit)
     {
         if (!findUTXO(input.utxo, utxo_value))
             return "Transaction: Input ref not in UTXO";
-        if (!sum_unspent.add(utxo_value.output.value))
+        auto deposit = utxo_value.output.type == OutputType.Freeze ?
+            getPenaltyDeposit(input.utxo) : 0.coins;
+        if (!sum_penalty_deposit.add(deposit))
+            return "Transaction: Penalty deposit overflow";
+        if (!sum_unspent.add(deposit) || !sum_unspent.add(utxo_value.output.value))
             return "Transaction: Input overflow";
 
         // note: this is strictly not necessary to be here, the Input's script
@@ -118,6 +129,7 @@ public string isInvalidReason (
     }
 
     Amount sum_unspent;
+    Amount sum_penalty_deposit;
 
     if (tx.isFreeze)
     {
@@ -133,7 +145,8 @@ public string isInvalidReason (
         foreach (input; tx.inputs)
         {
             UTXO utxo_value;
-            if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
+            if (auto fail_reason = isInvalidInput(input, utxo_value,
+                sum_unspent, sum_penalty_deposit, getPenaltyDeposit))
                 return fail_reason;
 
             if (utxo_value.output.type == OutputType.Freeze)
@@ -149,7 +162,8 @@ public string isInvalidReason (
         foreach (input; tx.inputs)
         {
             UTXO utxo_value;
-            if (auto fail_reason = isInvalidInput(input, utxo_value, sum_unspent))
+            if (auto fail_reason = isInvalidInput(input, utxo_value,
+                sum_unspent, sum_penalty_deposit, getPenaltyDeposit))
                 return fail_reason;
 
             // when status is frozen, it will begin to melt
@@ -195,6 +209,8 @@ public string isInvalidReason (
         return "Transaction: Referenced Output(s) overflow";
     if (!sum_unspent.sub(new_unspent))
         return "Transaction: Output(s) are higher than Input(s)";
+    if (sum_penalty_deposit != 0.coins && sum_unspent.count(sum_penalty_deposit) > 0)
+        return "Transaction: Should spend some portion of the penalty deposit";
     // NOTE: Make sure fees are always checked last
     return checkFee(tx, sum_unspent);
 }
@@ -203,10 +219,11 @@ public string isInvalidReason (
 version (unittest)
 public bool isValid (in Transaction tx, Engine engine, scope UTXOFinder findUTXO,
     in Height height,
-    scope string delegate (in Transaction, Amount) @safe nothrow checkFee)
+    scope string delegate (in Transaction, Amount) @safe nothrow checkFee,
+    scope GetPenaltyDeposit getPenaltyDeposit = toDelegate(utGetPenaltyDeposit))
     @safe nothrow
 {
-    return isInvalidReason(tx, engine, findUTXO, height, checkFee) is null;
+    return isInvalidReason(tx, engine, findUTXO, height, checkFee, getPenaltyDeposit) is null;
 }
 
 version (unittest)
@@ -344,7 +361,7 @@ unittest
     assert(dupe.isValid(engine, storage.getUTXOFinder(), Height(0), checker),
            format("Transaction signature is not validated %s", tx1));
     dupe.outputs[0].lock.bytes.length = 0;
-    assert(dupe.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker)
+    assert(dupe.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker, toDelegate(utGetPenaltyDeposit))
         == "LockType.Key requires 32-byte key argument in the lock script");
 
     Transaction tx2 = Transaction(
@@ -695,7 +712,8 @@ unittest
     storage.put(oneTx);
 
     // test for Payment transaction having no input
-    assert(canFind(toLower(oneTx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker)), "no input"),
+    assert(canFind(toLower(oneTx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0),
+        checker, toDelegate(utGetPenaltyDeposit))), "no input"),
         format("Tx having no input should not pass validation. tx: %s", oneTx));
 
     // create a transaction
@@ -711,7 +729,8 @@ unittest
     storage.put(secondTx);
 
     // test for Freeze transaction having no output
-    assert(canFind(toLower(secondTx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker)), "no output"),
+    assert(canFind(toLower(secondTx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0),
+        checker, toDelegate(utGetPenaltyDeposit))), "no output"),
         format("Tx having no output should not pass validation. tx: %s", secondTx));
 }
 
@@ -1061,19 +1080,21 @@ unittest
     // effectively disabled lock
     tx.lock_height = Height(0);
     tx.inputs[0].unlock = signUnlock(kp, tx);
-    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker) is null);
-    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker) is null);
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0),
+        checker, toDelegate(utGetPenaltyDeposit)) is null);
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024),
+        checker, toDelegate(utGetPenaltyDeposit)) is null);
 
     tx.lock_height = Height(10);
     tx.inputs[0].unlock = signUnlock(kp, tx);
-    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0), checker) ==
-        "Transaction: Not unlocked for this height");
-    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(9), checker) ==
-        "Transaction: Not unlocked for this height");
-    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(10), checker) ==
-        null);
-    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024), checker) ==
-        null);
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(0),
+        checker, toDelegate(utGetPenaltyDeposit)) == "Transaction: Not unlocked for this height");
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(9),
+        checker, toDelegate(utGetPenaltyDeposit)) == "Transaction: Not unlocked for this height");
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(10),
+        checker, toDelegate(utGetPenaltyDeposit)) == null);
+    assert(tx.isInvalidReason(engine, storage.getUTXOFinder(), Height(1024),
+        checker, toDelegate(utGetPenaltyDeposit)) == null);
 }
 
 // test non LockType.Key Freeze outputs
@@ -1107,4 +1128,63 @@ unittest
         tx.inputs[0].unlock = signUnlock(kp, tx);
         assert(!tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker));
     }
+}
+
+unittest
+{
+    import std.stdio;
+
+    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope storage = new TestUTXOSet;
+    scope payload_checker = new FeeManager();
+    scope checker = &payload_checker.check;
+    auto getPenaltyDeposit = (Hash utxo)
+    {
+        UTXO val;
+        return storage.peekUTXO(utxo, val) ? 10_000.coins : 0.coins;
+    };
+
+    KeyPair kp = KeyPair.random();
+
+    Transaction prev_tx = Transaction([Output(Amount.MinFreezeAmount, kp.address, OutputType.Freeze)]);
+    storage.put(prev_tx);
+
+    // spend exactly the slash penalty
+    Transaction tx = Transaction(
+        [Input(hashFull(prev_tx), 0)],
+        [Output(Amount.MinFreezeAmount + 10_000.coins, kp.address)]);
+    tx.inputs[0].unlock = signUnlock(kp, tx);
+
+    assert(tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker, getPenaltyDeposit));
+
+    // spend less than the slash penalty (remaining is distributed as fees)
+    tx = Transaction(
+        [Input(hashFull(prev_tx), 0)],
+        [Output(Amount.MinFreezeAmount + 9_000.coins, kp.address)]);
+    tx.inputs[0].unlock = signUnlock(kp, tx);
+
+    assert(tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker, getPenaltyDeposit));
+
+    tx = Transaction(
+        [Input(hashFull(prev_tx), 0)],
+        [Output(Amount.MinFreezeAmount + 11_000.coins, kp.address)]);
+    tx.inputs[0].unlock = signUnlock(kp, tx);
+
+    assert(!tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker, getPenaltyDeposit));
+
+    // dont spend penalty deposit at all, should not validate
+    tx = Transaction(
+        [Input(hashFull(prev_tx), 0)],
+        [Output(Amount.MinFreezeAmount, kp.address)]);
+    tx.inputs[0].unlock = signUnlock(kp, tx);
+
+    assert(!tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker, getPenaltyDeposit));
+
+    // cant freeze a frozen output
+    tx = Transaction(
+        [Input(hashFull(prev_tx), 0)],
+        [Output(Amount.MinFreezeAmount, kp.address, OutputType.Freeze)]);
+    tx.inputs[0].unlock = signUnlock(kp, tx);
+
+    assert(!tx.isValid(engine, storage.getUTXOFinder(), Height(0), checker, getPenaltyDeposit));
 }

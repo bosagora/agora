@@ -419,13 +419,13 @@ public class FeeManager
 
     ***************************************************************************/
 
-    public void storeValidatedBlockFees (in Block block, scope UTXOFinder peekUTXO)
-    @trusted
+    public void storeValidatedBlockFees (in Block block, scope UTXOFinder peekUTXO,
+        scope GetPenaltyDeposit getPenaltyDeposit) @trusted
     {
         if (block.header.height == 0) // No fees for Genesis Block
             return;
 
-        auto fees = this.getTXSetFees(block.txs, peekUTXO);
+        auto fees = this.getTXSetFees(block.txs, peekUTXO, getPenaltyDeposit);
         this.block_fees[block.header.height] = fees;
         this.db.execute(
                 "REPLACE INTO block_fees (height, fee, data_fee, freeze_fee) VALUES (?, ?, ?, ?)",
@@ -540,14 +540,14 @@ public class FeeManager
     ***************************************************************************/
 
     public string getTxFeeRate (in Transaction tx, scope UTXOFinder peekUTXO,
-        out Amount rate) nothrow @safe
+        scope GetPenaltyDeposit getPenaltyDeposit, out Amount rate) nothrow @safe
     {
         try
         {
             // At this point, we get a fee, not a rate, but we divide it below.
             auto freeze_fee = this.getFreezeFee(tx);
             ensure(freeze_fee.isValid(), "Can't calculate freeze fee");
-            rate = tx.getFee(peekUTXO) - freeze_fee;
+            rate = tx.getFee(peekUTXO, getPenaltyDeposit) - freeze_fee;
         }
         catch (Exception exc)
             return "Exception happened while calling `getTxFeeRate`";
@@ -570,12 +570,13 @@ public class FeeManager
 
     ***************************************************************************/
 
-    private BlockFees getTXSetFees (in Transaction[] tx_set, scope UTXOFinder peekUTXO) @safe
+    private BlockFees getTXSetFees (in Transaction[] tx_set, scope UTXOFinder peekUTXO,
+        scope GetPenaltyDeposit getPenaltyDeposit) @safe
     {
         BlockFees fees;
         foreach (const ref tx; tx_set)
         {
-            fees.tx_fee += tx.getFee(peekUTXO);
+            fees.tx_fee += tx.getFee(peekUTXO, getPenaltyDeposit);
             fees.data_fee += this.getDataFee(tx.payload.length);
             fees.freeze_fee += this.getFreezeFee(tx);
         }
@@ -596,6 +597,11 @@ public class FeeManager
 
         auto man = new FeeManager();
         auto utxoset = new TestUTXOSet();
+        auto getPenaltyDeposit = (Hash utxo)
+        {
+            UTXO val;
+            return utxoset.peekUTXO(utxo, val) && val.output.type == OutputType.Freeze ? 10_000.coins : 0.coins;
+        };
 
         Amount double_stake = Amount.MinFreezeAmount * 2;
         Amount stake_with_excess = Amount.MinFreezeAmount + Amount(19); // this should not change distribution
@@ -637,7 +643,7 @@ public class FeeManager
         block.txs ~= spend_tx;
 
         // store the fees from this block
-        man.storeValidatedBlockFees(block, &utxoset.peekUTXO);
+        man.storeValidatedBlockFees(block, &utxoset.peekUTXO, getPenaltyDeposit);
 
         // When stakes are equal they should receive the same amount
         BlockRewards rewards = BlockRewards(10_000.coins, 50_000.coins);
@@ -674,7 +680,7 @@ public class FeeManager
         block_with_data.txs ~= [txs_with_data, freeze_tx];
 
         // store the fees from this block
-        man.storeValidatedBlockFees(block_with_data, &utxoset.peekUTXO);
+        man.storeValidatedBlockFees(block_with_data, &utxoset.peekUTXO, getPenaltyDeposit);
 
         // Initialize tot_fee as fees (which includes the data fees)
         Amount tot_fee = man.getBlockFees(Height(2));
@@ -699,6 +705,36 @@ public class FeeManager
         // None wasted, none created (Freeze fee is withheld)
         assert(tot_fee == 10_000.coins);
     }
+
+    unittest
+    {
+        import agora.crypto.Hash;
+        import agora.utils.Test;
+        import agora.consensus.data.genesis.Test;
+        import std.stdio;
+
+        auto man = new FeeManager();
+        auto utxoset = new TestUTXOSet();
+        auto getPenaltyDeposit = (Hash utxo)
+        {
+            UTXO val;
+            return utxoset.peekUTXO(utxo, val) && val.output.type == OutputType.Freeze ? 10_000.coins : 0.coins;
+        };
+
+        Transaction gen_tx = Transaction(
+            [ Output(Amount.MinFreezeAmount, WK.Keys.NODE2.address, OutputType.Freeze) ]);
+        utxoset.put(gen_tx);
+
+        Transaction melting_tx = Transaction(
+            [ Input(gen_tx.hashFull(), 0) ],
+            [ Output(Amount.MinFreezeAmount, WK.Keys.NODE3.address) ]);
+        assert(melting_tx.getFee(&utxoset.peekUTXO, getPenaltyDeposit) == 10_000.coins);
+
+        melting_tx = Transaction(
+            [ Input(gen_tx.hashFull(), 0) ],
+            [ Output(Amount.MinFreezeAmount + 1.coins, WK.Keys.NODE3.address) ]);
+        assert(melting_tx.getFee(&utxoset.peekUTXO, getPenaltyDeposit) == 9_999.coins);
+    }
 }
 
 /*******************************************************************************
@@ -718,7 +754,8 @@ public class FeeManager
 
 *******************************************************************************/
 
-public Amount getFee (in Transaction tx, scope UTXOFinder peekUTXO) @safe
+public Amount getFee (in Transaction tx, scope UTXOFinder peekUTXO,
+    scope GetPenaltyDeposit getPenaltyDeposit) @safe
 {
     // Coinbase TXs are not subject to fees
     if (tx.isCoinbase)
@@ -730,6 +767,8 @@ public Amount getFee (in Transaction tx, scope UTXOFinder peekUTXO) @safe
         UTXO utxo;
         ensure(peekUTXO(input.utxo, utxo), "Unable to find input for UTXO: {}", input.utxo);
         tot_in += utxo.output.value;
+        if (utxo.output.type == OutputType.Freeze)
+            tot_in += getPenaltyDeposit(input.utxo);
     }
 
     ensure(tx.getSumOutput(tot_out), "Transaction output value is invalid: {}", tx.outputs);
@@ -751,6 +790,11 @@ unittest
 
     auto utxo_set = new TestUTXOSet;
     utxo_set.put(freeze_tx);
+    auto getPenaltyDeposit = (Hash utxo)
+    {
+        UTXO val;
+        return utxo_set.peekUTXO(utxo, val) && val.output.type == OutputType.Freeze ? 10_000.coins : 0.coins;
+    };
 
     Hash txhash = hashFull(freeze_tx);
     Hash stake_hash = UTXO.getHash(txhash, 0);
@@ -771,7 +815,7 @@ unittest
     block.txs ~= spend_tx;
 
     block.header.height = Height(1);
-    fee_man.storeValidatedBlockFees(block , &utxo_set.peekUTXO);
+    fee_man.storeValidatedBlockFees(block , &utxo_set.peekUTXO, getPenaltyDeposit);
 
     immutable Params = new immutable(ConsensusParams);
     auto fee_man_2 = new FeeManager(fee_man.db, Params);
@@ -787,7 +831,7 @@ unittest
     Transaction tx = Transaction(
         [ Input(spend_tx.hashFull(), 0)],
         [ Output(Amount(1_000_000L), WK.Keys.NODE3.address) ]);
-    assertThrown(getFee(tx, &utxo_set.peekUTXO));
+    assertThrown(getFee(tx, &utxo_set.peekUTXO, getPenaltyDeposit));
 }
 
 unittest
