@@ -216,7 +216,7 @@ unittest
             value = UTXO(0, txs[0].outputs[0]);
             return true;
         }, Height(0),
-        checker);
+        checker, hash => 0.coins);
     assert(reason is null, reason);
     txs.each!(tx => node_1.postTransaction(tx));
 

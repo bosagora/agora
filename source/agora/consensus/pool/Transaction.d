@@ -862,6 +862,11 @@ unittest
     import agora.consensus.state.UTXOSet;
 
     auto utxo_set = new TestUTXOSet();
+    auto getPenaltyDeposit = (Hash utxo)
+    {
+        UTXO val;
+        return utxo_set.peekUTXO(utxo, val) && val.output.type == OutputType.Freeze ? 10_000.coins : 0.coins;
+    };
     auto fee_man = new FeeManager();
     DoubleSpentSelector selector =
         (Transaction[] txs)
@@ -870,8 +875,8 @@ unittest
                 {
                     Amount rate_a;
                     Amount rate_b;
-                    fee_man.getTxFeeRate(a, &utxo_set.peekUTXO, rate_a);
-                    fee_man.getTxFeeRate(b, &utxo_set.peekUTXO, rate_b);
+                    fee_man.getTxFeeRate(a, &utxo_set.peekUTXO, getPenaltyDeposit, rate_a);
+                    fee_man.getTxFeeRate(b, &utxo_set.peekUTXO, getPenaltyDeposit, rate_b);
                     return rate_a < rate_b;
                 })(txs);
         };

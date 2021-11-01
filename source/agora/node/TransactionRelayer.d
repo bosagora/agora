@@ -363,6 +363,11 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         import agora.consensus.data.Params;
 
         this.utxo_set = new TestUTXOSet();
+        auto getPenaltyDeposit = (Hash utxo)
+        {
+            UTXO val;
+            return this.utxo_set.peekUTXO(utxo, val) && val.output.type == OutputType.Freeze ? 10_000.coins : 0.coins;
+        };
         auto stateDB = new ManagedDatabase(":memory:");
         auto cacheDB = new ManagedDatabase(":memory:");
         immutable params = new immutable(ConsensusParams)();
@@ -370,7 +375,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         auto noclients = new DList!NodeConnInfo();
         GetFeeRateDg wrapper = (in Transaction tx, out Amount rate)
         {
-            return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate);
+            return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, getPenaltyDeposit, rate);
         };
 
         this(new TransactionPool(cacheDB), config, noclients, null, new MockClock(0), wrapper, false);

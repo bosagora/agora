@@ -353,7 +353,8 @@ public class Ledger
 
         if (auto reason = tx.isInvalidReason(this.engine,
                 this.utxo_set.getUTXOFinder(),
-                expected_height, &this.fee_man.check))
+                expected_height, &this.fee_man.check,
+                &this.getPenaltyDeposit))
             return reason;
 
         auto min_fee = this.pool.getAverageFeeRate();
@@ -361,7 +362,8 @@ public class Ledger
             assert(0);
 
         Amount fee_rate;
-        if (auto err = this.fee_man.getTxFeeRate(tx, this.utxo_set.getUTXOFinder(), fee_rate))
+        if (auto err = this.fee_man.getTxFeeRate(tx, this.utxo_set.getUTXOFinder(),
+            &this.getPenaltyDeposit, fee_rate))
             return err;
         if (fee_rate < min_fee)
             return "Fee rate is lower than this node's configured relative threshold (min_fee_pct)";
@@ -399,7 +401,8 @@ public class Ledger
 
         // Store the fees for this block if not Genesis
          if (block.header.height > 0)
-            this.fee_man.storeValidatedBlockFees(block, this.utxo_set.getUTXOFinder);
+            this.fee_man.storeValidatedBlockFees(block, this.utxo_set.getUTXOFinder,
+                &this.getPenaltyDeposit);
 
         ManagedDatabase.beginBatch();
         {
@@ -560,7 +563,7 @@ public class Ledger
     {
 
         Amount rate;
-        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate).length)
+        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate).length)
             return false;
 
         // only consider a double spend transaction, if its fee is
@@ -1093,7 +1096,7 @@ public class Ledger
 
     public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
     {
-        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, rate);
+        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
     }
 
     /***************************************************************************
@@ -1149,7 +1152,7 @@ public class Ledger
         return nullable(txs.map!((tx)
             {
                 Amount rate;
-                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate);
+                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
                 return rate;
             }).maxElement());
     }
@@ -1210,7 +1213,7 @@ public class Ledger
             if (tx == Transaction.init)
                 local_unknown_txs[tx_hash] = true;
             else if (auto fail_reason = tx.isInvalidReason(this.engine,
-                utxo_finder, expect_height, checkAndAcc))
+                utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
                 return fail_reason;
             else
                 tx_set ~= tx;
@@ -1583,7 +1586,7 @@ public class ValidatingLedger : Ledger
             };
 
             if (auto reason = tx.isInvalidReason(
-                    this.engine, utxo_finder, height, checkAndAcc))
+                    this.engine, utxo_finder, height, checkAndAcc, &this.getPenaltyDeposit))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
             else
                 result ~= hash;
@@ -2319,7 +2322,7 @@ unittest
     {
         auto txs = blocks[$-1].spendable.map!(txb => txb.sign()).array();
         txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
-        tx_set_fees = txs.map!(tx => tx.getFee(&ledger.utxo_set.peekUTXO)).reduce!((a,b) => a + b);
+        tx_set_fees = txs.map!(tx => tx.getFee(&ledger.utxo_set.peekUTXO, &ledger.getPenaltyDeposit)).reduce!((a,b) => a + b);
 
         // Add the fees for this height
         total_fees += tx_set_fees;
@@ -2397,4 +2400,27 @@ unittest
     // overwrite the old TX
     auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
     assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
+}
+
+unittest
+{
+    import std.stdio;
+    import agora.consensus.data.genesis.Test;
+    import agora.consensus.PreImage;
+
+    auto params = new immutable(ConsensusParams)(20);
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+
+    auto missing_validator = 0;
+
+    ledger.simulatePreimages(Height(params.ValidatorCycle), [missing_validator]);
+    assert(ledger.getPenaltyDeposit(GenesisBlock.header.enrollments[missing_validator].utxo_key) != 0.coins);
+
+    ConsensusData data;
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    assert(data.missing_validators.canFind(missing_validator));
+    assert(ledger.externalize(data) is null);
+    // slashed stake should not have penalty deposit
+    assert(ledger.getPenaltyDeposit(GenesisBlock.header.enrollments[missing_validator].utxo_key) == 0.coins);
 }
