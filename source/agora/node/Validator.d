@@ -234,7 +234,7 @@ public class Validator : FullNode, API
     /// Ditto
     protected override void discoveryTask ()
     {
-        this.network.discover(this.required_peer_utxos);
+        this.network.discover(this.registry, this.required_peer_utxos);
     }
 
     ///

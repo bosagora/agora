@@ -485,7 +485,7 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
-        this.network.discover();
+        this.network.discover(this.registry);
     }
 
     /***************************************************************************
