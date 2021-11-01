@@ -123,13 +123,15 @@ public struct Config
     public void validate () @safe const scope
     {
         if (this.validator.enabled)
-            enforce(this.network.length ||
+            enforce(this.network.length || this.registry.enabled ||
                     this.validator.registry_address != string.init ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.limit_test_validators == 1,
-                    "Either the network section must not be empty, or 'validator.registry_address' must be set");
+                    "Either the network section must not be empty, or 'validator.registry_address' must be set " ~
+                    ", or registry must be enabled");
         else
-            enforce(this.network.length, "Network section must not be empty");
+            enforce(this.network.length || this.registry.enabled,
+                    "Either the network section must not be empty, or registry must be enabled");
 
         if (!this.node.testing && this.node.limit_test_validators)
             throw new Exception("Cannot use 'node.limit_test_validator' without 'node.testing' set to 'true'");
