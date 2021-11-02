@@ -67,6 +67,7 @@ enum TYPE : ushort
     SRV    =  33, /// Generalized service location record (RFC 2782)
     NAPTR  =  35, /// Naming Authority Pointer (RFC 3403)
     DNAME  =  39, /// Delegated name, a non-unique CNAME (RFC 6672)
+    OPT    =  41, /// Options (Pseudo record for EDNS)
     DS     =  43, /// DNSSEC Delegation signer (RFC 4034)
     RRSIG  =  46, /// DNSSEC Signature (RFC 4034)
     DNSKEY =  48, /// DNSSEC Key record (RFC 4034)
@@ -106,8 +107,6 @@ enum QTYPE : ushort
     CSYNC  =  62, /// Child to parent synchronization (RFC 7477)
     URI    = 256, /// Mappings from hostnames to URIs (RFC 7553)
     CAA    = 257, /// DNS certification authority authorization (RFC 6844)
-
-    OPT = 41,     /// Options (Pseudo record for EDNS)
 
     IXFR  = 251, /// Incremental zone transfer (RFC 1996)
     AXFR  = 252, /// A request for a transfer of an entire zone
