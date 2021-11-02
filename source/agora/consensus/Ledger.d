@@ -1242,7 +1242,7 @@ public class Ledger
         }
         if (local_unknown_txs.length > 0)
         {
-            local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
+            local_unknown_txs.byKey.take(8).each!(tx => this.unknown_txs.put(tx));
             return InvalidConsensusDataReason.MayBeValid;
         }
 
