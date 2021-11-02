@@ -355,6 +355,8 @@ public class NameRegistry: NameRegistryAPI
                 log.warn("DNS: Ignoring query for unknown QTYPE: {}", q);
                 reply.header.RCODE = Header.RCode.NotImplemented;
             }
+
+            reply.questions ~= q;
         }
         reply.fill(query.header);
         log.trace("{} DNS query: {} => {}",
