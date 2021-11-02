@@ -584,6 +584,75 @@ public struct ResourceRecord
     }
 }
 
+/// The OPT opcode is a special ResourceRecord with its own semantic
+/// See https://datatracker.ietf.org/doc/html/rfc6891
+public struct OPTRR
+{
+    @safe pure nothrow @nogc:
+
+    /***************************************************************************
+
+        The underlying ResourceRecord
+
+        OPT records are backed by RR, but their fields are to be interpreted
+        differently, e.g. `ttl` is a bitfield (since OPT MUST NOT be cached),
+        and `CLASS` is the UDP payload size.
+
+        This struct wraps the record and expose a set of get / set properties
+        for easy manipulation.
+
+        See_Also:
+          https://datatracker.ietf.org/doc/html/rfc6891#section-6.1.3
+
+    ***************************************************************************/
+
+    public ResourceRecord record = ResourceRecord(Domain.init, TYPE.OPT, cast(CLASS) 4096);
+
+    /// Requestor's UDP payload size
+    public ushort payloadSize () scope const
+    {
+        return this.record.class_;
+    }
+
+    /// Ditto
+    public void payloadSize (ushort value) scope
+    {
+        this.record.class_ = cast(CLASS) value;
+    }
+
+    /// Upper byte of the header RCODE
+    /// Currently only BADVERS (0x01) is supported
+    public ubyte extendedRCODE () scope const
+    {
+        return this.record.ttl >> 24;
+    }
+
+    /// Ditto
+    public void extendedRCODE (ubyte upperByteValue) scope
+    {
+        this.record.ttl = (this.record.ttl & 0x00FF_FFFF) | (upperByteValue << 24);
+    }
+
+    /// EDNS maximum supported version
+    /// Currently only 0 is supported.
+    public ubyte EDNSVersion () const scope
+    {
+        return (this.record.ttl >> 16) & 0xFF;
+    }
+
+    // Read the 'DO' bit, checking for DNSSEC support
+    public bool DNSSEC () const scope
+    {
+        return !!(this.record.ttl & 0xF0_00);
+    }
+
+    // Set the 'DO' bit controlling DNSSEC support
+    public void DNSSEC (bool val) scope
+    {
+        this.record.ttl = (this.record.ttl & 0xF0_00) | (val << 15);
+    }
+}
+
 /// Thin wrapper around a string, used for domain name serialization
 public struct Domain
 {
