@@ -212,16 +212,15 @@ public class Validator : FullNode, API
         this.started = true;
         // Note: Switching the next two lines leads to test failure
         // It should not, and this needs to be fixed eventually
-        if (auto timer = this.network.startPeriodicNameRegistration())
-            this.timers ~= timer;
+        this.timers[Timers.REGISTRATION] = this.network.startPeriodicNameRegistration();
         super.start();
 
         this.clock.startSyncing();
-        this.timers ~= this.taskman.setTimer(
+        this.timers[Timers.PRE_IMAGE_REVEAL] = this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
             &this.onPreImageRevealTimer, Periodic.Yes);
 
-        this.timers ~= this.taskman.setTimer(
+        this.timers[Timers.PRE_IMAGE_CATCHUP] = this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
             &this.preImageCatchupTask, Periodic.Yes);
 
@@ -516,7 +515,7 @@ public class Validator : FullNode, API
                     time_offset);
             },
             (Duration duration, void delegate() cb) nothrow @trusted
-                { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
+                { this.timers[Timers.CLOCK] = this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************

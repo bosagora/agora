@@ -1267,6 +1267,20 @@ public class Ledger
 
     /***************************************************************************
 
+        Remove a TX Hash that Ledger is no longer missing
+
+        Returns:
+            if it was in fact removed (false if it did not exist in set)
+
+    ***************************************************************************/
+
+    public bool removeUnknownTXHash (Hash tx_hash) @safe nothrow
+    {
+        return this.unknown_txs.remove(tx_hash);
+    }
+
+    /***************************************************************************
+
         Check if information for pre-images and slashed validators is valid
 
         Params:

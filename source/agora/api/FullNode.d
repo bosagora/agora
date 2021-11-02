@@ -345,7 +345,8 @@ public interface API
 
     ***************************************************************************/
 
-    public Transaction[] getTransactions (Set!Hash tx_hashes);
+    @method(HTTPMethod.GET)
+    public Transaction[] getTransactions (Hash[] tx_hashes);
 
     /***************************************************************************
 

@@ -83,7 +83,7 @@ services:
 
   # faucet
   faucet:
-    image: "bosagora/faucet:latest"
+    image: "faucet:latest"
     depends_on:
       - node-0
       - node-2

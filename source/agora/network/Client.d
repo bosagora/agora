@@ -442,7 +442,7 @@ public class NetworkClient
 
     ***************************************************************************/
 
-    public Transaction[] getTransactions (Set!Hash tx_hashes) @trusted nothrow
+    public Transaction[] getTransactions (Hash[] tx_hashes) @trusted nothrow
     {
         return this.attemptRequest!(API.getTransactions, Throw.No)(this.api,
             tx_hashes);

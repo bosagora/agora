@@ -105,8 +105,11 @@ public class FullNode : API
     /// Task manager
     protected ITaskManager taskman;
 
+    enum Timers { CLOCK = 0, DISCOVERY = 1, CATCHUP = 2, REGISTRATION = 3 ,
+        PRE_IMAGE_REVEAL = 4, PRE_IMAGE_CATCHUP = 5 };
+
     /// Timer this node has started
-    protected ITimer[] timers;
+    protected ITimer[Timers.max + 1] timers;
 
     /// Clock instance
     protected Clock clock;
@@ -396,7 +399,7 @@ public class FullNode : API
                 .each!(handler => handler.addresses
                     .each!((string address) {
                         auto url = Address(address); // TODO normalize
-                        this.block_header_handlers[url] = this.network.getBlockHeaderUpdatedHandler(url);   
+                        this.block_header_handlers[url] = this.network.getBlockHeaderUpdatedHandler(url);
                     }));
 
             // Make `PreImageReceivedHandler`s from config
@@ -425,10 +428,10 @@ public class FullNode : API
         if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
             this.pushBlock(this.params.Genesis);
 
-        this.timers ~= this.taskman.setTimer(
-            this.config.node.network_discovery_interval, &this.discoveryTask, Periodic.Yes);
-        this.timers ~= this.taskman.setTimer(
-            this.config.node.block_catchup_interval, &this.catchupTask, Periodic.Yes);
+        this.timers[Timers.DISCOVERY] = this.taskman.setTimer(
+            this.config.node.network_discovery_interval, &this.discoveryTask, Periodic.No);
+        this.timers[Timers.CATCHUP] = this.taskman.setTimer(
+            this.config.node.block_catchup_interval, &this.catchupTask, Periodic.No);
 
         // Immediately run discovery to avoid delays at startup
         this.taskman.runTask(&this.discoveryTask);
@@ -485,6 +488,8 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
+        scope(exit) this.timers[Timers.DISCOVERY].rearm(
+            this.config.node.network_discovery_interval, Periodic.No);
         this.network.discover();
     }
 
@@ -500,12 +505,19 @@ public class FullNode : API
 
     protected void catchupTask () nothrow
     {
+        scope(exit) this.timers[Timers.CATCHUP].rearm(
+            this.config.node.block_catchup_interval, Periodic.No);
+        log.trace("catchupTask: start");
         if (this.network.peers.empty())  // no clients yet (discovery)
+        {
+            log.trace("catchupTask: no peers");
             return;
+        }
 
         this.network.getBlocksFrom(
             Height(this.ledger.getBlockHeight() + 1),
             &this.addBlocks);
+        log.trace("catchupTask: getUnknownTXs");
         this.network.getUnknownTXs(this.ledger);
         try
         {
@@ -515,6 +527,7 @@ public class FullNode : API
         {
             log.error("Error sending updated block headers:{}", e);
         }
+        log.trace("catchupTask: end");
     }
 
     /***************************************************************************
@@ -761,7 +774,7 @@ public class FullNode : API
         return new Clock(
             (out long time_offset) { return true; },
             (Duration duration, void delegate() cb) nothrow @trusted
-                { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
+                { this.timers[Timers.CLOCK] = this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************
@@ -1281,8 +1294,10 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public Transaction[] getTransactions (Set!Hash tx_hashes) @safe
+    public Transaction[] getTransactions (Hash[] tx_hashes) @safe
     {
+        log.info("getTransactions {}", tx_hashes);
+
         this.recordReq("transactions");
 
         Transaction[] found_txs;
@@ -1290,9 +1305,13 @@ public class FullNode : API
         {
             if (found_txs.length >= MaxBatchTranscationsSent)
                 break;
+            log.info("getTransactions call this.pool.getTransactionByHash {}", hash);
             auto tx = this.pool.getTransactionByHash(hash);
             if (tx != Transaction.init)
+            {
+                log.info("getTransactions found {}", tx.hashFull());
                 found_txs ~= tx;
+            }
         }
         return found_txs;
     }

@@ -59,7 +59,7 @@ import std.datetime.stopwatch;
 import std.exception;
 import std.format;
 import std.random;
-import std.range : walkLength, zip;
+import std.range : walkLength, zip, take;
 
 import core.stdc.time;
 import core.time;
@@ -697,9 +697,10 @@ public class NetworkManager
                 this.required_peers.put(peer.key);
         }
 
-        log.info(
-            "Doing periodic network discovery: {} required peers requested, {} missing",
-            required_peer_utxos.length, this.required_peers.length);
+        if (this.required_peers.length > 0)
+            log.info(
+                "Doing periodic network discovery: {} required peers requested, {} missing",
+                required_peer_utxos.length, this.required_peers.length);
 
         if (this.registry_client !is null && required_peer_utxos !is null)
         {
@@ -995,19 +996,26 @@ public class NetworkManager
 
     public void getUnknownTXs (Ledger ledger) @safe nothrow
     {
+        log.trace("getUnknownTXs: start");
         auto unknown_txs = ledger.getUnknownTXHashes();
 
         foreach (peer; this.peers[])
         {
             if (unknown_txs.length == 0)
+            {
+                log.trace("getUnknownTXs: no unknown txs");
                 break;
+            }
 
-            foreach (tx; peer.client.getTransactions(unknown_txs))
+            log.trace("getUnknownTXs: calling getTransactions for unknown_txs {}", unknown_txs);
+            auto txs = peer.client.getTransactions(unknown_txs[].take(2).array);
+            log.trace("getUnknownTXs: Found txs {} from peer {}", txs.prettify, peer.key);
+            foreach (tx; txs)
             {
                 try
                 {
                     ledger.acceptTransaction(tx);
-                    unknown_txs.remove(tx.hashFull());
+                    ledger.removeUnknownTXHash(tx.hashFull());
                     log.trace("getUnknownTXs: Found unknown TX with hash {}, tx = {}, unknown tx hashes now {}",
                         tx.hashFull(), tx.prettify, ledger.getUnknownTXHashes());
                 }
