@@ -631,12 +631,12 @@ public struct Domain
             return T();
 
         // Let's say we got `5agora8bosagora2io0`, for domain `agora.bosagora.io`
-        // Our string will be `agora.bosagora.io.`, so just drop the last char
+        // Our string will be `agora.bosagora.io.`.
         std.utf.validate(buffer[0 .. count]);
         static if (is(T : Domain)) // Mutable
-            return T(buffer[0 .. count - 1].dup);
+            return T(buffer[0 .. count].dup);
         else
-            return T(buffer[0 .. count - 1].idup);
+            return T(buffer[0 .. count].idup);
     }
 
     /// Ditto
@@ -672,7 +672,10 @@ unittest
     Domain d1 = Domain("hello.world");
     assert(d1.serializeFull() ==
            [0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x05, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x00 ]);
-    testSymmetry(d1);
+
+    Domain d2 = Domain("hello.world.");
+    assert(d1.serializeFull() == d2.serializeFull());
+    testSymmetry(d2);
 }
 
 /*******************************************************************************
