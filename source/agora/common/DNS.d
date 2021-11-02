@@ -273,21 +273,31 @@ public struct Message
 
     /// Support for network serialization
     public static T fromBinary (T) (
-        scope DeserializeDg data, in DeserializerOptions oopts) @safe
+        scope DeserializeDg data, in DeserializerOptions opts) @safe
     {
         import std.array : array;
         import std.range : iota;
 
-        DeserializerOptions opts = { maxLength: oopts.maxLength, compact: CompactMode.No };
-        auto hdr = deserializeFull!(typeof(T.header))(data, opts);
+        // Needed to keep track of previously seen domains
+        DNSDeserializerContext ctx = {
+            index: 0,
+            domains: null,
+            data: data,
+            options: { maxLength: opts.maxLength, compact: CompactMode.No },
+        };
+
+        // All RR are qualified the same so just use this
+        alias QRRT = typeof(T.answers[0]);
+
+        auto hdr = deserializeFull!(typeof(T.header))(&ctx.read, ctx.options);
         auto f1 = iota(hdr.QDCOUNT)
-            .map!(_ => deserializeFull!(typeof(T.questions[0]))(data, opts)).array();
+            .map!(_ => Question.fromBinary!(typeof(T.questions[0]))(ctx)).array();
         auto f2 = iota(hdr.ANCOUNT)
-            .map!(_ => deserializeFull!(typeof(T.answers[0]))(data, opts)).array();
+            .map!(_ => ResourceRecord.fromBinary!QRRT(ctx)).array();
         auto f3 = iota(hdr.NSCOUNT)
-            .map!(_ => deserializeFull!(typeof(T.authorities[0]))(data, opts)).array();
+            .map!(_ => ResourceRecord.fromBinary!QRRT(ctx)).array();
         auto f4 = iota(hdr.ARCOUNT)
-            .map!(_ => deserializeFull!(typeof(T.additionals[0]))(data, opts)).array();
+            .map!(_ => ResourceRecord.fromBinary!QRRT(ctx)).array();
         return T(hdr, f1, f2, f3, f4);
     }
 
@@ -526,6 +536,17 @@ public struct Question
     /// A two octet code that specifies the class of the query.
     /// For example, the QCLASS field is IN for the Internet.
     public QCLASS qclass;
+
+    /// Support for network serialization
+    /// Note that this method is not called directly by the deserializer,
+    /// as it needs to support arbitrary pointers into the message
+    public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
+    {
+        return T(Domain.fromBinary!(typeof(T.init.qname))(ctx),
+                 deserializeFull!QTYPE(&ctx.read, ctx.options),
+                 deserializeFull!QCLASS(&ctx.read, ctx.options),
+            );
+    }
 }
 
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.3
@@ -562,20 +583,18 @@ public struct ResourceRecord
     public ubyte[] rdata;
 
     /// Support for network serialization
-    public static T fromBinary (T) (
-        scope DeserializeDg data, in DeserializerOptions oopts) @safe
+    public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
     {
-        DeserializerOptions opts = { maxLength: oopts.maxLength, compact: CompactMode.No };
         auto tmp = T(
-            deserializeFull!(typeof(T.name))(data, opts),
-            deserializeFull!(TYPE)(data, opts),
-            deserializeFull!(CLASS)(data, opts),
-            deserializeFull!(uint)(data, opts),
+            Domain.fromBinary!(typeof(T.name))(ctx),
+            deserializeFull!(TYPE)(&ctx.read, ctx.options),
+            deserializeFull!(CLASS)(&ctx.read, ctx.options),
+            deserializeFull!(uint)(&ctx.read, ctx.options),
         );
-        auto rdlength = deserializeFull!(ushort)(data, opts);
+        auto rdlength = deserializeFull!(ushort)(&ctx.read, ctx.options);
         return T(
             tmp.name, tmp.type, tmp.class_, tmp.ttl,
-            () @trusted { return cast(typeof(T.rdata)) data(rdlength); }(),
+            () @trusted { return cast(typeof(T.rdata)) ctx.read(rdlength); }(),
         );
     }
 
@@ -673,48 +692,85 @@ public struct Domain
     alias value this;
 
     /// Support for network serialization
-    public static T fromBinary (T) (
-        scope DeserializeDg data, in DeserializerOptions opts) @safe
+    /// Note that this method is not called directly by the deserializer,
+    /// as it needs to support arbitrary pointers into the message
+    public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
     {
         // https://datatracker.ietf.org/doc/html/rfc1035#section-3.1
         // Total limit is 255 octets (not chars) and each label is 63 chars or less
         char[255] buffer;
         size_t count;
+
+        // First, save the index we're at, as it could be later used
+        const startOffset = ctx.index;
+
+        void appendLabel (in ubyte[] label)
+        {
+            // Limits as defined in the RFC
+            ensure(label.length <= 63,
+                "Domain name label should be 64 octets or less, not {}", label.length);
+            ensure(count + label.length < 255, // Less than to account for + 1
+                "Label of length {} would exceeds total domain name length " ~
+                "limit of 255 octets (currently: {} octets)",
+                label.length, count);
+
+            // Cast is safe because we validate the whole string at once later
+            () @trusted {
+                buffer[count .. count + label.length] = cast(const(char[])) label;
+            }();
+            buffer[count + label.length] = '.';
+            count += label.length + 1;
+        }
+
+        // Return the final value, and save the start index / slice in the context
+        T returnValue (typeof(T.value) value)
+        {
+            ctx.domains ~= DNSDeserializerContext.DomainRecord(startOffset, value);
+            return T(value);
+        }
+
         while (true)
         {
-            const len = data(1)[0];
+            const len = ctx.read(1)[0];
 
             // NULL label means we reached the root
             if (len == 0)
                 break;
 
-            // By the RFC
-            ensure(len <= 63,
-                   "Domain name label should be 64 octets or less, not {}",
-                   len);
-            // Cast is safe because we validate the whole string at once later
-            () @trusted {
-                buffer[count .. count + len] = cast(const(char[])) data(len);
-            }();
-            buffer[count + len] = '.';
-            count += len + 1;
-
-            // By the RFC
-            ensure(count <= 255,
-                   "Total domain name length should be 255 octets or less, not {}",
-                   count);
+            // Message compression is in effect
+            if (len & 0b1100_0000)
+            {
+                ushort offset = ctx.read(1)[0];
+                offset |= (len & 0b0011_1111) << 8;
+                const previous = ctx.lookup(offset);
+                ensure(count + previous.length < buffer.length,
+                        "Using previous label would overflow the 255 characters limit: {} + {}",
+                        count, previous.length);
+                buffer[count .. count + previous.length] = previous[];
+                count += previous.length;
+                // If we found a pointer, we have the whole domain
+                break;
+            }
+            else
+                appendLabel(ctx.read(len));
         }
 
+        assert(ctx.index >= startOffset);
+
+        // It'd be impractical to send this instead of just 0,
+        // but we have to be compliant, so this appends the empty label
+        // to the list of previously seen domains
         if (count == 0)
-            return T();
+            return returnValue(null);
 
         // Let's say we got `5agora8bosagora2io0`, for domain `agora.bosagora.io`
         // Our string will be `agora.bosagora.io.`.
         std.utf.validate(buffer[0 .. count]);
+
         static if (is(T : Domain)) // Mutable
-            return T(buffer[0 .. count].dup);
+            return returnValue(buffer[0 .. count].dup);
         else
-            return T(buffer[0 .. count].idup);
+            return returnValue(buffer[0 .. count].idup);
     }
 
     /// Ditto
@@ -740,20 +796,64 @@ public struct Domain
 
 unittest
 {
-    checkFromBinary!Domain();
     checkFromBinary!Message();
-    checkFromBinary!ResourceRecord();
 }
 
-unittest
+/// Context used while deserializing a DNS message
+private struct DNSDeserializerContext
 {
-    Domain d1 = Domain("hello.world");
-    assert(d1.serializeFull() ==
-           [0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x05, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x00 ]);
+    /// Type of delegate used by the parent to lookup a previous name
+    public alias DNSPointerLookup = const(ubyte)[] delegate (ubyte) @safe;
 
-    Domain d2 = Domain("hello.world.");
-    assert(d1.serializeFull() == d2.serializeFull());
-    testSymmetry(d2);
+    /// Record of previous domains
+    public struct DomainRecord
+    {
+        ///
+        public ushort start;
+
+        ///
+        public const(char)[] data;
+    }
+
+    /// The number of bytes read this far
+    private ushort index;
+
+    ///
+    private DomainRecord[] domains;
+
+    /// The deserialization delegate
+    private DeserializeDg data;
+
+    /// Options for the deserialization
+    private const DeserializerOptions options;
+
+    /// Query `data` and updates `index` accordingly
+    public const(ubyte)[] read (size_t length) @safe
+    {
+        this.index += length;
+        return this.data(length);
+    }
+
+    /// Look a previous label up
+    public const(char)[] lookup (ushort index) const @safe
+    {
+        const(char)[] binarySearch (in DomainRecord[] record)
+        {
+            auto pivot = record[$/2];
+            if (index < pivot.start)
+            {
+                ensure(record.length > 1, "{} is not a valid index for a previous domain", index);
+                return binarySearch(record[0 .. $/2]);
+            }
+            if (index <= pivot.start + pivot.data.length)
+                return pivot.data[index - pivot.start .. $];
+            ensure(record.length > 1, "{} is not a valid index for a previous domain", index);
+            return binarySearch(record[$/2 .. $]);
+        }
+
+        ensure(this.domains.length > 0, "Looking up index {} on empty list of domains", index);
+        return binarySearch(this.domains);
+    }
 }
 
 /*******************************************************************************
