@@ -1225,7 +1225,6 @@ public class TestAPIManager
         Height from = Height(0), string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
-        const MaxBlocks = 1024;
         assert(to >= from,
             format!"[%s:%s] Please provide valid heights as params. Not %s .. %s"
             (file, line, from, to));

@@ -585,10 +585,6 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
     Block block;
     auto preimages_rng = preimages.filter!(pi => pi !is Hash.init);
     assert(!preimages_rng.empty);
-    auto random_seed = () {
-        scope (failure) assert(0, "Reduce threw despite non-empty range");
-        return preimages_rng.reduce!((a , b) => hashMulti(a, b));
-    }();
 
     block.header.prev_block = prev_block.header.hashFull();
     block.header.height = prev_block.header.height + 1;

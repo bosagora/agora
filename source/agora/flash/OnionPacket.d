@@ -321,7 +321,6 @@ public EncryptedPayload encryptPayload (Payload payload, Pair ephemeral_kp,
     randombytes_buf(result.nonce.ptr, result.nonce.length);
 
     const data = payload.serializeFull();
-    auto ciphertext_len = crypto_secretbox_MACBYTES + data.length;
 
     shared_secret = generateSharedSecret(true, ephemeral_kp.v, target_pk);
     if (crypto_secretbox_easy(result.payload.ptr, data.ptr, data.length,

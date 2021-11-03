@@ -253,7 +253,6 @@ private size_t nameIndex (scope const(char)[] name) pure nothrow @nogc @safe
 {
     assert(name.length <= Name.length, name);
     size_t result;
-    immutable bool needOffset = name.length > 1;
     foreach (size_t index, char c; name)
     {
         assert(c.isInRange());
