@@ -397,7 +397,17 @@ public struct Header
     public void RA (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 9); }
 
     /// Reserved for future use. Must be zero in all queries and responses.
-    public ubyte Z () const scope { return (this.field2 & 0b0_0000_0_0_0_0_111_0000) >> 4; }
+    public ubyte Z () const scope { return (this.field2 & 0b0_0000_0_0_0_0_100_0000) >> 4; }
+
+    /// Authenticated Data, initially defined in RFC2065
+    public bool AD () const scope { return !!(this.field2 & (1 << 5)); }
+    /// Ditto
+    public void AD (bool val) scope { this.field2 = (this.field2 & ~(1 << 5)) | (val << 5); }
+
+    /// Checking Disabled, initially defined in RFC2065
+    public bool CD () const scope { return !!(this.field2 & (1 << 4)); }
+    /// Ditto
+    public void CD (bool val) scope { this.field2 = (this.field2 & ~(1 << 4)) | (val << 4); }
 
     /// Response code - this 4 bit field is set as part of responses.
     public enum RCode : ubyte
