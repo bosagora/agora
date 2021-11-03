@@ -537,6 +537,7 @@ public class Ledger
                 log.fatal("Validated block: {}", block);
                 assert(0);
             }
+            this.utxo_set.updateUTXOLock(enrollment.utxo_key, block.header.height + this.params.ValidatorCycle);
         }
     }
 
@@ -2423,4 +2424,20 @@ unittest
     assert(ledger.externalize(data) is null);
     // slashed stake should not have penalty deposit
     assert(ledger.getPenaltyDeposit(GenesisBlock.header.enrollments[missing_validator].utxo_key) == 0.coins);
+}
+
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    auto params = new immutable(ConsensusParams)();
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+    ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+    auto freeze_tx = GenesisBlock.txs.find!(tx => tx.isFreeze).front();
+    auto melting_tx = TxBuilder(freeze_tx, 0).sign();
+
+    // enrolled stake can't be spent
+    assert(ledger.acceptTransaction(melting_tx) !is null);
 }

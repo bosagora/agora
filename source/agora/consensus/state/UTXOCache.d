@@ -87,6 +87,24 @@ abstract class UTXOCache
 
     /***************************************************************************
 
+        Update lock height of a UTXO
+
+        Params:
+            utxo = the hash of the UTXO to get
+            unlock_height = new unlock height
+
+    ***************************************************************************/
+
+    public void updateUTXOLock (in Hash utxo, ulong unlock_height) @safe
+    {
+        UTXO old = this.getUTXO(utxo);
+        this.remove(utxo);
+        old.unlock_height = unlock_height;
+        this.add(utxo, old);
+    }
+
+    /***************************************************************************
+
         Returns:
             the number of elements in the UTXO set
 
