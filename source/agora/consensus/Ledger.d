@@ -1922,7 +1922,6 @@ private immutable(Block)[] genBlocksToIndex (
     foreach (_; 0 .. count)
     {
         auto txs = blocks[$ - 1].spendable().map!(txb => txb.sign());
-        auto cycle = blocks[$ - 1].header.height / params.ValidatorCycle;
         blocks ~= makeNewTestBlock(blocks[$ - 1], txs);
     }
     if (blocks)

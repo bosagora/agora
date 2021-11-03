@@ -505,7 +505,6 @@ public class Channel
                     ErrorCode.None);
 
                 // initial output allocates all the funds back to the channel creator
-                const seq_id = 0;
                 Balance balance = { refund_amount : this.conf.capacity };
                 Output[] outputs = this.buildBalanceOutputs(balance);
 
@@ -977,7 +976,6 @@ LOuter: while (1)
         if (result.error)
             return; // TODO: is further error recovery needed?
 
-        const old_balance = this.cur_balance;
         this.cur_seq_id = new_seq_id;
         const peer_nonce = result.value;
 
@@ -1286,8 +1284,6 @@ LOuter: while (1)
 
     private void handleIncomingUpdate (IncomingUpdate update)
     {
-        const old_balance = this.cur_balance;
-
         assert(this.channel_updates[0].update_tx.outputs.length == 1);
         const update_utxo = UTXO(0,
             this.channel_updates[0].update_tx.outputs[0]);

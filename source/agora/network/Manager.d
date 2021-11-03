@@ -457,7 +457,6 @@ public class NetworkManager
             "utxo TEXT, pubkey TEXT, address TEXT NOT NULL)");
 
         auto results = this.cacheDB.execute("SELECT address FROM network_manager");
-        bool needSeeding = results.empty;
         foreach (ref row; results)
         {
             const address = row.peek!(string)(0);
@@ -944,7 +943,7 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        auto node_pair = this.peers[]
+        this.peers[]
             .map!(node => Pair(getHeight(node.client), node.client))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
