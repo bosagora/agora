@@ -62,7 +62,7 @@ public struct Address
         scope DeserializeDg dg, in DeserializerOptions opts) @safe
     {
         return () @trusted {
-            return T(deserializeFull!string(dg));
+            return T(deserializeFull!string(dg, opts));
         }();
     }
 
