@@ -719,12 +719,12 @@ public class Validator : FullNode, API
         invalid
 
         Params:
-            data = Invalid ConsensusData
+            _ = Consensus data that triggered the error
             msg = Reason
 
     ***************************************************************************/
 
-    protected void invalidNominationHandler (in ConsensusData data, in string msg)
+    protected void invalidNominationHandler (in ConsensusData _, in string msg)
         @safe
     {
         // Network needs Validators, see if we can enroll
