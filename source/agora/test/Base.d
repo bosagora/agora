@@ -510,22 +510,6 @@ private final class LocalRestTimer : ITimer
     }
 }
 
-/// A ban manager not loading and dumping
-public class TestBanManager : BanManager
-{
-    /// Ctor (exclude the 'Logger' default argument)
-    public this (Parameters!(BanManager.__ctor)[0 .. 3] args)
-    {
-        super(args);
-    }
-
-    /// no-op
-    public override void load () { }
-
-    /// no-op
-    public override void dump () { }
-}
-
 /// We use a pair of (key, client) rather than a hashmap client[key],
 /// since we want to know the order of the nodes which were configured
 /// in the makeTestNetwork() call.
@@ -1357,24 +1341,6 @@ public class TestNetworkManager : NetworkManager
             return new RemoteAPI!NameRegistryAPI(tid, timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
                "' without first creating it");
-    }
-
-    /***************************************************************************
-
-        Params:
-            conf = ban manager config
-            clock = clock instance
-            data_dir = path to the data directory
-
-        Returns:
-            an instance of a TestBanManager
-
-    ***************************************************************************/
-
-    protected override TestBanManager getBanManager (in BanManager.Config conf,
-        Clock clock, string data_dir)
-    {
-        return new TestBanManager(conf, clock, data_dir);
     }
 
     ///
