@@ -72,7 +72,7 @@ immutable string[] SpecialNames = [
 ];
 
 /// Stored globally to avoid large stack / TLS issues
-__gshared Scalar[KeyCountTarget + SpecialNames.length] result;
+__gshared Scalar[KeyCountTarget + SpecialNames.length] foundKeys;
 __gshared bool[KeyCountTarget + SpecialNames.length] foundMap;
 
 void main ()
@@ -85,7 +85,7 @@ void main ()
     foreach (_; parallel(iota(42)))
     {
     NextKey:
-        while (atomicLoad(found) < result.length)
+        while (atomicLoad(found) < foundKeys.length)
         {
             auto tmp = Pair.random();
 
@@ -151,7 +151,7 @@ void main ()
         }
     }
 
-    foreach (index, ref seed; result[0 .. KeyCountTarget])
+    foreach (index, ref seed; foundKeys[0 .. KeyCountTarget])
     {
         const name = indexName(index);
         auto kp = Pair.fromScalar(seed);
@@ -159,7 +159,7 @@ void main ()
     }
 
     writeln("==================================================");
-    foreach (index, ref seed; result[KeyCountTarget .. $])
+    foreach (index, ref seed; foundKeys[KeyCountTarget .. $])
     {
         auto kp = Pair.fromScalar(seed);
         printKey(SpecialNames[index], kp);
@@ -174,7 +174,7 @@ private bool onFound (ref shared size_t found, size_t index, Scalar value)
         return false;
 
     found.atomicOp!("+=")(1);
-    result[index] = value;
+    foundKeys[index] = value;
     stderr.write("\rKeys found: ", atomicLoad(found), "/", foundMap.length);
     stderr.flush();
     return true;
