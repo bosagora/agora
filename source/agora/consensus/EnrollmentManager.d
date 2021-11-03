@@ -239,6 +239,7 @@ public class EnrollmentManager
         Params:
             height = block height intended for the enrollments
             peekUTXO = An `UTXOFinder` without replay-protection
+            findUTXO = An `UTXOFinder` with replay-protection
 
         Returns:
             The unregistered enrollments data
@@ -246,7 +247,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public Enrollment[] getEnrollments (in Height height, scope UTXOFinder peekUTXO,
-        scope GetPenaltyDeposit getPenaltyDeposit) @trusted nothrow
+        scope GetPenaltyDeposit getPenaltyDeposit, scope UTXOFinder findUTXO = null) @trusted nothrow
     {
         this.enroll_pool.removeExpired(height);
         Enrollment[] enrolls;
@@ -256,7 +257,8 @@ public class EnrollmentManager
             UTXO utxo;
             if (peekUTXO(enroll.utxo_key, utxo) &&
                 this.isInvalidCandidateReason(enroll, utxo.output.address,
-                                    height, peekUTXO, getPenaltyDeposit) is null)
+                                    height, findUTXO is null ? peekUTXO : findUTXO,
+                                    getPenaltyDeposit) is null)
                 enrolls ~= enroll;
         }
         return enrolls;
