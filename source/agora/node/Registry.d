@@ -232,8 +232,8 @@ public class NameRegistry: NameRegistryAPI
         UTXO utxo;
         auto validator_info = this.validator_info
             .find!(info => info.address == registry_payload.data.public_key);
-        auto enrollment = this.ledger.getCandidateEnrollments(last_height).find!(
-                enroll => this.ledger.peekUTXO(enroll.utxo_key, utxo)
+        auto enrollment = this.ledger.getCandidateEnrollments(last_height, &this.ledger.peekUTXO)
+                .find!(enroll => this.ledger.peekUTXO(enroll.utxo_key, utxo)
                     && (utxo.output.address == registry_payload.data.public_key));
         ensure(!validator_info.empty || !enrollment.empty, "Not an enrolled validator");
         auto stake = validator_info.empty ? enrollment.front.utxo_key : validator_info.front.utxo;

@@ -647,7 +647,7 @@ extern(D):
                 return;
             }
             Transaction[] received_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set))
+            if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set, this.ledger.getUTXOFinder()))
             {
                 log.info("Missing TXs while checking envelope signature : {}",
                     scpPrettify(&envelope, &this.getQSet));
@@ -823,7 +823,7 @@ extern(D):
         try
         {
             Transaction[] signed_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set))
+            if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set, this.ledger.getUTXOFinder()))
             {
                 log.info("Missing TXs while signing confirm ballot {}",
                     scpPrettify(&envelope, &this.getQSet));
@@ -979,7 +979,7 @@ extern(D):
         try
         {
             Transaction[] externalized_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set))
+            if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set, this.ledger.getUTXOFinder()))
             {
                 log.info("Missing TXs while externalizing at Height {}: {}",
                     height, prettify(data));

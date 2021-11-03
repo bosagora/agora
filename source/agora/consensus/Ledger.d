@@ -724,7 +724,7 @@ public class Ledger
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         Transaction[] tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, tx_set))
+        if (auto fail_reason = this.getValidTXSet(data, tx_set, utxo_finder))
             return fail_reason;
 
         // av   == active validators (this block)
@@ -768,7 +768,7 @@ public class Ledger
                 return fail_reason;
         }
 
-        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators))
+        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators, utxo_finder))
                 return fail_reason;
 
         catch (Exception exc)
@@ -789,6 +789,7 @@ public class Ledger
             data = consensus data
             initial_missing_validators = missing validators at the beginning of
                the nomination round
+            utxo_finder = UTXO finder with double spent protection
 
         Returns:
             the error message if validation failed, otherwise null
@@ -796,9 +797,10 @@ public class Ledger
     ***************************************************************************/
 
     public string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators) @safe
+        in uint[] initial_missing_validators, scope UTXOFinder utxo_finder) @safe
     {
-        return this.isInvalidPreimageRootReason(height, data.missing_validators, initial_missing_validators);
+        return this.isInvalidPreimageRootReason(height, data.missing_validators,
+            initial_missing_validators, utxo_finder);
     }
 
     /***************************************************************************
@@ -1182,6 +1184,7 @@ public class Ledger
         Params:
             data = consensus value
             tx_set = buffer to write the found TXs
+            utxo_finder = UTXO finder with double spent protection
 
         Returns:
             `null` if node can build a valid TX set, a string explaining
@@ -1189,11 +1192,11 @@ public class Ledger
 
     ***************************************************************************/
 
-    public string getValidTXSet (in ConsensusData data, ref Transaction[] tx_set)
+    public string getValidTXSet (in ConsensusData data, ref Transaction[] tx_set,
+        scope UTXOFinder utxo_finder)
         @safe nothrow
     {
         const expect_height = this.getBlockHeight() + 1;
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
         bool[Hash] local_unknown_txs;
 
         Amount tot_fee, tot_data_fee;
@@ -1272,6 +1275,7 @@ public class Ledger
                 which have not revealed the preimage
             missing_validators_higher_bound = missing validators at the beginning of
                the nomination round
+            utxo_finder = UTXO finder with double spent protection
 
         Returns:
             `null` if the information is valid at the proposed height,
@@ -1280,7 +1284,8 @@ public class Ledger
     ***************************************************************************/
 
     private string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe
+        in uint[] missing_validators, in uint[] missing_validators_higher_bound,
+        scope UTXOFinder utxo_finder) @safe
     {
         import std.algorithm.setops : setDifference;
 
@@ -1313,6 +1318,12 @@ public class Ledger
             return "Higher bound violation - Missing validator mismatch " ~
                 assumeWontThrow(to!string(sorted_missing_validators)) ~
                 " is not a subset of " ~ assumeWontThrow(to!string(sorted_missing_validators_higher_bound));
+
+        if (missing_validators.any!(idx => idx >= validators.length))
+            return "Slashing non existing index";
+        UTXO utxo;
+        if (missing_validators.any!(idx => !utxo_finder(validators[idx].utxo, utxo)))
+            return "Cannot slash a spent UTXO";
 
         return null;
     }
@@ -1364,13 +1375,30 @@ public class Ledger
 
     /***************************************************************************
 
+        Prepare tracking double-spent transactions and
+        return the UTXOFinder delegate
+
+        Returns:
+            the UTXOFinder delegate
+
+    ***************************************************************************/
+
+    public UTXOFinder getUTXOFinder () nothrow @trusted
+    {
+        return this.utxo_set.getUTXOFinder();
+    }
+
+    /***************************************************************************
+
         Returns: A list of Enrollments that can be used for the next block
 
     ***************************************************************************/
 
-    public Enrollment[] getCandidateEnrollments (in Height height) @safe
+    public Enrollment[] getCandidateEnrollments (in Height height,
+        scope UTXOFinder utxo_finder) @safe
     {
-        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit);
+        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO,
+            &this.getPenaltyDeposit, utxo_finder);
     }
 
     /***************************************************************************
@@ -1511,9 +1539,10 @@ public class ValidatingLedger : Ledger
     {
         const next_height = this.getBlockHeight() + 1;
 
-        data.enrolls = this.getCandidateEnrollments(next_height);
-        data.missing_validators = this.getCandidateMissingValidators(next_height);
-        data.tx_set = this.getCandidateTransactions(next_height, max_txs);
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
+        data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
+        data.missing_validators = this.getCandidateMissingValidators(next_height, utxo_finder);
+        data.tx_set = this.getCandidateTransactions(next_height, max_txs, utxo_finder);
         if (next_height >= 2 * this.params.PayoutPeriod
             && next_height % this.params.PayoutPeriod == 0)   // This is a Coinbase payout block
             {
@@ -1526,9 +1555,9 @@ public class ValidatingLedger : Ledger
 
     /// Validate slashing data, including checking if the node is slef slashing
     public override string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators) @safe
+        in uint[] initial_missing_validators, scope UTXOFinder utxo_finder) @safe
     {
-        if (auto res = super.validateSlashingData(height, data, initial_missing_validators))
+        if (auto res = super.validateSlashingData(height, data, initial_missing_validators, utxo_finder))
             return res;
 
         const self = this.enroll_man.getEnrollmentKey();
@@ -1551,10 +1580,13 @@ public class ValidatingLedger : Ledger
 
     ***************************************************************************/
 
-    public uint[] getCandidateMissingValidators (in Height height) @safe
+    public uint[] getCandidateMissingValidators (in Height height,
+        scope UTXOFinder findUTXO) @safe
     {
+        UTXO utxo;
         return this.getValidators(height).enumerate()
             .filter!(en => en.value.preimage.height < height)
+            .filter!(en => findUTXO(en.value.preimage.utxo, utxo))
             .map!(en => cast(uint) en.index)
             .array();
     }
@@ -1566,12 +1598,11 @@ public class ValidatingLedger : Ledger
 
     ***************************************************************************/
 
-    public Hash[] getCandidateTransactions (in Height height, ulong max_txs)
-        @safe
+    public Hash[] getCandidateTransactions (in Height height, ulong max_txs,
+        scope UTXOFinder utxo_finder) @safe
     {
         Hash[] result;
         Amount tot_fee, tot_data_fee;
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         foreach (ref Hash hash, ref Transaction tx; this.pool)
         {
@@ -1606,9 +1637,10 @@ public class ValidatingLedger : Ledger
     private string externalize (ConsensusData data) @trusted
     {
         const height = Height(this.last_block.header.height + 1);
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         Transaction[] externalized_tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
+        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set, utxo_finder))
         {
             log.info("Ledger.externalize: can not create new block at Height {} : {}. Fail reason : {}",
                 height, data.prettify, fail_reason);
@@ -2228,10 +2260,10 @@ unittest
     assert(data.missing_validators == skip_indexes);
 
     // check validity of slashing information
-    assert(ledger.validateSlashingData(Height(22), data, skip_indexes) == null);
+    assert(ledger.validateSlashingData(Height(22), data, skip_indexes, ledger.utxo_set.getUTXOFinder()) == null);
     ConsensusData forged_data = data;
     forged_data.missing_validators = [3, 2, 1];
-    assert(ledger.validateSlashingData(Height(22), forged_data, skip_indexes) != null);
+    assert(ledger.validateSlashingData(Height(22), forged_data, skip_indexes, ledger.utxo_set.getUTXOFinder()) != null);
 
     // Now reveal for all active validators at height 22
     ledger.simulatePreimages(Height(22));
@@ -2273,7 +2305,7 @@ unittest
 
     assert(ledger.validateConsensusData(data, skip_indexes) is null);
 
-    data.missing_validators = [2,5,7];
+    data.missing_validators = [2,3,5];
     assert(ledger.validateConsensusData(data, [2,3,5,7,9]) is null);
 
     data.missing_validators = [2,5];
@@ -2440,4 +2472,33 @@ unittest
 
     // enrolled stake can't be spent
     assert(ledger.acceptTransaction(melting_tx) !is null);
+}
+
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    auto params = new immutable(ConsensusParams)();
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+    ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+    KeyPair kp = WK.Keys.GG;
+    auto freeze_tx = genesisSpendable().front().refund(kp.address).sign(OutputType.Freeze);
+    assert(ledger.acceptTransaction(freeze_tx) is null);
+    ledger.forceCreateBlock(1);
+
+    auto melting_tx = TxBuilder(freeze_tx, 0).sign();
+    assert(ledger.acceptTransaction(melting_tx) is null);
+
+    ConsensusData data;
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    assert(data.tx_set.canFind(melting_tx.hashFull()));
+    assert(ledger.validateConsensusData(data, []) is null);
+
+    // can't enroll and spend the stake at the same height
+    data.enrolls ~= EnrollmentManager.makeEnrollment(UTXO.getHash(freeze_tx.hashFull, 0), kp, Height(1));
+
+    import std.stdio;
+    assert(ledger.validateConsensusData(data, []) !is null);
 }
