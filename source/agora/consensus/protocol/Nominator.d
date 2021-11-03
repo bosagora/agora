@@ -839,7 +839,7 @@ extern(D):
         in Hash block_hash) @safe nothrow
     {
         auto sigs = block_sig.height in this.slot_sigs;
-        if (block_sig.height in this.slot_sigs && block_sig.utxo in this.slot_sigs[block_sig.height])
+        if (sigs && block_sig.utxo in (*sigs))
         {
             log.trace("Signature already collected for this node at height {}", block_sig.height);
             return false;
