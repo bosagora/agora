@@ -210,7 +210,7 @@ public class Channel
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete,
         GetFeeUTXOs getFeeUTXOs,
-        FlashAPI delegate (in PublicKey peer_pk, Duration timeout, 
+        FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
             Address address = Address.init) getFlashClient,
         ManagedDatabase db)
     {
@@ -255,7 +255,7 @@ public class Channel
 
     public static Channel[Hash] loadChannels (FlashConfig flash_conf,
         ManagedDatabase db,
-        FlashAPI delegate (in PublicKey peer_pk, Duration timeout, 
+        FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
             Address address = Address.init) getFlashClient,
         Engine engine, ITaskManager taskman,
         void delegate (in Transaction) txPublisher, PaymentRouter paymentRouter,

@@ -23,7 +23,7 @@ import vibe.inet.url;
 
 import geod24.bitblob;
 
-shared static this () 
+shared static this ()
 {
     registerCommonInternetSchema("agora"); // TODO default port: 2826
 }
@@ -36,7 +36,7 @@ public alias TimePoint = ulong;
 public alias cstring = const(char)[];
 
 /// A network address, extended version of Vibe.d's URL with serialization
-public struct Address 
+public struct Address
 {
 @safe:
     URL inner;
