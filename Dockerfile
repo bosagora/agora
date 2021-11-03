@@ -1,17 +1,20 @@
 # Build Agora from source
 FROM bosagora/agora-builder:latest AS Builder
 ARG DUB_OPTIONS
+ARG AGORA_STANDALONE
 ARG AGORA_VERSION="HEAD"
 ADD . /root/agora/
 WORKDIR /root/agora/talos/
-RUN npm ci && npm run build
+RUN if [ -z ${AGORA_STANDALONE+x} ]; then npm ci && npm run build; else mkdir -p build; fi
 WORKDIR /root/agora/
 # Build Agora
 RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
-# Then build related utilities
-RUN dub build --skip-registry=all --compiler=ldc2 -c client
-RUN dub build --skip-registry=all --compiler=ldc2 -c config-dumper
-
+# Then build related utilities if not in standalone mode
+# Otherwise, copy the placeholder script as Dockerfile don't support conditional copy
+RUN if [ -z ${AGORA_STANDALONE+x} ]; then dub build --skip-registry=all --compiler=ldc2 -c client; \
+    else cp -v scripts/cli_placeholder.sh build/agora-client; fi
+RUN if [ -z ${AGORA_STANDALONE+x} ]; then dub build --skip-registry=all --compiler=ldc2 -c config-dumper; \
+    else cp -v scripts/cli_placeholder.sh build/agora-config-dumper; fi
 
 # Runner
 # Uses edge as we need the same `ldc-runtime` as the LDC that compiled Agora,
