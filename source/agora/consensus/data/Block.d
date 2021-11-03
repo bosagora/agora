@@ -483,6 +483,10 @@ public struct Block
 
     public size_t findHashIndex (in Hash hash) const @safe nothrow
     {
+        // An empty block doesn't have any transaction
+        if (this.txs.length == 0)
+            return 0;
+
         immutable pow2_size = getPow2Aligned(this.txs.length);
         assert(this.merkle_tree.length == (pow2_size * 2) - 1,
             "Block hasn't been fully initialized");
