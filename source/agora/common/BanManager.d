@@ -14,12 +14,19 @@
 
 module agora.common.BanManager;
 
-import agora.serialization.Serializer;
+
+import agora.common.ManagedDatabase;
+import agora.common.Set;
 import agora.common.Types;
 import agora.network.Clock;
 import agora.utils.InetUtils;
 import agora.utils.Log;
 
+import d2sqlite3.library;
+import d2sqlite3.results;
+import d2sqlite3.sqlite3;
+
+import std.algorithm;
 import std.file;
 import std.socket : getAddressInfo, AddressFamily;
 import std.stdio;
@@ -31,6 +38,9 @@ import core.time;
 /// ditto
 public class BanManager
 {
+    /// SQLite db instance
+    private ManagedDatabase db;
+
     /// Ban configuration
     public struct Config
     {
@@ -50,61 +60,23 @@ public class BanManager
         private uint fail_count;
 
         /// To set an IP as banned, we simply set its un-ban time in the future.
-        /// By default it's set to the past (therefore un-banned)
+        /// By default it's set to zero which is in the past and therefore un-banned
         private TimePoint banned_until;
-
-        /// Can not be banned
-        private bool whitelisted;
     }
 
-    /// Container type to emulate an AA, with serialization routines
-    private static struct BannedList
-    {
-        /// Internal implementation relies on AA
-        private Status[string] data;
+    /// validators are whitelisted so we store them in a set to not be banned
+    private Set!Address whitelisted;
 
-        /// Serialization hook
-        public void serialize (scope SerializeDg dg) const @safe
-        {
-            // This is serialized as an array of { key, val }
-            // Note that since keys are string, the array size
-            // is actually unknown before ending deserialization,
-            // but since it's only local data, we don't risk DoS.
-            serializePart(this.data.length, dg);
-            foreach (const ref key, const ref val; this.data)
-            {
-                serializePart(key, dg);
-                serializePart(val, dg);
-            }
-        }
-
-        /// Deserialization hook
-        public static QT fromBinary (QT) (
-            scope DeserializeDg dg, in DeserializerOptions opts) @safe
-        {
-            BannedList ret;
-            size_t length = deserializeLength(dg, opts.maxLength);
-            foreach (idx; 0 .. length)
-            {
-                string key = deserializeFull!string(dg);
-                Status value = deserializeFull!Status(dg);
-                ret.data[key] = value;
-            }
-            return (() @trusted => cast(QT)ret)();
-        }
-    }
+    /// the total number of failed requests.
+    /// if the number of failed requests reaches a certain number,
+    /// then the url is temporarily banned
+    private Status[Address] url_failures;
 
     /// Logger instance
     protected Logger log;
 
     /// configuration
     private const Config config;
-
-    /// per-address status
-    private BannedList ips;
-
-    /// Path to the ban file on disk
-    private const string banfile_path;
 
     /// Clock instance
     private Clock clock;
@@ -124,47 +96,73 @@ public class BanManager
 
     ***************************************************************************/
 
-    public this (Config config, Clock clock, string banfile_path,
-        Logger logger = Logger(ThisModule)) @safe nothrow pure
+    public this (Config config, Clock clock,
+        ManagedDatabase db, Logger logger = Logger(ThisModule)) @safe nothrow
     {
         this.config = config;
         this.log = logger;
         this.clock = clock;
-        this.banfile_path = banfile_path;
+
+        this.db = db;
+
+        this.createTables();
+
+        // load from cache db current state
+        this.loadWhitelisted();
+        this.loadBanned();
     }
 
-    /***************************************************************************
-
-        Load the ban data from disk
-
-    ***************************************************************************/
-
-    public void load ()
+    /// If the tables do not exist create them
+    private void createTables () @trusted nothrow
     {
-        if (!this.banfile_path.exists())
-            return;  // nothing to load
-
-        auto ban_file = File(this.banfile_path, "rb");
-        scope DeserializeDg dg = (size) @trusted
+        try
         {
-            ubyte[] res;
-            res.length = size;
-            ban_file.rawRead(res);
-            return res;
-        };
-        this.ips = deserializeFull!BannedList(dg);
+            // create banned if required
+            this.db.execute("CREATE TABLE IF NOT EXISTS banned " ~
+                "(url TEXT PRIMARY KEY, until INTEGER NOT NULL)");
+
+            // create whitelisted if required
+            this.db.execute("CREATE TABLE IF NOT EXISTS whitelisted " ~
+                "(url TEXT PRIMARY KEY)");
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to create banned and whitelisted tables: {}", ex.msg);
+        }
     }
 
-    /***************************************************************************
-
-        Dump the ban data to disk
-
-    ***************************************************************************/
-
-    public void dump () @safe
+    /// Load whitelist from cache db
+    private void loadWhitelisted () @trusted nothrow
     {
-        auto ban_file = File(this.banfile_path, "wb");
-        serializePart(this.ips, (in bytes) @trusted => ban_file.rawWrite(bytes));
+        try
+        {
+            this.db.execute("SELECT url FROM whitelisted")
+                .each!(row => this.whitelisted.put(Address(row.peek!string(0))));
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to load whitelist from cache database: {}", ex.msg);
+        }
+    }
+
+    /// Load banned from cache db
+    private void loadBanned () @trusted nothrow
+    {
+        try
+        {
+            // First remove bans that have expired
+            this.db.execute("DELETE FROM banned where until < ?", this.getCurTime());
+
+            this.db.execute("SELECT url, until FROM banned")
+                .each!((row)
+                {
+                    this.url_failures.require(Address(row.peek!string(0))).banned_until = row.peek!ulong(1);
+                });
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to load banned from cache database: {}", ex.msg);
+        }
     }
 
     /***************************************************************************
@@ -180,13 +178,27 @@ public class BanManager
 
     public void onFailedRequest (Address address, uint fail_count_inc = 1) @safe nothrow
     {
-        auto status = this.get(address);
-        if (this.isBanned(address) || status.whitelisted)
+        // fast return if already banned or whitelisted
+        if (this.isWhitelisted(address) || this.isBanned(address))
             return;
 
-        status.fail_count += fail_count_inc;
+        // Use a pointer to prevent multiple lookups in this function
+        Status* url_failure;
+        try
+        {
+            () @trusted {
+                // set pointer to existing or new entry in AA
+                url_failure = &this.url_failures.require(address);
+            }();
+        }
+        catch (Exception e)
+        {
+            log.error("Exception setting fail_count for address {}", address);
+            return;
+        }
 
-        if (status.fail_count >= this.config.max_failed_requests)
+        url_failure.fail_count += fail_count_inc;
+        if (url_failure.fail_count >= this.config.max_failed_requests)
         {
             try
             {
@@ -205,7 +217,7 @@ public class BanManager
             {
                 log.trace("Error happened while trying to resolve DNS name {}", address);
             }
-            status.fail_count = 0;
+            url_failure.fail_count = 0;
             this.ban(address);
         }
     }
@@ -253,11 +265,32 @@ public class BanManager
 
     public void banUntil (Address address, TimePoint banned_until) @safe nothrow
     {
-        if (this.get(address).whitelisted)
+        if (this.isWhitelisted(address))
             return; // Whitelisted address
 
         log.info("BanManager: Address {} banned until {}", address, banned_until);
-        this.get(address).banned_until = banned_until;
+        try
+        {
+            this.url_failures.require(address).banned_until = banned_until;
+            this.storeBanned(address, banned_until);
+        }
+        catch (Exception e)
+        {
+            log.warn("Exception setting banUntil for address {}", address);
+        }
+    }
+
+    private void storeBanned (Address address, TimePoint banned_until) @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("REPLACE INTO banned (url, until) VALUES (?, ?)",
+                address, banned_until);
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to insert banned into cache database: {}", ex.msg);
+        }
     }
 
     /***************************************************************************
@@ -269,9 +302,22 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void whitelist (Address address)
+    public void whitelist (Address address) @safe nothrow
     {
-        this.get(address).whitelisted = true;
+        this.whitelisted.put(address);
+        this.storeWhitelisted(address);
+    }
+
+    private void storeWhitelisted (Address address) @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("REPLACE INTO whitelisted (url) VALUES (?)", address);
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to insert whitelisted into cache database: {}", ex.msg);
+        }
     }
 
     /***************************************************************************
@@ -283,12 +329,24 @@ public class BanManager
 
     ***************************************************************************/
 
-    public void unwhitelist (Address address)
+    public void unwhitelist (Address address) @safe nothrow
     {
-        auto status = this.get(address);
-        if (status.whitelisted)
-            status.fail_count = 0;
-        status.whitelisted = false;
+        // remove from Set
+        this.whitelisted.remove(address);
+        // remove from cache db
+        this.deleteWhitelisted(address);
+    }
+
+    private void deleteWhitelisted (Address address) @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("DELETE FROM whitelisted WHERE url = ?", address);
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to delete whitelisted into cache database: {}", ex.msg);
+        }
     }
 
     /***************************************************************************
@@ -299,37 +357,57 @@ public class BanManager
             address = the address to check
 
         Returns:
-            true if the fail count is greater than 10
+            true if the fail count is greater than configured
 
     ***************************************************************************/
 
     public bool isBanned (Address address) @safe nothrow
     {
-        if (auto stats = address.host in this.ips.data)
-            return stats.banned_until > this.getCurTime();
+        auto status = address in this.url_failures;
+        if (!status)
+            return false;
 
-        return false;
+        // if the ban was set and has expired then remove it
+        if (status.banned_until > 0 && this.getCurTime() > status.banned_until)
+        {
+            // remove from AA
+            this.url_failures.remove(address);
+            // remove from cache db
+            this.deleteBanned(address);
+            return false;
+        }
+
+        // return if the ban is still active
+        return status.banned_until > this.getCurTime();
+    }
+
+    private void deleteBanned (Address address) @trusted nothrow
+    {
+        try
+        {
+            this.db.execute("DELETE FROM banned WHERE url = ?", address);
+        }
+        catch (Exception ex)
+        {
+            log.warn("BanManager: failed to delete from banned in cache database: {}", ex.msg);
+        }
     }
 
     /***************************************************************************
 
-        Get the un-ban unix time offset from Genesis timestamp of the provided address,
-        or 0 if the address was never banned.
+        Checks whether the address is whitelisted
 
         Params:
             address = the address to check
 
         Returns:
-            the un-ban time, or 0 if address was never banned.
+            true if whitelisted
 
     ***************************************************************************/
 
-    public TimePoint getUnbanTime (Address address) @safe nothrow pure
+    public bool isWhitelisted (Address address) @safe nothrow
     {
-        if (auto stats = address.host in this.ips.data)
-            return stats.banned_until;
-
-        return 0;
+        return !!(address in this.whitelisted);
     }
 
     /***************************************************************************
@@ -346,27 +424,6 @@ public class BanManager
         return this.clock.localTime();
     }
 
-    /***************************************************************************
-
-        Return a pointer to the status of the provided address.
-        If the address doesn't exist, it's created.
-
-        Workaround for `ref` returns which store a copy to
-        the call-site when using structs
-
-        Params:
-            address = the address to retrieve the status for
-
-        Returns:
-            pointer to the address status
-
-    ***************************************************************************/
-
-    private Status* get (Address address) @trusted nothrow pure
-    {
-        scope(failure) assert(0);  // it will never throw
-        return &this.ips.data.require(address.host, Status.init);
-    }
 }
 
 ///
@@ -375,39 +432,39 @@ unittest
     class UnitBanMan : BanManager
     {
         TimePoint time;
-        this () { super(Config(10, 1.days), null, null); }
+        this (ManagedDatabase db) { super(Config(10, 1.days), null, db); }
         protected override TimePoint getCurTime () const { return this.time; }
-        public override void dump () { }
-        public override void load () { }
     }
 
     const node1 = Address("agora://node-1");
     const node2 = Address("agora://node-2");
     const whitelistNode = Address("agora://whitelist-node");
 
-    auto banman = new UnitBanMan();
+    auto db = new ManagedDatabase(":memory:");
+    auto banman = new UnitBanMan(db);
     banman.whitelist(whitelistNode);
+    assert(db.execute("select url from whitelisted where url = ?", whitelistNode)
+        .oneValue!string == whitelistNode.toString());
     foreach (idx; 0 .. 9)
     {
         banman.onFailedRequest(node1);
         banman.onFailedRequest(whitelistNode);
-        assert(banman.get(node1).fail_count == idx + 1);
+        assert(banman.url_failures[node1].fail_count == idx + 1);
         assert(!banman.isBanned(node1));
     }
 
-    assert(banman.getUnbanTime(node1) == 0);  // not banned yet
-
     banman.onFailedRequest(node1);
-    assert(banman.get(node1).fail_count == 0);  // reset counter on ban
+    assert(banman.url_failures[node1].fail_count == 0);  // reset counter on ban
     assert(banman.isBanned(node1));
-    assert(banman.getUnbanTime(node1) == 86400);  // banned until "next day"
+    assert(banman.url_failures[node1].banned_until == 86400);  // banned until "next day"
+    assert(db.execute("select until from banned where url = ?", node1).oneValue!ulong == 86400);
 
     banman.onFailedRequest(whitelistNode);
     assert(!banman.isBanned(whitelistNode));
 
     // stop counting failed requests during the ban
     banman.onFailedRequest(node1);
-    assert(banman.get(node1).fail_count == 0);
+    assert(banman.url_failures[node1].fail_count == 0);
 
     banman.time = 86401;  // "next day"
     assert(!banman.isBanned(node1));
@@ -428,8 +485,14 @@ unittest
 
     banman.time = 0;
     banman.ban(node2);  // use default ban time
-    assert(banman.getUnbanTime(node2) == 86400);
+    assert(banman.url_failures[node2].banned_until == 86400);
 
-    // Serialization tests
-    testSymmetry(banman.ips);
+    // test loading from db
+    auto banman2 = new UnitBanMan(db);
+    assert(banman2.isBanned(node2));
+    assert(banman2.isWhitelisted(whitelistNode));
+
+    // unwhitelist
+    banman.unwhitelist(whitelistNode);
+    assert(!banman.isWhitelisted(whitelistNode));
 }

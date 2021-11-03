@@ -76,6 +76,23 @@ Stores the pending transaction. Should be made readable.
 | val        | BLOB     | Transaction | NOT NULL    | Binary-serialized |
 | fee        | INTEGER  | Amount      | NOT NULL    | fee rate          |
 
+### `banned` table
+
+Stores the currently banned nodes
+
+| Field name | SQL Type | D type      | Attributes  | Comment           |
+|------------|----------|-------------|-------------|-------------------|
+| url        | TEXT     | string      | PRIMARY KEY | endpoint          |
+| until      | INTEGER  | ulong       | NOT NULL    | unix time in secs |
+
+### `whitelisted` table
+
+Stores the currently whitelisted nodes
+
+| Field name | SQL Type | D type      | Attributes  | Comment           |
+|------------|----------|-------------|-------------|-------------------|
+| url        | TEXT     | string      | PRIMARY KEY | endpoint          |
+
 ### `enrollment_pool` table
 
 Store the `Enrollment` that haven't made it to a `Block` yet. Should be made readable.

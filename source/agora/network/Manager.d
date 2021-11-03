@@ -446,12 +446,10 @@ public class NetworkManager
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
         this.cacheDB = cache;
-        this.banman = this.getBanManager(config.banman, clock,
-            node_config.data_dir);
+        this.banman = this.getBanManager(config.banman, clock, cache);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
         this.owner_node = owner_node;
-        this.banman.load();
 
         this.cacheDB.execute(
             "CREATE TABLE IF NOT EXISTS network_manager (" ~
@@ -852,11 +850,9 @@ public class NetworkManager
     ***************************************************************************/
 
     protected BanManager getBanManager (in BanManager.Config banman_conf,
-        Clock clock, string data_dir)
+        Clock clock, ManagedDatabase cache)
     {
-        import std.path : buildPath;
-
-        return new BanManager(banman_conf, clock, buildPath(data_dir, "banned.dat"));
+        return new BanManager(banman_conf, clock, cache);
     }
 
     /// register network addresses into the name registry
@@ -1121,7 +1117,6 @@ public class NetworkManager
     {
         foreach (peer; this.peers)
             peer.client.shutdown();
-        this.banman.dump();
         foreach (const ref peer; this.peers)
         foreach (addr; peer.address.filter!(addr => addr != Address.init))
             this.cacheDB.execute(
