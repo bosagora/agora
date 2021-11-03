@@ -1371,7 +1371,7 @@ public class NetworkManager
     public void discoverFromClient (agora.api.Validator.API api) @trusted nothrow
     {
         new ConnectionTask(Address.init, api, &onHandshakeComplete,
-                           (in Address addr) { return false; }).start();
+                           (in Address _) { return false; }).start();
     }
 }
 
