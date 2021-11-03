@@ -32,10 +32,10 @@ import std.typecons : Tuple, tuple;
 public struct Stats (ValueType, LabelType)
 {
     ///
-    public alias ValueType ValueTypeT;
+    public alias ValueTypeT = ValueType;
 
     ///
-    public alias LabelType LabelTypeT;
+    public alias LabelTypeT = LabelType;
 
     ///
     public struct StatValueLabel
