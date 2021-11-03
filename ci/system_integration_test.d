@@ -22,7 +22,9 @@ immutable EnvFile = IntegrationPath.buildPath("environment.sh");
 /+ ***************************** Commands to run **************************** +/
 /// A simple test to ensure that the container works correctly,
 /// e.g. all dependencies are installed and the binary isn't corrupt.
-immutable BuildImg = [ "docker", "build", "--build-arg", `DUB_OPTIONS=-b cov`,
+immutable BuildImg = [ "docker", "build",
+                       "--build-arg", `DUB_OPTIONS=-b cov`,
+                       "--build-arg", `AGORA_STANDALONE=true`,
                        "-t", "agora", RootPath, ];
 immutable TestContainer = [ "docker", "run", "--rm", "agora", "--help", ];
 immutable DockerCompose = [ "docker-compose", "-f", ComposeFile, "--env-file", EnvFile ];
