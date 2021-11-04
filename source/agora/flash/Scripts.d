@@ -177,7 +177,8 @@ public Unlock createUnlockSettle (Signature sig, in ulong seq_id,
 public Transaction createFundingTx (in UTXO utxo, in Hash utxo_hash,
     in Amount capacity, in Point pair_pk, Amount fee) @safe nothrow
 {
-    auto inputs = [Input(utxo_hash)];
+    auto fee_rate = fee;
+    auto inputs = [Input(utxo_hash, Unlock(SigPair.init[]))];
     auto outputs = [Output(capacity,
         Lock(LockType.Key, pair_pk[].dup))];
 
@@ -193,7 +194,16 @@ public Transaction createFundingTx (in UTXO utxo, in Hash utxo_hash,
     if (rem_funds > 0.coins)
         outputs ~= Output(rem_funds, utxo.output.lock);
 
-    return Transaction(inputs, outputs);
+    auto funding_tx = Transaction(inputs, outputs);
+
+    version (unittest)
+    {
+        // check the calculated fee for the tx size
+        if (!fee_rate.mul(funding_tx.sizeInBytes()) || fee_rate < fee)
+            assert(0);
+    }
+
+    return funding_tx;
 }
 
 /*******************************************************************************
