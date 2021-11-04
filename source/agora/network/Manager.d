@@ -34,6 +34,7 @@ import agora.common.Task;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
+import agora.consensus.data.Transaction;
 import agora.consensus.data.UTXO;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Hash;
@@ -58,7 +59,7 @@ import std.datetime.stopwatch;
 import std.exception;
 import std.format;
 import std.random;
-import std.range : walkLength, zip;
+import std.range;
 
 import core.stdc.time;
 import core.time;
@@ -994,25 +995,43 @@ public class NetworkManager
     public void getUnknownTXs (Ledger ledger) @safe nothrow
     {
         auto unknown_txs = ledger.getUnknownTXHashes();
+        log.trace("getUnknownTXs: detected {} unknown txs", unknown_txs.length);
 
         foreach (peer; this.peers[])
         {
             if (unknown_txs.length == 0)
                 break;
 
-            foreach (tx; peer.client.getTransactions(unknown_txs))
-            {
-                try
-                {
-                    ledger.acceptTransaction(tx);
-                    unknown_txs.remove(tx.hashFull());
-                }
-                catch (Exception e)
-                {
-                    log.info("Unknown TX {} threw {}", tx, e.msg);
-                }
-            }
+            // Fetch transactions in chunks
+            auto hashes = unknown_txs[].map!((Hash h) => h).array; // can not be lazy so use array
+            auto added = hashes.chunks(8)
+                .map!(chunk => Set!Hash.from(chunk))
+                .map!(hash_chunk => peer.client.getTransactions(hash_chunk))
+                .map!(txs => addTxs(ledger, txs))
+                .sum();
+            log.trace("getUnknownTXs: Added {} txs to tx pool", added);
+            unknown_txs = ledger.getUnknownTXHashes();
         }
+    }
+
+    // Add the chunk of txs fetched from the other node
+    private size_t addTxs (Ledger ledger, Transaction[] txs) @safe nothrow
+    {
+        auto accepted = 0;
+        txs.each!((tx)
+        {
+            try
+            {
+                ledger.acceptTransaction(tx); // This will also remove it from unknown_txs
+                log.trace("getUnknownTXs: Found unknown tx with hash {}", tx.hashFull());
+            }
+            catch (Exception e)
+            {
+                log.warn("getUnknownTXs: Unknown TX {} threw {}", tx, e.msg);
+            }
+            accepted++;
+        });
+        return accepted;
     }
 
     /***************************************************************************
