@@ -370,12 +370,30 @@ public struct Header
     /// to match up replies to outstanding queries.
     public ushort ID;
 
+    /***************************************************************************
+        
+        Function prototype for setting or getting specified bit(s) of field
+
+        Params:
+            position = LSB position for reqested bit(s)
+            T = Type to cast when getting bit(s), default is `bool`
+            mask = Bitmask to select bit(s) to be effected starting from `position`, default is 1-bit
+
+    ***************************************************************************/
+    private mixin template BitGetterSetter (ubyte position, T = bool, ushort mask = 0x1)
+    {
+        /// Get bit(s) masked with `mask` starting from `position` as `T`
+        T getset () const scope { return cast (T) ((this.field2 >> position) & mask); }
+        /// Set bit(s) masked with `mask` starting from `position`
+        void getset (T val) scope { this.field2 = (this.field2 & ~(mask << position)) | ((mask&val) << position); }
+    }
+
+    mixin BitGetterSetter!(15) mix_QR;
     /// A one bit field that specifies whether this message is a
     /// query (0), or a response (1).
-    public bool QR () const scope { return !!(this.field2 & 0b1_0000_0_0_0_0_000_0000); }
-    /// Ditto
-    public void QR (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 1); }
+    public alias QR = mix_QR.getset;
 
+    mixin BitGetterSetter!(11, OpCode, 0xf) mix_OPCODE;
     /// A four bit field that specifies kind of query in this message.
     /// This value is set by the originator of a query and copied into the response.
     enum OpCode : ubyte
@@ -388,18 +406,10 @@ public struct Header
         STATUS = 2,
         // 3-15: reserved for future use
     }
-
     /// Ditto
-    public OpCode OPCODE () const scope
-    {
-        //
-        ubyte val = (this.field2 & 0b0_1111_0_0_0_0_000_0000) >> 11;
-        assert(val <= OpCode.max);
-        return cast(OpCode) val;
-    }
-    /// Ditto
-    public void OPCODE (OpCode val) scope { this.field2 |= val << (ushort.sizeof * 8 - 5); }
+    public alias OPCODE = mix_OPCODE.getset;
 
+    mixin BitGetterSetter!(10) mix_AA;
     /***************************************************************************
 
         Authoritative Answer
@@ -413,45 +423,39 @@ public struct Header
         the first owner name in the answer section.
 
     ***************************************************************************/
+    public alias AA = mix_AA.getset;
 
-    public bool AA () const scope { return !!(this.field2 & 0b0_0000_1_0_0_0_000_0000); }
-    /// Ditto
-    public void AA (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 6); }
-
+    mixin BitGetterSetter!(9) mix_TC;
     /// TrunCation - specifies that this message was truncated
     /// due to length greater than that permitted on the transmission channel.
-    public bool TC () const scope { return !!(this.field2 & 0b0_0000_0_1_0_0_000_0000); }
-    /// Ditto
-    public void TC (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 7); }
+    public alias TC = mix_TC.getset;
 
+    mixin BitGetterSetter!(8) mix_RD;
     /// Recursion Desired
     /// This bit may be set in a query and is copied into the response.
     /// If RD is set, it directs the name server to pursue the query recursively.
     /// Recursive query support is optional.
-    public bool RD () const scope { return !!(this.field2 & 0b0_0000_0_0_1_0_000_0000); }
-    /// Ditto
-    public void RD (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 8); }
+    public alias RD = mix_RD.getset;
 
+    mixin BitGetterSetter!(7) mix_RA;
     /// Recursion Available
     /// This bit is set or cleared in a response, and denotes whether recursive
     /// query support is available in the name server.
-    public bool RA () const scope { return !!(this.field2 & 0b0_0000_0_0_0_1_000_0000); }
-    /// Ditto
-    public void RA (bool val) scope { this.field2 |= val << (ushort.sizeof * 8 - 9); }
+    public alias RA = mix_RA.getset;
 
+    mixin BitGetterSetter!(6) mix_Z;
     /// Reserved for future use. Must be zero in all queries and responses.
-    public ubyte Z () const scope { return (this.field2 & 0b0_0000_0_0_0_0_100_0000) >> 4; }
+    public alias Z = mix_Z.getset;
 
+    mixin BitGetterSetter!(5) mix_AD;
     /// Authenticated Data, initially defined in RFC2065
-    public bool AD () const scope { return !!(this.field2 & (1 << 5)); }
-    /// Ditto
-    public void AD (bool val) scope { this.field2 = (this.field2 & ~(1 << 5)) | (val << 5); }
+    public alias AD  = mix_AD.getset;
 
+    mixin BitGetterSetter!(4) mix_CD;
     /// Checking Disabled, initially defined in RFC2065
-    public bool CD () const scope { return !!(this.field2 & (1 << 4)); }
-    /// Ditto
-    public void CD (bool val) scope { this.field2 = (this.field2 & ~(1 << 4)) | (val << 4); }
+    public alias CD = mix_CD.getset;
 
+    mixin BitGetterSetter!(0, RCode, 0xf) mix_RCODE;
     /// Response code - this 4 bit field is set as part of responses.
     public enum RCode : ubyte
     {
@@ -481,20 +485,8 @@ public struct Header
         Refused = 5,
         // 6-15: Reserved for future use.
     }
-
     /// Ditto
-    public RCode RCODE () const scope
-    {
-        //
-        ubyte val = (this.field2 & 0b0_0000_0_0_0_0_000_1111);
-        assert(val <= RCode.max);
-        return cast(RCode) val;
-    }
-    /// Ditto
-    public void RCODE (RCode val) scope
-    {
-        this.field2 = (0xfff0 & this.field2) | val;
-    }
+    public alias RCODE = mix_RCODE.getset;
 
     /// 16 bits backing the second "line" of the header, see RFC1035, 4.1.1
     private ushort field2;
@@ -521,6 +513,10 @@ unittest
     assert(!hdr.QR);
     hdr.QR = true;
     assert(hdr.QR);
+    hdr.QR = false;
+    assert(!hdr.QR);
+    hdr.QR = true;
+    assert(hdr.QR);
 
     assert(hdr.OPCODE == Header.OpCode.QUERY);
     hdr.OPCODE = Header.OpCode.STATUS;
@@ -530,6 +526,10 @@ unittest
     hdr.AA = true;
     assert(hdr.AA);
 
+    assert(!hdr.TC);
+    hdr.TC = true;
+    assert(hdr.TC);
+    hdr.TC = false;
     assert(!hdr.TC);
     hdr.TC = true;
     assert(hdr.TC);
@@ -545,6 +545,9 @@ unittest
     assert(hdr.RCODE == Header.RCode.NoError);
     hdr.RCODE = Header.RCode.Refused;
     assert(hdr.RCODE == Header.RCode.Refused);
+    hdr.RCODE = Header.RCode.NoError;
+    assert(hdr.RCODE == Header.RCode.NoError);
+    hdr.RCODE = Header.RCode.Refused;
 
     assert(hdr.field2 == 0b1_0010_1_1_1_1_000_0101);
 }
