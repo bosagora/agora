@@ -1283,6 +1283,7 @@ public class FullNode : API
 
     public Transaction[] getTransactions (Set!Hash tx_hashes) @safe
     {
+        log.trace("FullNode.getTransactions: called for {} txs", tx_hashes.length);
         this.recordReq("transactions");
 
         Transaction[] found_txs;
