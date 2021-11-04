@@ -35,6 +35,9 @@ struct FeeUTXOs
 
     /// Total value stored in `utxos`
     Amount total_value;
+
+    /// Total fee calculated in `utxos`
+    Amount total_fee;
 }
 
 /// This is the API that each Flash listener must implement, for example wallets
