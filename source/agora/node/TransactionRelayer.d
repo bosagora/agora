@@ -368,12 +368,12 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         immutable params = new immutable(ConsensusParams)();
         auto fee_man = new FeeManager(stateDB, params);
         auto noclients = new DList!NodeConnInfo();
-        GetFeeRateDg getTxFeeRate = (in Transaction tx, out Amount rate)
+        GetFeeRateDg wrapper = (in Transaction tx, out Amount rate)
         {
             return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate);
         };
 
-        this(new TransactionPool(cacheDB), config, noclients, null, new MockClock(0), getTxFeeRate, false);
+        this(new TransactionPool(cacheDB), config, noclients, null, new MockClock(0), wrapper, false);
     }
 
     /***************************************************************************
