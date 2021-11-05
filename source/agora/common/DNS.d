@@ -335,7 +335,7 @@ public struct Header
     /// generates any kind of query.  This identifier is copied
     /// the corresponding reply and can be used by the requester
     /// to match up replies to outstanding queries.
-    public short ID;
+    public ushort ID;
 
     /// A one bit field that specifies whether this message is a
     /// query (0), or a response (1).
