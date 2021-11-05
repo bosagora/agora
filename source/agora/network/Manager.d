@@ -817,12 +817,6 @@ public class NetworkManager
     /// Ditto
     private void addAddress (Address address)
     {
-        // TODO normalize
-        // Ensure we do not have a trailing slash for address
-        auto path = address.path;
-        path.endsWithSlash = false;
-        address.path = path;
-
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
 

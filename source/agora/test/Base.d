@@ -610,7 +610,7 @@ public class TestAPIManager
     public auto validators ()
     {
         // This is a crude way to get validators, but it works
-        return this.nodes.filter!(n => n.address.startsWith("Validator-")).map!(np => np.client);
+        return this.nodes.filter!(n => n.address.startsWith("validator-")).map!(np => np.client);
     }
 
     /// Registry holding the nodes
@@ -1348,7 +1348,7 @@ public class TestNetworkManager : NetworkManager
         (Address address)
     {
         import std.typecons : BlackHole;
-        auto tid = this.registry.locate!BlockExternalizedHandler(address.toString);
+        auto tid = this.registry.locate!BlockExternalizedHandler(address.host);
         if (tid != typeof(tid).init)
             return new RemoteAPI!BlockExternalizedHandler(tid, 5.seconds);
 

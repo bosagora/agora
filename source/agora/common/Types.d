@@ -35,20 +35,21 @@ public alias TimePoint = ulong;
 /// An array of const characters
 public alias cstring = const(char)[];
 
-/// A network address, extended version of Vibe.d's URL with serialization
+/// A normalized network address, extended version of Vibe.d's URL with serialization
 public struct Address
 {
 @safe:
     URL inner;
 
-    public this (URL url) immutable
+    public this (URL url)
     {
         this.inner = url;
+        this.inner.normalize(true);
     }
 
     public this (string url)
     {
-        this.inner = URL(url);
+        this(URL(url));
     }
 
     /// Serialization hook
