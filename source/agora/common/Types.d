@@ -41,7 +41,7 @@ public struct Address
 @safe:
     URL inner;
 
-    public this (URL url) immutable
+    public this (inout(URL) url) inout
     {
         this.inner = url;
     }
