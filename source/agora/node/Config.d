@@ -32,6 +32,7 @@ import std.algorithm.iteration : splitter;
 import std.algorithm.searching : all;
 import std.exception;
 import std.getopt;
+import std.string : indexOf;
 import std.traits : hasUnsharedAliasing;
 import std.uni : isAlphaNum;
 
@@ -123,11 +124,15 @@ public struct Config
     public void validate () @safe const scope
     {
         if (this.validator.enabled)
+        {
+            enforce(this.interfaces.length > 0,
+                    "Validators must have at least one entry in the 'interfaces' section");
             enforce(this.network.length ||
                     this.validator.registry_address != string.init ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.limit_test_validators == 1,
                     "Either the network section must not be empty, or 'validator.registry_address' must be set");
+        }
         else
             enforce(this.network.length, "Network section must not be empty");
 
@@ -170,8 +175,27 @@ public struct InterfaceConfig
      /// Bind address
     public string address;
 
-    /// Bind port
-    public ushort port;
+    /***************************************************************************
+
+        Bind port, default to the scheme's default
+
+        Default values are 80 for `http`, 443 for `https`, and 2826 for `tcp`.
+
+    ***************************************************************************/
+
+    public @Optional ushort port;
+
+    /***************************************************************************
+
+        The public address of this interface
+
+        If this binds to an interface that is not publicly available,
+        this value needs to be set for the node to correctly register itself
+        on the registry.
+
+    ***************************************************************************/
+
+    public string hostname;
 
     /// Default values when none is given in the config file
     private static immutable InterfaceConfig[Type.max] Default = [
@@ -179,6 +203,46 @@ public struct InterfaceConfig
         { type: Type.tcp,  address: "0.0.0.0", port: 0xB0A, },
         { type: Type.http, address: "0.0.0.0", port: 8080, },
     ];
+
+    ///
+    public void validate () const
+    {
+        auto slashIdx = this.hostname.indexOf('/');
+        ensure(slashIdx < 0 || this.type == Type.http || this.type == Type.https,
+               "Cannot have path ('{}') in with an interface of type '{}': Remove '{}' or use http(s)",
+               this.hostname, this.type, this.hostname[slashIdx .. $]);
+
+        const host = this.hostname[0 .. (slashIdx < 0) ? $ : slashIdx];
+        ensure(isValidHostName(host),  "'{}' is not a valid hostname name / IP address", host);
+    }
+
+    /// Get the address that this interface can be registered as
+    public Address getAddress () const
+    {
+        // Assume validation already happened
+
+        auto slashIdx = this.hostname.indexOf('/');
+        if (slashIdx < 0)
+            slashIdx = this.hostname.length;
+        const host = this.hostname[0 .. slashIdx];
+        const path = this.hostname[slashIdx .. $];
+
+        string schema;
+        final switch (this.type)
+        {
+        case Type.http:
+            schema = "http";
+            break;
+        case Type.https:
+            schema = "https";
+            break;
+        case Type.tcp:
+            schema = "agora";
+            break;
+        }
+
+        return Address(URL(schema, host, this.port, InetPath(path)));
+    }
 }
 
 /// Node config
@@ -369,9 +433,6 @@ public struct ValidatorConfig
     ***************************************************************************/
 
     public size_t max_preimage_reveal = 6;
-
-    // Network addresses that will be registered with the public key
-    public @Optional immutable string[] addresses_to_register;
 
     // Registry address
     public @Optional string registry_address;

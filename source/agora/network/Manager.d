@@ -390,6 +390,9 @@ public class NetworkManager
     /// ConsensusConfig instance
     protected const ConsensusConfig consensus_config = ConsensusConfig.init;
 
+    /// Addresses to publicly register
+    protected Address[] addresses;
+
     /// Task manager
     private ITaskManager taskman;
 
@@ -452,6 +455,13 @@ public class NetworkManager
         this.clock = clock;
         this.owner_node = owner_node;
         this.banman.load();
+
+        if (config.validator.enabled)
+        {
+            this.addresses = config.interfaces.map!(it => it.getAddress()).array;
+            assert(this.addresses.length > 0);
+            this.log.info("Configured public interfaces that will be registered: {}", this.addresses);
+        }
 
         this.cacheDB.execute(
             "CREATE TABLE IF NOT EXISTS network_manager (" ~
@@ -865,20 +875,12 @@ public class NetworkManager
         if (this.registry_client is null)
             return;
 
-        const(Address)[] addresses = this.validator_config.addresses_to_register.map!(
-            addr => Address(addr)
-        ).array;
-        if (!addresses.length)
-            addresses = InetUtils.getPublicIPs().map!(
-                ip => Address("agora://"~ip)
-            ).array;
-
         RegistryPayload payload =
         {
             data:
             {
                 public_key : this.validator_config.key_pair.address,
-                addresses : addresses,
+                addresses : this.addresses,
                 seq : time(null)
             }
         };
