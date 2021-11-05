@@ -25,7 +25,7 @@ import geod24.bitblob;
 
 shared static this ()
 {
-    registerCommonInternetSchema("agora"); // TODO default port: 2826
+    registerCommonInternetSchema("agora", 2826);
 }
 
 /// Represents a specific point in time, it should be changed to time_t
