@@ -324,11 +324,9 @@ public class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    public override void registerKey (Scalar scalar) @safe
+    public override void registerKey (KeyPair kp) @safe
     {
-        auto secret = SecretKey(scalar);
-        auto address = PublicKey(scalar.toPoint()[]);
-        this.managed_keys[address] = secret;
+        this.managed_keys[kp.address] = kp.secret;
     }
 
     /***************************************************************************

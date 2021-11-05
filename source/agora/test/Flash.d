@@ -390,7 +390,7 @@ public class FlashNodeFactory : TestAPIManager
         this.addresses ~= kp.address;
         this.flash_nodes ~= api;
         this.registry.register("http://"~kp.address.to!string, api.listener());
-        api.registerKey(kp.secret);
+        api.registerKey(kp);
 
         return api;
     }

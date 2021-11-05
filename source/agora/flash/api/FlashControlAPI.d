@@ -50,7 +50,7 @@ public interface FlashControlAPI : FlashAPI, BlockExternalizedHandler
 
     ***************************************************************************/
 
-    public void registerKey (Scalar secret);
+    public void registerKey (KeyPair secret);
 
     /***************************************************************************
 
