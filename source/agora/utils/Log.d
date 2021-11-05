@@ -49,7 +49,7 @@ public struct Logger
     {
         import core.memory;
         this.logger = Ocean.Log.lookup(moduleName);
-        this.logger.buffer(new char[](16384));
+        this.logger.buffer(new char[](16_384));
     }
 
     /// See `ocean.util.log.Logger : Logger.trace`

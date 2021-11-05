@@ -38,7 +38,7 @@ extern (C):
  * POSIX.1-2001, check that macro before using the feature (or check for the
  * feature directly if possible). */
 
-enum _POSIX_C_SOURCE = 200809L;
+enum _POSIX_C_SOURCE = 2008_09L;
 
 /* libmaxminddb package version from configure */
 
