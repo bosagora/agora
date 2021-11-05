@@ -176,8 +176,8 @@ public struct InterfaceConfig
     /// Default values when none is given in the config file
     private static immutable InterfaceConfig[Type.max] Default = [
         // Publicly enabled by default
-        { type: Type.http, address: "0.0.0.0", port: 0xB0A, },
-        { type: Type.tcp,  address: "0.0.0.0", port: 0xA0B, },
+        { type: Type.tcp,  address: "0.0.0.0", port: 0xB0A, },
+        { type: Type.http, address: "0.0.0.0", port: 8080, },
     ];
 }
 
