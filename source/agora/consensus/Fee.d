@@ -205,11 +205,11 @@ public class FeeManager
     {
         this.db = db;
         this.params = params;
-        this.init();
+        this.initialize();
     }
 
     /// Init DB and rebuild the in-memory state
-    private void init ()
+    private void initialize ()
     {
         this.db.execute("CREATE TABLE IF NOT EXISTS block_fees " ~
             "(height INTEGER, fee INTEGER, data_fee INTEGER)");
