@@ -367,13 +367,13 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         auto cacheDB = new ManagedDatabase(":memory:");
         immutable params = new immutable(ConsensusParams)();
         auto fee_man = new FeeManager(stateDB, params);
-        DList!NodeConnInfo clients;
+        auto noclients = new DList!NodeConnInfo();
         GetFeeRateDg getTxFeeRate = (in Transaction tx, out Amount rate)
         {
             return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, rate);
         };
 
-        this(new TransactionPool(cacheDB), config, &clients, null, new MockClock(0), getTxFeeRate, false);
+        this(new TransactionPool(cacheDB), config, noclients, null, new MockClock(0), getTxFeeRate, false);
     }
 
     /***************************************************************************
