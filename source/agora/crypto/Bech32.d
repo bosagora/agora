@@ -93,7 +93,8 @@ public char[] encodeBech32 (in char[] hrp, in ubyte[] values, Encoding encoding)
 {
     char[] encoded;
     ubyte[] conv;
-    convertBits(conv, values, 8, 5, true);
+    if (!convertBits(conv, values, 8, 5, true))
+        assert(0);
 
     // First ensure that the HRP is all lowercase. BIP-173 requires an encoder
     // to return a lowercase Bech32 string, but if given an uppercase HRP, the
