@@ -1178,7 +1178,7 @@ public class NetworkManager
     {
         import std.algorithm.searching;
 
-        if (url.schema == "tcp")
+        if (url.schema == "tcp" || url.schema == "agora")
         {
             auto owner_validator = cast (agora.api.Validator.API) this.owner_node;
 
