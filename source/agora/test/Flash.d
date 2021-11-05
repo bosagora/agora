@@ -196,7 +196,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
         Listener!TestFlashAPI tid;
         foreach (i; 0 .. 5)
         {
-            tid = this.registry.locate!TestFlashAPI(address.toString);
+            tid = this.registry.locate!TestFlashAPI(address.host);
             if (tid != typeof(tid).init)
                 break;
 
@@ -212,7 +212,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     protected override TestFlashListenerAPI getFlashListenerClient (
         Address address, Duration timeout) @trusted
     {
-        auto tid = this.registry.locate!TestFlashListenerAPI(address.toString);
+        auto tid = this.registry.locate!TestFlashListenerAPI(address.host);
         assert(tid != typeof(tid).init);
         return new RemoteAPI!TestFlashListenerAPI(tid, timeout);
     }
@@ -389,7 +389,7 @@ public class FlashNodeFactory : TestAPIManager
 
         this.addresses ~= kp.address;
         this.flash_nodes ~= api;
-        this.registry.register("http://"~kp.address.to!string, api.listener());
+        this.registry.register(kp.address.to!string, api.listener());
         api.registerKey(kp);
 
         return api;
@@ -401,7 +401,7 @@ public class FlashNodeFactory : TestAPIManager
     {
         auto api = RemoteAPI!TestFlashListenerAPI.spawn!Listener(
             &this.registry, this.nodes[0].address, 5.seconds);
-        this.registry.register(address, api.listener());
+        this.registry.register(Address(address).host, api.listener());
         this.listener_addresses ~= address;
         this.listener_nodes ~= api;
         return api;
