@@ -495,6 +495,7 @@ unittest
     }
     QSetHandler qset_handler;
 
+    {
     SCPEnvelope env;
     env.statement.nodeID = NodeID(0);
 
@@ -542,8 +543,14 @@ unittest
     // set 'preparedPrime' pointer
     env.statement.pledges.prepare_.preparedPrime = &env.statement.pledges.prepare_.ballot;
     testAssert(PrepareRes4, scpPrettify(&env, &qset_handler.getQSet));
+    }
 
     /** SCP CONFIRM */
+    {
+    SCPEnvelope env;
+    env.statement.nodeID = NodeID(0);
+    env.signature = sig.toBlob();
+
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_CONFIRM;
     env.statement.pledges.confirm_ = SCPStatement._pledges_t._confirm_t.init; // must initialize
     env.statement.pledges.confirm_.ballot = ballot;
@@ -595,13 +602,19 @@ unittest
     // un-deserializable value
     env.statement.pledges.externalize_.commit = SCPBallot.init;
     testAssert(ExtRes3, scpPrettify(&env, &qset_handler.getQSet));
+    }
 
+    /** SCP NOMINATE */
+    {
     // unknown id
     static immutable NomRes1 = `{ statement: { node: <unknown>, slotIndex: 0, pledge: Nominate { qset: { id: <unknown>, quorum: <unknown> }, votes: [{ tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }, { tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }], accepted: [{ tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }, { tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }] } }, sig: 0x0000...be78 }`;
     // known id
     static immutable NomRes2 = `{ statement: { node: 0, slotIndex: 0, pledge: Nominate { qset: { id: 0, quorum: { thresh: 2, nodes: [0, 1], subqs: [] } }, votes: [{ tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }, { tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }], accepted: [{ tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }, { tx_set: [0xaf63...37f2], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }] } }, sig: 0x0000...be78 }`;
 
-    /** SCP NOMINATE */
+    SCPEnvelope env;
+    env.statement.nodeID = NodeID(0);
+    env.signature = sig.toBlob();
+
     env.statement.pledges.type_ = SCPStatementType.SCP_ST_NOMINATE;
     env.statement.pledges.nominate_ = SCPNomination.init; // must initialize
 
@@ -619,4 +632,5 @@ unittest
     // known id
     env.statement.nodeID = NodeID(0);
     testAssert(NomRes2, scpPrettify(&env, &qset_handler.getQSet));
+    }
 }

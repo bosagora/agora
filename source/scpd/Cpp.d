@@ -41,12 +41,11 @@ public enum CppCtor { Use = 0 }
 public alias std_string = basic_string!char;
 
 extern(C++) {
-nothrow @nogc:
-    void defaultCtorCPPObject(T) (T* ptr);
-    void dtorCPPObject(T) (T* ptr);
-    void opAssignCPPObject(T) (T* lhs, T* rhs);
-    void copyCtorCPPObject(T) (T* ptr, inout(T)* rhs);
-    void copyCtorCPPObject(T) (immutable(T)* ptr, inout(T)* rhs);
+nothrow @nogc pure:
+    void defaultCtorCPPObject(T) (inout(T)* ptr);
+    void dtorCPPObject(T) (inout(T)* ptr);
+    void opAssignCPPObject(T) (inout(T)* lhs, inout(T)* rhs);
+    void copyCtorCPPObject(T) (inout(T)* ptr, inout(T)* rhs);
     int getCPPSizeof(T) () @safe;
     std_string sliceToStdString (const(char)* ptr, size_t length);
 }
@@ -55,31 +54,31 @@ private mixin template CPPBindingMixin (T, bool Copyable = true, bool DefaultCon
 {
     extern(D)
     {
-        static if (!DefaultConstructable) @disable this();
-        this (CppCtor use) @trusted nothrow @nogc
+        import std.traits : Fields, FieldNameTuple;
+
+        static if (!DefaultConstructable)
+            @disable this ();
+
+        this (CppCtor use) inout @trusted nothrow @nogc pure
         {
             defaultCtorCPPObject!T(&this);
         }
 
-        ~this () @trusted nothrow @nogc
+        ~this () inout @trusted nothrow @nogc pure
         {
             dtorCPPObject!T(&this);
         }
 
+        @disable this (this);
+
         static if (Copyable)
-        this (ref return scope inout T rhs) @trusted nothrow @nogc
+        this (ref return scope inout T rhs) inout @trusted nothrow @nogc pure
         {
             copyCtorCPPObject!T(&this, &rhs);
         }
 
         static if (Copyable)
-        this (ref return scope inout T rhs) immutable @trusted nothrow @nogc
-        {
-            copyCtorCPPObject!T(&this, &rhs);
-        }
-
-        static if (Copyable)
-        void opAssign()(auto ref T rhs) @trusted nothrow @nogc
+        void opAssign()(auto ref inout(T) rhs) inout @trusted nothrow @nogc pure
         {
             opAssignCPPObject!T(&this, &rhs);
         }
@@ -325,6 +324,8 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
 
     alias ElementType = T;
 
+    mixin CPPBindingMixin!(vector, true, true);
+
     extern(D)
     {
         /// TODO: Separate from `vector` definition
@@ -388,9 +389,9 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             // note: cannot do 'return this.innerSets[] == rhs.innerSets[];'
             // object.d(358,64): Error: `cast(const(vector))(cast(const(vector)*)r)[i]`
             // is not an lvalue and cannot be modified
-            foreach (const ref left, const ref right; zip(this[], rhs[]))
+            foreach (idx; 0 .. this.length)
             {
-                if (left != right)
+                if (this[idx] != rhs[idx])
                     return false;
             }
 
@@ -459,14 +460,14 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
         static if (isBasicType!T)
         {
             /// Overload for basic types to not require a `const ref`
-            public void push_back (T value) @trusted pure nothrow @nogc
+            public void push_back (T value) inout @trusted pure nothrow @nogc
             {
                 import Utils = scpd.types.Utils;
                 Utils.push_back(this, value);
             }
         }
 
-        public void push_back (ref T value) @trusted pure nothrow @nogc
+        public void push_back (ref T value) inout @trusted pure nothrow @nogc
         {
             import Utils = scpd.types.Utils;
             import scpd.types.XDRBase;
@@ -497,8 +498,10 @@ unittest
     iota(5).each!((num) {ubyte b = cast(ubyte)num; vec_ubyte.push_back(b);});
     auto serialized = vec_ubyte.toString();
     assert(serialized == `"AAECAwQ="`, "actual serialized: " ~ serialized);
-    auto deserialized = vec_ubyte.fromString(serialized)[];
-    assert(deserialized == [0, 1, 2, 3, 4], "actual deserialized: " ~ to!string(deserialized));
+    vector!ubyte deserialized = vec_ubyte.fromString(serialized);
+    assert(deserialized[] == [0, 1, 2, 3, 4]);
+    vector!ubyte vec_copy = deserialized;
+    assert(vec_copy._start != deserialized._start);
 }
 
 unittest
@@ -561,4 +564,5 @@ unittest
     assert(shared_ptr!int.sizeof == getCPPSizeof!(shared_ptr!int)());
     assert(set!int.sizeof == getCPPSizeof!(set!int)());
     assert(map!(int,int).sizeof == getCPPSizeof!(map!(int,int))());
+    assert(vector!ubyte.sizeof == getCPPSizeof!(vector!ubyte)());
 }
