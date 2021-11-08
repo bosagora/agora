@@ -389,7 +389,7 @@ public class NameRegistry: NameRegistryAPI
 
         foreach (const ref payload; zone)
         {
-            reply.answers ~= this.convertPayload(payload, format("%s.%s",
+            reply.answers ~= payload.toRR(format("%s.%s",
                 payload.payload.data.public_key, zone.root.value));
         }
 
@@ -432,58 +432,8 @@ public class NameRegistry: NameRegistryAPI
         if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
             return Header.RCode.NameError;
 
-        reply.answers ~= this.convertPayload(payload, question.qname);
+        reply.answers ~= payload.toRR(question.qname);
         return Header.RCode.NoError;
-    }
-
-    /***************************************************************************
-
-        Converts a `TypedPayload` to a valid `ResourceRecord`
-
-        Params:
-          tp = The typed payload as found in one of the zones map
-          qname = The "question name", or the record name (e.g. in AXFR)
-
-        Throws:
-          If the type of `tp` is not supported
-          (this would be a programming error).
-
-    ***************************************************************************/
-
-    private ResourceRecord convertPayload (in TypedPayload tp, const char[] qname)
-        const @safe
-    {
-        ResourceRecord answer;
-        answer.class_ = CLASS.IN; // Validated by the caller
-        answer.type = tp.type;
-        answer.name = qname;
-
-        if (tp.type == TYPE.CNAME)
-        {
-            /* If it's a CNAME, it has to be to another domain, as we don't
-             * yet support aliases in the same zone, hence the algorithm in
-             * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
-             */
-            assert(tp.payload.data.addresses.length == 1);
-            answer.rdata = answer.name.serializeFull();
-            // We don't provide recursion yet, so just return this
-            // and let the caller figure it out.
-        }
-        else if (tp.type == TYPE.A)
-        {
-            foreach (idx, addr; tp.payload.data.addresses)
-            {
-                uint ip4addr = InternetAddress.parse(addr.host);
-                ensure(ip4addr != InternetAddress.ADDR_NONE,
-                       "DNS: Address '{}' (index: {}) is not an A record (record: {})",
-                       addr, idx, tp);
-                answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
-            }
-        }
-        else
-            ensure(0, "Unknown type: {} - {}", tp.type, tp);
-
-        return answer;
     }
 
     /***************************************************************************
@@ -577,6 +527,55 @@ private struct TypedPayload
 
     /// UTXO
     public Hash utxo;
+
+    /***************************************************************************
+
+        Converts a `TypedPayload` to a valid `ResourceRecord`
+
+        Params:
+          qname = The "question name", or the record name (e.g. in AXFR)
+
+        Throws:
+          If the type of `this` payload is not supported, which would be
+          a programming error.
+
+    ***************************************************************************/
+
+    public ResourceRecord toRR (const char[] qname) const scope
+        @safe
+    {
+        ResourceRecord answer;
+        answer.class_ = CLASS.IN; // Validated by the caller
+        answer.type = this.type;
+        answer.name = qname;
+
+        if (this.type == TYPE.CNAME)
+        {
+            /* If it's a CNAME, it has to be to another domain, as we don't
+             * yet support aliases in the same zone, hence the algorithm in
+             * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
+             */
+            assert(this.payload.data.addresses.length == 1);
+            answer.rdata = answer.name.serializeFull();
+            // We don't provide recursion yet, so just return this
+            // and let the caller figure it out.
+        }
+        else if (this.type == TYPE.A)
+        {
+            foreach (idx, addr; this.payload.data.addresses)
+            {
+                uint ip4addr = InternetAddress.parse(addr.host);
+                ensure(ip4addr != InternetAddress.ADDR_NONE,
+                       "DNS: Address '{}' (index: {}) is not an A record (record: {})",
+                       addr, idx, this);
+                answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
+            }
+        }
+        else
+            ensure(0, "Unknown type: {} - {}", this.type, this);
+
+        return answer;
+    }
 }
 
 /// Contains infos related to either `validators` or `flash`
