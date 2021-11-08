@@ -776,27 +776,36 @@ public struct Domain
     /// Ditto
     public void serialize (scope SerializeDg dg) const @safe
     {
-        bool finalLabel = false;
-        this.value.splitter('.').each!(
+        // If we get '.' there is no way to tell (using splitter)
+        // the difference with 'foo..bar', so we just trim the trailing
+        // dot and reject any empty label.
+        size_t end = (this.value.length && this.value[$-1] == '.') ?
+            (this.value.length - 1) : this.value.length;
+
+        this.value[0 .. end].splitter('.').each!(
             (const(char)[] label) {
                 assert(label.length <= 64);
+                assert(label.length > 0, "Empty label present more than once in domain");
+
                 serializePart!ubyte(label.length % 64, dg);
                 dg(label.representation);
-
-                if (!label.length)
-                {
-                    assert(!finalLabel, "Empty label present more than once in domain");
-                    finalLabel = true;
-                }
             });
-        if (!finalLabel)
-            serializePart!ubyte(0, dg);
+        serializePart!ubyte(0, dg);
     }
 }
 
 unittest
 {
     checkFromBinary!Message();
+
+    auto root = Domain(".");
+    assert(root.serializeFull() == [0]);
+
+    auto dlang = Domain("dlang.org.");
+    assert(dlang.serializeFull() == [ubyte(5), 'd', 'l', 'a', 'n', 'g', 3, 'o', 'r', 'g', 0 ]);
+
+    auto dlang2 = Domain("dlang.org"); // No trailing dot
+    assert(dlang.serializeFull() == dlang2.serializeFull());
 }
 
 /// Context used while deserializing a DNS message
