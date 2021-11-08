@@ -135,3 +135,14 @@ This contains Flash-related data.
 |------------|----------|--------|----------------------|---------------------------------|
 | meta       | BLOB     | Hash   | PRIMARY KEY NOT NULL | Only ever set to `1` if present |
 | data       | BLOB     |        | NOT NULL             | Binary-serialized `mixin`       |
+
+
+### `network_manager` table
+
+The primary key accross all three columns is just so that replace into does not create duplicate entries.
+
+| Field name | SQL Type | D type | Attributes           | Comment                           |
+|------------|----------|--------|----------------------|-----------------------------------|
+| utxo       | TEXT     | Hash   | PRIMARY KEY          | validator's frozen utxo           |
+| pubkey     | TEXT     | string | PRIMARY KEY NOT NULL | Node's PublicKey as string        |
+| address    | TEXT     | string | PRIMARY KEY NOT NULL | Node's registry address as string |

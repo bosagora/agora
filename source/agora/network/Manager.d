@@ -455,7 +455,7 @@ public class NetworkManager
 
         this.cacheDB.execute(
             "CREATE TABLE IF NOT EXISTS network_manager (" ~
-            "utxo TEXT, pubkey TEXT, address TEXT NOT NULL)");
+            "utxo TEXT, pubkey TEXT, address TEXT NOT NULL, PRIMARY KEY(utxo, pubkey, address))");
 
         auto results = this.cacheDB.execute("SELECT address FROM network_manager");
         foreach (ref row; results)
