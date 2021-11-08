@@ -83,8 +83,8 @@ public class NameRegistry: NameRegistryAPI
         this.log = Logger(__MODULE__);
 
         this.ledger = ledger;
-        this.validators = ZoneData("validator", cache_db);
-        this.flash = ZoneData("flash", cache_db);
+        this.validators = ZoneData("validator", cache_db, log);
+        this.flash = ZoneData("flash", cache_db, log);
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
 
         const vname = "validators." ~ realm;
@@ -317,6 +317,8 @@ public class NameRegistry: NameRegistryAPI
         // questions / will only ask one question at a time.
         foreach (const ref q; query.questions)
         {
+            reply.questions ~= q;
+
             // RFC1034: 3.7.1. Standard queries
             // Since a particular name server may not know all of
             // the classes available in the domain system, it can never know if it is
@@ -331,109 +333,31 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            if (q.qtype == QTYPE.AXFR)
-            {
-                if (this.validators.matches(q.qname))
-                    this.doAXFR(this.validators, reply);
-                else if (this.flash.matches(q.qname))
-                    this.doAXFR(this.flash, reply);
-                else
-                {
-                    log.warn("Refusing AXFR for unknown zone: {}", q.qname);
-                    reply.header.RCODE = Header.RCode.Refused;
-                    break;
-                }
-            }
-            else if (q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
-            {
-                reply.header.RCODE = this.getValidatorDNSRecord(q, reply);
-                if (reply.header.RCODE != Header.RCode.NoError)
-                    break;
-            }
-            else
+            if (!q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
             {
                 log.warn("DNS: Ignoring query for unknown QTYPE: {}", q);
                 reply.header.RCODE = Header.RCode.NotImplemented;
+                break;
             }
 
-            reply.questions ~= q;
+            if (this.validators.owns(q.qname))
+                this.validators.answer(q, reply);
+            else if (this.flash.owns(q.qname))
+                this.flash.answer(q, reply);
+            else
+            {
+                log.warn("Refusing {} for unknown zone: {}", q.qtype, q.qname);
+                reply.header.RCODE = Header.RCode.Refused;
+            }
+
+            if (reply.header.RCODE != Header.RCode.NoError)
+                break;
         }
         reply.fill(query.header);
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
                   query, reply);
         sender(reply);
-    }
-
-    /***************************************************************************
-
-        Perform an AXFR for a given `zone`
-
-        Allow servers to synchronize with one another using this standard DNS
-        query. Note that there are better ways to do synchronization,
-        but AXFR was in the original specification.
-        See RFC1034 "4.3.5. Zone maintenance and transfers".
-
-        Params:
-          zone = The zone to transfer
-          reply = The `Message` to write to
-
-    ***************************************************************************/
-
-    private void doAXFR (ref ZoneData zone, ref Message reply) @safe
-    {
-        log.info("Performing AXFR for {} ({} entries)",
-                 zone.root.value, zone.count());
-        auto soa = zone.toRR();
-        reply.answers ~= soa;
-
-        foreach (const ref payload; zone)
-        {
-            reply.answers ~= payload.toRR(format("%s.%s",
-                payload.payload.data.public_key, zone.root.value));
-        }
-
-        reply.answers ~= soa;
-        reply.header.RCODE = Header.RCode.NoError;
-    }
-
-    /***************************************************************************
-
-        Get a single validator's DNS record.
-
-        Queries sent to the server may attempt to look up multiple validators,
-        which is handled by `answerQuestions`. This method looks up a single
-        host name and return all associated addresses.
-
-        Since we might have multiple addresses registered for a single
-        validator, we first attempt to find an IP address (`TYPE.A`) or
-        IPv6 (`TYPE.AAAA`). If not, we return a `CNAME` (`TYPE.CNAME`).
-
-        Params:
-          question = The question being asked (contains the hostname)
-          reply = A struct to fill the `answers` section with the addresses
-
-        Returns:
-          A code corresponding to the result of the lookup.
-          If the lookup was successful, `Header.RCode.NoError` will be returned.
-          Otherwise, the correct error code (non 0) is returned.
-
-    ***************************************************************************/
-
-    private Header.RCode getValidatorDNSRecord (
-        const ref Question question, ref Message reply) @safe
-    {
-        const public_key = this.validators.parsePublicKeyFromDomain(question.qname);
-        if (public_key is PublicKey.init)
-            return Header.RCode.FormatError;
-
-        TypedPayload payload = this.validators.get(public_key);
-        // We are authoritative, so we can set `NameError`
-        if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
-            return Header.RCode.NameError;
-
-        reply.answers ~= payload.toRR(question.qname);
-        return Header.RCode.NoError;
     }
 
     /***************************************************************************
@@ -581,6 +505,9 @@ private struct TypedPayload
 /// Contains infos related to either `validators` or `flash`
 private struct ZoneData
 {
+    /// Logger instance used by this zone
+    private Logger log;
+
     /// The zone fully qualified name
     public Domain root;
 
@@ -619,9 +546,10 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    public this (string type_table_name, ManagedDatabase cache_db)
+    public this (string type_table_name, ManagedDatabase cache_db, Logger logger)
     {
         this.db = cache_db;
+        this.log = logger;
 
         this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature",
             type_table_name);
@@ -692,6 +620,90 @@ private struct ZoneData
         }
 
         return 0;
+    }
+
+    /***************************************************************************
+
+         Answer a given question using this zone's data
+
+    ***************************************************************************/
+
+    public void answer (in Question q, ref Message reply) @safe
+    {
+        if (q.qtype == QTYPE.AXFR)
+            this.doAXFR(reply);
+        else
+            reply.header.RCODE = this.getKeyDNSRecord(q, reply);
+    }
+
+    /***************************************************************************
+
+        Perform AXFR for this zone
+
+        Allow servers to synchronize with one another using this standard DNS
+        query. Note that there are better ways to do synchronization,
+        but AXFR was in the original specification.
+        See RFC1034 "4.3.5. Zone maintenance and transfers".
+
+        Params:
+          reply = The `Message` to write to
+
+    ***************************************************************************/
+
+    private void doAXFR (ref Message reply) @safe
+    {
+        log.info("Performing AXFR for {} ({} entries)", this.root.value, this.count());
+
+        auto soa = this.toRR();
+        reply.answers ~= soa;
+
+        foreach (const ref payload; this)
+        {
+            reply.answers ~= payload.toRR(format("%s.%s",
+                payload.payload.data.public_key, this.root.value));
+        }
+
+        reply.answers ~= soa;
+        reply.header.RCODE = Header.RCode.NoError;
+    }
+
+    /***************************************************************************
+
+        Get a single key's DNS record.
+
+        Queries sent to the server may attempt to look up multiple keys,
+        which is handled by `answer`. This method looks up a single
+        host name and return all associated addresses.
+
+        Since we might have multiple addresses registered for a single key,
+        we first attempt to find an IP address (`TYPE.A`) or IPv6 (`TYPE.AAAA`).
+        If not, we return a `CNAME` (`TYPE.CNAME`).
+
+        Params:
+          question = The question being asked (contains the hostname)
+          reply = A struct to fill the `answers` section with the addresses
+
+        Returns:
+          A code corresponding to the result of the lookup.
+          If the lookup was successful, `Header.RCode.NoError` will be returned.
+          Otherwise, the correct error code (non 0) is returned.
+
+    ***************************************************************************/
+
+    private Header.RCode getKeyDNSRecord (
+        const ref Question question, ref Message reply) @safe
+    {
+        const public_key = this.parsePublicKeyFromDomain(question.qname);
+        if (public_key is PublicKey.init)
+            return Header.RCode.FormatError;
+
+        TypedPayload payload = this.get(public_key);
+        // We are authoritative, so we can set `NameError`
+        if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
+            return Header.RCode.NameError;
+
+        reply.answers ~= payload.toRR(question.qname);
+        return Header.RCode.NoError;
     }
 
     /***************************************************************************
