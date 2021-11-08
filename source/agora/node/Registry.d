@@ -423,8 +423,7 @@ public class NameRegistry: NameRegistryAPI
     private Header.RCode getValidatorDNSRecord (
         const ref Question question, ref Message reply) @safe
     {
-        const public_key = question.qname
-            .parsePublicKeyFromDomain(this.validators);
+        const public_key = this.validators.parsePublicKeyFromDomain(question.qname);
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
@@ -508,47 +507,6 @@ public class NameRegistry: NameRegistryAPI
     }
 }
 
-/***************************************************************************
-
-    Parse a PublicKey from a domain name for the given zone
-
-    Params:
-      domain = The full domain name to parse
-      zone = The zone we are matching against
-
-    Returns:
-      A valid `PublicKey` that `domain` points to, or `PublicKey.init`
-
-    ***************************************************************************/
-
-private PublicKey parsePublicKeyFromDomain (in char[] domain,
-    in ZoneData zone) @safe
-{
-    // In the future, we may allow things like:
-    // `admin.$PUBKEY.domain`, but for the moment, restrict it to
-    // `$PUBKEY.domain`, and a public key is 63 chars with HRP,
-    // 59 chars otherwise.
-    enum PublicKeyStringLength = 63;
-    enum NoHRPPublicKeyStringLength = 63 - "boa1".length;
-
-    static PublicKey tryParse (in char[] data)
-    {
-        try return PublicKey.fromString(data);
-        catch (Exception exc) return PublicKey.init;
-    }
-
-    if (auto str = zone.owns(domain))
-    {
-        if (str.length == PublicKeyStringLength)
-            return tryParse(str);
-        else if (str.length == NoHRPPublicKeyStringLength)
-            return tryParse("boa1" ~ str);
-        else
-            return PublicKey.init;
-    }
-    return PublicKey.init;
-}
-
 // Check domain comparison
 unittest
 {
@@ -560,44 +518,37 @@ unittest
     zone.root = Domain("net.bosagora.io");
 
     // Most likely case
-    assert((AStr ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".net.bosagora.io") ==
+           WK.Keys.A.address);
 
     // Technically, request may end with the null label (a dot), and the user
     // might also specify it, so test for it.
-    assert((AStr ~ ".net.bosagora.io.")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".net.bosagora.io.") ==
+           WK.Keys.A.address);
 
     // Without the HRP
-    assert((AStr["boa1".length .. $] ~ ".net.bosagora.io")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr["boa1".length .. $] ~ ".net.bosagora.io") ==
+           WK.Keys.A.address);
 
     // Only gTLD
     zone.root = Domain("bosagora");
-    assert((AStr ~ ".bosagora")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".bosagora") == WK.Keys.A.address);
 
     // Uppercase / lowercase doesn't matter, except for the key
-    assert((AStr ~ ".BOSAGORA")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
-    assert((AStr ~ ".BoSAGorA")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".BOSAGORA") == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".BoSAGorA") == WK.Keys.A.address);
     zone.root = Domain(".BoSAgOrA");
-    assert((AStr ~ ".BOSAGORA")
-           .parsePublicKeyFromDomain(zone) == WK.Keys.A.address);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".BOSAGORA") == WK.Keys.A.address);
 
     // Rejection tests
     zone.root = Domain("boa");
-    assert((AStr[1 .. $] ~ ".boa")
-           .parsePublicKeyFromDomain(zone) is PublicKey.init);
+    assert(zone.parsePublicKeyFromDomain(AStr[1 .. $] ~ ".boa") is PublicKey.init);
     auto invalid = AStr.dup;
     invalid[0] = 'c';
-    assert((invalid ~ ".boa")
-           .parsePublicKeyFromDomain(zone) is PublicKey.init);
+    assert(zone.parsePublicKeyFromDomain(invalid ~ ".boa") is PublicKey.init);
 
     zone.root = Domain("boap");
-    assert((AStr ~ ".boa")
-           .parsePublicKeyFromDomain(zone) is PublicKey.init);
+    assert(zone.parsePublicKeyFromDomain(AStr ~ ".boa") is PublicKey.init);
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
@@ -975,6 +926,46 @@ private struct ZoneData
         assert(!zone.owns("a.b.exampld.com"));
         // bosagora/agora#2551
         assert(!zone.owns("oops"));
+    }
+
+    /***************************************************************************
+
+        Parse a PublicKey from a domain name for the given zone
+
+        Params:
+          domain = The full domain name to parse
+
+        Returns:
+          A valid `PublicKey` that `domain` points to, or `PublicKey.init`
+
+    ***************************************************************************/
+
+    private PublicKey parsePublicKeyFromDomain (in char[] domain) const scope
+        @safe
+    {
+        // In the future, we may allow things like:
+        // `admin.$PUBKEY.domain`, but for the moment, restrict it to
+        // `$PUBKEY.domain`, and a public key is 63 chars with HRP,
+        // 59 chars otherwise.
+        enum PublicKeyStringLength = 63;
+        enum NoHRPPublicKeyStringLength = 63 - "boa1".length;
+
+        static PublicKey tryParse (in char[] data)
+        {
+            try return PublicKey.fromString(data);
+            catch (Exception exc) return PublicKey.init;
+        }
+
+        if (auto str = this.owns(domain))
+        {
+            if (str.length == PublicKeyStringLength)
+                return tryParse(str);
+            else if (str.length == NoHRPPublicKeyStringLength)
+                return tryParse("boa1" ~ str);
+            else
+                return PublicKey.init;
+        }
+        return PublicKey.init;
     }
 }
 
