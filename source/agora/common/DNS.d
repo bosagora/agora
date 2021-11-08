@@ -25,6 +25,7 @@ import agora.serialization.Serializer;
 import std.algorithm.iteration;
 import std.bitmanip;
 import std.format;
+import std.range;
 import std.string;
 static import std.utf;
 
@@ -309,6 +310,38 @@ public struct Message
         this.answers.each!(e => serializePart(e, dg, CompactMode.No));
         this.authorities.each!(e => serializePart(e, dg, CompactMode.No));
         this.additionals.each!(e => serializePart(e, dg, CompactMode.No));
+    }
+
+    /***************************************************************************
+
+        Gives the estimated serialized size
+
+        This routine can be used to avoid serialization if it goes over the
+        payload size (either 512 or EDNS0-set) expectation.
+        Note that this does not take into account compression, which could
+        significantly reduce the size.
+
+    ***************************************************************************/
+
+    public size_t maxSerializedSize () const scope @safe pure nothrow @nogc
+    {
+        // Header is a POD without indirection
+        size_t size = Header.sizeof;
+
+        // Question is QTYPE + QCLASS + Domain
+        // Domain's serialized size is at most `data.length + 1`,
+        // and at least 2 bytes (a pointer)
+        foreach (const ref q; this.questions)
+            size += (QTYPE.sizeof + QCLASS.sizeof + q.qname.length + 1);
+
+        auto allRRs = this.answers.chain(this.authorities).chain(this.additionals);
+        foreach (const ref a; allRRs)
+        {
+            size += (a.name.length + 1 + TYPE.sizeof + CLASS.sizeof +
+                     uint.sizeof + ushort.sizeof + a.rdata.length);
+        }
+
+        return size;
     }
 }
 
