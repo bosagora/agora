@@ -326,6 +326,42 @@ public class NameRegistry: NameRegistryAPI
         reply.header.RA = false; // TODO: Implement
         reply.header.AA = true;  // TODO: Make configurable
 
+        // EDNS(0) support
+        // payloadSize must be treated to be at least 512. A payloadSize of 0
+        // means no OPT record were found (there should be only one),
+        // the requestor does not support EDNS0, and we should not include
+        // an OPT record in our answer.
+        ushort payloadSize;
+        foreach (const ref add; query.additionals)
+        {
+            if (add.type == TYPE.OPT)
+            {
+                // This is a second OPT record, which is illegal by spec and
+                // triggers a FORMERR
+                if (payloadSize > 0)
+                    goto BAILOUT;
+
+                scope opt = const(OPTRR)(add);
+                // 6.1.1: If an OPT record is present in a received request,
+                // compliant responders MUST include an OPT record in their
+                // respective responses.
+                OPTRR responseOPT;
+
+                if (opt.EDNSVersion() > 0)
+                {
+                    responseOPT.extendedRCODE = 1; // BADVERS
+                    reply.additionals ~= responseOPT.record;
+                    goto BAILOUT;
+                }
+                // Ignore the DO bit for now
+                payloadSize = min(opt.payloadSize(), ushort(512));
+                reply.additionals ~= responseOPT.record;
+            }
+        }
+        // No OPT record present, the client does not support EDNS
+        if (payloadSize == 0)
+            payloadSize = 512;
+
         // Note: Since DNS has some fields which apply to the full response but
         // should actually be in `answers`, most resolvers will not ask unrelated
         // questions / will only ask one question at a time.
@@ -363,7 +399,17 @@ public class NameRegistry: NameRegistryAPI
                 log.warn("Refusing {} for unknown zone: {}", q.qtype, q.qname);
                 break;
             }
+
+            if (reply.maxSerializedSize() > payloadSize)
+            {
+                reply.questions = reply.questions[0 .. $ - 1];
+                reply.answers = reply.answers[0 .. $ - 1];
+                reply.header.TC = true;
+                break;
+            }
         }
+
+    BAILOUT:
         reply.fill(query.header);
         log.trace("{} DNS query: {} => {}",
                   (reply.header.RCODE == Header.RCode.NoError) ? "Fullfilled" : "Unsuccessfull",
