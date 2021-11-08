@@ -568,7 +568,7 @@ extern(D):
         {
             if (!proc)
             {
-                this.queued_envelopes.insertBack(cast()envelope);
+                this.queued_envelopes.insertBack(envelope.serializeFull.deserializeFull!SCPEnvelope());
                 this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
                 continue;
             }
@@ -1106,22 +1106,14 @@ extern(D):
 
     public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
-        SCPEnvelope env = cast()envelope;
         log.trace("Emitting envelope: {}", scpPrettify(&envelope, &this.getQSet));
-
+        SCPEnvelope copy;
         try
-        {
-            // deep-dup as SCP stores pointers to memory on the stack
-            env.statement.pledges = deserializeFull!(SCPStatement._pledges_t)(
-                serializeFull(env.statement.pledges));
-        }
-        catch (Exception ex)
-        {
-            assert(0, ex.to!string);
-        }
-
+            copy = envelope.serializeFull.deserializeFull!SCPEnvelope();
+        catch (Exception e)
+            assert(0);
         log.dbg("{}: peers are {}", __PRETTY_FUNCTION__, this.network.peers[]);
-        this.network.validators().each!(c => c.sendEnvelope(env));
+        this.network.validators().each!(v => v.sendEnvelope(copy));
     }
 
     /***************************************************************************

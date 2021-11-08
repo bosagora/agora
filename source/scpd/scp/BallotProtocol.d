@@ -69,6 +69,8 @@ extern(C++, class) public struct BallotProtocol
 
         ref const(SCPBallot) getBallot() const;
         ref const(ValueWrapperPtr) getWValue() const;
+
+        @disable this(this);
     }
 
     alias SCPBallotWrapperUPtr = unique_ptr!SCPBallotWrapper;

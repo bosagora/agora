@@ -147,6 +147,15 @@ CPPOBJECTINST(std::set<NodeID>);
 CPPOBJECTINST(std::set<SCPBallot>);
 CPPOBJECTINST(std::set<unsigned int>);
 
+CPPOBJECTINST(std::vector<unsigned char>);
+CPPOBJECTINST(std::vector<Value>);
+CPPOBJECTINST(std::vector<unsigned long>);
+CPPOBJECTINST(std::vector<unsigned long long>);
+CPPOBJECTINST(std::vector<SCPQuorumSet>);
+CPPOBJECTINST(std::vector<SCPEnvelope>);
+CPPOBJECTINST(std::vector<Slot::HistoricalStatement>);
+CPPOBJECTINST(stellar::SCPStatement::_pledges_t);
+
 #define CPPUNIQUEPTRINST(T) CPPDEFAULTCTORINST(std::unique_ptr<T>) \
                             CPPDTORINST(std::unique_ptr<T>)        \
                             CPPSIZEOFINST(std::unique_ptr<T>)
@@ -176,6 +185,4 @@ CPPUNORDEREDMAPRANDHASHINST(stellar::NodeID, stellar::QuorumTracker::NodeInfo, 1
 
 // typedef std::set<ValueWrapperPtr, WrappedValuePtrComparator*> ValueWrapperPtrSet2;
 
-CPPDEFAULTCTORINST(ValueWrapperPtrSet);
-CPPDTORINST(ValueWrapperPtrSet);
-CPPCOPYCTORINST(ValueWrapperPtrSet);
+CPPOBJECTINST(ValueWrapperPtrSet);
