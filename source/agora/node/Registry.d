@@ -551,37 +551,35 @@ private struct TypedPayload
     public ResourceRecord toRR (const char[] qname) const scope
         @safe
     {
-        ResourceRecord answer;
-        answer.class_ = CLASS.IN; // Validated by the caller
-        answer.type = this.type;
-        answer.name = qname;
-
-        if (this.type == TYPE.CNAME)
+        Domain name = Domain(qname);
+        switch (this.type)
         {
+        case TYPE.CNAME:
+            assert(this.payload.data.addresses.length == 1);
+            // FIXME: Use a proper TTL
+
             /* If it's a CNAME, it has to be to another domain, as we don't
              * yet support aliases in the same zone, hence the algorithm in
              * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
             assert(this.payload.data.addresses.length == 1);
-            answer.rdata = Domain(this.payload.data.addresses[0].host).serializeFull();
-            // We don't provide recursion yet, so just return this
-            // and let the caller figure it out.
-        }
-        else if (this.type == TYPE.A)
-        {
+            return ResourceRecord.make!(TYPE.CNAME)(name, 0, Domain(this.payload.data.addresses[0].host));
+
+        case TYPE.A:
+            // FIXME: Remove allocation
+            scope uint[] tmp = new uint[](this.payload.data.addresses.length);
             foreach (idx, addr; this.payload.data.addresses)
             {
-                uint ip4addr = InternetAddress.parse(addr.host);
-                ensure(ip4addr != InternetAddress.ADDR_NONE,
+                tmp[idx] = InternetAddress.parse(addr.host);
+                ensure(tmp[idx] != InternetAddress.ADDR_NONE,
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, this);
-                answer.rdata ~= serializeFull(ip4addr, CompactMode.No);
             }
-        }
-        else
+            return ResourceRecord.make!(TYPE.A)(name, 0, tmp);
+        default:
             ensure(0, "Unknown type: {} - {}", this.type, this);
-
-        return answer;
+            assert(0);
+        }
     }
 }
 
@@ -751,9 +749,9 @@ private struct ZoneData
         else if (q.qtype == QTYPE.SOA)
         {
             if (matches)
-                reply.answers ~= this.toRR();
+                reply.answers ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
             else
-                reply.authorities ~= this.toRR();
+                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
 
             return Header.RCode.NoError;
         }
@@ -793,7 +791,7 @@ private struct ZoneData
     {
         log.info("Performing AXFR for {} ({} entries)", this.root.value, this.count());
 
-        auto soa = this.toRR();
+        auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
         reply.answers ~= soa;
 
         foreach (const ref payload; this)
@@ -842,7 +840,7 @@ private struct ZoneData
             return Header.RCode.NameError;
 
         reply.answers ~= payload.toRR(question.qname);
-        reply.authorities ~= this.toRR(); // optional
+        reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa); // optional
         return Header.RCode.NoError;
     }
 
@@ -967,23 +965,6 @@ private struct ZoneData
         }
 
         this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
-    }
-
-    /***************************************************************************
-
-         Returns:
-           A ResourceRecord matching this zone's SOA.
-
-    ***************************************************************************/
-
-    public ResourceRecord toRR () const @safe
-    {
-        ResourceRecord result;
-        result.name = this.soa.mname;
-        result.type = TYPE.SOA;
-        result.class_ = CLASS.IN;
-        result.rdata = this.soa.serializeFull(CompactMode.No);
-        return result;
     }
 
     /***************************************************************************
