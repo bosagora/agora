@@ -588,6 +588,34 @@ public struct Question
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.3
 public struct ResourceRecord
 {
+    /// Make a record of the given type
+    public static ResourceRecord make (TYPE type) (Domain name, uint ttl, ubyte[] rdata)
+    {
+        return ResourceRecord(name, type, CLASS.IN, ttl, data);
+    }
+
+    /// Make a record of SOA type
+    public static ResourceRecord make (TYPE type : TYPE.SOA) (
+        Domain name, uint ttl, in SOA soa)
+    {
+        return ResourceRecord(name, TYPE.SOA, CLASS.IN, ttl, soa.serializeFull(CompactMode.No));
+    }
+
+    /// Make a record of CNAME type
+    public static ResourceRecord make (TYPE type : TYPE.CNAME) (
+        Domain name, uint ttl, in Domain cname)
+    {
+        return ResourceRecord(name, TYPE.CNAME, CLASS.IN, ttl, cname.serializeFull());
+    }
+
+    /// Make a record of A type
+    public static ResourceRecord make (TYPE type : TYPE.A) (
+        Domain name, uint ttl, uint[] ipv4...) @trusted
+    {
+        auto rdata = (cast(ubyte*) ipv4.ptr)[0 .. uint.sizeof * ipv4.length].dup;
+        return ResourceRecord(name, TYPE.CNAME, CLASS.IN, ttl, rdata);
+    }
+
     /// A domain name to which this resource record pertains.
     public Domain name;
 
