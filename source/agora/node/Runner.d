@@ -45,6 +45,7 @@ import std.format;
 import std.typecons : Tuple, tuple;
 import std.stdio;
 
+import core.atomic;
 import core.time;
 
 ///
@@ -55,6 +56,10 @@ public alias Listeners = Tuple!(
     HTTPListener[], "http",
     TCPListener[], "tcp",
  );
+
+/// The return code used by the main function
+/// See: https://github.com/vibe-d/vibe-core/issues/302
+package __gshared int exitCode;
 
 /*******************************************************************************
 
@@ -323,10 +328,22 @@ private void runDNSServer (in RegistryConfig config, NameRegistry registry) noth
     catch (Exception exc)
     {
         try
-            stderr.writeln("Fatal error while running the DNS server: ", exc);
+        {
+            stderr.writeln("Couldn't start the UDP listener for the registry: ", exc.msg);
+            if (config.port == 53)
+                stderr.writeln("On most system, port 53 is also used by a local resolver. " ~
+                    "Use the node's public IP explicitly to avoid binding to the loopback interface");
+            else if (config.port <= 1024)
+                stderr.writeln("The chosen port (", config.port, ") is priviledged. " ~
+                               "Try using a port > 1024 or make sure the port isn't already used");
+            else
+                stderr.writeln("Hint: Port ", config.port, " might already be used");
+        }
         catch (Exception exc2)
             printf("Couldn't print message following fatal error in DNS!\n");
-        assert(0);
+
+        atomicStore(exitCode, 1);
+        exitEventLoop();
     }
 }
 

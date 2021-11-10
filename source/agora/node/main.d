@@ -41,6 +41,7 @@ import std.path : absolutePath;
 import std.stdio;
 import std.typecons : Nullable;
 
+import core.atomic;
 import core.exception;
 
 static this ()
@@ -204,7 +205,9 @@ private int main (string[] args)
             listeners.node.shutdown();
     }
 
-    return runEventLoop();
+    if (auto ret = runEventLoop())
+        return ret;
+    return atomicLoad(exitCode);
 }
 
 /// Global references to the listeners / node, as they need to be accessed
