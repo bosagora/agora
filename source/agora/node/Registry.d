@@ -354,18 +354,15 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            if (this.validators.owns(q.qname))
-                this.validators.answer(q, reply);
-            else if (this.flash.owns(q.qname))
-                this.flash.answer(q, reply);
-            else
+            reply.header.RCODE = this.validators.answer(q, reply);
+            if (reply.header.RCODE == Header.RCode.Refused)
+                reply.header.RCODE = this.flash.answer(q, reply);
+
+            if (reply.header.RCODE == Header.RCode.Refused)
             {
                 log.warn("Refusing {} for unknown zone: {}", q.qtype, q.qname);
-                reply.header.RCODE = Header.RCode.Refused;
-            }
-
-            if (reply.header.RCODE != Header.RCode.NoError)
                 break;
+            }
         }
         reply.fill(query.header);
         log.trace("{} DNS query: {} => {}",
@@ -646,14 +643,25 @@ private struct ZoneData
 
          Answer a given question using this zone's data
 
+         Returns:
+          A code corresponding to the result of the query.
+          `Header.RCode.Refused` is returned for the following conditions;
+            - Query type is AXFR and query name is not matching with zone
+            - Query type is not AXFR and query name is not owned by zone
+        
+          Check `doAXFR` (AXFR queries) or `getKeyDNSRecord` (other queries)
+          for other returns.
+
     ***************************************************************************/
 
-    public void answer (in Question q, ref Message reply) @safe
+    public Header.RCode answer (in Question q, ref Message reply) @safe
     {
         if (q.qtype == QTYPE.AXFR)
-            this.doAXFR(reply);
+            return this.matches(q.qname) ? this.doAXFR(reply) : Header.RCode.Refused;
+        else if (this.owns(q.qname))
+            return this.getKeyDNSRecord(q, reply);
         else
-            reply.header.RCODE = this.getKeyDNSRecord(q, reply);
+            return Header.RCode.Refused;
     }
 
     /***************************************************************************
@@ -670,7 +678,7 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    private void doAXFR (ref Message reply) @safe
+    private Header.RCode doAXFR (ref Message reply) @safe
     {
         log.info("Performing AXFR for {} ({} entries)", this.root.value, this.count());
 
@@ -684,7 +692,7 @@ private struct ZoneData
         }
 
         reply.answers ~= soa;
-        reply.header.RCODE = Header.RCode.NoError;
+        return Header.RCode.NoError;
     }
 
     /***************************************************************************
