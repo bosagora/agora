@@ -347,7 +347,7 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            if (!q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.ALL))
+            if (!q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL))
             {
                 log.warn("DNS: Ignoring query for unknown QTYPE: {}", q);
                 reply.header.RCODE = Header.RCode.NotImplemented;
