@@ -648,7 +648,7 @@ private struct ZoneData
           `Header.RCode.Refused` is returned for the following conditions;
             - Query type is AXFR and query name is not matching with zone
             - Query type is not AXFR and query name is not owned by zone
-        
+
           Check `doAXFR` (AXFR queries) or `getKeyDNSRecord` (other queries)
           for other returns.
 
