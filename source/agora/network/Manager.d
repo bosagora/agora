@@ -142,6 +142,7 @@ public class NetworkManager
             bool delegate (in Address address) onFailedRequest)
             @safe pure nothrow @nogc
         {
+            assert(address !is Address.init);
             this.address = address;
             this.api = api;
             this.onHandshakeComplete = onHandshakeComplete;
@@ -239,8 +240,7 @@ public class NetworkManager
             const is_validator = key != PublicKey.init;
             if (is_validator)
             {
-                if (address !is Address.init
-                    && key == this.outer.validator_config.key_pair.address)
+                if (key == this.outer.validator_config.key_pair.address)
                 {
                     // either we connected to ourself, or someone else is pretending
                     // to be us
@@ -249,10 +249,10 @@ public class NetworkManager
                     return;
                 }
 
-                log.info("Found new Validator: {} (UTXO: {}, key: {})", address, utxo, key);
+                log.info("Found new Validator: {} (UTXO: {}, key: {})", this.address, utxo, key);
             }
             else
-                log.info("Found new FullNode: {}", address);
+                log.info("Found new FullNode: {}", this.address);
 
             NodeConnInfo node = {
                 key : key,
