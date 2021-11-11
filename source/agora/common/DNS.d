@@ -854,6 +854,24 @@ public struct OPTRR
 /// Thin wrapper around a string, used for domain name serialization
 public struct Domain
 {
+    /// Construct an instance of this object, ensuring a terminating dot
+    public this (const(char)[] v) @safe pure nothrow @nogc
+    {
+        assert(v.length > 0, "Domain instantiated with an empty value");
+        assert(v[$-1] == '.', "Domain instantiated without absolute value");
+        assert(v.splitter('.').each!(
+            (const(char)[] chunk) @safe pure nothrow @nogc
+            {
+                assert(chunk.length < 64,
+                       "Domain instantiated with a label longer than 64 characters");
+                auto errIdx = Domain.checkLabel(chunk);
+                if (errIdx < chunk.length)
+                    assert(0, chunk);
+            }));
+
+        this.value = v;
+    }
+
     /// The domain name
     public const(char)[] value = ".";
 
@@ -937,6 +955,36 @@ public struct Domain
 
     /***************************************************************************
 
+        Verify that a label only contains allowed character
+
+        Returns:
+          The index at which the first error was encountered, or `label.length`
+          if the label is valid.
+
+    ***************************************************************************/
+
+    public static ushort checkLabel (scope const(char)[] label)
+        @safe pure nothrow @nogc
+    {
+        assert(label.length < 64, "`checkLabel` called with a label longer than 64 chars");
+
+        foreach (idx, char c; label)
+        {
+            if (c >= 'a' && c <= 'z')
+                continue;
+            if (c >= 'A' && c <= 'Z')
+                continue;
+            if (c >= '0' && c <= '9')
+                continue;
+            if (c == '-')
+                continue;
+            return cast(ushort) idx;
+        }
+        return cast(ushort) label.length;
+    }
+
+    /***************************************************************************
+
         Support for network deserialization
 
         We will receive the domain name encoded. Each label starts with the
@@ -979,16 +1027,15 @@ public struct Domain
             () @trusted {
                 buffer[count .. count + label.length] = cast(const(char[])) label;
             }();
-            buffer[count + label.length] = '.';
 
             // Only [a-z], [A-Z], [0-9], or "-" (dash)
             // https://datatracker.ietf.org/doc/html/rfc1034#section-3.5
-            foreach (idx, char c; buffer[count .. count + label.length])
-            {
-                ensure((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                    (c >= '0' && c <= '9') || c == '-',
-                    "Invalid char '{}' in domain name at index {}", c, count + idx);
-            }
+            auto errorIndex = Domain.checkLabel(buffer[count .. count + label.length]);
+            ensure(errorIndex == label.length,
+                   "Invalid char '{}' in domain name at index {}",
+                   buffer[count + errorIndex], count + errorIndex);
+
+            buffer[count + label.length] = '.';
             count += label.length + 1;
         }
 
