@@ -239,7 +239,7 @@ public class NetworkManager
             const is_validator = key != PublicKey.init;
             if (is_validator)
             {
-                if (address !is Address.init
+                if (this.address !is Address.init
                     && key == this.outer.validator_config.key_pair.address)
                 {
                     // either we connected to ourself, or someone else is pretending
