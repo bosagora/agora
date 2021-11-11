@@ -180,7 +180,7 @@ public Listeners runNode (Config config)
         {
             if (!tls_ctx)
                 throw new Exception(tls_user_help ~
-                    "Otherwise disable tls by setting `admin.tls` to `false` in the config file " ~
+                    ". Otherwise disable tls by setting `admin.tls` to `false` in the config file " ~
                     "or use `-O admin.tls=false` as command line argument.");
             adminsettings.tlsContext = tls_ctx;
         }
@@ -198,8 +198,9 @@ public Listeners runNode (Config config)
         if (interface_.type == InterfaceConfig.Type.https)
         {
             if (!tls_ctx)
-                throw new Exception(tls_user_help ~
-                    format!"Otherwise set type to `http` for interface `%s:%s` in the config file."(interface_.address, httpsettings.port));
+                throw new Exception(
+                    format!"%s. Otherwise set type to `http` for interface `%s:%s` in the config file."
+                    (tls_user_help, interface_.address, httpsettings.port));
             httpsettings.tlsContext = tls_ctx;
         }
         log.info("Node is listening on interface: http{}://{}:{}",
@@ -272,7 +273,7 @@ private TLSContext getTLSContext (out string user_help_message)
         else
         {
             user_help_message = format("To enable tls add a key file named `%s` to one of `%s` " ~
-                "and a certificate file named `%s` to corresponding path of `%s`. ",
+                "and a certificate file named `%s` to corresponding path of `%s`",
                 key_file, key_search_paths, cert_file, cert_search_paths);
         }
     }
