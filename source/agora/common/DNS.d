@@ -27,7 +27,6 @@ import std.bitmanip;
 import std.format;
 import std.range;
 import std.string;
-static import std.utf;
 
 /*******************************************************************************
 
@@ -830,9 +829,26 @@ public struct Domain
         public bool empty () const { return this.to == 0; }
     }
 
-    /// Support for network serialization
-    /// Note that this method is not called directly by the deserializer,
-    /// as it needs to support arbitrary pointers into the message
+    /***************************************************************************
+
+        Support for network deserialization
+
+        We will receive the domain name encoded. Each label starts with the
+        length of the label. Each domain name ends with the empty label.
+        Hence, if we were to receive the string `5agora8bosagora2io0`,
+        it would decode to `agora.bosagora.io.`. The final dot (root domain)
+        is usually omitted, although the struct always keeps it for simplicity.
+
+        Labels cannot be more than 63 characters, and the full domain is limited
+        to 255 octets. If a label length has a numeric value > 63, it is a
+        pointer to a previously seen domain / label.
+
+        Note:
+          This method is not called directly by the deserializer,
+          as it needs to support arbitrary pointers into the message
+
+    ***************************************************************************/
+
     public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
     {
         // https://datatracker.ietf.org/doc/html/rfc1035#section-3.1
@@ -858,6 +874,15 @@ public struct Domain
                 buffer[count .. count + label.length] = cast(const(char[])) label;
             }();
             buffer[count + label.length] = '.';
+
+            // Only [a-z], [A-Z], [0-9], or "-" (dash)
+            // https://datatracker.ietf.org/doc/html/rfc1034#section-3.5
+            foreach (idx, char c; buffer[count .. count + label.length])
+            {
+                ensure((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                    (c >= '0' && c <= '9') || c == '-',
+                    "Invalid char '{}' in domain name at index {}", c, count + idx);
+            }
             count += label.length + 1;
         }
 
@@ -901,10 +926,6 @@ public struct Domain
         // to the list of previously seen domains
         if (count == 0)
             return returnValue(null);
-
-        // Let's say we got `5agora8bosagora2io0`, for domain `agora.bosagora.io`
-        // Our string will be `agora.bosagora.io.`.
-        std.utf.validate(buffer[0 .. count]);
 
         static if (is(T : Domain)) // Mutable
             return returnValue(buffer[0 .. count].dup);
