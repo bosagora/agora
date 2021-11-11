@@ -813,13 +813,13 @@ unittest
 {
     checkFromBinary!Message();
 
-    auto root = Domain(".");
+    auto root = Domain.fromSafeString(".");
     assert(root.serializeFull() == [0]);
 
-    auto dlang = Domain("dlang.org.");
+    auto dlang = Domain.fromSafeString("dlang.org.");
     assert(dlang.serializeFull() == [ubyte(5), 'd', 'l', 'a', 'n', 'g', 3, 'o', 'r', 'g', 0 ]);
 
-    auto dlang2 = Domain("dlang.org"); // No trailing dot
+    auto dlang2 = Domain.fromString("dlang.org"); // No trailing dot
     assert(dlang.serializeFull() == dlang2.serializeFull());
 
     auto lroot = root.byLabel();
@@ -848,11 +848,12 @@ unittest
     auto ips = new uint[](1);
     ips[0] = InternetAddress.parse(test_ip);
 
-    ResourceRecord a_rr = ResourceRecord.make!(TYPE.A)(Domain("localhost"), 0, ips);
+    ResourceRecord a_rr = ResourceRecord.make!(TYPE.A)(
+        Domain.fromSafeString("localhost."), 0, ips);
 
     auto uri_target = Address("agora://test.local:1234");
     ResourceRecord uri_rr = ResourceRecord.make!(TYPE.URI)(
-        Domain("_agora._tcp"), 0, uri_target
+        Domain.fromSafeString("_agora._tcp."), 0, uri_target
     );
     Message msg;
     msg.answers ~= a_rr;
@@ -949,13 +950,89 @@ public struct Domain
     /// The domain name
     public const(char)[] value = ".";
 
-    /// Creates domain name with always trailing root
-    public this (scope inout const(char)[] v) @trusted inout pure nothrow
+    @disable this () @safe pure nothrow @nogc;
+    @disable this (inout(char)[]) inout @safe pure nothrow @nogc;
+
+    /***************************************************************************
+
+        Construct an instance of a `Domain` from a previously validated string
+
+        This method will use `v` as the string stored in the domain,
+        after validating it. Failing validation is a programming error.
+        As a result, this method does not allocate.
+
+        Note that domains always end with a '.', and cannot be empty.
+
+        Params:
+          v = The string to store in the Domain
+
+    ***************************************************************************/
+
+    public static inout(Domain) fromSafeString (inout(char)[] v)
+        @safe pure nothrow @nogc
     {
-        if (v.length && v[$-1] == '.')
-            this.value = v.idup;
-        else
-            this.value = cast(string) (v ~ '.');
+        assert(v.length > 0, "Domain instantiated with an empty value");
+        assert(v[$-1] == '.', "Domain instantiated with non-absolute name");
+
+        size_t lastLabelIdx = 0;
+        foreach (idx, char c; v)
+        {
+            // We can't use `splitter` because it's not `nothrow @nogc`
+            if (c != '.') continue;
+            // This assert is also present in `checkLabel` but the error message
+            // is less precise.
+            const chunk = v[lastLabelIdx .. idx];
+            assert(chunk.length < 64,
+                   "Domain instantiated with a label longer than 64 characters");
+            auto errIdx = Domain.checkLabel(chunk);
+            assert(errIdx == chunk.length, chunk);
+
+            lastLabelIdx = idx + 1;
+        }
+
+        inout(Domain) result = { value: v };
+        return result;
+    }
+
+    /***************************************************************************
+
+        Construct an instance of a `Domain` from user input
+
+        Unlike `fromSafeString`, this method will always allocate.
+        Validation is done on `v`, and an `Exception` is thrown if it fails.
+        As the string can be user input, the terminating dot can be omitted
+        (e.g. 'google.com' is treated as 'google.com.').
+
+        Params:
+          v = A non-empty string representing a domain
+
+    ***************************************************************************/
+
+    public static inout(Domain) fromString (scope inout(char)[] v) @safe /* pure */
+    {
+        ensure(v.length > 0, "Empty string passing to `Domain.fromString`");
+
+        inout str = (inout x) @trusted {
+            return cast(typeof(x)) ((x[$-1] == '.') ? x.dup : (x ~ '.'));
+        }(v);
+
+        // This is a copy for `fromSafeString`, but uses exceptions
+        size_t lastLabelIdx = 0;
+        foreach (idx, char c; str)
+        {
+            if (c != '.') continue;
+            const chunk = str[lastLabelIdx .. idx];
+            ensure(chunk.length < 64,
+                   "Domain instantiated with a label longer than 64 characters");
+            auto errIdx = Domain.checkLabel(chunk);
+            ensure(errIdx == chunk.length,
+                   "Label '{}' contains an invalid char at index {}: '{}'",
+                   chunk, errIdx, chunk[errIdx]);
+            lastLabelIdx = idx + 1;
+        }
+
+        inout(Domain) result = { value: str };
+        return result;
     }
 
     /// Returns: A forward range allowing to iterate by label
@@ -1029,6 +1106,38 @@ public struct Domain
 
     /***************************************************************************
 
+        Verify that a label only contains allowed character
+
+        Returns:
+          The index at which the first error was encountered, or `label.length`
+          if the label is valid.
+
+    ***************************************************************************/
+
+    public static ushort checkLabel (scope const(char)[] label)
+        @safe pure nothrow @nogc
+    {
+        assert(label.length < 64, "`checkLabel` called with a label longer than 64 chars");
+
+        foreach (idx, char c; label)
+        {
+            if (idx == 0 && c == '_')
+                continue;
+            if (c >= 'a' && c <= 'z')
+                continue;
+            if (c >= 'A' && c <= 'Z')
+                continue;
+            if (c >= '0' && c <= '9')
+                continue;
+            if (c == '-')
+                continue;
+            return cast(ushort) idx;
+        }
+        return cast(ushort) label.length;
+    }
+
+    /***************************************************************************
+
         Support for network deserialization
 
         We will receive the domain name encoded. Each label starts with the
@@ -1071,17 +1180,16 @@ public struct Domain
             () @trusted {
                 buffer[count .. count + label.length] = cast(const(char[])) label;
             }();
-            buffer[count + label.length] = '.';
 
             // Only [a-z], [A-Z], [0-9], or "-" (dash), or "_" (underscore)
             // "_" is to support service labels
             // https://datatracker.ietf.org/doc/html/rfc1034#section-3.5
-            foreach (idx, char c; buffer[count .. count + label.length])
-            {
-                ensure((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                    (c >= '0' && c <= '9') || c == '-' || (c == '_' && idx == 0),
-                    "Invalid char '{}' in domain name at index {}", c, count + idx);
-            }
+            auto errorIndex = Domain.checkLabel(buffer[count .. count + label.length]);
+            ensure(errorIndex == label.length,
+                   "Invalid char '{}' in domain name at index {}",
+                   buffer[count + errorIndex], count + errorIndex);
+
+            buffer[count + label.length] = '.';
             count += label.length + 1;
         }
 
@@ -1089,7 +1197,8 @@ public struct Domain
         T returnValue (typeof(T.value) value)
         {
             ctx.domains ~= DNSDeserializerContext.DomainRecord(startOffset, value);
-            return T(value);
+            T result = { value: value };
+            return result;
         }
 
         while (true)
@@ -1124,7 +1233,7 @@ public struct Domain
         // but we have to be compliant, so this appends the empty label
         // to the list of previously seen domains
         if (count == 0)
-            return returnValue(null);
+            return returnValue(".");
 
         static if (is(T : Domain)) // Mutable
             return returnValue(buffer[0 .. count].dup);
@@ -1321,7 +1430,7 @@ unittest
     assert(query.questions.length == 1);
     {
         scope q = &query.questions[0];
-        assert(q.qname == Domain("google.com."));
+        assert(q.qname == Domain.fromSafeString("google.com."));
         assert(q.qtype == QTYPE.ALL);
         assert(q.qclass == QCLASS.IN);
     }
@@ -1352,7 +1461,7 @@ unittest
     assert(answer.answers.length == 22);
     {
         assert(answer.answers.all!(rr => rr.class_ == CLASS.IN));
-        assert(answer.answers.all!((rr) { return rr.name == Domain("google.com."); }));
+        assert(answer.answers.all!((rr) { return rr.name == Domain.fromSafeString("google.com."); }));
         // Using `.array` for better error messages
         assert(answer.answers.map!(rr => rr.type).array == [
             TYPE.A, TYPE.AAAA, TYPE.NS, TYPE.MX,

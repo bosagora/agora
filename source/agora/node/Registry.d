@@ -95,9 +95,9 @@ public class NameRegistry: NameRegistryAPI
 
         this.ledger = ledger;
 
-        this.realm = Domain(realm);
-        this.validators = Domain("validators." ~ realm);
-        this.flash = Domain("flash." ~ realm);
+        this.realm = Domain.fromString(realm);
+        this.validators = Domain.fromString("validators." ~ realm);
+        this.flash = Domain.fromString("flash." ~ realm);
 
 
         this.zones[this.realm] = ZoneData("realm", this.realm,
@@ -447,7 +447,7 @@ public class NameRegistry: NameRegistryAPI
         if (range.empty)
             return null;
         // Slice past the dot, after making sure there is one (bosagora/agora#2551)
-        const parentDomain = Domain(name.value[child.length + 1 .. $]);
+        const parentDomain = Domain.fromSafeString(name.value[child.length + 1 .. $]);
         return this.findZone(parentDomain, false);
     }
 
@@ -556,11 +556,11 @@ unittest
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
-private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
+private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe
 {
     return SOA(
         // mname, rname
-        Domain(zone.primary), Domain(zone.soa.email.value.replace('@', '.')),
+        Domain.fromString(zone.primary), Domain.fromString(zone.soa.email.value.replace('@', '.')),
         serial,
         // Casts are safe as the values are validated during config parsing
         cast(int) zone.soa.refresh.total!"seconds",
@@ -658,7 +658,7 @@ private struct TypedPayload
              */
             assert(this.payload.data.addresses.length == 1);
             return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.data.ttl,
-                Domain(this.payload.data.addresses[0].host));
+                Domain.fromSafeString(this.payload.data.addresses[0].host));
 
         case TYPE.A:
             // FIXME: Remove allocation
@@ -784,6 +784,9 @@ private struct ZoneData
             const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
             this.soa = this.config.fromConfig(this.root, serial);
         }
+        else
+            // SOA is not default-constructible, so the compiler complains
+            this.soa = SOA.init;
     }
 
     /***************************************************************************
@@ -893,7 +896,7 @@ private struct ZoneData
 
         foreach (const ref payload; this)
         {
-            reply.answers ~= payload.toRR(Domain(format("%s.%s",
+            reply.answers ~= payload.toRR(Domain.fromString(format("%s.%s",
                 payload.payload.data.public_key, this.root.value)));
         }
 
