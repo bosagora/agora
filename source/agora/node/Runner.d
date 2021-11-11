@@ -42,6 +42,7 @@ import vibe.stream.tls;
 import std.algorithm : any, filter;
 import std.file;
 import std.format;
+import std.functional : toDelegate;
 import std.typecons : Tuple, tuple;
 import std.stdio;
 
@@ -89,8 +90,15 @@ public Listeners runNode (Config config)
     mkdirRecurse(config.node.data_dir);
 
     Listeners result;
-    URLRouter router = config.interfaces.any!(i => i.type == InterfaceConfig.Type.http)
-        ? new URLRouter() : null;
+    const bool hasHTTPInterface = config.interfaces.any!(i => i.type == InterfaceConfig.Type.http);
+    URLRouter router;
+    RestInterfaceSettings settings;
+    if (hasHTTPInterface)
+    {
+        router = new URLRouter();
+        settings = new RestInterfaceSettings;
+        settings.errorHandler = toDelegate(&restErrorHandler);
+    }
 
     if (config.validator.enabled)
     {
@@ -99,15 +107,15 @@ public Listeners runNode (Config config)
         if (config.admin.enabled)
             result.admin = inst.makeAdminInterface();
         result.node = inst;
-        if (router !is null)
-            router.registerRestInterface!(agora.api.Validator.API)(inst);
+        if (hasHTTPInterface)
+            router.registerRestInterface!(agora.api.Validator.API)(inst, settings);
     }
     else
     {
         log.trace("Started FullNode...");
         result.node = new FullNode(config);
-        if (router !is null)
-            router.registerRestInterface!(agora.api.FullNode.API)(result.node);
+        if (hasHTTPInterface)
+            router.registerRestInterface!(agora.api.FullNode.API)(result.node, settings);
     }
 
     if (config.flash.enabled)
@@ -121,7 +129,7 @@ public Listeners runNode (Config config)
             result.node.getEngine(),
             result.node.getTaskManager(), &result.node.postTransaction,
             &result.node.getBlock, &result.node.getNetworkManager().getNameRegistryClient);
-        router.registerRestInterface!FlashAPI(flash);
+        router.registerRestInterface!FlashAPI(flash, settings);
         result.flash = flash;
     }
 
@@ -138,7 +146,8 @@ public Listeners runNode (Config config)
     {
         auto reg = result.node.getRegistry();
         assert(reg !is null);
-        router.registerRestInterface(reg);
+        if (hasHTTPInterface)
+            router.registerRestInterface(reg, settings);
         /* auto dnstask = */ runTask(() => runDNSServer(config.registry, reg));
         result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(reg),
                 config.registry.address);
@@ -165,37 +174,37 @@ public Listeners runNode (Config config)
         auto adminrouter = new URLRouter();
         adminrouter.any("*", performBasicAuth("Agora Admin", &checkPassword));
         adminrouter.registerRestInterface(result.admin);
-        auto settings = new HTTPServerSettings(config.admin.address);
-        settings.port = config.admin.port;
+        auto adminsettings = new HTTPServerSettings(config.admin.address);
+        adminsettings.port = config.admin.port;
         if (config.admin.tls)
         {
             if (!tls_ctx)
                 throw new Exception(tls_user_help ~
                     "Otherwise disable tls by setting `admin.tls` to `false` in the config file " ~
                     "or use `-O admin.tls=false` as command line argument.");
-            settings.tlsContext = tls_ctx;
+            adminsettings.tlsContext = tls_ctx;
         }
         log.info("Admin interface is listening on http{}://{}:{}",
             config.admin.tls ? "s" : "", config.admin.address, config.admin.port);
-        result.http ~= listenHTTP(settings, adminrouter);
+        result.http ~= listenHTTP(adminsettings, adminrouter);
     }
 
     // HTTP interfaces for the node
     foreach (interface_; config.interfaces.filter!(i => i.type <= InterfaceConfig.Type.https))
     {
-        auto settings = new HTTPServerSettings(interface_.address);
-        settings.port = interface_.port;
-        settings.rejectConnectionPredicate = isBannedDg;
+        auto httpsettings = new HTTPServerSettings(interface_.address);
+        httpsettings.port = interface_.port;
+        httpsettings.rejectConnectionPredicate = isBannedDg;
         if (interface_.type == InterfaceConfig.Type.https)
         {
             if (!tls_ctx)
                 throw new Exception(tls_user_help ~
-                    format!"Otherwise set type to `http` for interface `%s:%s` in the config file."(interface_.address, settings.port));
-            settings.tlsContext = tls_ctx;
+                    format!"Otherwise set type to `http` for interface `%s:%s` in the config file."(interface_.address, httpsettings.port));
+            httpsettings.tlsContext = tls_ctx;
         }
         log.info("Node is listening on interface: http{}://{}:{}",
             interface_.type == InterfaceConfig.Type.https ? "s" : "" , interface_.address, interface_.port);
-        result.http ~= listenHTTP(settings, router);
+        result.http ~= listenHTTP(httpsettings, router);
     }
 
     // also register the FlashControlAPI
@@ -423,4 +432,53 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
     {
         stderr.writeln("Exception happened while handling TCP request: ", exc);
     }
+}
+
+/*******************************************************************************
+
+    Correctly forward an error message to the caller without allocating
+
+    The default error handling code in Vibe.d will allocate an associative
+    array, and uses `Exception.msg` instead of `Exception.message()`,
+    leading to our clients receiving an unhelpful "An Exception was thrown".
+
+    Params:
+      req = The request that triggered this error
+      res = The response to write
+      info = Information about the error
+
+    See_Also:
+      https://github.com/vibe-d/vibe.d/blob/fb8b246623/web/vibe/web/rest.d#L1474-L1512
+
+*******************************************************************************/
+
+private void restErrorHandler (
+    HTTPServerRequest req, HTTPServerResponse res, RestErrorInformation info)
+    @trusted
+{
+    static struct ErrorInfo
+    {
+        /// The error message itself
+        const(char)[] statusMessage;
+        debug
+        {
+            /// The stack trace
+            const(char)[] statusDebugMessage;
+        }
+    }
+
+    // If we are using a reusable exception, then we might need to save the
+    // error message in a buffer to avoid it being rewritten during a context
+    // switch to another fiber.
+    // `agora.common.Ensure : FormattedException` uses a 2kb buffer but we
+    // limit ourselves to much less in order to not consume half a page for this
+    char[512] buffer;
+    scope const msg = info.exception.message();
+    scope slice = buffer[0 .. msg.length > $ ? $ : msg.length];
+    slice[] = msg[];
+
+    // Send the full stack trace in debug mode (allocates quite a bit)
+    // We also always assume user error instead of internal server error
+    debug res.writeJsonBody(ErrorInfo(slice, info.exception.toString()), HTTPStatus.badRequest);
+    else  res.writeJsonBody(ErrorInfo(slice), HTTPStatus.badRequest);
 }
