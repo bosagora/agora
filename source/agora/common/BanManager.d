@@ -265,8 +265,8 @@ public class BanManager
 
     public void banUntil (Address address, TimePoint banned_until) @safe nothrow
     {
-        if (this.isWhitelisted(address))
-            return; // Whitelisted address
+        if (address is Address.init || this.isWhitelisted(address))
+            return; // no address or Whitelisted address
 
         log.info("BanManager: Address {} banned until {}", address, banned_until);
         try
@@ -304,6 +304,9 @@ public class BanManager
 
     public void whitelist (Address address) @safe nothrow
     {
+        if (address is Address.init)
+            return;
+
         this.whitelisted.put(address);
         this.storeWhitelisted(address);
     }
