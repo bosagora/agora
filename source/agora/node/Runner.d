@@ -39,7 +39,7 @@ import vibe.http.router;
 import vibe.web.rest;
 import vibe.stream.tls;
 
-import std.algorithm : any, filter;
+import std.algorithm : among, any, filter;
 import std.file;
 import std.format;
 import std.functional : toDelegate;
@@ -90,7 +90,8 @@ public Listeners runNode (Config config)
     mkdirRecurse(config.node.data_dir);
 
     Listeners result;
-    const bool hasHTTPInterface = config.interfaces.any!(i => i.type == InterfaceConfig.Type.http);
+    const bool hasHTTPInterface = config.interfaces.any!(
+        i => i.type.among(InterfaceConfig.Type.http, InterfaceConfig.Type.https));
     URLRouter router;
     RestInterfaceSettings settings;
     if (hasHTTPInterface)
