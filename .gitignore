@@ -51,3 +51,4 @@ log/
 .single
 # Agora two-node data and log directory
 .two-nodes
+.three-nodes

@@ -1,0 +1,57 @@
+# three node setup without docker
+#
+# Run from the root with:
+# dub run -- -c devel/three-nodes/config-v7.yaml
+
+node:
+  realm: "localhost"
+  testing: true
+  limit_test_validators: 3
+  data_dir: .three-nodes/7/data/
+  # Can be used with curl or just a browser
+  stats_listening_port: 4447
+  block_catchup_interval:
+    seconds: 2
+
+interfaces:
+  - type:    http
+    address: 0.0.0.0
+    port:    2227
+  - type:    tcp
+    address: 0.0.0.0
+    port:    5557
+
+consensus:
+  block_interval:
+    seconds: 2
+  validator_cycle: 20
+  payout_period: 12
+
+validator:
+  enabled: true
+  # val7: boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh
+  seed: SAWI3JZWDDSQR6AX4DRG2OMS26Y6XY4X2WA3FK6D5UW4WTU74GUQXRZP
+  registry_address: http://127.0.0.1:2220/
+  addresses_to_register:
+    - tcp://127.0.0.1:5557
+
+registry:
+  enabled: false
+
+admin:
+  enabled: false
+
+network:
+  - tcp://127.0.0.1:5553
+  - tcp://127.0.0.1:5555
+
+logging:
+  root:
+    level: Info
+    console: true
+  agora:
+    level: Debug
+    console: false
+    file: .two-nodes/7/agora.log
+  agora.consensus.state.Ledger:
+    console: true

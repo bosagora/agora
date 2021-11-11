@@ -1,0 +1,56 @@
+# three node + fullnode setup without docker
+#
+# Run from the root with:
+# dub run -- -c devel/three-nodes/config-v0.yaml
+
+node:
+  realm: "localhost"
+  testing: true
+  limit_test_validators: 3
+  data_dir: .three-nodes/0/data/
+  # Can be used with curl or just a browser
+  stats_listening_port: 4440
+  block_catchup_interval:
+    seconds: 2
+
+interfaces:
+  - type:    http
+    address: 0.0.0.0
+    port:    2220
+
+consensus:
+  block_interval:
+    seconds: 2
+  validator_cycle: 20
+  payout_period: 12
+
+validator:
+  enabled: false
+
+registry:
+  enabled: true
+  address: 127.0.0.1
+  # Use a non-priviledged port to avoid a clash with the system resolver
+  port: 5335
+  validators:
+    authoritative: true
+    primary: localhost
+    soa:
+      email: no@no.no
+  flash:
+    authoritative: true
+    primary: localhost
+    soa:
+      email: no@no.no
+
+logging:
+  root:
+    level: Info
+    console: true
+    file: .three-nodes/0/root.log
+  agora:
+    level: Trace
+    console: false
+    file: .three-nodes/0/agora.log
+  agora.node.registry:
+    console: true
