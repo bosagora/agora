@@ -88,28 +88,13 @@ public class NameRegistry: NameRegistryAPI
         this.log = Logger(__MODULE__);
 
         this.ledger = ledger;
-        this.validators = ZoneData("validator", cache_db, log);
-        this.flash = ZoneData("flash", cache_db, log);
+
+        this.validators = ZoneData("validator", Domain("validators." ~ realm), 
+            this.config.validators, cache_db, log);
+        this.flash = ZoneData("flash",  Domain("flash." ~ realm), 
+            this.config.flash, cache_db, log);
+
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
-
-        const vname = "validators." ~ realm;
-        const fname = "flash." ~ realm;
-        static string serverType (bool auth)
-        {
-            return auth ? "authoritative" : "secondary";
-        }
-
-        this.log.info("Registry is {} DNS server for zone '{}'",
-                      serverType(this.config.validators.authoritative), vname);
-        this.log.info("Registry is {} DNS server for zone '{}'",
-                      serverType(this.config.flash.authoritative), fname);
-
-        auto currTime = Clock.currTime(UTC());
-        // Serial's value wraps around so the cast is safe
-        const serial = cast(uint) currTime.toUnixTime();
-
-        this.validators.fill(vname, this.config.validators, serial);
-        this.flash.fill(fname, this.config.flash, serial);
     }
 
     /***************************************************************************
@@ -488,7 +473,7 @@ unittest
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
-private SOA fromConfig (in ZoneConfig zone, string name, uint serial) @safe pure
+private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
 {
     SOA soa;
     soa.mname = format("ns1.%s", name);
@@ -576,8 +561,8 @@ private struct ZoneData
     /// The SOA record
     public SOA soa;
 
-    /// Whether we are authoritative or we're just caching
-    public bool authoritative;
+    /// 
+    private ZoneConfig config;
 
     /// Query for registry count interface
     private string query_count;
@@ -611,45 +596,63 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    public this (string type_table_name, ManagedDatabase cache_db, Logger logger)
+    public this (string zone_name, Domain root, ZoneConfig config,
+        ManagedDatabase cache_db, Logger logger)
     {
         this.db = cache_db;
         this.log = logger;
+        this.config = config;
+        this.root = root;
+
+        static string serverType (bool auth)
+        {
+            return auth ? "authoritative" : "secondary";
+        }
+
+        this.log.info("Registry is {} DNS server for zone '{}'",
+            serverType(this.config.authoritative), this.root);
 
         this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature",
-            type_table_name);
+            zone_name);
 
         this.query_registry_get = format("SELECT pubkey " ~
-            "FROM registry_%s_signature", type_table_name);
+            "FROM registry_%s_signature", zone_name);
 
         this.query_payload = format("SELECT signature, sequence, address, type, utxo " ~
             "FROM registry_%s_addresses l " ~
             "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
-            "WHERE l.pubkey = ?", type_table_name, type_table_name);
+            "WHERE l.pubkey = ?", zone_name, zone_name);
 
         this.query_signature_add = format("REPLACE INTO registry_%s_signature " ~
-            "(pubkey, signature, sequence, utxo) VALUES (?, ?, ?, ?)", type_table_name);
+            "(pubkey, signature, sequence, utxo) VALUES (?, ?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
-                    "(pubkey, address, type) VALUES (?, ?, ?)", type_table_name);
+                    "(pubkey, address, type) VALUES (?, ?, ?)", zone_name);
 
         this.query_remove_sig = format("DELETE FROM registry_%s_signature WHERE pubkey = ?",
-            type_table_name);
+            zone_name);
 
         this.query_addresses_get = format("SELECT address " ~
-            "FROM registry_%s_addresses", type_table_name);
+            "FROM registry_%s_addresses", zone_name);
 
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
             "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
-            "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", type_table_name);
+            "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", zone_name);
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_signature(pubkey) ON DELETE CASCADE, " ~
-            "PRIMARY KEY(pubkey, address))", type_table_name, type_table_name);
+            "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
+
+        // Serial's value wraps around so the cast is safe
+        const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        if (this.config.authoritative)
+            this.soa = this.config.fromConfig(this.root, serial);
+        else
+            this.soa.mname = Domain(format("ns1.%s", this.root));
     }
 
     /***************************************************************************
@@ -890,18 +893,6 @@ private struct ZoneData
                 address,
                 payload.type.to!ushort);
         }
-    }
-
-    /// Fill this from the configuration
-    public void fill (in string name, in ZoneConfig config, uint serial)
-    {
-        this.root = Domain(name);
-        this.authoritative = config.authoritative;
-
-        if (this.authoritative)
-            this.soa = config.fromConfig(name, serial);
-        else
-            this.soa.mname = format("ns1.%s", this.root);
     }
 
     /***************************************************************************
