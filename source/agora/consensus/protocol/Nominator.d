@@ -1014,6 +1014,13 @@ extern(D):
         this.network.gossipBlockSignature(block_sig);
     }
 
+    /// Were we active in this block (i.e. we are not catching up after being offline)
+    public bool safeToSign (in Height height)
+        nothrow
+    {
+        return !!(height in this.slot_sigs); // true if we were active in nomination during this block
+    }
+
     /// Create a combined Schnorr multisig and return the updated block
     private Block updateMultiSignature (in Block block) @safe
     {

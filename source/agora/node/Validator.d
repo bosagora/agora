@@ -363,6 +363,7 @@ public class Validator : FullNode, API
     protected override string acceptBlock (in Block block) @trusted
     {
         import agora.common.BitMask;
+        import agora.crypto.Schnorr;
         import std.algorithm;
         import std.range;
         import std.format;
@@ -398,9 +399,22 @@ public class Validator : FullNode, API
         }
         else
         {
-            log.warn("This node's signature is not in the block signature. " ~
-                "However, we will not sign in case we signed a different block " ~
-                "at this height and could reveal our private key.");
+            if (this.nominator.safeToSign(block.header.height))
+            {
+                signed_validators[node_validator_index] = true;
+                this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
+                    this_utxo, sig.R));
+                log.trace("Periodic Catchup: ADD to block signature R: {}", sig.R);
+                const signed_block = block.updateSignature(
+                    multiSigCombine([ block.header.signature, sig ]), signed_validators);
+                this.ledger.updateBlockMultiSig(signed_block.header);
+                log.trace("Adding Signature to fetched block as we know we did" ~
+                    " not sign it or another block at this height.");
+            }
+            else
+                log.warn("This node's signature is not in the block signature. " ~
+                    "However, we will not sign as we could not determine if we already " ~
+                    "signed a different block at this height and could reveal our private key.");
         }
         return null;
     }
