@@ -70,6 +70,11 @@ public class NameRegistry: NameRegistryAPI
     ///
     private ValidatorInfo[] validator_info;
 
+    /// Supported DNS query types
+    private immutable QTYPE[] supported_query_types = [
+        QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL,
+    ];
+
     ///
     public this (string realm, RegistryConfig config, Ledger ledger,
         ManagedDatabase cache_db)
@@ -383,7 +388,7 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            if (!q.qtype.among(QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL))
+            if (!supported_query_types.canFind(q.qtype))
             {
                 log.warn("DNS: Ignoring query for unknown QTYPE: {}", q);
                 reply.header.RCODE = Header.RCode.NotImplemented;
