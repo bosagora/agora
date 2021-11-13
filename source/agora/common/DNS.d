@@ -722,7 +722,16 @@ public struct OPTRR
 public struct Domain
 {
     /// The domain name
-    public const(char)[] value;
+    public const(char)[] value = ".";
+
+    /// Creates domain name with always trailing root
+    public this (inout const(char)[] v) @safe inout
+    {
+        if (v.length && v[$-1] == '.')
+            this.value = v.idup;
+        else
+            this.value = v.idup ~ '.';
+    }
 
     ///
     alias value this;
@@ -815,7 +824,7 @@ public struct Domain
         // If we get '.' there is no way to tell (using splitter)
         // the difference with 'foo..bar', so we just trim the trailing
         // dot and reject any empty label.
-        size_t end = (this.value.length && this.value[$-1] == '.') ?
+        size_t end = this.value.length ?
             (this.value.length - 1) : this.value.length;
 
         this.value[0 .. end].splitter('.').each!(

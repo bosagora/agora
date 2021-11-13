@@ -55,11 +55,14 @@ public class NameRegistry: NameRegistryAPI
     ///
     protected RegistryConfig config;
 
-    /// The `validators` zone
-    private ZoneData validators;
+    /// Zones of the registry
+    private ZoneData[Domain] zones;
 
-    /// The `flash` zone
-    private ZoneData flash;
+    /// The domain of `validators` zone
+    private Domain validators;
+
+    /// The domain of `flash` zone
+    private Domain flash;
 
     ///
     private Ledger ledger;
@@ -89,9 +92,12 @@ public class NameRegistry: NameRegistryAPI
 
         this.ledger = ledger;
 
-        this.validators = ZoneData("validator", Domain("validators." ~ realm), 
+        this.validators = Domain("validators." ~ realm);
+        this.flash = Domain("flash." ~ realm);
+
+        this.zones[this.validators] = ZoneData("validator", this.validators, 
             this.config.validators, cache_db, log);
-        this.flash = ZoneData("flash",  Domain("flash." ~ realm), 
+        this.zones[this.flash] = ZoneData("flash",  this.flash, 
             this.config.flash, cache_db, log);
 
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
@@ -109,8 +115,8 @@ public class NameRegistry: NameRegistryAPI
     private void collectStats (Collector collector)
     {
         RegistryStats stats;
-        stats.registry_validator_record_count = this.validators.count();
-        stats.registry_flash_record_count = this.flash.count();
+        stats.registry_validator_record_count = this.zones[this.validators].count();
+        stats.registry_flash_record_count = this.zones[this.flash].count();
         collector.collect(stats);
     }
 
@@ -162,7 +168,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
-        TypedPayload payload = this.validators.get(public_key);
+        TypedPayload payload = this.zones[this.validators].get(public_key);
         if (payload != TypedPayload.init)
         {
             log.trace("Successfull GET /validator: {} => {}", public_key, payload);
@@ -183,7 +189,7 @@ public class NameRegistry: NameRegistryAPI
 
     public Address[] getValidatorsAddresses ()
     {
-        return this.validators.getAddresses();
+        return this.zones[this.validators].getAddresses();
     }
 
     /***************************************************************************
@@ -205,8 +211,9 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
+        auto validators_zone = this.zones[this.validators];
         TYPE payload_type = this.ensureValidPayload(registry_payload,
-            this.validators.get(registry_payload.data.public_key));
+            validators_zone.get(registry_payload.data.public_key));
 
         // Last step is to check the state of the chain
         auto last_height = this.ledger.getBlockHeight() + 1;
@@ -228,7 +235,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering addresses {}: {} for public key: {}", payload_type,
                  registry_payload.data.addresses, registry_payload.data.public_key);
-        this.validators.update(TypedPayload(payload_type, registry_payload, stake));
+        validators_zone.update(TypedPayload(payload_type, registry_payload, stake));
     }
 
     /***************************************************************************
@@ -250,7 +257,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getFlashNode (PublicKey public_key)
     {
-        TypedPayload payload = this.flash.get(public_key);
+        TypedPayload payload = this.zones[this.flash].get(public_key);
         if (payload != TypedPayload.init)
         {
             log.trace("Successfull GET /flash_node: {} => {}", public_key, payload);
@@ -277,8 +284,9 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
+        auto flash_zone = this.zones[this.flash];
         TYPE payload_type = this.ensureValidPayload(registry_payload,
-            this.flash.get(registry_payload.data.public_key));
+            flash_zone.get(registry_payload.data.public_key));
 
         auto range = this.ledger.getBlocksFrom(channel.height);
         ensure(!range.empty && isValidChannelOpen(channel.conf, range.front),
@@ -287,7 +295,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
-        this.flash.update(TypedPayload(payload_type, registry_payload));
+        flash_zone.update(TypedPayload(payload_type, registry_payload));
     }
 
     /***************************************************************************
@@ -380,15 +388,15 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            reply.header.RCODE = this.validators.answer(q, reply);
-            if (reply.header.RCODE == Header.RCode.Refused)
-                reply.header.RCODE = this.flash.answer(q, reply);
-
-            if (reply.header.RCODE == Header.RCode.Refused)
+            auto answer = this.findZone(q.qname);
+            if (!answer)
             {
                 log.warn("Refusing {} for unknown zone: {}", q.qtype, q.qname);
+                reply.header.RCODE = Header.RCode.Refused;
                 break;
             }
+
+            reply.header.RCODE = answer(q, reply);
 
             if (reply.maxSerializedSize() > payloadSize)
             {
@@ -408,6 +416,37 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /***************************************************************************
+        
+        Find zone in registry
+
+        Params:
+            name = Domain name of the zone to be found
+
+        Returns:
+            Function pointer of answer for the zone, `null` is returned when no
+            zone can be found
+
+    ***************************************************************************/
+    
+    auto findZone (Domain name, bool matches = true) @safe
+    {
+        if (name in this.zones)
+            return matches ? &this.zones[name].answer_matches : &this.zones[name].answer_owns;
+
+        auto range = name.value.splitter('.');
+        if (range.empty || range.front.length < 1)
+            return null;
+
+        const child = range.front;
+        range.popFront();
+        if (range.empty)
+            return null;
+        // Slice past the dot, after making sure there is one (bosagora/agora#2551)
+        const parentDomain = Domain(name[child.length + 1 .. $]);
+        return this.findZone(parentDomain, false);
+    }
+
+    /***************************************************************************
 
         Callback for block creation
 
@@ -420,10 +459,11 @@ public class NameRegistry: NameRegistryAPI
     public void onAcceptedBlock (in Block, bool)
         @safe
     {
+        auto validators_zone = this.zones[this.validators];
         UTXO utxo;
-        this.validators.each!((TypedPayload tpayload) {
+        validators_zone.each!((TypedPayload tpayload) {
             if (!this.ledger.peekUTXO(tpayload.utxo, utxo))
-                this.validators.remove(tpayload.payload.data.public_key);
+                validators_zone.remove(tpayload.payload.data.public_key);
        });
     }
 }
@@ -467,9 +507,6 @@ unittest
     auto invalid = AStr.dup;
     invalid[0] = 'c';
     assert(zone.parsePublicKeyFromDomain(invalid ~ ".boa") is PublicKey.init);
-
-    zone.root = Domain("boap");
-    assert(zone.parsePublicKeyFromDomain(AStr ~ ".boa") is PublicKey.init);
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
@@ -708,14 +745,26 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    public Header.RCode answer (in Question q, ref Message reply) @safe
+    public Header.RCode answer (bool matches, in Question q, ref Message reply) @safe
     {
         if (q.qtype == QTYPE.AXFR)
-            return this.matches(q.qname) ? this.doAXFR(reply) : Header.RCode.Refused;
-        else if (this.owns(q.qname))
+            return matches ? this.doAXFR(reply) : Header.RCode.Refused;
+        else if (!matches)
             return this.getKeyDNSRecord(q, reply);
         else
             return Header.RCode.Refused;
+    }
+
+    /// Ditto
+    public Header.RCode answer_matches (in Question q, ref Message reply) @safe
+    {
+        return this.answer(true, q, reply);
+    }
+
+    /// Ditto
+    public Header.RCode answer_owns (in Question q, ref Message reply) @safe
+    {
+        return this.answer(false, q, reply);
     }
 
     /***************************************************************************
@@ -914,113 +963,6 @@ private struct ZoneData
 
     /***************************************************************************
 
-         Check if the provided name exactly matches this domain
-
-         Note: this should be `@nogc`, but `splitter` is not
-         (https://issues.dlang.org/show_bug.cgi?id=12768))
-
-         Params:
-           input = The string to check against this zone's mname
-
-    ***************************************************************************/
-
-    public bool matches (in char[] input) const scope @safe pure
-    {
-        // We can't use `std.algorithm.comparison : equal` here,
-        // as we may have an empty label at the end,
-        // either for the domain we're matching against or the requested one
-        // We can't use a `std.range: {zip,lockstep}` + `foreach` approach either,
-        // as it implicitly saves the range. So make a save of the `domain` range
-        // (as we might be iterating multiple times over it), and do it manually.
-        auto auth_domain_range = this.root.value.splitter('.');
-        auto domain_range = input.splitter('.');
-        while (true)
-        {
-            // Pop empty label(s)
-            if (!auth_domain_range.empty && auth_domain_range.front.length == 0)
-                // Note: Should be empty after this, if the caller properly
-                // validated its input to us.
-                auth_domain_range.popFront();
-            if (!domain_range.empty && domain_range.front.length == 0)
-            {
-                domain_range.popFront();
-                // It means we have something like `a..b.com` which is not valid
-                if (!domain_range.empty)
-                    return false;
-            }
-
-            // Different length means they can't be equal
-            if (auth_domain_range.empty != domain_range.empty)
-                return false;
-
-            // Found a match
-            if (domain_range.empty)
-                return true;
-
-            if (std.uni.sicmp(domain_range.front, auth_domain_range.front))
-                return false; // `sicmp` returns `0` on match
-
-            domain_range.popFront();
-            auth_domain_range.popFront();
-        }
-    }
-
-    ///
-    unittest
-    {
-        ZoneData zone;
-        zone.root = Domain("example.com");
-        assert(zone.matches("example.com"));
-        assert(!zone.matches("a.example.com"));
-        assert(!zone.matches("exampld.com"));
-        assert(!zone.matches("example.bar"));
-        assert(!zone.matches("example.com.a"));
-    }
-
-    /***************************************************************************
-
-         Check if the provided name is a direct child of this domain
-
-         Params:
-           input = The string to check against this zone's mname
-
-         Returns:
-           The owned subdomain, or `null` if it is not a subdomain of this zone.
-
-    ***************************************************************************/
-
-    public const(char)[] owns (return in char[] input)
-        const scope @safe pure
-    {
-        auto range = input.splitter('.');
-        if (range.empty || range.front.length < 1)
-            return null;
-
-        const child = range.front;
-        range.popFront();
-        if (range.empty)
-            return null;
-        // Slice past the dot, after making sure there is one (bosagora/agora#2551)
-        const parentDomain = input[child.length + 1 .. $];
-        return this.matches(parentDomain) ? child : null;
-    }
-
-    ///
-    unittest
-    {
-        ZoneData zone;
-        zone.root = Domain("example.com");
-        assert(zone.owns("a.example.com"));
-        // Owns is only about sub-domain
-        assert(!zone.owns("example.com"));
-        // But only direct sub-domain
-        assert(!zone.owns("a.b.exampld.com"));
-        // bosagora/agora#2551
-        assert(!zone.owns("oops"));
-    }
-
-    /***************************************************************************
-
         Parse a PublicKey from a domain name for the given zone
 
         Params:
@@ -1047,7 +989,9 @@ private struct ZoneData
             catch (Exception exc) return PublicKey.init;
         }
 
-        if (auto str = this.owns(domain))
+        // `findZone` ensures, `domain` is owned by us; 
+        // thus this method should NEVER be `public`
+        if (auto str = domain.splitter('.').front)
         {
             if (str.length == PublicKeyStringLength)
                 return tryParse(str);
