@@ -490,8 +490,7 @@ public class Validator : FullNode, API
     {
         return new ValidatingLedger(this.params, this.engine,
             this.utxo_set, this.storage, this.enroll_man, this.pool,
-            this.stateDB, this.clock, config.node.block_time_offset_tolerance,
-            &this.onAcceptedBlock);
+            this.stateDB, this.clock, &this.onAcceptedBlock);
     }
 
     /***************************************************************************

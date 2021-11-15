@@ -35,10 +35,6 @@ node:
   # is going to connect to, for example: http://0.0.0.0:8008
   # It can also be set to -1 do disable listening (default is -1)
   stats_listening_port: 9110
-  # The new block time offset has to be greater than the previous block time offset
-  # but less than current time + block_time_offset_tolerance
-  block_time_offset_tolerance:
-    seconds: 60
   # The duration between requests for doing periodic network discovery
   network_discovery_interval:
     seconds: 5

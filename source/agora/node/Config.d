@@ -233,10 +233,6 @@ public struct NodeConfig
     /// from all other nodes
     public Duration block_catchup_interval = 20.seconds;
 
-    /// The new block time offset has to be greater than the previous block time offset,
-    /// but less than current time + block_time_offset_tolerance
-    public Duration block_time_offset_tolerance = 60.seconds;
-
     // The percentage by which the double spend transaction's fee should be
     // increased in order to be added to the transaction pool
     public ubyte double_spent_threshold_pct = 20;

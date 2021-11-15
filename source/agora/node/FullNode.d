@@ -396,7 +396,7 @@ public class FullNode : API
                 .each!(handler => handler.addresses
                     .each!((string address) {
                         auto url = Address(address);
-                        this.block_header_handlers[url] = this.network.getBlockHeaderUpdatedHandler(url);   
+                        this.block_header_handlers[url] = this.network.getBlockHeaderUpdatedHandler(url);
                     }));
 
             // Make `PreImageReceivedHandler`s from config
@@ -872,7 +872,7 @@ public class FullNode : API
     {
         return new Ledger(params, this.engine, this.utxo_set, this.storage,
             this.enroll_man, this.pool, this.stateDB, this.clock,
-            config.node.block_time_offset_tolerance, &this.onAcceptedBlock);
+            &this.onAcceptedBlock);
     }
 
     /*+*************************************************************************
