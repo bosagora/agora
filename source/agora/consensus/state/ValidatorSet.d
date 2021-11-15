@@ -529,6 +529,10 @@ public class ValidatorSet
         if (prev_preimage.height >= preimage.height)
             return false;
 
+        // Ignore preimages beyond the current cycle
+        if (preimage.height - prev_preimage.height > this.params.ValidatorCycle)
+            return false;
+
         if (auto reason = isInvalidReason(preimage, prev_preimage))
         {
             log.info("Invalid pre-image data: {}. Pre-image: {}, previous: {}",
@@ -694,6 +698,11 @@ unittest
     assert(cache[FirstEnrollHeight] == enroll.commitment);
     auto preimage_11 = PreImageInfo(utxos[0], cache[SecondEnrollHeight + 2], SecondEnrollHeight + 2);
     assert(set.addPreimage(preimage_11));
+    assert(set.getPreimage(utxos[0]) == preimage_11);
+
+    auto far_height = Height(10000);
+    auto too_far_preimage = PreImageInfo(utxos[0], cache[far_height], far_height);
+    assert(!set.addPreimage(too_far_preimage));
     assert(set.getPreimage(utxos[0]) == preimage_11);
 
     // test for clear up expired validators
