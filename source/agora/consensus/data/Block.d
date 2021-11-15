@@ -618,7 +618,7 @@ version (unittest)
         in KeyPair[] key_pairs = genesis_validator_keys,
         Enrollment[] enrollments = null,
         uint[] missing_validators = null,
-        ulong time_offset = 0) @safe nothrow
+        ulong time_offset = 600) @safe nothrow
     {
         Hash[] pre_images =
             WK.PreImages.at(prev_block.header.height + 1, key_pairs)
@@ -626,13 +626,8 @@ version (unittest)
             .array;
         try
         {
-            // the time_offset passed to makeNewBlock should really be
-            // prev_block.header.time_offset + ConsensusParams.BlockInterval instead of
-            // prev_block.header.time_offset + 1
-            // however many tests calling makeNewTestBlock have no access to ConsensusParams
-            auto block = makeNewBlock(prev_block, txs,
-                    time_offset ? time_offset : prev_block.header.time_offset + 1,
-                    pre_images, enrollments);
+            auto block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + time_offset,
+                pre_images, enrollments);
             auto validators = BitMask(key_pairs.length);
             Signature[] sigs;
             key_pairs.enumerate.each!((i, k)

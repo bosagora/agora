@@ -112,10 +112,6 @@ public class Ledger
     /// Block rewards calculator
     private Reward rewards;
 
-    /// The new block time_offset has to be greater than the previous block time_offset,
-    /// but less than current time + block_time_offset_tolerance
-    public Duration block_time_offset_tolerance;
-
     /***************************************************************************
 
         Constructor
@@ -129,8 +125,6 @@ public class Ledger
             pool = the transaction pool
             stateDB = The state database
             clock = the clock instance
-            block_time_offset_tolerance = the proposed block time_offset should be less
-                than curr_time_offset + block_time_offset_tolerance
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
@@ -140,7 +134,6 @@ public class Ledger
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         ManagedDatabase stateDB, Clock clock,
-        Duration block_time_offset_tolerance = 60.seconds,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
         this.log = Logger(__MODULE__);
@@ -153,7 +146,6 @@ public class Ledger
         this.onAcceptedBlock = onAcceptedBlock;
         this.fee_man = new FeeManager(stateDB, params);
         this.clock = clock;
-        this.block_time_offset_tolerance = block_time_offset_tolerance;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
 
@@ -776,7 +768,7 @@ public class Ledger
         }
 
         return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
-            clock.networkTime(), block_time_offset_tolerance);
+            this.params.BlockInterval.total!"seconds");
     }
 
     /***************************************************************************
@@ -829,8 +821,7 @@ public class Ledger
                 this.enroll_man.getEnrollmentFinder(),
                 block.header.validators.count,
                 this.last_block.header.time_offset,
-                cast(ulong) this.clock.networkTime() - this.params.GenesisTimestamp,
-                block_time_offset_tolerance))
+                this.params.BlockInterval.total!"seconds"))
             return reason;
 
         // At this point we know it is the next block and also that it isn't Genesis
@@ -1405,11 +1396,10 @@ public class ValidatingLedger : Ledger
         Engine engine, UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
         ManagedDatabase stateDB, Clock clock,
-        Duration block_timestamp_tolerance,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
         super(params, engine, utxo_set, storage, enroll_man, pool, stateDB,
-            clock, block_timestamp_tolerance, onAcceptedBlock);
+            clock, onAcceptedBlock);
     }
 
     // dynamic array to keep track of blocks we are externalizing so can allow
@@ -1467,9 +1457,8 @@ public class ValidatingLedger : Ledger
                 clock.networkTime, this.params.GenesisTimestamp);
             return;
         }
-        const genesis_offset =  nomination_start_time - this.params.GenesisTimestamp;
-        data.time_offset = max(genesis_offset, this.last_block.header.time_offset + 1);
-        log.trace("Going to nominate current time offset [{}] or newer. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
+        data.time_offset = this.last_block.header.time_offset + params.BlockInterval.total!"seconds";
+        log.trace("Going to nominate next time offset [{}]. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
 
         data.enrolls = this.getCandidateEnrollments(next_height);
@@ -1636,15 +1625,6 @@ public class ValidatingLedger : Ledger
             }
         }
 
-        const expected_ts = this.params.GenesisTimestamp + data.time_offset;
-        if (this.clock.networkTime() < expected_ts ||
-            this.clock.networkTime() > (expected_ts + block_time_offset_tolerance.total!"seconds"))
-        {
-            if (auto mc = cast(MockClock) this.clock)
-                mc.setTime(this.params.GenesisTimestamp + data.time_offset);
-            else
-                assert(0, "Need a MockClock or time handled correctly to call forceCreateBlock");
-        }
         if (auto reason = this.externalize(data))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized: %s"(
@@ -1693,7 +1673,6 @@ version (unittest)
         public this (KeyPair key_pair,
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null,
-            Duration block_time_offset_tolerance_dur = 600.seconds,
             Clock mock_clock = null,
             void delegate (in Block, bool) @safe onAcceptedBlock = null)
         {
@@ -1730,7 +1709,7 @@ version (unittest)
                 new TransactionPool(cacheDB),
                 stateDB,
                 mock_clock,
-                block_time_offset_tolerance_dur, onAcceptedBlock);
+                onAcceptedBlock);
         }
 
         ///
@@ -1867,7 +1846,7 @@ unittest
 
     auto getLedger (Clock clock)
     {
-        auto ledger = new TestLedger(genesis_validator_keys[0], null, new immutable(ConsensusParams)(20, 7, 80), 600.seconds, clock);
+        auto ledger = new TestLedger(genesis_validator_keys[0], null, new immutable(ConsensusParams)(20, 7, 80), clock);
         auto txs = genesisSpendable().enumerate()
             .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
             .array();
@@ -1877,41 +1856,12 @@ unittest
     }
 
     // no matter how far the clock is ahead, we still accept blocks as long as
-    // the clock has a time greater than the time in the latest block header
+    // the time_offset is last plus interval
     auto ledger = getLedger(mock_clock);
     ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
-    data.time_offset = 1;
+    data.time_offset = 600;
     mock_clock.setTime(ledger.params.GenesisTimestamp + 2000);
     assert(ledger.externalize(data) is null);
-
-    // if the clock is behind of the time_offset of the new block and
-    // ahead of the time_offset of the last block and
-    // and within the tolerance interval,
-    // then we accept block
-    ledger = getLedger(mock_clock);
-    data.time_offset = 1000;
-    mock_clock.setTime(ledger.params.GenesisTimestamp + 500);
-    assert(ledger.externalize(data) is null);
-
-    // if the clock is behind of the time_offset of the new block and
-    // ahead of the time_offset of the last block and
-    // and NOT within the tolerance interval,
-    // then we reject block
-    ledger = getLedger(mock_clock);
-    data.time_offset = 1000;
-    mock_clock.setTime(ledger.params.GenesisTimestamp + 100);
-    assert(ledger.externalize(data) !is null);
-    // if the time passes by and now we are within the tolerance interval, then
-    // we will accept block
-    mock_clock.setTime(ledger.params.GenesisTimestamp + 900);
-    assert(ledger.externalize(data) is null);
-
-    // if the clock is behind of the time_offset of the latest accepted block, then
-    // we reject the block regardless of the current time
-    ledger = getLedger(mock_clock);
-    data.time_offset = -1;
-    mock_clock.setTime(ledger.params.GenesisTimestamp + 100);
-    assert(ledger.externalize(data) !is null);
 }
 
 // Return Genesis block plus 'count' number of blocks
@@ -2164,7 +2114,7 @@ unittest
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
 
     Transaction[] genTransactions (Transaction[] txs)
     {
@@ -2304,7 +2254,7 @@ unittest
 
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
 
     // Add preimages for all validators (except for two of them) till end of cycle
     uint[] skip_indexes = [ 2, 5 ];
@@ -2344,7 +2294,7 @@ unittest
     assert(params.PayoutPeriod == testPayoutPeriod);
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
 
     // Add preimages for all validators (except for two of them) till end of cycle
     uint[] skip_indexes = [ 2, 5 ];
@@ -2444,7 +2394,7 @@ unittest
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
     auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, 600.seconds, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
 
     ushort min_fee_pct = 80;
 
