@@ -1300,6 +1300,21 @@ public class FullNode : API
 
     /***************************************************************************
 
+         Params:
+             from = starting hash
+
+         Returns:
+             Transactions in the pool that have a larger hash value
+
+     ***************************************************************************/
+
+    public Transaction[] getTransactions (Hash from) @safe
+    {
+        return this.pool.getFrom(from);
+    }
+
+    /***************************************************************************
+
         Params:
             heights = Set of block Heights to return header for
 

@@ -347,6 +347,18 @@ public interface API
 
     public Transaction[] getTransactions (Set!Hash tx_hashes);
 
+     /***************************************************************************
+
+         Params:
+             from = starting hash
+
+         Returns:
+             Transactions in the pool that have a larger hash value
+
+     ***************************************************************************/
+
+    public Transaction[] getTransactions (Hash from);
+
     /***************************************************************************
 
         Get an enrollment data if the data exists in the enrollment pool
