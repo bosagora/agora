@@ -42,8 +42,6 @@ unittest
         nodes[0].postTransaction(txs[height.value]);
         network.setTimeFor(height);
         network.assertSameBlocks(height);
-        auto time_offset = nodes[0].getBlocksFrom(height, 1)[0].header.time_offset;
-        assert(time_offset == conf.consensus.block_interval.total!"seconds" * height);
     }
 
     // Check for adding blocks 1 to 4

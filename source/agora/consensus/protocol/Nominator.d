@@ -140,9 +140,6 @@ public extern (C++) class Nominator : SCPDriver
     /// Delegate called when a block is to be externalized
     public extern (D) string delegate (in Block) @safe acceptBlock;
 
-    /// Nomination start time
-    protected TimePoint nomination_start_time;
-
     /// The missing validators at the start of the nomination round
     protected uint[] initial_missing_validators;
 
@@ -405,9 +402,8 @@ extern(D):
 
     protected ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
-        return ledger.getLastBlock().header.time_offset +
-            this.params.GenesisTimestamp +
-            this.params.BlockInterval.total!"seconds";
+        return this.params.GenesisTimestamp +
+            (ledger.getLastBlock().header.height + 1) * this.params.BlockInterval.total!"seconds";
     }
 
     /***************************************************************************
@@ -454,9 +450,6 @@ extern(D):
                 cur_time, next_nomination);
             return;
         }
-
-        if (!this.is_nominating)
-            this.nomination_start_time = cur_time;
 
         ConsensusData data;
         // `prepareNomintingSet` will log something if it returns `false`
@@ -970,7 +963,7 @@ extern(D):
             }
 
             const block = this.ledger.buildBlock(
-                externalized_tx_set, data.time_offset, data.enrolls, data.missing_validators);
+                externalized_tx_set, data.enrolls, data.missing_validators);
 
             // Now we add our signature and gossip to other nodes
             log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
@@ -986,7 +979,6 @@ extern(D):
             log.fatal("Externalization of SCP data failed: {}", exc);
             assert(0, exc.message);
         }
-        this.nomination_start_time = 0;
         this.initial_missing_validators = [];
     }
 
@@ -1140,7 +1132,7 @@ extern(D):
         /// Comparison function, which sorts by
         /// 1. length of missing validators (smallest first), or if it ties
         /// 2. total adjusted fee (smallest last), or if it ties
-        /// 3. hash of the candidate (smallest first)
+        /// 3. hash of the candidate (smallest last)
         public int opCmp (in CandidateHolder other) const @safe scope pure nothrow @nogc
         {
             if (this.consensus_data.missing_validators.length <
@@ -1160,9 +1152,9 @@ extern(D):
             else if (this.consensus_data.tx_set.length < other.consensus_data.tx_set.length)
                 return 1;
 
-            if (this.hash < other.hash)
+            if (this.hash > other.hash)
                 return -1;
-            else if (this.hash > other.hash)
+            else if (this.hash < other.hash)
                 return 1;
 
             return 0;
@@ -1175,38 +1167,34 @@ extern(D):
         CandidateHolder[] candidate_holders;
 
         // The candidate with the least missing validators is preferred
-        candidate_holder.consensus_data.time_offset = 1;
         candidate_holder.consensus_data.missing_validators = [1, 2, 3];
         candidate_holders ~= candidate_holder;
 
-        candidate_holder.consensus_data.time_offset = 2;
         candidate_holder.consensus_data.missing_validators = [1, 2];
         candidate_holders ~= candidate_holder;
 
-        candidate_holder.consensus_data.time_offset = 3;
         candidate_holder.consensus_data.missing_validators = [1, 2, 3, 4, 5];
         candidate_holders ~= candidate_holder;
 
-        assert(candidate_holders.sort().front.consensus_data.time_offset == 2);
+        assert(candidate_holders.sort().front.consensus_data.missing_validators == [1, 2]);
 
         // If multiple candidates have the same number of missing validators, then
         // the candidate with the higher adjusted fee is preferred.
         candidate_holders[1].total_rate = Amount(10);
 
-        candidate_holder.consensus_data.time_offset = 4;
         candidate_holder.consensus_data.missing_validators = [3, 4];
         candidate_holder.total_rate = Amount(12);
         candidate_holders ~= candidate_holder;
 
-        assert(candidate_holders.sort().front.consensus_data.time_offset == 4);
+        assert(candidate_holders.sort().front.consensus_data.missing_validators == [3, 4]);
 
         // If multiple candidates have the same number of missing validators, and
         // adjusted total fee, then the candidate with lower hash is preferred.
-        candidate_holder.consensus_data.time_offset = 5;
-        candidate_holder.consensus_data.missing_validators = [6, 7];
+        candidate_holder.consensus_data.missing_validators = [2, 4];
+        candidate_holder.hash = "not zero".hashFull();
         candidate_holders ~= candidate_holder;
 
-        assert(candidate_holders.sort().front.consensus_data.time_offset == 4);
+        assert(candidate_holders.sort().front.consensus_data.missing_validators == [2, 4]);
     }
 
     /***************************************************************************

@@ -59,7 +59,7 @@ private void main ()
         );
         const h = Height(idx);
         auto preimages = WK.PreImages.at(h, genesis_validator_keys);
-        blocks ~= makeNewBlock(blocks[$ - 1], [tx], blocks[$ - 1].header.time_offset + 1, preimages);
+        blocks ~= makeNewBlock(blocks[$ - 1], [tx], preimages);
         block_hashes ~= hashFull(blocks[$ - 1].header);
         storage.saveBlock(blocks[$ - 1]);
     }

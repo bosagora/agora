@@ -73,9 +73,6 @@ public struct BlockHeader
     /// Enrolled validators
     public Enrollment[] enrollments;
 
-    /// Block seconds offset from Genesis Timestamp in `ConsensusParams`
-    public ulong time_offset;
-
     /***************************************************************************
 
         Implements hashing support
@@ -98,7 +95,6 @@ public struct BlockHeader
             dg(h[]);
         foreach (enrollment; this.enrollments)
             hashPart(enrollment, dg);
-        hashPart(this.time_offset, dg);
     }
 
     /***************************************************************************
@@ -192,7 +188,7 @@ unittest
     BlockHeader header = { merkle_root : tx.hashFull() };
 
     auto hash = hashFull(header);
-    auto exp_hash = Hash("0xde4132329e5e3d7acb2efc075c0d67f4e29995d49a813445cf7ad74f66140df014f411dc71529142e2f0223578195a6cb22662ee990992b510b74e56a02dae87");
+    auto exp_hash = Hash("0xbcf8118c75dfab48ef62235a2908aa4a659feee8cee513dd3329b7eee5a4feab16c4802abb819b884fc2e845c65ecc348f1b5d1f5de7350b24fc08fc6c702107");
     assert(hash == exp_hash);
 }
 
@@ -263,8 +259,7 @@ public struct Block
                 validators,
                 this.header.height,
                 this.header.preimages.dup,
-                this.header.enrollments.dup,
-                this.header.time_offset),
+                this.header.enrollments.dup),
             // TODO: Optimize this by using dup for txs also
             this.txs.map!(tx =>
                 tx.serializeFull.deserializeFull!Transaction).array,
@@ -571,7 +566,6 @@ unittest
     Params:
         prev_block = the previous block
         txs = the transactions that will be contained in the new block
-        time_offset = the block time offset from Genesis timestamp in seconds
         preimages = Pre-images that have been revealed in this block
                     Non-revealed pre-images must be passed as `Hash.init`
                     in their respective positions.
@@ -580,7 +574,7 @@ unittest
 *******************************************************************************/
 
 public Block makeNewBlock (Transactions)(const ref Block prev_block,
-    Transactions txs, ulong time_offset, Hash[] preimages,
+    Transactions txs, Hash[] preimages,
     Enrollment[] enrollments = null)
     @safe nothrow
 {
@@ -592,7 +586,6 @@ public Block makeNewBlock (Transactions)(const ref Block prev_block,
 
     block.header.prev_block = prev_block.header.hashFull();
     block.header.height = prev_block.header.height + 1;
-    block.header.time_offset = time_offset;
     block.header.preimages = preimages;
     block.header.validators = BitMask(preimages.length);
     block.header.enrollments = enrollments;
@@ -617,8 +610,7 @@ version (unittest)
         Transactions txs,
         in KeyPair[] key_pairs = genesis_validator_keys,
         Enrollment[] enrollments = null,
-        uint[] missing_validators = null,
-        ulong time_offset = 600) @safe nothrow
+        uint[] missing_validators = null) @safe nothrow
     {
         Hash[] pre_images =
             WK.PreImages.at(prev_block.header.height + 1, key_pairs)
@@ -626,8 +618,7 @@ version (unittest)
             .array;
         try
         {
-            auto block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + time_offset,
-                pre_images, enrollments);
+            auto block = makeNewBlock(prev_block, txs, pre_images, enrollments);
             auto validators = BitMask(key_pairs.length);
             Signature[] sigs;
             key_pairs.enumerate.each!((i, k)
@@ -680,10 +671,10 @@ version (unittest)
     Hash[] preimages =
         WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys);
 
-    auto block = makeNewBlock(GenesisBlock, [Transaction.init], 1,
+    auto block = makeNewBlock(GenesisBlock, [Transaction.init],
         preimages, [enr_1, enr_2]);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ascending
-    block = makeNewBlock(GenesisBlock, [Transaction.init], 1,
+    block = makeNewBlock(GenesisBlock, [Transaction.init],
         preimages, [enr_2, enr_1]);
     assert(block.header.enrollments == [enr_1, enr_2]);  // ditto
 }
@@ -879,10 +870,10 @@ unittest
     // Generate two blocks at height 1
     auto block1 = GenesisBlock.makeNewBlock(
         genesisSpendable().take(1).map!(txb => txb.refund(WK.Keys.A.address).sign()),
-        TimeOffset, preimages);
+        preimages);
     auto block2 = GenesisBlock.makeNewBlock(
         genesisSpendable().take(1).map!(txb => txb.refund(WK.Keys.Z.address).sign()),
-        TimeOffset, preimages);
+        preimages);
 
     // Two messages
     auto c1 = block1.hashFull();

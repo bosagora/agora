@@ -81,9 +81,6 @@ version (unittest)
         active_validators_next_block = the number of validators that will be
             active at the block the follows the one currently being validated,
             provided none of them gets slashed this block.
-        prev_time_offset = the time offset of the of the direct ancestor of this block
-        curr_time_offset = the current time offset
-        block_interval = the interval blocks should be created in seconds
 
     Returns:
         `null` if the block is valid, a string explaining the reason it
@@ -93,8 +90,7 @@ version (unittest)
 
 public string isInvalidReason (in Block block, Engine engine, Height prev_height,
     in Hash prev_hash, scope UTXOFinder findUTXO, scope FeeChecker checkFee,
-    scope EnrollmentFinder findEnrollment, size_t active_validators_next_block,
-    ulong prev_time_offset, ulong block_interval)
+    scope EnrollmentFinder findEnrollment, size_t active_validators_next_block)
     @safe nothrow
 {
     import std.algorithm;
@@ -157,44 +153,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
             return fail_reason;
     }
 
-    return validateBlockTimeOffset(prev_time_offset, block.header.time_offset,
-                                   block_interval);
-}
-
-/*******************************************************************************
-
-    Check the validity of the `time offset` for a block
-
-    new_block_offset is valid if and only if it is last offset plus interval
-
-    Params:
-        prev_block_offset = the timestam of the block preceding the new block
-        new_block_offset  = the time offset of the block we are trying to validate
-        block_interval = the block interval in seconds
-
-    Returns:
-        `null` if the new_block_offset is valid, otherwise a string explaining
-        the reason it is invalid.
-
-*******************************************************************************/
-
-public string validateBlockTimeOffset (ulong prev_block_offset, ulong new_block_offset,
-    ulong block_interval) @safe nothrow
-{
-    import std.format;
-    string res;
-    try
-    {
-
-        if (new_block_offset != prev_block_offset + block_interval)
-            res = format!"Proposed block time offset: [%s] is not the last block time offset: [%s] plus [%s] seconds"
-            (new_block_offset, prev_block_offset, block_interval);
-    }
-    catch (Exception e)
-    {
-        res = "Exception happened while validating block time offset";
-    }
-    return res;
+    return null;
 }
 
 /*******************************************************************************
@@ -542,12 +501,10 @@ version (unittest)
     public string isValidcheck (in Block block, Engine engine, Height prev_height,
         Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,
-        scope EnrollmentFinder findEnrollment,
-        ulong prev_time_offset = 0, ulong block_interval = 60) nothrow @safe
+        scope EnrollmentFinder findEnrollment) nothrow @safe
     {
         return isInvalidReason(block, engine, prev_height, prev_hash, findUTXO,
-            checkFee, findEnrollment, enrolled_validators,
-            prev_time_offset, block_interval);
+            checkFee, findEnrollment, enrolled_validators);
     }
 
     /// Helper function that will log the reason if the block turns out
@@ -556,22 +513,18 @@ version (unittest)
         (in Block block, Engine engine, Height prev_height, Hash prev_hash, scope UTXOFinder findUTXO,
         size_t enrolled_validators, scope FeeChecker checkFee,
         scope EnrollmentFinder findEnrollment,
-        ulong prev_time_offset = 0, ulong block_interval = 600,
         string file = __FILE__, size_t line = __LINE__) nothrow @safe
     {
         string reason = isValidcheck(block, engine, prev_height, prev_hash, findUTXO,
-            enrolled_validators, checkFee, findEnrollment,
-            prev_time_offset, block_interval);
+            enrolled_validators, checkFee, findEnrollment);
 
         bool success = mustBeValid ? (reason is null) : (reason !is null);
         if (!success)
         {
             try {
                 writeln(mustBeValid ? "Invalid block: " : "Valid block: ", block.prettify);
-                writefln("prev: %s (%s), enrolled: %s, " ~
-                         "prev_time_offset: %s, curr_time_offset: %s, block interval: %s",
-                         prev_height, prev_hash, enrolled_validators,
-                         prev_time_offset, block.header.time_offset, block_interval);
+                writefln("prev: %s (%s), enrolled: %s",
+                         prev_height, prev_hash, enrolled_validators);
                 writefln("Called from: %s:%s", file, line);
             } catch (Exception e) { /* Shouldn't happen */ }
             assert(0, mustBeValid ?
@@ -688,8 +641,7 @@ unittest
     auto prev_block = block;
     block = block.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
     block.assertValid(engine, prev_block.header.height, prev_block.header.hashFull(),
-        findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments,
-        prev_block.header.time_offset);
+        findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
 
     assert(prev_txs.length > 0);  // sanity check
     foreach (tx; prev_txs)
@@ -697,13 +649,11 @@ unittest
         // one utxo missing from the set => fail
         utxos.storage.remove(UTXO.getHash(tx.hashFull(), 0));
         block.assertValid!false(engine, prev_block.header.height, prev_block.header.hashFull(),
-            findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments,
-            prev_block.header.time_offset);
+            findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
 
         utxos.put(tx);
         block.assertValid(engine, prev_block.header.height, prev_block.header.hashFull(),
-            findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments,
-            prev_block.header.time_offset);
+            findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
     }
 
     // the key is hashMulti(hash(prev_tx), index)
@@ -849,7 +799,7 @@ unittest
 
     auto block2 = makeNewTestBlock(block1, txs_2);
     block2.assertValid(engine, block1.header.height, hashFull(block1.header), findUTXO,
-        genesis_validator_keys.length, checker, findGenesisEnrollments, block1.header.time_offset);
+        genesis_validator_keys.length, checker, findGenesisEnrollments);
     foreach (ref tx; txs_2)
         utxo_set.put(tx);
 
@@ -896,12 +846,12 @@ unittest
     auto block3 = makeNewTestBlock(block2, txs_3, genesis_validator_keys, enrollments,
         missing_validators);
     block3.assertValid(engine, block2.header.height, hashFull(block2.header), findUTXO,
-        Enrollment.MinValidatorCount, checker, findGenesisEnrollments, block2.header.time_offset);
+        Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
     block3.header.enrollments.sort!("a.utxo_key > b.utxo_key");
     findUTXO = utxo_set.getUTXOFinder();
     // Block: The enrollments are not sorted in ascending order
     block3.assertValid!false(engine, block2.header.height, hashFull(block2.header), findUTXO,
-        Enrollment.MinValidatorCount, checker, findGenesisEnrollments, block2.header.time_offset);
+        Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
 }
 
 /// test that there must always exist active validators
@@ -963,7 +913,7 @@ unittest
 
     auto block2 = makeNewTestBlock(block1, txs_2);
     block2.assertValid(engine, block1.header.height, hashFull(block1.header), findUTXO,
-        Enrollment.MinValidatorCount, checker, findGenesisEnrollments, block1.header.time_offset);
+        Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
     foreach (ref tx; txs_2)
         utxo_set.put(tx);
 
@@ -1027,7 +977,7 @@ unittest
             missing_validators);
         assert(block3.header.enrollments.length == Enrollment.MinValidatorCount);
         block3.assertValid(engine, block2.header.height, hashFull(block2.header),
-            findUTXO, 0, checker, findGenesisEnrollments, block2.header.time_offset);
+            findUTXO, 0, checker, findGenesisEnrollments);
     }
 
     // When there are still active validators at the new block height,
@@ -1048,10 +998,10 @@ unittest
         assert(block3.header.enrollments.length == 0);
 
         block3.assertValid!false(engine, block2.header.height, hashFull(block2.header),
-            findUTXO, 0, checker, findGenesisEnrollments, block2.header.time_offset);
+            findUTXO, 0, checker, findGenesisEnrollments);
 
         findUTXO = utxo_set.getUTXOFinder();
         block3.assertValid(engine, block2.header.height, hashFull(block2.header), findUTXO,
-            Enrollment.MinValidatorCount, checker, findGenesisEnrollments, block2.header.time_offset);
+            Enrollment.MinValidatorCount, checker, findGenesisEnrollments);
     }
 }

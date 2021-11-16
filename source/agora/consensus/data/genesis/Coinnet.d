@@ -36,7 +36,6 @@ public immutable Block GenesisBlock =
         enrollments: Enrollments,
         validators:  BitMask(0),    // Validators do not sign GenesisBlock
         signature:   Signature.init,
-        time_offset: 0, // In subsequent blocks this will be the offset in seconds from Genesis time
     },
     txs: GenesisTransactions,
     merkle_tree: GenesisMerkleTree,
