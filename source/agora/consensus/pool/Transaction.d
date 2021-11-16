@@ -476,6 +476,30 @@ public class TransactionPool
 
     /***************************************************************************
 
+        Params:
+            from = starting hash
+
+        Returns:
+            Transactions in the pool that have a larger hash value
+
+     ***************************************************************************/
+
+    public Transaction[] getFrom (Hash from, ulong count = 128) @trusted nothrow
+    {
+        try
+        {
+            auto results = this.db.execute("SELECT val FROM tx_pool WHERE key > ? ORDER BY
+                key ASC LIMIT ?", from, count);
+            return results.map!(row => deserializeFull!Transaction(row.peek!(ubyte[])(0))).array;
+        }
+        catch (Exception ex)
+            log.error("ManagedDatabase operation error on getFrom");
+
+        return null;
+    }
+
+    /***************************************************************************
+
         Take the specified number of transactions and remove them from the pool.
 
         Params:
@@ -548,6 +572,22 @@ unittest
 
     txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
+
+    auto from_txs = pool.getFrom(Hash.init, pool.length + 1);
+    assert(pool.length == from_txs.length);
+
+    Transaction[] fetched_txs;
+    auto start_hash = Hash.init;
+    while(true)
+    {
+        auto new_fetched = pool.getFrom(start_hash, 2);
+        if (new_fetched.length == 0)
+            break;
+        fetched_txs ~= new_fetched;
+        start_hash = fetched_txs[$-1].hashFull;
+    }
+    assert(from_txs == fetched_txs);
+
     const(Hash) hash = Hash.init;
     assert(!pool.hasTransactionHash(hash));
     // 'or 1=1-- SQL Injection attack Check
