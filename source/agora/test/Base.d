@@ -766,7 +766,8 @@ public class TestAPIManager
     {
         static assert (isInputRange!Pairs);
 
-        const exp_time = test_start_time + this.getBlockTimeOffset(height);
+        const exp_time = test_start_time +
+            this.test_conf.consensus.block_interval.total!"seconds" * height;
         // We also need to set the registry time, because otherwise their Ledger
         // will reject new blocks as they exceed tolerance.
         // Note that this relies on the time moving forward only.
@@ -789,21 +790,6 @@ public class TestAPIManager
         // calculate the network time offset based on the node's quorum set
         foreach (node; this.nodes)
             node.client.synchronizeClock();
-    }
-
-    /***************************************************************************
-
-        Params:
-            height = the requested block height
-
-        Returns:
-            the expected time_offset for the given block height
-
-    ***************************************************************************/
-
-    public TimePoint getBlockTimeOffset (Height height)
-    {
-        return height * this.test_conf.consensus.block_interval.total!"seconds";
     }
 
     /***************************************************************************

@@ -60,7 +60,7 @@ private void main ()
     void signBlockSig1 (Height h)
     {
         auto preimages = WK.PreImages.at(h, genesis_validator_keys);
-        block = makeNewBlock(prev_block, txs, prev_block.header.time_offset + 1, preimages);
+        block = makeNewBlock(prev_block, txs, preimages);
         block.header.signature = Signature(Scalar.random().toPoint(), Scalar.random());
         block.header.validators = BitMask(preimages.length);
         block.header.validators[1] = true;

@@ -535,7 +535,7 @@ Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>
 ====================================================
-Height: 1, Prev: 0x67a4...e11c, Root: 0xb039...ee32, Enrollments: []
+Height: 1, Prev: 0x6db0...9b23, Root: 0xb039...ee32, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
 Pre-images: [0xe998...9b3f, 0x4afa...b699, 0x31a2...e601, 0x62c3...6572, 0x58a4...9659, 0x2787...82ae],
@@ -558,7 +558,7 @@ Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
     }
 
     const Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()), 0,
+        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()),
         WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys));
 
     auto validators = BitMask(6);
@@ -628,11 +628,10 @@ private struct ConsensusDataFmt
     {
         try
         {
-            formattedWrite(sink, "{ tx_set: %s, enrolls: %s, missing_validators: %s, time_offset: %s }",
+            formattedWrite(sink, "{ tx_set: %s, enrolls: %s, missing_validators: %s }",
                 this.data.tx_set.map!(tx => HashFmt(tx)),
                 this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)),
-                this.data.missing_validators,
-                this.data.time_offset);
+                this.data.missing_validators);
         }
         catch (Exception ex)
         {
@@ -669,10 +668,9 @@ unittest
         tx_set: GenesisBlock.txs.map!(tx => tx.hashFull()).array,
         enrolls: [ record, record, ],
         missing_validators: [0, 2, 4],
-        time_offset: 123,
     };
 
-    static immutable Res1 = `{ tx_set: [0x2686...31b7, 0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4], time_offset: 123 }`;
+    static immutable Res1 = `{ tx_set: [0x2686...31b7, 0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));

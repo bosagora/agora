@@ -57,7 +57,7 @@ private void writeBlocks (string path)
         Transaction[8] txs;
         const h = Height(block_idx + 1);
         auto preimages = WK.PreImages.at(h, genesis_validator_keys);
-        auto block = makeNewBlock(blocks[$ - 1], txs[], blocks[$ - 1].header.time_offset + 1, preimages);
+        auto block = makeNewBlock(blocks[$ - 1], txs[], preimages);
         storage.saveBlock(block);
         blocks ~= block;
     }

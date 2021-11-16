@@ -53,7 +53,6 @@ public immutable Block GenesisBlock = {
         prev_block:  Hash.init,
         height:      Height(0),
         merkle_root: GenesisMerkleTree[$ - 1],
-        time_offset: 0, // In subsequent blocks this will be the offset in seconds from Genesis time
         validators:  BitMask(0),
         signature:   Signature.init,
         enrollments: [
@@ -71,12 +70,12 @@ public immutable Block GenesisBlock = {
             Enrollment(
                 Hash(`0x7bacc99e9bf827f0fa6dc6a77303d2e6ba6f1591277b896a9305a9e200853986fe9527fd551077a4ac2b511633ada4190a7b82cddaf606171336e1efba87ea8f`),
                 Hash(`0xfb40764acd8b0d7a8307278fb4ba9805a1b652c004f8f1dbcf0b1d019632458793b82e662687e041691660ac231223b732ed5339e2793c48233ccb04444806ea`),
-                Signature.fromString(`0x375eefbe1990a6e37b2f9a11b1ba68e3c8f8d0976f51a5de55e4d58a6798cd4f023fe780113d551a9afe61f6f56ee0a93fe8752ba92869103b8a1aaa6c8b89e5`)),            
+                Signature.fromString(`0x375eefbe1990a6e37b2f9a11b1ba68e3c8f8d0976f51a5de55e4d58a6798cd4f023fe780113d551a9afe61f6f56ee0a93fe8752ba92869103b8a1aaa6c8b89e5`)),
             // boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5
             Enrollment(
                 Hash(`0x9b2726e79f05abc107b6531486a46c977414e13ed9f3ee994ec14504964f86fcf9464055b891b9c34020feb72535c300ff19e8b5167eb9d202db1a053d746b2c`),
                 Hash(`0xe0dce92ebd44c6398e582e5439dfe03a08a0cb9c45075f6ecbe1edac3bcacf201baddc9c522415eb2f8033f263122becaa7fc078aa2423d39de05df7eaa27c3e`),
-                Signature.fromString(`0xa72ed0e4b392632c51a923a79b319d9db6c5269319bb94ecff4588c18d0a9a1c0c754ea4dbea99c0386afb8bfae9a65d5c9ed0fe7ddba53521badbc957271e81`)),            
+                Signature.fromString(`0xa72ed0e4b392632c51a923a79b319d9db6c5269319bb94ecff4588c18d0a9a1c0c754ea4dbea99c0386afb8bfae9a65d5c9ed0fe7ddba53521badbc957271e81`)),
             // boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8
             Enrollment(
                 Hash(`0xab19131ad8974a20881e2cd0798684a06ca0054160735cdf67fe8ee5a0eb4e28e9bf3f4c735f9ed3da958778978c86b409b8d133f30992141f0ac7e01e7f1255`),

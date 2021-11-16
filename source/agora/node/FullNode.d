@@ -659,7 +659,6 @@ public class FullNode : API
             immutable Block result = {
                 header: {
                     merkle_root: TESTNET.GenesisBlock.header.merkle_root,
-                    time_offset: TESTNET.GenesisBlock.header.time_offset,
                     validators: typeof(BlockHeader.validators)(config.node.limit_test_validators),
                     enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.limit_test_validators],
                 },

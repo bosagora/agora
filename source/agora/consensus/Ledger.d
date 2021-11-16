@@ -37,7 +37,6 @@ import agora.consensus.protocol.Data;
 import agora.consensus.Reward;
 import agora.consensus.state.UTXOSet;
 import agora.consensus.validation;
-import agora.consensus.validation.Block : validateBlockTimeOffset;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Clock;
@@ -762,8 +761,7 @@ public class Ledger
             return "Internal error while validating slashing data";
         }
 
-        return validateBlockTimeOffset(last_block.header.time_offset, data.time_offset,
-            this.params.BlockInterval.total!"seconds");
+        return null;
     }
 
     /***************************************************************************
@@ -814,9 +812,7 @@ public class Ledger
                 this.utxo_set.getUTXOFinder(),
                 &this.fee_man.check,
                 this.enroll_man.getEnrollmentFinder(),
-                block.header.validators.count,
-                this.last_block.header.time_offset,
-                this.params.BlockInterval.total!"seconds"))
+                block.header.validators.count))
             return reason;
 
         // At this point we know it is the next block and also that it isn't Genesis
@@ -1039,7 +1035,6 @@ public class Ledger
 
         Params:
           txs = An `InputRange` of `Transaction`s
-          time_offset = The `time_offset` of the block compared to the old one
           enrollments = New enrollments for this block (can be `null`)
           missing_validators = Indices of slashed validators (may be `null`)
 
@@ -1049,7 +1044,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Block buildBlock (Transactions) (Transactions txs, ulong time_offset,
+    public Block buildBlock (Transactions) (Transactions txs,
         Enrollment[] enrollments, uint[] missing_validators)
         @safe
     {
@@ -1074,8 +1069,7 @@ public class Ledger
                 return entry.value.preimage[height];
             }).array;
 
-        return this.last_block.makeNewBlock(
-            txs, time_offset, preimages, enrollments);
+        return this.last_block.makeNewBlock(txs, preimages, enrollments);
     }
 
     /***************************************************************************
@@ -1445,8 +1439,6 @@ public class ValidatingLedger : Ledger
     public void prepareNominatingSet (out ConsensusData data, ulong max_txs)
         @safe
     {
-        data.time_offset = this.last_block.header.time_offset + params.BlockInterval.total!"seconds";
-        log.trace("Going to nominate next time offset [{}]. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
 
         data.enrolls = this.getCandidateEnrollments(next_height);
@@ -1565,7 +1557,7 @@ public class ValidatingLedger : Ledger
             return fail_reason;
         }
 
-        auto block = this.buildBlock(externalized_tx_set, data.time_offset,
+        auto block = this.buildBlock(externalized_tx_set,
             data.enrolls, data.missing_validators);
 
         this.getValidators(height).enumerate.each!((i, v)
@@ -1983,11 +1975,11 @@ unittest
     {
         assert(ex.message ==
                "Genesis block loaded from disk " ~
-               "(0x67a40d4e4149c9c64efdbeabcb35d466bff111d7298f80ab310a514c15ba0e1" ~
-               "63c6ff78b1c60ad7fcb7e125a4738163343b62462ba9ce24ae576f01bbc5ce11c) " ~
+               "(0x6db06ab1cae5c4b05e806401e2c42d526ebf4ac81411d0fcd82344561b5" ~
+               "a25ae0d29728f5c1c9bec6cf254f621c183be71858a6ed5339c06fc5b34d7881b9b23) "~
                "is different from the one in the config file " ~
-               "(0xa8382c87eed66f5468b41a81a448b1c8056ed8fccd0934acd3440b3457f8fdc" ~
-               "0e49b6388815cf8caef50be2c00dc72a001c53f8ba56aed2fb5cdd1d3a47307d7)");
+               "(0x47f30089ca49c3eacb09f2d96e4a27e1049697bbfe1002862344fd0b33b" ~
+               "72d1b3b69467148905626e0a0f4845f5cdca69c25d2ec2663622acd45c38c974d0d91)");
     }
 
     immutable good_params = new immutable(ConsensusParams)();

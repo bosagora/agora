@@ -465,9 +465,6 @@ components:
           items:
             type: integer
             format: uint32
-        time_offset:
-            type: integer
-            format: uint64
 
     Block:
       type: object

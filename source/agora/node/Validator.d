@@ -566,9 +566,9 @@ public class Validator : FullNode, API
         }
 
         // Re-enroll if our enrollment is about to expire and the block is recent enough
-        auto cur_offset = this.clock.networkTime() - this.params.GenesisTimestamp;
         if (this.config.validator.recurring_enrollment &&
-            block.header.time_offset > cur_offset - 3 * this.params.BlockInterval.total!"seconds")
+            this.clock.networkTime() > this.params.GenesisTimestamp +
+                ((block.header.height - 1) * this.params.BlockInterval.total!"seconds"))
             this.checkAndEnroll(block.header.height);
 
         // FIXME: Add our pre-image to the validator set so that `getValidators`
