@@ -1075,7 +1075,7 @@ unittest
     import agora.consensus.data.UTXO;
 
     NameRegistry registry;
-    scope ledger = new TestLedger(genesis_validator_keys[0], null, null, null, (in Block block, bool changed) @safe {
+    scope ledger = new TestLedger(genesis_validator_keys[0], null, null, (in Block block, bool changed) @safe {
         registry.onAcceptedBlock(block, changed);
     });
     registry = new NameRegistry("test", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
