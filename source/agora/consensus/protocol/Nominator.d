@@ -415,7 +415,7 @@ extern(D):
         The function will return early if either one of these are true:
         - We're already in the asynchronous stage of nominating or balloting
         - The current time is < getExpectedBlockTime(slot_idx)
-        - There are no transactions in the pool to nominate yet
+        - There are not at least 50% of signatures for the previous block
 
     ***************************************************************************/
 
@@ -449,6 +449,19 @@ extern(D):
                 "checkNominate(): Too early to nominate (current: {}, next: {})",
                 cur_time, next_nomination);
             return;
+        }
+
+        if (slot_idx > 1) // Genesis block is not signed
+        {
+            auto last_block = this.ledger.getLastBlock();
+            auto signed = last_block.header.validators;
+            if (signed.setCount <= signed.count() / 2)
+            {
+                this.log.trace(
+                    "checkNominate(): Require more than half signed last block, signed={}",
+                    signed);
+                return;
+            }
         }
 
         ConsensusData data;
@@ -643,6 +656,17 @@ extern(D):
         }
         else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
+            if (last_block.header.height > 1) // Genesis block is not signed
+            {
+                auto signed = last_block.header.validators;
+                if (signed.setCount <= signed.count() / 2)
+                {
+                    this.log.trace(
+                        "Ignoring nomination as less than half signed the last block, signed={}",
+                        signed);
+                    return;
+                }
+            }
             // show some tolerance to early nominations
             ulong tolerance = this.params.BlockInterval.total!"seconds" / 20; // 5%
 
