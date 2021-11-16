@@ -87,9 +87,6 @@ public class Ledger
     /// UTXO set
     private UTXOCache utxo_set;
 
-    // Clock instance
-    private Clock clock;
-
     /// Enrollment manager
     private EnrollmentManager enroll_man;
 
@@ -124,7 +121,6 @@ public class Ledger
             enroll_man = the enrollmentManager
             pool = the transaction pool
             stateDB = The state database
-            clock = the clock instance
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
@@ -133,7 +129,7 @@ public class Ledger
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        ManagedDatabase stateDB, Clock clock,
+        ManagedDatabase stateDB,
         void delegate (in Block, bool) @safe onAcceptedBlock = null)
     {
         this.log = Logger(__MODULE__);
@@ -145,7 +141,6 @@ public class Ledger
         this.pool = pool;
         this.onAcceptedBlock = onAcceptedBlock;
         this.fee_man = new FeeManager(stateDB, params);
-        this.clock = clock;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
 
@@ -1395,11 +1390,11 @@ public class ValidatingLedger : Ledger
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOSet utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        ManagedDatabase stateDB, Clock clock,
+        ManagedDatabase stateDB,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
         super(params, engine, utxo_set, storage, enroll_man, pool, stateDB,
-            clock, onAcceptedBlock);
+            onAcceptedBlock);
     }
 
     // dynamic array to keep track of blocks we are externalizing so can allow
@@ -1447,16 +1442,9 @@ public class ValidatingLedger : Ledger
 
     ***************************************************************************/
 
-    public void prepareNominatingSet (out ConsensusData data, ulong max_txs,
-            TimePoint nomination_start_time)
+    public void prepareNominatingSet (out ConsensusData data, ulong max_txs)
         @safe
     {
-        if (clock.networkTime < this.params.GenesisTimestamp)
-        {
-            log.error("Network time [{}] is before Genesis timestamp [{}]. Will not nominate yet.",
-                clock.networkTime, this.params.GenesisTimestamp);
-            return;
-        }
         data.time_offset = this.last_block.header.time_offset + params.BlockInterval.total!"seconds";
         log.trace("Going to nominate next time offset [{}]. Genesis timestamp is [{}]", data.time_offset, this.params.GenesisTimestamp);
         const next_height = this.getBlockHeight() + 1;
@@ -1599,7 +1587,7 @@ public class ValidatingLedger : Ledger
         const next_block = this.getBlockHeight() + 1;
         this.simulatePreimages(next_block);
         ConsensusData data;
-        this.prepareNominatingSet(data, max_txs, this.clock.networkTime());
+        this.prepareNominatingSet(data, max_txs);
         assert(data.tx_set.length >= max_txs);
 
         // If the user provided enrollments, do not re-enroll automatically
@@ -1673,7 +1661,6 @@ version (unittest)
         public this (KeyPair key_pair,
             const(Block)[] blocks = null,
             immutable(ConsensusParams) params_ = null,
-            Clock mock_clock = null,
             void delegate (in Block, bool) @safe onAcceptedBlock = null)
         {
             const params = (params_ !is null)
@@ -1685,14 +1672,6 @@ version (unittest)
                        ConsensusConfig(ConsensusConfig.init.genesis_timestamp))
                    // Use the unittest genesis block
                    : new immutable(ConsensusParams)());
-
-            // We assume the caller wants to create new blocks, so let's make
-            // the clock exactly at the right time. If the caller needs to
-            // create many blocks, they'll need to adjust the clock first.
-            if (mock_clock is null)
-                mock_clock = new MockClock(
-                    params.GenesisTimestamp +
-                    (blocks.length * params.BlockInterval.total!"seconds"));
 
             ValidatorConfig vconf = ValidatorConfig(true, key_pair);
             getCycleSeed(key_pair, params.ValidatorCycle, vconf.cycle_seed, vconf.cycle_seed_height);
@@ -1708,7 +1687,6 @@ version (unittest)
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
                 stateDB,
-                mock_clock,
                 onAcceptedBlock);
         }
 
@@ -1838,32 +1816,6 @@ unittest
     }
 }
 
-unittest
-{
-    import agora.consensus.data.genesis.Test;
-    ConsensusData data;
-    MockClock mock_clock = new MockClock(time(null));
-
-    auto getLedger (Clock clock)
-    {
-        auto ledger = new TestLedger(genesis_validator_keys[0], null, new immutable(ConsensusParams)(20, 7, 80), clock);
-        auto txs = genesisSpendable().enumerate()
-            .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
-            .array();
-        txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
-        ledger.simulatePreimages(ledger.getBlockHeight() + 1);
-        return ledger;
-    }
-
-    // no matter how far the clock is ahead, we still accept blocks as long as
-    // the time_offset is last plus interval
-    auto ledger = getLedger(mock_clock);
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
-    data.time_offset = 600;
-    mock_clock.setTime(ledger.params.GenesisTimestamp + 2000);
-    assert(ledger.externalize(data) is null);
-}
-
 // Return Genesis block plus 'count' number of blocks
 version (unittest)
 private immutable(Block)[] genBlocksToIndex (
@@ -1937,9 +1889,7 @@ unittest
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
-                stateDB,
-                new MockClock(params.GenesisTimestamp +
-                              (blocks.length * params.BlockInterval.total!"seconds")));
+                stateDB);
         }
 
         ///
@@ -2113,8 +2063,7 @@ unittest
 
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
-    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
     Transaction[] genTransactions (Transaction[] txs)
     {
@@ -2219,7 +2168,7 @@ unittest
     ledger.simulatePreimages(Height(22), skip_indexes);
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
     assert(data.missing_validators.length == 2);
     assert(data.missing_validators == skip_indexes);
 
@@ -2238,7 +2187,7 @@ unittest
     temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
     assert(data.missing_validators.length == 0);
 }
 
@@ -2253,8 +2202,7 @@ unittest
         CommonsBudget.address, config);
 
     const(Block)[] blocks = [ GenesisBlock ];
-    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
     // Add preimages for all validators (except for two of them) till end of cycle
     uint[] skip_indexes = [ 2, 5 ];
@@ -2266,7 +2214,7 @@ unittest
     no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
 
     assert(ledger.validateConsensusData(data, skip_indexes) is null);
 
@@ -2293,8 +2241,7 @@ unittest
         CommonsBudget.address, config);
     assert(params.PayoutPeriod == testPayoutPeriod);
     const(Block)[] blocks = [ GenesisBlock ];
-    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
     // Add preimages for all validators (except for two of them) till end of cycle
     uint[] skip_indexes = [ 2, 5 ];
@@ -2348,7 +2295,7 @@ unittest
         total_fees += tx_set_fees;
 
         auto data = ConsensusData.init;
-        ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
 
         // Do some Coinbase tests with the data tx_set
         if (height >= 2 * testPayoutPeriod && height % testPayoutPeriod == 0)
@@ -2362,7 +2309,7 @@ unittest
         }
 
         // Now externalize the block
-        ledger.prepareNominatingSet(data, Block.TxsInTestBlock, mock_clock.networkTime());
+        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
         assert(ledger.externalize(data) is null);
         assert(ledger.getBlockHeight() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
@@ -2393,8 +2340,7 @@ unittest
 
     auto params = new immutable(ConsensusParams)(20);
     const(Block)[] blocks = [ GenesisBlock ];
-    auto mock_clock = new MockClock(params.GenesisTimestamp + 1);
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params, mock_clock);
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
     ushort min_fee_pct = 80;
 
