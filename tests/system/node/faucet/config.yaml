@@ -14,10 +14,10 @@ tx_generator:
   stats_port: 9113
 
   # How frequently we run our periodic task in seconds
-  send_interval: 5
+  send_interval: 2
 
   # Between how many addresses we split a transaction by
-  split_count: 1
+  split_count: 2
 
   # Maximum number of utxo before merging instead of splitting
   merge_threshold: 10
