@@ -1131,8 +1131,9 @@ extern(D):
 
         /// Comparison function, which sorts by
         /// 1. length of missing validators (smallest first), or if it ties
-        /// 2. total adjusted fee (smallest last), or if it ties
-        /// 3. hash of the candidate (smallest last)
+        /// 2. length of enrollments (smallest last), or if it ties
+        /// 3. total adjusted fee (smallest last), or if it ties
+        /// 4. hash of the candidate (smallest last)
         public int opCmp (in CandidateHolder other) const @safe scope pure nothrow @nogc
         {
             if (this.consensus_data.missing_validators.length <
@@ -1140,6 +1141,11 @@ extern(D):
                     return -1;
             else if (this.consensus_data.missing_validators.length >
                      other.consensus_data.missing_validators.length)
+                return 1;
+
+            if (this.consensus_data.enrolls.length > other.consensus_data.enrolls.length)
+                return -1;
+            else if (this.consensus_data.enrolls.length < other.consensus_data.enrolls.length)
                 return 1;
 
             if (this.total_rate > other.total_rate)
