@@ -564,7 +564,7 @@ private struct TypedPayload
              * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
             assert(this.payload.data.addresses.length == 1);
-            answer.rdata = answer.name.serializeFull();
+            answer.rdata = Domain(this.payload.data.addresses[0].host).serializeFull();
             // We don't provide recursion yet, so just return this
             // and let the caller figure it out.
         }
