@@ -126,7 +126,7 @@ int main (string[] args)
 
     size_t empty = 0;
     auto target_height = 42;
-    const LimitOfConsecutiveEmptyBlocks = 3;
+    const LimitOfConsecutiveEmptyBlocks = 5;
     iota(target_height + 1).each!((ulong h)
     {
         if (assertBlockHeightAtleast(h) == 0)
