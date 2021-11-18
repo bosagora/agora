@@ -61,7 +61,7 @@ unittest
         /// set base class
         public override void createNewNode (Config conf, string file, int line)
         {
-            if (this.nodes.length == GenesisValidators - 1)
+            if (this.nodes.length == 0)
                 this.addNewNode!CustomValidator(conf, &this.enable_catchup,
                     file, line);
             else
@@ -80,7 +80,7 @@ unittest
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    auto delayed_node = GenesisValidators - 1;
+    auto delayed_node = 0;
     auto outsider = network.nodes[GenesisValidators];
 
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
@@ -96,7 +96,7 @@ unittest
     network.clients[delayed_node].filter!(API.postTransaction);
 
     // Block 19 we add the frozen utxo for the outsider validator
-    network.generateBlocks(iota(GenesisValidators - 1), Height(GenesisValidatorCycle - 1));
+    network.generateBlocks(iota(1, GenesisValidators), Height(GenesisValidatorCycle - 1));
     network.expectHeight([GenesisValidators], Height(GenesisValidatorCycle - 1));
 
     // the delayed validator is a block behind from the latest height
