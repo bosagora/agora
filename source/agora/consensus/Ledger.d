@@ -108,6 +108,14 @@ public class Ledger
     /// Block rewards calculator
     private Reward rewards;
 
+    /// Cache for Coinbase tx to be used during payout height
+    struct CachedCoinbase
+    {
+        private Height height;
+        private Transaction tx;
+    }
+    private CachedCoinbase cached_coinbase;
+
     /***************************************************************************
 
         Constructor
@@ -615,6 +623,9 @@ public class Ledger
     {
         assert(height >= 2 * this.params.PayoutPeriod);
 
+        if (cached_coinbase.height == height)
+            return cached_coinbase.tx;
+
         Output[] coinbase_tx_outputs;
 
         Amount[PublicKey] payouts;
@@ -668,7 +679,9 @@ public class Ledger
             assert(coinbase_tx_outputs.length > 0, format!"payouts=%s"(payouts));
             coinbase_tx_outputs.sort;
 
-            return Transaction([Input(height)], coinbase_tx_outputs);
+            cached_coinbase.height = height;
+            cached_coinbase.tx = Transaction([Input(height)], coinbase_tx_outputs);
+            return cached_coinbase.tx;
         }
         catch (Exception e)
         {
