@@ -211,7 +211,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
-        auto validators_zone = this.zones[this.validators];
+        auto validators_zone = this.validators in this.zones;
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             validators_zone.get(registry_payload.data.public_key));
 
@@ -284,7 +284,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        auto flash_zone = this.zones[this.flash];
+        auto flash_zone = this.flash in this.zones;
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             flash_zone.get(registry_payload.data.public_key));
 
@@ -430,8 +430,9 @@ public class NameRegistry: NameRegistryAPI
     
     auto findZone (Domain name, bool matches = true) @safe
     {
-        if (name in this.zones)
-            return matches ? &this.zones[name].answer_matches : &this.zones[name].answer_owns;
+        auto matching_zone = name in this.zones;
+        if (matching_zone)
+            return matches ? &matching_zone.answer_matches : &matching_zone.answer_owns;
 
         auto range = name.value.splitter('.');
         if (range.empty || range.front.length < 1)
@@ -459,7 +460,7 @@ public class NameRegistry: NameRegistryAPI
     public void onAcceptedBlock (in Block, bool)
         @safe
     {
-        auto validators_zone = this.zones[this.validators];
+        auto validators_zone = this.validators in this.zones;
         UTXO utxo;
         validators_zone.each!((TypedPayload tpayload) {
             if (!this.ledger.peekUTXO(tpayload.utxo, utxo))
