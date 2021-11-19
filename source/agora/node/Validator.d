@@ -585,13 +585,7 @@ public class Validator : FullNode, API
                 ((block.header.height - 1) * this.params.BlockInterval.total!"seconds"))
             this.checkAndEnroll(block.header.height);
 
-        // FIXME: Add our pre-image to the validator set so that `getValidators`
-        // works as expected. This will need to be fixed in the Ledger in the
-        // future, as `onPreImageRevealTimer` has some issues, but doing it here
-        // allows us to unify usage of `getValidators`.
-        PreImageInfo self;
-        if (this.ledger.enrollment_manager.getNextPreimage(self, block.header.height))
-            this.ledger.addPreimage(self);
+        this.onPreImageRevealTimer();
 
         // note: may context switch, should be called last after quorums
         // are regenerated above.
