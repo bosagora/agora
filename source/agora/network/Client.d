@@ -125,7 +125,7 @@ public class NetworkClient
     private BanManager banman;
 
     /// API client to the node
-    public API[] api;
+    private API[] api;
 
     /// Reusable exception
     private Exception exception;
@@ -586,10 +586,37 @@ public class NetworkClient
             return T.init;
     }
 
-    ///
-    public void addApi (API api, Address address)
+    /// Merge connections of incoming client to this
+    public void merge (scope ref NetworkClient incoming)
     {
-        this.api ~= api;
-        this.address ~= address;
+        import std.range;
+
+        if (!this.tryMergeRPC(incoming))
+            foreach(api, address; zip(incoming.api, incoming.address))
+            {
+                this.api ~= api;
+                this.address ~= address;
+            }
+    }
+
+    /// Try to merge an incoming RPC connection to an existing one if possible
+    public bool tryMergeRPC (scope ref NetworkClient incoming)
+    {
+        import agora.network.RPC;
+
+        assert(incoming.api.length == 1);
+        RPCClient!(agora.api.Validator.API) incoming_peer =
+            cast (RPCClient!(agora.api.Validator.API)) incoming.api[0];
+        if (incoming_peer is null)
+            return false;
+
+        auto rpc_idx = this.api.countUntil!(api => (cast (RPCClient!(agora.api.Validator.API)) api) !is null);
+        if (rpc_idx < 0)
+            return false;
+        auto existing_rpc = cast (RPCClient!(agora.api.Validator.API)) this.api[rpc_idx];
+        existing_rpc.merge(incoming_peer);
+        if (this.address[rpc_idx] == Address.init)
+            this.address[rpc_idx] = incoming.address[0];
+        return true;
     }
 }

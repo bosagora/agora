@@ -500,29 +500,7 @@ public class NetworkManager
             return false;
 
         existing_peers.front().utxo = node.utxo;
-
-        if (!this.tryMergeRPC(node, existing_peers.front()))
-            foreach(api, address; zip(node.client.api, node.client.address))
-                existing_peers.front().client.addApi(api, address);
-        return true;
-    }
-
-    /// Try to merge an incoming RPC connection to an existing one if possible
-    private bool tryMergeRPC (scope ref NodeConnInfo node, scope ref NodeConnInfo existing_peer)
-    {
-        assert(node.client.api.length == 1);
-        RPCClient!(agora.api.Validator.API) incoming_peer =
-            cast (RPCClient!(agora.api.Validator.API)) node.client.api[0];
-        if (incoming_peer is null)
-            return false;
-
-        auto rpc_idx = existing_peer.client.api.countUntil!(api => (cast (RPCClient!(agora.api.Validator.API)) api) !is null);
-        if (rpc_idx < 0)
-            return false;
-        auto existing_rpc = cast (RPCClient!(agora.api.Validator.API)) existing_peer.client.api[rpc_idx];
-        existing_rpc.merge(incoming_peer);
-        if (existing_peer.client.address[rpc_idx] == Address.init)
-            existing_peer.client.address[rpc_idx] = node.client.address[0];
+        existing_peers.front().client.merge(node.client);
         return true;
     }
 
