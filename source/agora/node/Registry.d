@@ -33,6 +33,9 @@ import agora.stats.Registry;
 import agora.stats.Utils;
 import agora.utils.Log;
 
+import vibe.core.core;
+import vibe.core.net;
+
 import std.algorithm;
 import std.array : array, replace;
 import std.conv;
@@ -40,6 +43,7 @@ import std.datetime;
 import std.format;
 import std.range;
 import std.socket : InternetAddress;
+import std.stdio;
 import std.string;
 
 static import std.uni;
@@ -73,6 +77,12 @@ public class NameRegistry: NameRegistryAPI
     ///
     private ValidatorInfo[] validator_info;
 
+    /// UDP binding for DNS server/client
+    private UDPConnection udp;
+
+    /// TCP binding for DNS server
+    private TCPListener tcp;
+
     /// Supported DNS query types
     private immutable QTYPE[] supported_query_types = [
         QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL,
@@ -89,6 +99,11 @@ public class NameRegistry: NameRegistryAPI
 
         this.config = config;
         this.log = Logger(__MODULE__);
+        
+        this.udp = listenUDP(this.config.port, this.config.address);
+        runTask(() => runDNSServer(this.udp));
+        this.tcp = listenTCP(this.config.port, (conn) => runTCPDNSServer(conn),
+                        this.config.address);
 
         this.ledger = ledger;
 
@@ -101,6 +116,14 @@ public class NameRegistry: NameRegistryAPI
             this.config.flash, cache_db, log);
 
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
+    }
+
+    public void shutdown () @safe
+    {
+        log.info("Shutting down Registry..");
+
+        this.udp.close();
+        this.tcp.stopListening();
     }
 
     /***************************************************************************
@@ -466,6 +489,155 @@ public class NameRegistry: NameRegistryAPI
             if (!this.ledger.peekUTXO(tpayload.utxo, utxo))
                 validators_zone.remove(tpayload.payload.data.public_key);
        });
+    }
+
+    /*******************************************************************************
+
+        Run the DNS server on TCP port 53
+
+        While regular requests are sent over UDP, some actions,
+        such as zone transfer, or retry when truncation is encountered,
+        are done of TCP.
+
+        For the `canThrow` function, see `runDNSServer`'s documentation.
+
+        Params:
+        conn = TCP connection for this request.
+        registry = The name registry to forward the queries to.
+
+    *******************************************************************************/
+
+    private void runTCPDNSServer (TCPConnection conn) @trusted nothrow
+    {
+        try
+            runTCPDNSServer_canThrow(conn);
+        catch (Exception exc)
+        {
+            try
+                stderr.writeln("Fatal error while running the DNS server (TCP): ", exc);
+            catch (Exception exc2)
+                printf("Couldn't print message following fatal error in (TCP) DNS!\n");
+            assert(0);
+        }
+    }
+
+    /// Ditto
+    private void runTCPDNSServer_canThrow (TCPConnection conn) @trusted
+    {
+        ubyte[4096] buffer;
+        ushort length = 2;
+        scope writer = (in ubyte[] data) @safe {
+            ensure(data.length <= (buffer.length - length),
+                "Buffer overflow: Trying to write {} bytes in a {} buffer ({} used)",
+                data.length, buffer.length, length);
+            buffer[length .. length + data.length] = data[];
+            length += data.length;
+        };
+
+        try
+        {
+            // RFC1035 - 4.2.2. TCP usage
+            // The message is prefixed with a two byte length field which gives the
+            // message length, excluding the two byte length field.
+            // This length field allows the low-level processing to assemble
+            // a complete message before beginning to parse it.
+            conn.read(buffer[0 .. 2]);
+            const ushort size = deserializeFull!ushort(
+                buffer[0 .. 2], DeserializerOptions(DefaultMaxLength, CompactMode.No));
+            ensure(size <= buffer.length, "Received a message of size {} (> {})",
+                size, buffer.length);
+
+            // Read everything directly since it's going to be faster
+            // than performing context switches
+            conn.read(buffer[0 .. size]);
+
+            auto query = deserializeFull!Message(buffer[0 .. size]);
+            this.answerQuestions(
+                query,
+                (in Message msg) @safe => msg.serializePart(writer, CompactMode.No));
+
+            // Write the length at the begining
+            assert(length >= 2);
+            ushort copy = cast(ushort) (length - 2);
+            length = 0;
+            copy.serializePart(writer, CompactMode.No);
+            conn.write(buffer[0 .. copy + 2]);
+        }
+        catch (Exception exc)
+        {
+            stderr.writeln("Exception happened while handling TCP request: ", exc);
+        }
+    }
+
+    /*******************************************************************************
+
+        Starts the DNS server using the provided registry
+
+        This listens to UDP port 53 for DNS queries, which are then forwarded
+        to the registry to be answered.
+
+        The `canThrow` function is wrapped by a higher level `nothrow` one,
+        which handles the `try` / `catch` in case of fatal error.
+        Throwing from the `canThrow`function is a fatal error,
+        so client connections should not lead to `Exception` escaping this function.
+
+        Params:
+        config = Registry configuration
+        registry = The name registry to forward the queries to.
+
+    *******************************************************************************/
+
+    private void runDNSServer_canThrow (UDPConnection conn)
+    {
+        // Otherwise `recv` allocates 65k per call (!!!)
+        ubyte[2048] buffer;
+        // `recv` will store the peer address here so we can respond
+        NetworkAddress peer;
+        scope ppeer = &peer;
+        while (true)
+        {
+            try
+            {
+                auto pack = conn.recv(buffer, ppeer);
+                auto query = deserializeFull!Message(pack);
+                this.answerQuestions(
+                    query,
+                    (in Message msg) @safe => conn.send(msg.serializeFull(), ppeer));
+
+            }
+            catch (Exception exc)
+            {
+                scope (failure) assert(0);
+                stderr.writeln("Exception thrown while handling query: ", exc);
+            }
+        }
+    }
+
+    /// Ditto
+    private void runDNSServer (UDPConnection conn) nothrow
+    {
+        try
+            runDNSServer_canThrow(conn);
+        catch (Exception exc)
+        {
+            try
+            {
+                stderr.writeln("Couldn't start the UDP listener for the registry: ", exc.msg);
+                if (this.config.port == 53)
+                    stderr.writeln("On most system, port 53 is also used by a local resolver. " ~
+                        "Use the node's public IP explicitly to avoid binding to the loopback interface");
+                else if (this.config.port <= 1024)
+                    stderr.writeln("The chosen port (", this.config.port, ") is priviledged. " ~
+                                "Try using a port > 1024 or make sure the port isn't already used");
+                else
+                    stderr.writeln("Hint: Port ", this.config.port, " might already be used");
+            }
+            catch (Exception exc2)
+                printf("Couldn't print message following fatal error in DNS!\n");
+
+            // atomicStore(exitCode, 1);
+            exitEventLoop();
+        }
     }
 }
 

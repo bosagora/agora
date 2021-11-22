@@ -281,10 +281,6 @@ public class FullNode : API
             // Use second precision to simplify aggregation
             Clock.currTime!(ClockType.second)(UTC()).toISOString(),
         );
-
-        if (config.registry.enabled)
-            this.registry = new NameRegistry(config.node.realm, config.registry,
-                                             this.ledger, this.cacheDB);
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
@@ -419,6 +415,10 @@ public class FullNode : API
         if (config.node.stats_listening_port != 0)
             this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
+
+        if (config.registry.enabled)
+            this.registry = new NameRegistry(config.node.realm, config.registry,
+                                    this.ledger, this.cacheDB);
 
         // Special case
         // Block externalized handler is set and push for Genesis block.
@@ -601,6 +601,10 @@ public class FullNode : API
         // requests, hence why we shut it down early on.
         if (this.stats_server !is null)
             this.stats_server.shutdown();
+
+        // Shutdown registry server
+        if (this.registry !is null)
+            this.registry.shutdown();
 
         // Shut down our timers (discovery, catchup)
         foreach (timer; this.timers)

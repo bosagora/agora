@@ -143,17 +143,6 @@ public Listeners runNode (Config config)
             //dnstask.interrupt();
         }
 
-    if (config.registry.enabled)
-    {
-        auto reg = result.node.getRegistry();
-        assert(reg !is null);
-        if (hasHTTPInterface)
-            router.registerRestInterface(reg, settings);
-        /* auto dnstask = */ runTask(() => runDNSServer(config.registry, reg));
-        result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(reg),
-                config.registry.address);
-    }
-
     bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
         try
             return result.node.getBanManager().isBanned(Address("agora://" ~ address.toAddressString()));
@@ -161,7 +150,20 @@ public Listeners runNode (Config config)
             assert(false, e.msg);
     };
 
-    setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
+    void startNode ()
+    {
+        result.node.start();
+
+        if (config.registry.enabled)
+        {
+            auto reg = result.node.getRegistry();
+            assert(reg !is null);
+            if (hasHTTPInterface)
+                router.registerRestInterface(reg, settings);
+        }
+    }
+
+    setTimer(0.seconds, &startNode, Periodic.No);  // asynchronous
 
     string tls_user_help;
     auto tls_ctx = getTLSContext(tls_user_help);
@@ -280,160 +282,6 @@ private TLSContext getTLSContext (out string user_help_message)
     }
 
     return ctx;
-}
-
-/*******************************************************************************
-
-    Starts the DNS server using the provided registry
-
-    This listens to UDP port 53 for DNS queries, which are then forwarded
-    to the registry to be answered.
-
-    The `canThrow` function is wrapped by a higher level `nothrow` one,
-    which handles the `try` / `catch` in case of fatal error.
-    Throwing from the `canThrow`function is a fatal error,
-    so client connections should not lead to `Exception` escaping this function.
-
-    Params:
-      config = Registry configuration
-      registry = The name registry to forward the queries to.
-
-*******************************************************************************/
-
-private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry registry)
-{
-    // The `listenUDP` needs to be in the `runTask` otherwise we get
-    // a fatal error due to a bug in vibe-core (see comment #2):
-    /// https://github.com/vibe-d/vibe-core/issues/289
-    auto udp = listenUDP(config.port, config.address);
-    scope (exit) udp.close();
-    // Otherwise `recv` allocates 65k per call (!!!)
-    ubyte[2048] buffer;
-    // `recv` will store the peer address here so we can respond
-    NetworkAddress peer;
-    scope ppeer = &peer;
-    while (true)
-    {
-        try
-        {
-            auto pack = udp.recv(buffer, ppeer);
-            auto query = deserializeFull!Message(pack);
-            registry.answerQuestions(
-                query,
-                (in Message msg) @safe => udp.send(msg.serializeFull(), ppeer));
-
-        }
-        catch (Exception exc)
-        {
-            scope (failure) assert(0);
-            stderr.writeln("Exception thrown while handling query: ", exc);
-        }
-    }
-}
-
-/// Ditto
-private void runDNSServer (in RegistryConfig config, NameRegistry registry) nothrow
-{
-    try
-        runDNSServer_canThrow(config, registry);
-    catch (Exception exc)
-    {
-        try
-        {
-            stderr.writeln("Couldn't start the UDP listener for the registry: ", exc.msg);
-            if (config.port == 53)
-                stderr.writeln("On most system, port 53 is also used by a local resolver. " ~
-                    "Use the node's public IP explicitly to avoid binding to the loopback interface");
-            else if (config.port <= 1024)
-                stderr.writeln("The chosen port (", config.port, ") is priviledged. " ~
-                               "Try using a port > 1024 or make sure the port isn't already used");
-            else
-                stderr.writeln("Hint: Port ", config.port, " might already be used");
-        }
-        catch (Exception exc2)
-            printf("Couldn't print message following fatal error in DNS!\n");
-
-        atomicStore(exitCode, 1);
-        exitEventLoop();
-    }
-}
-
-/*******************************************************************************
-
-    Run the DNS server on TCP port 53
-
-    While regular requests are sent over UDP, some actions,
-    such as zone transfer, or retry when truncation is encountered,
-    are done of TCP.
-
-    For the `canThrow` function, see `runDNSServer`'s documentation.
-
-    Params:
-      conn = TCP connection for this request.
-      registry = The name registry to forward the queries to.
-
-*******************************************************************************/
-
-private void runTCPDNSServer (TCPConnection conn, NameRegistry registry) @trusted nothrow
-{
-    try
-        runTCPDNSServer_canThrow(conn, registry);
-    catch (Exception exc)
-    {
-        try
-            stderr.writeln("Fatal error while running the DNS server (TCP): ", exc);
-        catch (Exception exc2)
-            printf("Couldn't print message following fatal error in (TCP) DNS!\n");
-        assert(0);
-    }
-}
-
-/// Ditto
-private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry) @trusted
-{
-    ubyte[4096] buffer;
-    ushort length = 2;
-    scope writer = (in ubyte[] data) @safe {
-        ensure(data.length <= (buffer.length - length),
-               "Buffer overflow: Trying to write {} bytes in a {} buffer ({} used)",
-               data.length, buffer.length, length);
-        buffer[length .. length + data.length] = data[];
-        length += data.length;
-    };
-
-    try
-    {
-        // RFC1035 - 4.2.2. TCP usage
-        // The message is prefixed with a two byte length field which gives the
-        // message length, excluding the two byte length field.
-        // This length field allows the low-level processing to assemble
-        // a complete message before beginning to parse it.
-        conn.read(buffer[0 .. 2]);
-        const ushort size = deserializeFull!ushort(
-            buffer[0 .. 2], DeserializerOptions(DefaultMaxLength, CompactMode.No));
-        ensure(size <= buffer.length, "Received a message of size {} (> {})",
-               size, buffer.length);
-
-        // Read everything directly since it's going to be faster
-        // than performing context switches
-        conn.read(buffer[0 .. size]);
-
-        auto query = deserializeFull!Message(buffer[0 .. size]);
-        registry.answerQuestions(
-            query,
-            (in Message msg) @safe => msg.serializePart(writer, CompactMode.No));
-
-        // Write the length at the begining
-        assert(length >= 2);
-        ushort copy = cast(ushort) (length - 2);
-        length = 0;
-        copy.serializePart(writer, CompactMode.No);
-        conn.write(buffer[0 .. copy + 2]);
-    }
-    catch (Exception exc)
-    {
-        stderr.writeln("Exception happened while handling TCP request: ", exc);
-    }
 }
 
 /*******************************************************************************
