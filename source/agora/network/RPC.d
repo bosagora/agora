@@ -88,7 +88,7 @@ public class RPCClient (API) : API
 
         ***********************************************************************/
 
-        public Duration connection_timeout;
+        public Duration connection_timeout = 5.seconds;
 
         /***********************************************************************
 
@@ -101,7 +101,7 @@ public class RPCClient (API) : API
 
         ***********************************************************************/
 
-        public Duration read_timeout;
+        public Duration read_timeout = 5.seconds;
 
         /***********************************************************************
 
@@ -114,7 +114,7 @@ public class RPCClient (API) : API
 
         ***********************************************************************/
 
-        public Duration write_timeout;
+        public Duration write_timeout = 5.seconds;
 
         /***********************************************************************
 
@@ -128,7 +128,7 @@ public class RPCClient (API) : API
 
         ***********************************************************************/
 
-        public Duration retry_delay;
+        public Duration retry_delay  = 1.seconds;
 
         ///
         public uint concurrency = 3;
@@ -285,13 +285,14 @@ public class RPCClient (API) : API
                             return tmp[0 .. size];
                         };
 
-                    conn.rlock.lock(); // todo: timeout
+                    ensure(conn.rlock.lock(this.config.read_timeout), "Operation timed out");
                     scope (exit)
                     {
                         conn.rlock.unlock();
                         conn.rcond.notify();
                     }
                     ensure(conn.connected(), "Connection closed");
+                    conn.readTimeout = this.config.read_timeout;
                     static if (!is(typeof(return) == void))
                     {
                         version (all)
