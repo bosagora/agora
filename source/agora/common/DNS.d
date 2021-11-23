@@ -371,7 +371,7 @@ public struct Header
     public ushort ID;
 
     /***************************************************************************
-        
+
         Function prototype for setting or getting specified bit(s) of field
 
         Params:
