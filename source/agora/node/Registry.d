@@ -58,6 +58,9 @@ public class NameRegistry: NameRegistryAPI
     /// Zones of the registry
     private ZoneData[Domain] zones;
 
+    /// The domain for `realm`
+    private Domain realm;
+
     /// The domain of `validators` zone
     private Domain validators;
 
@@ -92,9 +95,13 @@ public class NameRegistry: NameRegistryAPI
 
         this.ledger = ledger;
 
+        this.realm = Domain(realm);
         this.validators = Domain("validators." ~ realm);
         this.flash = Domain("flash." ~ realm);
 
+
+        this.zones[this.realm] = ZoneData("realm", this.realm,
+            this.config.realm, cache_db, log);
         this.zones[this.validators] = ZoneData("validator", this.validators,
             this.config.validators, cache_db, log);
         this.zones[this.flash] = ZoneData("flash",  this.flash,
