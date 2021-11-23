@@ -441,7 +441,7 @@ public class NameRegistry: NameRegistryAPI
         if (range.empty)
             return null;
         // Slice past the dot, after making sure there is one (bosagora/agora#2551)
-        const parentDomain = Domain(name[child.length + 1 .. $]);
+        const parentDomain = Domain(name.value[child.length + 1 .. $]);
         return this.findZone(parentDomain, false);
     }
 
@@ -512,8 +512,8 @@ unittest
 private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
 {
     SOA soa;
-    soa.mname = format("ns1.%s", name);
-    soa.rname = zone.email.replace('@', '.');
+    soa.mname = Domain(format("ns1.%s.", name));
+    soa.rname = Domain(zone.email.value.replace('@', '.'));
     soa.serial = serial;
     // Casts are safe as the values are validated during config parsing
     soa.refresh = cast(int) zone.refresh.total!"seconds";
@@ -540,7 +540,7 @@ private struct TypedPayload
         Converts a `TypedPayload` to a valid `ResourceRecord`
 
         Params:
-          qname = The "question name", or the record name (e.g. in AXFR)
+          name = The "question name", or the record name (e.g. in AXFR)
 
         Throws:
           If the type of `this` payload is not supported, which would be
@@ -548,10 +548,9 @@ private struct TypedPayload
 
     ***************************************************************************/
 
-    public ResourceRecord toRR (const char[] qname) const scope
+    public ResourceRecord toRR (const Domain name) const scope
         @safe
     {
-        Domain name = Domain(qname);
         switch (this.type)
         {
         case TYPE.CNAME:
@@ -796,8 +795,8 @@ private struct ZoneData
 
         foreach (const ref payload; this)
         {
-            reply.answers ~= payload.toRR(format("%s.%s",
-                payload.payload.data.public_key, this.root.value));
+            reply.answers ~= payload.toRR(Domain(format("%s.%s",
+                payload.payload.data.public_key, this.root.value)));
         }
 
         reply.answers ~= soa;
@@ -830,7 +829,7 @@ private struct ZoneData
     private Header.RCode getKeyDNSRecord (
         const ref Question question, ref Message reply) @safe
     {
-        const public_key = this.parsePublicKeyFromDomain(question.qname);
+        const public_key = this.parsePublicKeyFromDomain(question.qname.value);
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
