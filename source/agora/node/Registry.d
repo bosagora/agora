@@ -75,7 +75,7 @@ public class NameRegistry: NameRegistryAPI
 
     /// Supported DNS query types
     private immutable QTYPE[] supported_query_types = [
-        QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL,
+        QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA,
     ];
 
     ///
@@ -748,6 +748,15 @@ private struct ZoneData
     {
         if (q.qtype == QTYPE.AXFR)
             return matches ? this.doAXFR(reply) : Header.RCode.Refused;
+        else if (q.qtype == QTYPE.SOA)
+        {
+            if (matches)
+                reply.answers ~= this.toRR();
+            else
+                reply.authorities ~= this.toRR();
+
+            return Header.RCode.NoError;
+        }
         else if (!matches)
             return this.getKeyDNSRecord(q, reply);
         else
@@ -833,6 +842,7 @@ private struct ZoneData
             return Header.RCode.NameError;
 
         reply.answers ~= payload.toRR(question.qname);
+        reply.authorities ~= this.toRR(); // optional
         return Header.RCode.NoError;
     }
 
