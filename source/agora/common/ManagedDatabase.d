@@ -73,6 +73,7 @@ public class ManagedDatabase
         int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
     {
         this.database = emplace(cast(Database*) malloc(Database.sizeof), path, flags);
+        this.database.run("PRAGMA foreign_keys = ON");
         thread_dbs ~= this.database;
     }
 
