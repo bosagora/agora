@@ -753,12 +753,12 @@ public struct Domain
     public const(char)[] value = ".";
 
     /// Creates domain name with always trailing root
-    public this (inout const(char)[] v) @safe inout
+    public this (scope inout const(char)[] v) @trusted inout
     {
         if (v.length && v[$-1] == '.')
             this.value = v.idup;
         else
-            this.value = v.idup ~ '.';
+            this.value = cast(string) (v ~ '.');
     }
 
     ///
