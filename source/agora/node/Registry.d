@@ -95,9 +95,9 @@ public class NameRegistry: NameRegistryAPI
         this.validators = Domain("validators." ~ realm);
         this.flash = Domain("flash." ~ realm);
 
-        this.zones[this.validators] = ZoneData("validator", this.validators, 
+        this.zones[this.validators] = ZoneData("validator", this.validators,
             this.config.validators, cache_db, log);
-        this.zones[this.flash] = ZoneData("flash",  this.flash, 
+        this.zones[this.flash] = ZoneData("flash",  this.flash,
             this.config.flash, cache_db, log);
 
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
@@ -416,7 +416,7 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /***************************************************************************
-        
+
         Find zone in registry
 
         Params:
@@ -427,7 +427,7 @@ public class NameRegistry: NameRegistryAPI
             zone can be found
 
     ***************************************************************************/
-    
+
     auto findZone (Domain name, bool matches = true) @safe
     {
         auto matching_zone = name in this.zones;
@@ -599,7 +599,7 @@ private struct ZoneData
     /// The SOA record
     public SOA soa;
 
-    /// 
+    ///
     private ZoneConfig config;
 
     /// Query for registry count interface
@@ -990,7 +990,7 @@ private struct ZoneData
             catch (Exception exc) return PublicKey.init;
         }
 
-        // `findZone` ensures, `domain` is owned by us; 
+        // `findZone` ensures, `domain` is owned by us;
         // thus this method should NEVER be `public`
         if (auto str = domain.splitter('.').front)
         {
