@@ -232,9 +232,7 @@ public class NameRegistry: NameRegistryAPI
         ensure(!validator_info.empty || !enrollment.empty, "Not an enrolled validator");
         auto stake = validator_info.empty ? enrollment.front.utxo_key : validator_info.front.utxo;
         assert(stake != Hash.init);
-        // register data
-        log.info("Registering addresses {}: {} for public key: {}", payload_type,
-                 registry_payload.data.addresses, registry_payload.data.public_key);
+
         validators_zone.update(TypedPayload(payload_type, registry_payload, stake));
     }
 
@@ -911,6 +909,9 @@ private struct ZoneData
     public void remove (PublicKey public_key) @trusted
     {
         this.db.execute(this.query_remove_sig, public_key);
+
+        if (this.db.changes)
+            this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
     }
 
     /***************************************************************************
@@ -928,6 +929,17 @@ private struct ZoneData
         if (payload.payload.data.addresses.length == 0)
             return;
 
+        // Payload is equal to Zone's data, no need to update
+        if (this.get(payload.payload.data.public_key) == payload)
+        {
+            log.info("{} sent same payload data, zone is not updated",
+                payload.payload.data.public_key);
+            return;
+        }
+
+        log.info("Registering addresses {}: {} for public key: {}", payload.type,
+            payload.payload.data.addresses, payload.payload.data.public_key);
+
         db.execute(this.query_signature_add,
             payload.payload.data.public_key,
             payload.payload.signature,
@@ -943,6 +955,8 @@ private struct ZoneData
                 address,
                 payload.type.to!ushort);
         }
+
+        this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
     }
 
     /***************************************************************************
