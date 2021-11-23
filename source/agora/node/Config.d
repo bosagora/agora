@@ -486,6 +486,9 @@ public struct RegistryConfig
     /// The port to bind to - Default to the standard DNS port (53)
     public ushort port = 53;
 
+    /// The parent zone for validators and flash, as configured in the realm
+    public immutable(ZoneConfig) realm;
+
     /// The 'validators' zone
     public immutable(ZoneConfig) validators;
 
@@ -530,6 +533,7 @@ public struct RegistryConfig
                    name, zone.minimum, uintMaxSecs);
         }
 
+        validateZone("realm", this.realm);
         validateZone("validators", this.validators);
         validateZone("flash", this.flash);
     }
