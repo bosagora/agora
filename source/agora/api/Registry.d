@@ -19,6 +19,9 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
 import agora.flash.api.FlashAPI;
 
+import std.algorithm.comparison : isPermutation, cmp;
+import std.range : zip;
+
 ///
 public struct RegistryPayloadData
 {
@@ -30,6 +33,44 @@ public struct RegistryPayloadData
 
     /// monotonically increasing sequence number
     public ulong seq;
+
+    /// Compares payload data for equality, ignores `seq`
+    /// and permutations of `addresses` are considered as equal
+    bool opEquals (in RegistryPayloadData other) const nothrow @safe
+    {
+        return (this.public_key == other.public_key)
+            && (this.addresses.isPermutation(other.addresses));
+    }
+
+    /***************************************************************************
+
+        Orders payload data according to `public_key`, when `public_key`s are
+        equal, `opEquals` is considered for equality. Comparison falls back to 
+        `seq`, length of `addresses` and individual addresses in respective order 
+        when `opEquals` fail. This will eventually result in different equality 
+        from `opEquals`
+
+    ***************************************************************************/
+
+    public int opCmp (in RegistryPayloadData other) const nothrow @safe
+    {
+        if (this.public_key == other.public_key)
+        {
+            if (this.opEquals(other)) return 0;
+
+            if (this.seq != other.seq)
+                return this.seq < other.seq ? -1 : 1;
+
+            if (this.addresses.length != other.addresses.length)
+                return this.addresses.length < other.addresses.length ? -1 : 1;
+            
+            foreach (thisAddr, otherAddr; this.addresses.zip(other.addresses))
+                if (auto c = thisAddr.opCmp(otherAddr))
+                    return c;
+        }
+
+        return this.public_key.opCmp(other.public_key);
+    }
 }
 
 ///
@@ -40,6 +81,19 @@ public struct RegistryPayload
 
     /// signature over the `data` member
     public Signature signature;
+
+    /// Compares payload, ignores `signature` of the data since
+    /// `RegistryPayloadData` ignores `seq`
+    bool opEquals (in RegistryPayload other) const nothrow @safe
+    {
+        return this.data == other.data;
+    }
+
+    /// Orders payload according to `data`
+    public int opCmp (in RegistryPayload other) const nothrow
+    {
+        return this.data.opCmp(other.data);
+    }
 
     ///
     public void signPayload (in KeyPair kp) @safe nothrow
