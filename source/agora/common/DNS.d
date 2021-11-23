@@ -371,7 +371,7 @@ public struct Header
     public ushort ID;
 
     /***************************************************************************
-        
+
         Function prototype for setting or getting specified bit(s) of field
 
         Params:
@@ -724,13 +724,21 @@ public struct Domain
     /// The domain name
     public const(char)[] value = ".";
 
-    /// Creates domain name with always trailing root
-    public this (inout const(char)[] v) @safe inout
+    private inout(const(char)[]) insertRootDomain (inout const(char)[] v)
+    @safe inout pure
     {
-        if (v.length && v[$-1] == '.')
-            this.value = v.idup;
-        else
-            this.value = v.idup ~ '.';
+        return v.length && v[$-1] == '.' ? v.idup : v.idup ~ '.';
+    }
+
+    /// Creates domain name with always trailing root
+    public this (inout const(char)[] v) @safe inout pure
+    {
+        this.value = insertRootDomain(v);
+    }
+
+    public void opAssign (const(char)[] v) @safe pure
+    {
+        this.value = insertRootDomain(v);
     }
 
     ///
