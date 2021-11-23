@@ -332,12 +332,12 @@ public struct Message
         // Domain's serialized size is at most `data.length + 1`,
         // and at least 2 bytes (a pointer)
         foreach (const ref q; this.questions)
-            size += (QTYPE.sizeof + QCLASS.sizeof + q.qname.length + 1);
+            size += (QTYPE.sizeof + QCLASS.sizeof + q.qname.value.length + 1);
 
         auto allRRs = this.answers.chain(this.authorities).chain(this.additionals);
         foreach (const ref a; allRRs)
         {
-            size += (a.name.length + 1 + TYPE.sizeof + CLASS.sizeof +
+            size += (a.name.value.length + 1 + TYPE.sizeof + CLASS.sizeof +
                      uint.sizeof + ushort.sizeof + a.rdata.length);
         }
 
@@ -761,9 +761,6 @@ public struct Domain
             this.value = cast(string) (v ~ '.');
     }
 
-    ///
-    alias value this;
-
     /// Support for network serialization
     /// Note that this method is not called directly by the deserializer,
     /// as it needs to support arbitrary pointers into the message
@@ -1050,7 +1047,7 @@ unittest
     assert(query.questions.length == 1);
     {
         scope q = &query.questions[0];
-        assert(q.qname == "google.com.");
+        assert(q.qname == Domain("google.com."));
         assert(q.qtype == QTYPE.ALL);
         assert(q.qclass == QCLASS.IN);
     }
