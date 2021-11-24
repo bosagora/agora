@@ -503,12 +503,22 @@ public struct RegistryConfig
 
         static void validateZone (string name, in ZoneConfig zone)
         {
-            // If we're not authoritative, there's no configuration to validate
-            if (!zone.authoritative)
+            // Those two fields must be both set or both unset
+            ensure(zone.primary.set == zone.email.set,
+                   "registry.{}: Authoritative zones require both 'primary' and " ~
+                   "'email' fields to be set", name);
+
+            // If we're not primary, there's no configuration to validate
+            if (!zone.primary.set)
                 return;
 
+            ensure(!zone.authoritative.set || zone.authoritative.value == true,
+                   "registry.{}.authoritative: Cannot be false for primary server", name);
+
+            ensure(zone.primary.length > 0,
+                   "registry.{}.primary: Field must be set for primary server", name);
             ensure(zone.email.length > 0,
-                   "registry.{}: Authoritative zones require an email to be provided", name);
+                   "registry.{}.email: Field must be set for primary server", name);
 
             // Now validate the durations are consistent with one another
             ensure(zone.refresh <= zone.expire,
@@ -543,8 +553,11 @@ public struct RegistryConfig
 /// All `Duration` values are precise to the second
 public struct ZoneConfig
 {
-    /// Whether this registry is authoritative for the zone or not
-    public bool authoritative;
+    /// Whether this server is authoritative
+    public SetInfo!bool authoritative;
+
+    /// CNAME of the primary server for this zone
+    public SetInfo!string primary;
 
     /// Email address of the person responsible for the zone
     public SetInfo!string email;

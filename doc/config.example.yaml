@@ -303,17 +303,37 @@ registry:
   # Port to bind to (default: 53, standard DNS port)
   # Note that ports < 1024 are privileged ports and might require root powers
   port: 53
+
+  ## The fields below define 3 SOA records, one for each zone required by the network.
+  ##
+  ## Those can typically be left empty, except for the primary server of the zone.
+  ## If non-empty, both `primary` and `email` must be provided.
+  ##
+  ## Others fields are ignored if the server is not authoritative for the zone.
+
   # The zone responsible for validators registration
   validators:
-    # Whether this registry is authoritative for this zone, or just a secondary
+    # Whether we should consider ourselves authoritative
+    #
+    # Authoritative servers should have an NS entry in the parent zone,
+    # for example the authoritative server for bosagora.io should have:
+    # NS ns1.bosagora.io.
+    # NS ns2.bosagora.io.
+    # By convention, ns1 is the primary (source of truth) and ns2 is a secondary,
+    # that periodically fetches records from ns1.
+    # Secondary servers should have `authoritative` set to `true`. Primary servers
+    # should have `authoritative` unset or set to `true`, and `primary` and `email` set.
     authoritative: true
 
-    ## The fields below define the SOA record for the DNS entry.
-    ##
-    ## If you are not familiar with DNS, simply enter a valid email address,
-    ## and use the default values.
-    ##
-    ## Those fields are ignored if the server is not `authoritative` for the zone.
+    # The *hostname* (not IP address) of the primary name server for this zone
+    #
+    # If this is set, `email` must be set too. If this isn't set, `email` must be unset.
+    #
+    # The value here is typically the hostname of the server itself.
+    # For example, if the node that read this configuration will be reachable via
+    # `agora.example.com`, then this string can be used.
+    # However, the typical naming convention would be to use `ns1.example.com`.
+    primary: ns1.bosagora.io
 
     # Email of the DNS server administrator
     # This field is required for authoritative servers.
