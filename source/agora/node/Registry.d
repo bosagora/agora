@@ -643,13 +643,14 @@ private struct ZoneData
         this.config = config;
         this.root = root;
 
-        static string serverType (bool auth)
+        static string serverType (bool auth, bool primary)
         {
-            return auth ? "authoritative" : "secondary";
+            return primary ? "primary" : (auth ? "secondary" : "caching");
         }
 
         this.log.info("Registry is {} DNS server for zone '{}'",
-            serverType(this.config.authoritative), this.root);
+            serverType(this.config.authoritative, this.config.primary.set),
+            this.root);
 
         this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature",
             zone_name);
@@ -686,12 +687,12 @@ private struct ZoneData
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
 
-        // Serial's value wraps around so the cast is safe
-        const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
-        if (this.config.authoritative)
+        if (this.config.primary.set)
+        {
+            // Serial's value wraps around so the cast is safe
+            const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
             this.soa = this.config.fromConfig(this.root, serial);
-        else
-            this.soa.mname = Domain(format("ns1.%s", this.root));
+        }
     }
 
     /***************************************************************************
