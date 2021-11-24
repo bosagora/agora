@@ -784,7 +784,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    private bool shouldEstablishConnection (Address address)
+    private bool shouldEstablishConnection (Address address) @safe
     {
         auto existing_peer = this.peers[].find!(p => p.address.canFind(address));
         return !this.banman.isBanned(address) &&
@@ -795,14 +795,14 @@ public class NetworkManager
     }
 
     /// Received new set of addresses, put them in the todo address list
-    private void addAddresses (Set!Address addresses)
+    private void addAddresses (Set!Address addresses) @safe
     {
         foreach (address; addresses)
             this.addAddress(address);
     }
 
     /// Ditto
-    private void addAddress (Address address)
+    private void addAddress (Address address) @safe
     {
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
@@ -839,9 +839,6 @@ public class NetworkManager
     /// register network addresses into the name registry
     public void onRegisterName () @safe
     {
-        if (this.registry_client is null)
-            return;
-
         const(Address)[] addresses = this.validator_config.addresses_to_register.map!(
             addr => Address(addr)
         ).array;
@@ -849,6 +846,10 @@ public class NetworkManager
             addresses = InetUtils.getPublicIPs().map!(
                 ip => Address("agora://"~ip)
             ).array;
+        this.addAddresses(Set!Address.from(addresses));
+
+        if (this.registry_client is null)
+            return;
 
         RegistryPayload payload =
         {
