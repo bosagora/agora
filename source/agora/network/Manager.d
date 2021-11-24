@@ -248,11 +248,7 @@ public class NetworkManager
                     this.outer.banman.ban(address);
                     return;
                 }
-
-                log.info("Found new Validator: {} (UTXO: {}, key: {})", address, utxo, key);
             }
-            else
-                log.info("Found new FullNode: {}", address);
 
             NodeConnInfo node = {
                 key : key,
@@ -487,6 +483,11 @@ public class NetworkManager
 
         if (this.tryMerge(node) || this.peerLimitReached())
             return;
+
+        if (node.isValidator())
+            log.info("Found new Validator: {} (UTXO: {}, key: {})", node.client.address, node.utxo, node.key);
+        else
+            log.info("Found new FullNode: {}", node.client.address);
 
         this.peers.insertBack(node);
         this.discovery_task.add(node.client);
