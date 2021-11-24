@@ -282,9 +282,8 @@ public class FullNode : API
             Clock.currTime!(ClockType.second)(UTC()).toISOString(),
         );
 
-        if (config.registry.enabled)
-            this.registry = new NameRegistry(config.node.realm, config.registry,
-                                             this.ledger, this.cacheDB);
+        this.registry = new NameRegistry(config.node.realm, config.registry,
+                                         this.ledger, this.cacheDB);
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
