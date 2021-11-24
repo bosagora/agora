@@ -82,7 +82,6 @@ public class NameRegistry: NameRegistryAPI
     public this (string realm, RegistryConfig config, Ledger ledger,
         ManagedDatabase cache_db)
     {
-        assert(config.enabled, "Registry instantiated but not enabled");
         assert(realm.length > 0, "No 'realm' provided");
         assert(ledger !is null);
         assert(cache_db !is null);
