@@ -20,6 +20,7 @@ import agora.stats.Stats;
 public struct TxStatsValue
 {
     public ulong agora_transactions_received_total;
+    public ulong agora_transactions_duplicate_total;
     public ulong agora_transactions_accepted_total;
     public ulong agora_transactions_rejected_total;
     public ulong agora_transactions_poolsize_gauge;
