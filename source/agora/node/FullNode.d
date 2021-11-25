@@ -911,12 +911,17 @@ public class FullNode : API
         this.recordReq("transaction");
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
 
+        // return early if we already have this tx
+        if (this.hasTransactionHash(hashFull(tx)))
+        {
+            this.tx_stats.increaseMetricBy!"agora_transactions_duplicate_total"(1);
+            return;
+        }
+
         if (auto reason = this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct,
             config.node.min_fee_pct))
         {
-            this.log.format(
-                this.hasTransactionHash(hashFull(tx)) ? LogLevel.Trace : LogLevel.Info,
-                "Rejected tx: {}, txHash: {}, Reason: {}.", prettify(tx), hashFull(tx), reason);
+            this.log.info("Rejected tx: {}, txHash: {}, Reason: {}.", prettify(tx), hashFull(tx), reason);
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
             return;
         }
