@@ -761,6 +761,75 @@ public struct Domain
             this.value = cast(string) (v ~ '.');
     }
 
+    /// Returns: A forward range allowing to iterate by label
+    /// Iteration is done in reverse order from the string ordering,
+    /// meaning for `bosagora.io.`, the initialized state is root (empty string)
+    /// followed by `io` then `bosagora`.
+    public LabelRange byLabel () const return @safe pure nothrow @nogc
+    {
+        return LabelRange(this.value, this.value.length, this.value.length);
+    }
+
+    /// Manual implementation (instead of splitter + retro) to avoid autodecoding
+    /// and things being not `@nogc` / `nothrow`.
+    private struct LabelRange
+    {
+        @safe pure nothrow @nogc:
+
+        /// The value we iterate on
+        private const(char)[] value;
+
+        /// The current indexes
+        private size_t from;
+
+        /// Ditto
+        private size_t to;
+
+        /// Forward range implementation
+        public LabelRange save () return { return this; }
+
+        /// Input range implementation
+        public const(char)[] front () const return { return this.value[this.from .. this.to]; }
+
+        /// Ditto
+        public void popFront ()
+        {
+            // The range is empty when to == 0, meaning it's an empty slice
+            // starting at the beginning.
+            // In its initial state, the range is most likely not empty,
+            // as `.init` means `value == "."`.
+            // However, the initial state is the root label.
+            if (this.empty)
+                return;
+
+            // Switch to empty state
+            if (this.from == 0 || this.value == ".")
+            {
+                // The special case can only happen with the root domain,
+                // as all other values should end with the root domain.
+                this.from = this.to = 0;
+                return;
+            }
+
+            // Otherwise there should be a dot before `from`
+            assert(this.from >= 2);
+            assert(value[this.from - 1] == '.');
+
+            this.from -= 2;
+            this.to = this.from + 1;
+
+            while (this.from > 0)
+            {
+                if (value[this.from - 1] == '.')
+                    break;
+                this.from--;
+            }
+        }
+
+        /// Ditto
+        public bool empty () const { return this.to == 0; }
+    }
+
     /// Support for network serialization
     /// Note that this method is not called directly by the deserializer,
     /// as it needs to support arbitrary pointers into the message
@@ -876,6 +945,23 @@ unittest
 
     auto dlang2 = Domain("dlang.org"); // No trailing dot
     assert(dlang.serializeFull() == dlang2.serializeFull());
+
+    auto lroot = root.byLabel();
+    assert(!lroot.empty);
+    assert(lroot.front.length == 0);
+    lroot.popFront();
+    assert(lroot.empty);
+
+    auto ldlang = dlang.byLabel();
+    assert(!ldlang.empty);
+    ldlang.popFront();
+    assert(!ldlang.empty);
+    assert(ldlang.front == "org");
+    ldlang.popFront();
+    assert(!ldlang.empty);
+    assert(ldlang.front == "dlang");
+    ldlang.popFront();
+    assert(ldlang.empty);
 }
 
 /// Context used while deserializing a DNS message
