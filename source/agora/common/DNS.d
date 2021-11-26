@@ -590,7 +590,7 @@ public struct ResourceRecord
     /// Make a record of the given type
     public static ResourceRecord make (TYPE type) (Domain name, uint ttl, ubyte[] rdata)
     {
-        return ResourceRecord(name, type, CLASS.IN, ttl, data);
+        return ResourceRecord(name, type, CLASS.IN, ttl, rdata);
     }
 
     /// Make a record of SOA type
