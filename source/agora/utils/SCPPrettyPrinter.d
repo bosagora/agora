@@ -113,22 +113,17 @@ private struct QuorumFmt
             if (this.getQSet !is null)
                 qset = this.getQSet(this.node_id);
 
-            string node_id;
             if (this.node_id == ulong.max)
-                node_id = "<unknown>";
+                sink("{ id: <unknown>, ");
             else
-                node_id = (cast(ulong)this.node_id).to!string;
+                formattedWrite(sink, "{ id: %d, ", this.node_id);
 
-            if (qset.ptr !is null)
+            if (qset.ptr is null)
+                sink("quorum: <unknown> }");
+            else
             {
                 auto qconf = toQuorumConfig(*qset.ptr);
-                formattedWrite(sink, "{ id: %s, quorum: %s }",
-                     node_id, prettify(qconf));
-            }
-            else
-            {
-                formattedWrite(sink, "{ id: %s, quorum: <unknown> }",
-                     node_id);
+                formattedWrite(sink, "quorum: %s }", prettify(qconf));
             }
         }
         catch (Exception ex)
