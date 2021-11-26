@@ -1482,14 +1482,15 @@ LOuter: while (1)
         new_balance.payment_amount = old_balance.payment_amount;
 
         // assocArray doesn't work with const..
-        version (none)
-            Hash[Hash] payment_hashes = secrets
+        /*
+            Hash[Hash] payments = secrets
                 .map!(s => tuple(s.hashFull, s))
                 .assocArray;
+        */
 
-        Hash[Hash] payment_hashes;
+        Hash[Hash] payments;
         foreach (secret; secrets)
-            payment_hashes[secret.hashFull()] = secret;
+            payments[secret.hashFull()] = secret;
 
         // fold outgoing HTLCs
         foreach (payment_hash, htlc; old_balance.outgoing_htlcs)
@@ -1500,7 +1501,7 @@ LOuter: while (1)
                 if (!new_balance.refund_amount.add(htlc.amount))
                     assert(0);
             }
-            else if (payment_hash in payment_hashes)  // fold secret HTLC
+            else if (payment_hash in payments)  // fold secret HTLC
             {
                 log.info("{}: Fold: Folded outgoing secret-revealed HTLC: {}", this.own_pk.flashPrettify, payment_hash.flashPrettify);
                 if (!new_balance.payment_amount.add(htlc.amount))
@@ -1522,7 +1523,7 @@ LOuter: while (1)
                 if (!new_balance.payment_amount.add(htlc.amount))
                     assert(0);
             }
-            else if (payment_hash in payment_hashes)  // fold secret HTLC
+            else if (payment_hash in payments)  // fold secret HTLC
             {
                 log.info("{}: Fold: Folded incoming secret-revealed HTLC: {}", this.own_pk.flashPrettify, payment_hash.flashPrettify);
                 if (!new_balance.refund_amount.add(htlc.amount))

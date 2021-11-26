@@ -67,11 +67,11 @@ private final class FormattedException : Exception
     {
         import core.internal.string : unsignedToTempString;
 
-        char[20] buffer = void;
+        char[20] buff = void;
 
         sink(typeid(this).name);
         sink("@"); sink(file);
-        sink("("); sink(unsignedToTempString(line, buffer)); sink(")");
+        sink("("); sink(unsignedToTempString(line, buff)); sink(")");
 
         if (this.end > 0)
         {

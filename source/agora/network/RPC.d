@@ -174,7 +174,7 @@ public class RPCClient (API) : API
                  uint concurrency, ThisEndAPI impl)
         @trusted
     {
-        const Config config = {
+        const Config conf = {
             host:               host,
             port:               port,
 
@@ -186,7 +186,7 @@ public class RPCClient (API) : API
             write_timeout:      wtimeout,
             concurrency:        concurrency,
         };
-        this(config, impl);
+        this(conf, impl);
     }
 
     /// Ditto
