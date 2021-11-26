@@ -156,6 +156,8 @@ public struct BlockHeader
         const @safe nothrow
     {
         const Scalar challenge = this.hashFull();
+        // Note: This triggers a false positive with dscanner:
+        // https://github.com/dlang-community/D-Scanner/issues/851
         return BlockHeader.verify(pubkey, Scalar(preimage), sig, challenge);
     }
 
