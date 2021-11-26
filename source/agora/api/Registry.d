@@ -45,9 +45,9 @@ public struct RegistryPayloadData
     /***************************************************************************
 
         Orders payload data according to `public_key`, when `public_key`s are
-        equal, `opEquals` is considered for equality. Comparison falls back to 
-        `seq`, length of `addresses` and individual addresses in respective order 
-        when `opEquals` fail. This will eventually result in different equality 
+        equal, `opEquals` is considered for equality. Comparison falls back to
+        `seq`, length of `addresses` and individual addresses in respective order
+        when `opEquals` fail. This will eventually result in different equality
         from `opEquals`
 
     ***************************************************************************/
@@ -63,7 +63,7 @@ public struct RegistryPayloadData
 
             if (this.addresses.length != other.addresses.length)
                 return this.addresses.length < other.addresses.length ? -1 : 1;
-            
+
             foreach (thisAddr, otherAddr; this.addresses.zip(other.addresses))
                 if (auto c = thisAddr.opCmp(otherAddr))
                     return c;

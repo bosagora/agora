@@ -20,7 +20,7 @@ import scpd.quorum.QuorumTracker;
 import scpd.types.Stellar_types;
 
 // Quorum intersection checker implementation
-// This method was originally implemented in C++ but 
+// This method was originally implemented in C++ but
 // since the changes to `NodeID` had to be moved to D.
 extern (C++, "_GLOBAL__N_1") {
     extern class QuorumIntersectionCheckerImpl {
