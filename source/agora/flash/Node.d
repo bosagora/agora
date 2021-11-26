@@ -1014,6 +1014,7 @@ public class FlashNode : FlashControlAPI
         if (auto path = err.payment_hash in this.payment_path)
         {
             auto shared_secrets = this.shared_secrets[err.payment_hash];
+            assert(path.length >= 1);
             assert(shared_secrets.length == path.length);
 
             auto chans = (*path).map!(hop => hop.chan_id);

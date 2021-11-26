@@ -376,7 +376,7 @@ public struct Block
         nothrow @safe @nogc
     in
     {
-        assert(txs !is null, "When calling buildMerkleTreeImpl, `txs` must not be null.");
+        assert(txs.length > 0);
     }
     do
     {
