@@ -37,8 +37,8 @@ version (unittest)
             (n = difference of two heights).
 
     Params:
-        new_image = The pre-image information to check
-        prev_image = The previous pre-image information
+        newer = The pre-image information to check
+        previous = The previous pre-image information
 
     Returns:
         `null` if the pre-image is valid, otherwise a string
@@ -46,19 +46,19 @@ version (unittest)
 
 *******************************************************************************/
 
-public string isInvalidReason (in PreImageInfo new_image,
-    in PreImageInfo prev_image) nothrow @safe
+public string isInvalidReason (in PreImageInfo newer,
+    in PreImageInfo previous) nothrow @safe
 {
-    if (new_image.utxo != prev_image.utxo)
+    if (newer.utxo != previous.utxo)
         return "The pre-image's UTXO differs from its descendant";
 
-    if (new_image.height <= prev_image.height)
+    if (newer.height <= previous.height)
         return "The height of new pre-image is not greater than that of the previous one";
 
-    Hash temp_hash = new_image.hash;
-    foreach (_; prev_image.height .. new_image.height)
+    Hash temp_hash = newer.hash;
+    foreach (_; previous.height .. newer.height)
         temp_hash = hashFull(temp_hash);
-    if (temp_hash != prev_image.hash)
+    if (temp_hash != previous.hash)
         return "The pre-image has a invalid hash value";
 
     return null;
@@ -66,10 +66,10 @@ public string isInvalidReason (in PreImageInfo new_image,
 
 /// Ditto but returns `bool`, only usable in unittests
 version (unittest)
-public bool isValid (in PreImageInfo prev_image,
-    in PreImageInfo new_image) nothrow @safe
+public bool isValid (in PreImageInfo newer,
+    in PreImageInfo previous) nothrow @safe
 {
-    return isInvalidReason(prev_image, new_image) is null;
+    return isInvalidReason(newer, previous) is null;
 }
 
 /// test for validity of pre-image
