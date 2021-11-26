@@ -135,7 +135,7 @@ extern(C++, class) public struct BallotProtocol
 
     void setStateFromEnvelope(SCPEnvelopeWrapperPtr e);
 
-    public alias ENVCallback = extern(C++) bool function(ref SCPEnvelope);
+    alias ENVCallback = extern(C++) bool function(ref SCPEnvelope);
 
     bool processCurrentState(CPPDelegate!ENVCallback* f,
                              bool forceSelf) const;
