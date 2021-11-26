@@ -41,13 +41,13 @@ public enum CppCtor { Use = 0 }
 public alias std_string = basic_string!char;
 
 extern(C++) {
-@trusted nothrow @nogc:
+nothrow @nogc:
     void defaultCtorCPPObject(T) (T* ptr);
     void dtorCPPObject(T) (T* ptr);
     void opAssignCPPObject(T) (T* lhs, T* rhs);
     void copyCtorCPPObject(T) (T* ptr, inout(T)* rhs);
     void copyCtorCPPObject(T) (immutable(T)* ptr, inout(T)* rhs);
-    int getCPPSizeof(T) ();
+    int getCPPSizeof(T) () @safe;
     std_string sliceToStdString (const(char)* ptr, size_t length);
 }
 

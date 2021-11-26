@@ -16,7 +16,7 @@
 
 module scpd.quorum.QuorumTracker;
 
-@trusted @nogc nothrow:
+@nogc nothrow:
 
 import scpd.Cpp;
 import scpd.scp.SCP;

@@ -13,7 +13,7 @@
 
 module scpd.quorum.QuorumIntersectionChecker;
 
-nothrow @trusted @nogc:
+nothrow @nogc:
 
 import scpd.Cpp;
 import scpd.quorum.QuorumTracker;
@@ -24,7 +24,7 @@ import scpd.types.Stellar_types;
 // since the changes to `NodeID` had to be moved to D.
 extern (C++, "_GLOBAL__N_1") {
     extern class QuorumIntersectionCheckerImpl {
-        std_string nodeName (const NodeID node) const
+        std_string nodeName (const NodeID node) const @trusted
         {
             import std.conv;
             auto slice = node.to!string;
