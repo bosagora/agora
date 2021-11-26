@@ -458,6 +458,9 @@ private void restErrorHandler (
     HTTPServerRequest req, HTTPServerResponse res, RestErrorInformation info)
     @trusted
 {
+    // We don't use any info from the caller
+    cast(void) req;
+
     static struct ErrorInfo
     {
         /// The error message itself
