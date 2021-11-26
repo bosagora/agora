@@ -79,7 +79,7 @@ public class SetupInterface
         // If the user asked for the admin interface, make sure it exists
         // It can be located in a few places (to accomodate for different setups),
         // however if it can't be found in any of them, this will throw.
-        string path = this.getStaticFilePath();
+        const string static_files_path = this.getStaticFilePath();
 
         auto settings = new HTTPServerSettings(url.host);
         settings.port = url.port;
@@ -92,7 +92,7 @@ public class SetupInterface
         // Handle CORS
         router.match(HTTPMethod.OPTIONS, "*", &this.handleAllOptions);
         // By default, match the underlying files
-        router.match(HTTPMethod.GET, "*", serveStaticFiles(path));
+        router.match(HTTPMethod.GET, "*", serveStaticFiles(static_files_path));
 
         this.listener = listenHTTP(settings, router);
     }
