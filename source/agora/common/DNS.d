@@ -939,8 +939,7 @@ public struct Domain
         // If we get '.' there is no way to tell (using splitter)
         // the difference with 'foo..bar', so we just trim the trailing
         // dot and reject any empty label.
-        size_t end = this.value.length ?
-            (this.value.length - 1) : this.value.length;
+        size_t end = this.value.length > 0 ? (this.value.length - 1) : 0;
 
         this.value[0 .. end].splitter('.').each!(
             (const(char)[] label) {

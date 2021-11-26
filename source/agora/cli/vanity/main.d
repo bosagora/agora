@@ -251,6 +251,7 @@ unittest
 /// Returns: The index of a given pattern
 private size_t nameIndex (scope const(char)[] name) pure nothrow @nogc @safe
 {
+    assert(name.length >= 1);
     assert(name.length <= Name.length, name);
     size_t result;
     foreach (size_t index, char c; name)

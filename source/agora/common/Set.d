@@ -305,6 +305,7 @@ unittest
 private void dropIndex (T) (ref T[] arr, size_t index)
 {
     assert(index < arr.length);
+    // Since `index` cannot be less than 0, we know `arr.length > 0`
     immutable newLen = arr.length - 1;
 
     if (index != newLen)

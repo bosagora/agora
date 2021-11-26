@@ -147,7 +147,7 @@ public DecodeResult decodeBech32 (in char[] str)
 
     ubyte[] values;
     values.length = str.length - 1 - pos;
-    for (size_t i = 0; i < str.length - 1 - pos; ++i)
+    for (size_t i = 0; i < values.length; ++i)
     {
         ubyte c = str[i + pos + 1];
         byte rev = CHARSET_REV[c];
