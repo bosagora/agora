@@ -175,6 +175,13 @@ public struct ChannelUpdate
             && this.fixed_fee == other.fixed_fee
             && this.proportional_fee == other.proportional_fee;
     }
+
+    /// Required when `opEquals` is implemented
+    public size_t toHash () const scope @trusted pure nothrow @nogc
+    {
+        static assert(this.chan_id.sizeof >= size_t.sizeof);
+        return *(cast(size_t*) this.chan_id[].ptr);
+    }
 }
 
 unittest
