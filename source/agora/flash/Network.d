@@ -95,7 +95,7 @@ public class Network
         if (peer1_pk !in this.nodes)
             this.nodes[peer1_pk] = NetworkNode.init;
 
-        if (auto chns = (peer2_pk in this.nodes[peer1_pk].channels))
+        if (auto chns = peer2_pk in this.nodes[peer1_pk].channels)
             chns.put(chan_id);
         else
             this.nodes[peer1_pk].channels[peer2_pk] = Set!Hash.from([chan_id]);
