@@ -42,6 +42,17 @@ public struct RegistryPayloadData
             && (this.addresses.isPermutation(other.addresses));
     }
 
+    /// Overload for `toHash`, required when implementing `opEquals`
+    public size_t toHash () const scope @trusted pure nothrow @nogc
+    {
+        // If you have one, please let us know, we'd like to hear about it.
+        static assert(PublicKey.sizeof >= size_t.sizeof,
+                      "512 bits machines are not supported");
+
+        // The last bytes represent the checksum
+        return *(cast(size_t*) this.public_key[][$ - size_t.sizeof .. $].ptr);
+    }
+
     /***************************************************************************
 
         Orders payload data according to `public_key`, when `public_key`s are
@@ -87,6 +98,12 @@ public struct RegistryPayload
     bool opEquals (in RegistryPayload other) const nothrow @safe
     {
         return this.data == other.data;
+    }
+
+    /// Required when `opEquals` is implemented
+    public size_t toHash () const scope @safe pure nothrow @nogc
+    {
+        return this.data.toHash();
     }
 
     /// Orders payload according to `data`
