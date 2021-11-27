@@ -826,9 +826,8 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    private void onSettleTxExternalized (in Transaction tx)
+    private void onSettleTxExternalized (in Transaction)
     {
-        // todo: assert this is the actual settlement transaction
         this.state = ChannelState.Closed;
         this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
             ErrorCode.None);
