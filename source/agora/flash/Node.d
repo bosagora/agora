@@ -1317,7 +1317,7 @@ public class FlashNode : FlashControlAPI
     }
 
     ///
-    public void waitChannelOpen (PublicKey reg_pk, /* in */ Hash chan_id)
+    public void waitChannelOpen (/* in */ Hash chan_id)
     {
         auto channel = chan_id in this.channels;
         assert(channel !is null);

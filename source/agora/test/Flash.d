@@ -82,7 +82,7 @@ public interface TestFlashAPI : FlashControlAPI
 
     /// Wait until the specified channel ID has been opened. The node must be
     /// part of this channel.
-    public void waitForChannelOpen (in PublicKey pk, in Hash chan_id);
+    public void waitForChannelOpen (in Hash chan_id);
 
     /// Wait until the specified channel update has been gossiped to this node
     public ChannelUpdate waitForChannelUpdate (in Hash chan_id,
@@ -258,9 +258,9 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    public override void waitForChannelOpen (in PublicKey pk, in Hash chan_id)
+    public override void waitForChannelOpen (in Hash chan_id)
     {
-        super.waitChannelOpen(pk, chan_id);
+        super.waitChannelOpen(chan_id);
     }
 
     ///
@@ -650,8 +650,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
@@ -729,8 +729,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
@@ -828,8 +828,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
@@ -918,8 +918,8 @@ unittest
     network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    alice.waitForChannelOpen(alice_charlie_chan_id);
+    charlie.waitForChannelOpen(alice_charlie_chan_id);
     network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
 
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -942,8 +942,8 @@ unittest
     network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
-    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    charlie.waitForChannelOpen(charlie_diego_chan_id);
+    diego.waitForChannelOpen(charlie_diego_chan_id);
     network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1056,8 +1056,8 @@ unittest
     network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    alice.waitForChannelOpen(alice_charlie_chan_id);
+    charlie.waitForChannelOpen(alice_charlie_chan_id);
     network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1079,8 +1079,8 @@ unittest
     network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
-    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    charlie.waitForChannelOpen(charlie_diego_chan_id);
+    diego.waitForChannelOpen(charlie_diego_chan_id);
     network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1102,8 +1102,8 @@ unittest
     network.expectTxExternalization(diego_alice_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, diego_alice_chan_id);
-    diego.waitForChannelOpen(WK.Keys.D.address, diego_alice_chan_id);
+    alice.waitForChannelOpen(diego_alice_chan_id);
+    diego.waitForChannelOpen(diego_alice_chan_id);
     network.listener.waitUntilChannelState(diego_alice_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1195,8 +1195,8 @@ unittest
     network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    alice.waitForChannelOpen(alice_charlie_chan_id);
+    charlie.waitForChannelOpen(alice_charlie_chan_id);
     network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1218,8 +1218,8 @@ unittest
     network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
-    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    charlie.waitForChannelOpen(charlie_diego_chan_id);
+    diego.waitForChannelOpen(charlie_diego_chan_id);
     network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     alice.waitForChannelDiscovery(charlie_diego_chan_id);  // also alice (so it can detect fees)
 
@@ -1271,8 +1271,8 @@ unittest
     network.expectTxExternalization(charlie_diego_chan_id_2);
 
     // wait for the parties to detect the funding tx
-    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id_2);
-    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id_2);
+    charlie.waitForChannelOpen(charlie_diego_chan_id_2);
+    diego.waitForChannelOpen(charlie_diego_chan_id_2);
     network.listener.waitUntilChannelState(charlie_diego_chan_id_2, ChannelState.Open);
 
     // check if info is different now
@@ -1401,8 +1401,8 @@ unittest
     network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    alice.waitForChannelOpen(alice_charlie_chan_id);
+    charlie.waitForChannelOpen(alice_charlie_chan_id);
     network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -1464,8 +1464,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
@@ -1611,8 +1611,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     // test what happens trying to open a new channel with the same funding tx
@@ -1751,8 +1751,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     auto update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 0);
@@ -1888,8 +1888,8 @@ unittest
     network.expectTxExternalization(chan_id);
 
     // wait for the parties & listener to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, chan_id);
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
     network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
 
     /* do some off-chain transactions */
@@ -1993,8 +1993,8 @@ unittest
     network.expectTxExternalization(alice_charlie_chan_id);
 
     // wait for the parties to detect the funding tx
-    alice.waitForChannelOpen(WK.Keys.A.address, alice_charlie_chan_id);
-    charlie.waitForChannelOpen(WK.Keys.C.address, alice_charlie_chan_id);
+    alice.waitForChannelOpen(alice_charlie_chan_id);
+    charlie.waitForChannelOpen(alice_charlie_chan_id);
     network.listener.waitUntilChannelState(alice_charlie_chan_id, ChannelState.Open);
 
     /+++++++++++++++++++++++++++++++++++++++++++++/
@@ -2017,8 +2017,8 @@ unittest
     network.expectTxExternalization(charlie_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    charlie.waitForChannelOpen(WK.Keys.C.address, charlie_diego_chan_id);
-    diego.waitForChannelOpen(WK.Keys.D.address, charlie_diego_chan_id);
+    charlie.waitForChannelOpen(charlie_diego_chan_id);
+    diego.waitForChannelOpen(charlie_diego_chan_id);
     network.listener.waitUntilChannelState(charlie_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
@@ -2040,8 +2040,8 @@ unittest
     network.expectTxExternalization(eomer_diego_chan_id);
 
     // wait for the parties to detect the funding tx
-    eomer.waitForChannelOpen(WK.Keys.E.address, eomer_diego_chan_id);
-    diego.waitForChannelOpen(WK.Keys.D.address, eomer_diego_chan_id);
+    eomer.waitForChannelOpen(eomer_diego_chan_id);
+    diego.waitForChannelOpen(eomer_diego_chan_id);
     network.listener.waitUntilChannelState(eomer_diego_chan_id, ChannelState.Open);
     /+++++++++++++++++++++++++++++++++++++++++++++/
 
