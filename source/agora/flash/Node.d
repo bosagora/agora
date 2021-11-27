@@ -1381,8 +1381,8 @@ public class FlashNode : FlashControlAPI
         Amount total_amount;
         Height use_lock_height;
         Point[] cur_shared_secrets;
-        auto packet = createOnionPacket(invoice.payment_hash, invoice.amount,
-            path, total_amount, use_lock_height, cur_shared_secrets);
+        auto packet = createOnionPacket(invoice.amount, path, total_amount,
+            use_lock_height, cur_shared_secrets);
         this.shared_secrets[invoice.payment_hash] = cur_shared_secrets.reverse;
         this.payment_path[invoice.payment_hash] = path;
         this.invoices[invoice.payment_hash] = invoice;

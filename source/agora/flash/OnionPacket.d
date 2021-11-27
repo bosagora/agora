@@ -145,7 +145,6 @@ public enum MaxPathLength = 20;
     back to its expected fixed length size.
 
     Params:
-        payment_hash = the payment hash to use
         lock_height = the initial lock height
         amount = the amount for the payment
         path = the individual hops (including destination hop)
@@ -159,9 +158,9 @@ public enum MaxPathLength = 20;
 
 *******************************************************************************/
 
-public OnionPacket createOnionPacket (in Hash payment_hash,
-    in Amount amount, in Hop[] path, out Amount total_amount,
-    out Height use_lock_height, out Point[] shared_secrets) @safe
+public OnionPacket createOnionPacket (in Amount amount, in Hop[] path,
+    out Amount total_amount, out Height use_lock_height,
+    out Point[] shared_secrets) @safe
 {
     assert(path.length >= 1 && path.length <= MaxPathLength);
 
@@ -239,7 +238,7 @@ unittest
     Amount total_amount;
     Height use_lock_height;
     Point[] shared_secrets;
-    auto packet = createOnionPacket(hashFull(42), Amount(1000),
+    auto packet = createOnionPacket(Amount(1000),
         hops, total_amount, use_lock_height, shared_secrets);
     assert(total_amount == Amount(2000));
     assert(use_lock_height == 4);
