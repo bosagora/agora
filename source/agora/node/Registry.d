@@ -518,7 +518,7 @@ unittest
 private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
 {
     SOA soa;
-    soa.mname = Domain(format("ns1.%s", name.value));
+    soa.mname = Domain(zone.primary);
     soa.rname = Domain(zone.email.value.replace('@', '.'));
     soa.serial = serial;
     // Casts are safe as the values are validated during config parsing
