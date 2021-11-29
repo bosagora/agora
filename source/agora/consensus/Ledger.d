@@ -275,7 +275,7 @@ public class Ledger
             block = the block to add
 
         Returns:
-            true if the block was accepted
+            an error message if the block is not accepted, otherwise null
 
     ***************************************************************************/
 
@@ -806,7 +806,7 @@ public class Ledger
             block = the block to check
 
         Returns:
-            the error message if block validation failed, otherwise null
+            an error message if the block validation failed, otherwise null
 
     ***************************************************************************/
 
