@@ -478,19 +478,27 @@ public class NetworkManager
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
         node.client.address.each!(address => this.connection_tasks.remove(address));
-        if (node.isValidator())
-            this.required_peers.remove(node.utxo);
-
         if (this.tryMerge(node) || this.peerLimitReached())
             return;
 
-        if (node.isValidator())
-            log.info("Found new Validator: {} (UTXO: {}, key: {})", node.client.address, node.utxo, node.key);
-        else
-            log.info("Found new FullNode: {}", node.client.address);
+        if (!node.client.address.any!(addr => addr == Address.init))
+        {
+            this.peers.insertBack(node);
+            this.discovery_task.add(node.client);
 
-        this.peers.insertBack(node);
-        this.discovery_task.add(node.client);
+            if (node.isValidator())
+            {
+                log.info("Found new Validator: {} (UTXO: {}, key: {})", node.client.address, node.utxo, node.key);
+                this.required_peers.remove(node.utxo);
+            }
+            else
+                log.info("Found new FullNode: {}", node.client.address);
+        }
+        else // unidentified connection that we can not merge, just use it for a single shot of address discovery
+        {
+            auto node_info = node.client.getNodeInfo();
+            this.addAddresses(node_info.addresses);
+        }
     }
 
     ///

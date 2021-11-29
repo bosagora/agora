@@ -587,16 +587,21 @@ public class NetworkClient
     }
 
     /// Merge connections of incoming client to this
-    public void merge (scope ref NetworkClient incoming)
+    public bool merge (scope ref NetworkClient incoming)
     {
         import std.range;
+        assert(incoming.api.length == 1);
 
-        if (!this.tryMergeRPC(incoming))
-            foreach(api, address; zip(incoming.api, incoming.address))
-            {
-                this.api ~= api;
-                this.address ~= address;
-            }
+        if (this.tryMergeRPC(incoming))
+            return true;
+
+        if (incoming.address[0] != Address.init)
+        {
+            this.api ~= incoming.api[0];
+            this.address ~= incoming.address[0];
+            return true;
+        }
+        return false;
     }
 
     /// Try to merge an incoming RPC connection to an existing one if possible
@@ -604,7 +609,6 @@ public class NetworkClient
     {
         import agora.network.RPC;
 
-        assert(incoming.api.length == 1);
         RPCClient!(agora.api.Validator.API) incoming_peer =
             cast (RPCClient!(agora.api.Validator.API)) incoming.api[0];
         if (incoming_peer is null)
@@ -614,9 +618,8 @@ public class NetworkClient
         if (rpc_idx < 0)
             return false;
         auto existing_rpc = cast (RPCClient!(agora.api.Validator.API)) this.api[rpc_idx];
+        assert(this.address[rpc_idx] != Address.init);
         existing_rpc.merge(incoming_peer);
-        if (this.address[rpc_idx] == Address.init)
-            this.address[rpc_idx] = incoming.address[0];
         return true;
     }
 }
