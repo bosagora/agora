@@ -59,11 +59,10 @@ Nullable!(ReturnType!dg) retry (alias dg, T)(T waiter, long max_retries,
         {
             if (auto res = dg())
                 return RetType(res);
-            else
-                waiter.wait(duration);
         }
         catch (Exception ex)
             log.error("{}: {}", error_msg, ex.msg);
+        waiter.wait(duration);
     }
 
     return RetType();
