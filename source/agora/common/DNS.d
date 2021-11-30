@@ -611,8 +611,9 @@ public struct ResourceRecord
     public static ResourceRecord make (TYPE type : TYPE.A) (
         Domain name, uint ttl, uint[] ipv4...) @trusted
     {
-
-        auto rdata = (cast(ubyte*) ipv4.ptr)[0 .. uint.sizeof * ipv4.length].dup;
+        ubyte[] rdata;
+        foreach (ip; ipv4)
+            rdata ~= ip.serializeFull(CompactMode.No);
         return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, rdata);
     }
 
