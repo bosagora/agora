@@ -39,9 +39,13 @@ public enum SigHash : ubyte
     /// Modifier that can only be used with other SigHash types
     AnyoneCanPay = 1 << 3,
 
+    /// Omits signing an output
+    OmitSingle = 1 << 4,
+
     /// Combined types
     Single_AnyoneCanPay = Single | AnyoneCanPay,
     Single_NoInput_AnyoneCanPay = Single | NoInput | AnyoneCanPay,
+    OmitSingle_NoInput_AnyoneCanPay = OmitSingle | NoInput | AnyoneCanPay,
 }
 
 /// Contains the Signature and its associated SigHash
@@ -78,8 +82,26 @@ public struct SigPair
     public inout(ubyte)[] opSlice () inout pure nothrow @safe /*@nogc*/
     {
         return this.signature.toBlob()[] ~ ubyte(this.sig_hash)
-            ~ ((sig_hash & SigHash.Single) ? nativeToLittleEndian(this.output_idx).dup : []);
+            ~ (SigPair.usesOutputIdx(this.sig_hash) ? nativeToLittleEndian(this.output_idx).dup : null);
     }
+
+    /// Returns: If output_idx is valid
+    @property static bool usesOutputIdx (SigHash sig_hash) pure nothrow @safe @nogc
+    {
+        return (sig_hash & SigHash.Single) || (sig_hash & SigHash.OmitSingle);
+    }
+}
+
+unittest
+{
+    assert(SigPair.usesOutputIdx(SigHash.Single));
+    assert(SigPair.usesOutputIdx(SigHash.Single_AnyoneCanPay));
+    assert(SigPair.usesOutputIdx(SigHash.OmitSingle));
+    assert(SigPair.usesOutputIdx(SigHash.OmitSingle_NoInput_AnyoneCanPay));
+
+    assert(!SigPair.usesOutputIdx(SigHash.All));
+    assert(!SigPair.usesOutputIdx(SigHash.NoInput));
+    assert(!SigPair.usesOutputIdx(SigHash.AnyoneCanPay));
 }
 
 /*******************************************************************************
@@ -118,7 +140,7 @@ public string decodeSignature (const(ubyte)[] bytes,
     pop_count += SigHash.sizeof;
 
     ulong output_idx;
-    if (sig_hash & SigHash.Single)
+    if (SigPair.usesOutputIdx(sig_hash))
     {
         if (bytes.length < ulong.sizeof)
             return "Encoded signature does not have output idx";
@@ -179,7 +201,9 @@ private bool isValidSigHash (in SigHash sig_hash) pure nothrow @safe @nogc
     case SigHash.All:
     case SigHash.NoInput:
     case SigHash.Single:
+    case SigHash.OmitSingle:
     case SigHash.Single_AnyoneCanPay:
+    case SigHash.OmitSingle_NoInput_AnyoneCanPay:
     case SigHash.Single_NoInput_AnyoneCanPay:
         break;
 
@@ -202,6 +226,9 @@ unittest
     // this combo is unrecognized
     assert(!isValidSigHash(cast(SigHash)(SigHash.All | SigHash.NoInput)));
     assert(isValidSigHash(SigHash.Single_NoInput_AnyoneCanPay));
+    assert(isValidSigHash(SigHash.OmitSingle));
+    assert(isValidSigHash(SigHash.OmitSingle_NoInput_AnyoneCanPay));
+    assert(!isValidSigHash(cast(SigHash)(SigHash.OmitSingle | SigHash.Single)));
 }
 
 /*******************************************************************************
@@ -232,7 +259,7 @@ public Hash getChallenge (in Transaction tx, in SigHash sig_hash = SigHash.All,
     if (sig_hash != SigHash.All)
     {
         assert(input_idx < tx.inputs.length, "Input index is out of range");
-        if (sig_hash & SigHash.Single)
+        if (SigPair.usesOutputIdx(sig_hash))
             assert(output_idx < tx.outputs.length, "Output index is out of range");
     }
 
@@ -258,6 +285,15 @@ public Hash getChallenge (in Transaction tx, in SigHash sig_hash = SigHash.All,
         dup.outputs = dup.outputs[output_idx .. output_idx + 1];
         return hashMulti(dup, sig_hash);
     case SigHash.All:
+        return hashMulti(dup, sig_hash);
+    // sign all inputs and all outputs but one
+    case SigHash.OmitSingle:
+        dup.outputs = dup.outputs[0..output_idx] ~ dup.outputs[output_idx + 1..$]; // blank out matching output
+        return hashMulti(dup, sig_hash);
+    // sign no inputs and all outputs but one
+    case SigHash.OmitSingle_NoInput_AnyoneCanPay:
+        dup.inputs = null;
+        dup.outputs = dup.outputs[0..output_idx] ~ dup.outputs[output_idx + 1..$]; // blank out matching output
         return hashMulti(dup, sig_hash);
     case SigHash.AnyoneCanPay:
         assert(0);
@@ -356,5 +392,48 @@ unittest
         // change signed input, challenge should hold
         tx.inputs[0] = Input.init;
         assert(challenge_idx_0 == getChallenge(tx, SigHash.Single_NoInput_AnyoneCanPay, 0, 0));
+    }
+
+    // SigHash.OmitSingle
+    {
+        auto tx = Transaction([Input(hashFull(1)), Input(hashFull(2))],
+            [Output(Amount(1), PublicKey.init), Output(Amount(2), PublicKey.init)], Height(10));
+        auto challenge_idx_0 = getChallenge(tx, SigHash.OmitSingle, 0, 0);
+
+        // cannot add a new input
+        tx.inputs ~= Input(hashFull(0));
+        assert(challenge_idx_0 != getChallenge(tx, SigHash.OmitSingle, 0, 0));
+        // revert
+        tx.inputs = tx.inputs[0 .. $ - 1];
+
+        // cannot change an input
+        tx.inputs[0] = Input(hashFull(0));
+        assert(challenge_idx_0 != getChallenge(tx, SigHash.OmitSingle, 0, 0));
+        // revert
+        tx.inputs[0] = Input(hashFull(1));
+
+        // cannot change signed output
+        tx.outputs[1].value = Amount(3);
+        assert(challenge_idx_0 != getChallenge(tx, SigHash.OmitSingle, 0, 0));
+        // revert
+        tx.outputs[1].value = Amount(2);
+
+        // can change omitted output
+        tx.outputs[0].value = Amount(3);
+        assert(challenge_idx_0 == getChallenge(tx, SigHash.OmitSingle, 0, 0));
+
+        // cannot add a new output
+        tx.outputs ~= Output.init;
+        assert(challenge_idx_0 != getChallenge(tx, SigHash.OmitSingle, 0, 0));
+    }
+
+    // SigHash.OmitSingle | SigHash.NoInput | SigHash.AnyoneCanPay
+    {
+        auto tx = Transaction([Input(hashFull(1)), Input(hashFull(2))], [Output(Amount(1), PublicKey.init)], Height(10));
+        auto challenge_idx_0 = getChallenge(tx, SigHash.OmitSingle_NoInput_AnyoneCanPay, 0, 0);
+
+        // change signed input, challenge should hold
+        tx.inputs[0] = Input.init;
+        assert(challenge_idx_0 == getChallenge(tx, SigHash.OmitSingle_NoInput_AnyoneCanPay, 0, 0));
     }
 }
