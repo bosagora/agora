@@ -1657,7 +1657,6 @@ version (unittest)
 {
     import agora.consensus.PreImage;
     import agora.node.Config;
-    version (unittest) import agora.test.Base;
     import core.stdc.time : time;
 
     /// A `Ledger` with sensible defaults for `unittest` blocks
