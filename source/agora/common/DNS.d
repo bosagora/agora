@@ -611,8 +611,9 @@ public struct ResourceRecord
     public static ResourceRecord make (TYPE type : TYPE.A) (
         Domain name, uint ttl, uint[] ipv4...) @trusted
     {
+
         auto rdata = (cast(ubyte*) ipv4.ptr)[0 .. uint.sizeof * ipv4.length].dup;
-        return ResourceRecord(name, TYPE.CNAME, CLASS.IN, ttl, rdata);
+        return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, rdata);
     }
 
     /// A domain name to which this resource record pertains.
