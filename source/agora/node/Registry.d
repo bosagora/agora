@@ -840,7 +840,7 @@ private struct ZoneData
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
-        TypedPayload payload = this.get(public_key);
+        TypedPayload payload = this.get(public_key, question.qtype);
         // We are authoritative, so we can set `NameError`
         if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
             return Header.RCode.NameError;
@@ -858,12 +858,15 @@ private struct ZoneData
            public_key = the public key that was used to register
                          the network addresses
 
+           type = the type of the record that was requested, default is `ALL`
+
         Returns:
-            TypedPayload of name registry associated with `public_key`
+            TypedPayload with type `type` of name registry associated with
+            `public_key`. All records are returned when `type` is `ALL`
 
     ***************************************************************************/
 
-    public TypedPayload get (PublicKey public_key) @trusted
+    public TypedPayload get (PublicKey public_key, QTYPE type = QTYPE.ALL) @trusted
     {
         auto results = this.db.execute(this.query_payload, public_key);
 
@@ -872,6 +875,13 @@ private struct ZoneData
 
         // Address loop consumes data, gather following first
         const TYPE node_type = to!TYPE(results.front["type"].as!ushort);
+
+        // Check query type; QTYPE is superset of TYPE, casting is OK
+        // RFC#1034 : Section 3.6.2
+        if (node_type != TYPE.CNAME
+            && type != QTYPE.ALL && type != cast(QTYPE) node_type)
+            return TypedPayload.init;
+
         const ulong sequence = results.front["sequence"].as!ulong;
         const Signature signature = Signature.fromString(results.front["signature"].as!string);
         const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
