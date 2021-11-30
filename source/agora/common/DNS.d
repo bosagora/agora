@@ -167,6 +167,19 @@ public struct SOA
     /// The unsigned 32 bit minimum TTL field that should be
     /// exported with any RR from this zone.
     public uint minimum;
+
+    /// Support for network serialization
+    public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
+    {
+        return T(Domain.fromBinary!(typeof(T.mname))(ctx),
+            Domain.fromBinary!(typeof(T.rname))(ctx),
+            deserializeFull!(uint)(&ctx.read, ctx.options),
+            deserializeFull!(int)(&ctx.read, ctx.options),
+            deserializeFull!(int)(&ctx.read, ctx.options),
+            deserializeFull!(int)(&ctx.read, ctx.options),
+            deserializeFull!(uint)(&ctx.read, ctx.options),
+        );
+    }
 }
 
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
@@ -336,8 +349,11 @@ public struct Message
         auto allRRs = this.answers.chain(this.authorities).chain(this.additionals);
         foreach (const ref a; allRRs)
         {
-            size += (a.name.value.length + 1 + TYPE.sizeof + CLASS.sizeof +
-                     uint.sizeof + ushort.sizeof + a.rdata.length);
+            () @trusted
+            {
+                size += (a.name.value.length + 1 + TYPE.sizeof + CLASS.sizeof +
+                    uint.sizeof + ushort.sizeof + a.rdata.binary.length);
+            } ();
         }
 
         return size;
@@ -588,33 +604,31 @@ public struct Question
 public struct ResourceRecord
 {
     /// Make a record of the given type
-    public static ResourceRecord make (TYPE type) (Domain name, uint ttl, ubyte[] rdata)
+    public static ResourceRecord make (TYPE type) (Domain name, uint ttl,
+        ubyte[] rdata) @safe
     {
-        return ResourceRecord(name, type, CLASS.IN, ttl, rdata);
+        return ResourceRecord(name, type, CLASS.IN, ttl, RDATA(rdata));
     }
 
     /// Make a record of SOA type
     public static ResourceRecord make (TYPE type : TYPE.SOA) (
-        Domain name, uint ttl, in SOA soa)
+        Domain name, uint ttl, SOA soa) @safe
     {
-        return ResourceRecord(name, TYPE.SOA, CLASS.IN, ttl, soa.serializeFull(CompactMode.No));
+        return ResourceRecord(name, TYPE.SOA, CLASS.IN, ttl, RDATA(soa));
     }
 
     /// Make a record of CNAME type
     public static ResourceRecord make (TYPE type : TYPE.CNAME) (
-        Domain name, uint ttl, in Domain cname)
+        Domain name, uint ttl, Domain cname) @safe
     {
-        return ResourceRecord(name, TYPE.CNAME, CLASS.IN, ttl, cname.serializeFull());
+        return ResourceRecord(name, TYPE.CNAME, CLASS.IN, ttl, RDATA(cname));
     }
 
     /// Make a record of A type
     public static ResourceRecord make (TYPE type : TYPE.A) (
-        Domain name, uint ttl, uint[] ipv4...) @trusted
+        Domain name, uint ttl, uint[] ipv4...) @safe
     {
-        ubyte[] rdata;
-        foreach (ip; ipv4)
-            rdata ~= ip.serializeFull(CompactMode.No);
-        return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, rdata);
+        return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, RDATA(ipv4));
     }
 
     /// A domain name to which this resource record pertains.
@@ -645,7 +659,36 @@ public struct ResourceRecord
     /// of the resource record.
     /// For example, the if the TYPE is A and the CLASS is IN,
     /// the RDATA field is a 4 octet ARPA Internet address.
-    public ubyte[] rdata;
+    public union RDATA
+    {
+        ubyte[] binary;
+        uint[] a;
+        Domain cname;
+        SOA soa;
+
+        public this (uint[] val) @safe
+        {
+            this.a = val;
+        }
+
+        public this (Domain val) @safe
+        {
+            this.cname = val;
+        }
+
+        public this (SOA val) @safe
+        {
+            this.soa = val;
+        }
+
+        public void toString (scope void delegate(scope const(char)[]) @safe sink)
+        const scope @trusted
+        {
+            formattedWrite!"%u byte(s)"(sink, this.binary.length);
+        }
+    }
+
+    public RDATA rdata;
 
     /// Support for network serialization
     public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
@@ -656,10 +699,33 @@ public struct ResourceRecord
             deserializeFull!(CLASS)(&ctx.read, ctx.options),
             deserializeFull!(uint)(&ctx.read, ctx.options),
         );
+
         auto rdlength = deserializeFull!(ushort)(&ctx.read, ctx.options);
+
+        ResourceRecord.RDATA tmp_data;
+        () @trusted
+        {
+            switch (tmp.type)
+            {
+                case TYPE.A:
+                    foreach (_; 0 .. (rdlength / uint.sizeof))
+                       tmp_data.a ~= deserializeFull!(uint)(&ctx.read, ctx.options);
+                    break;
+                case TYPE.CNAME:
+                    tmp_data.cname = Domain.fromBinary!(Domain)(ctx);
+                    break;
+                case TYPE.SOA:
+                    tmp_data.soa = SOA.fromBinary!(SOA)(ctx);
+                    break;
+                default:
+                    tmp_data.binary = cast(ubyte[]) ctx.read(rdlength);
+                    break;
+            }
+        } ();
+
         return T(
             tmp.name, tmp.type, tmp.class_, tmp.ttl,
-            () @trusted { return cast(typeof(T.rdata)) ctx.read(rdlength); }(),
+            () @trusted { return cast(typeof(T.rdata)) tmp_data; } ()
         );
     }
 
@@ -670,12 +736,51 @@ public struct ResourceRecord
         serializePart(this.type, dg, CompactMode.No);
         serializePart(this.class_, dg, CompactMode.No);
         serializePart(this.ttl, dg, CompactMode.No);
-        ensure(this.rdata.length < ushort.max,
+        auto rdata = () @trusted
+        {
+            switch (this.type)
+            {
+                case TYPE.A:
+                    ubyte[] tmp_ip;
+                    foreach (ip; this.rdata.a)
+                        tmp_ip ~= ip.serializeFull(CompactMode.No);
+                    return tmp_ip;
+                case TYPE.CNAME:
+                    return this.rdata.cname.serializeFull();
+                case TYPE.SOA:
+                    return this.rdata.soa.serializeFull(CompactMode.No);
+                default:
+                    return this.rdata.binary;
+            }
+        } ();
+        ensure(rdata.length < ushort.max,
                "Field `DNS.ResourceRecord.rdata` should exceed data limit: {}",
-               this.rdata.length);
-        serializePart!ushort(this.rdata.length % ushort.max, dg, CompactMode.No);
-        dg(this.rdata);
+               rdata.length);
+        serializePart!ushort(rdata.length % ushort.max, dg, CompactMode.No);
+        dg(rdata);
     }
+}
+
+unittest
+{
+    import std.socket : InternetAddress;
+
+    string test_ip = "127.0.0.1";
+    auto ips = new uint[](1);
+    ips[0] = InternetAddress.parse(test_ip);
+
+    ResourceRecord a_rr = ResourceRecord.make!(TYPE.A)(Domain("localhost"), 0, ips);
+    Message msg;
+    msg.answers ~= a_rr;
+    msg.fill(msg.header);
+
+    ubyte[] serialized_msg = msg.serializeFull(CompactMode.No);
+    Message deserialized_msg = serialized_msg.deserializeFull!(Message);
+    assert(deserialized_msg.answers.length == 1);
+    ResourceRecord msg_a_rr = deserialized_msg.answers[0];
+
+    assert(msg_a_rr.type == TYPE.A);
+    assert(msg_a_rr.rdata.a[0] == ips[0]);
 }
 
 /// The OPT opcode is a special ResourceRecord with its own semantic
