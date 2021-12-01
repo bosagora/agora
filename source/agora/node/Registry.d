@@ -83,6 +83,13 @@ public class NameRegistry: NameRegistryAPI
     ];
 
     ///
+    private ResourceRecord[] nsRecords = [
+        ResourceRecord(
+            Domain("testnet.bosagora.io"), TYPE.NS, CLASS.IN, 600,
+            ResourceRecord.RDATA(Domain("ns1.bosagora.io."))),
+    ];
+
+    ///
     public this (string realm, RegistryConfig config, Ledger ledger,
         ManagedDatabase cache_db)
     {
