@@ -122,6 +122,9 @@ public void printSendTxHelp (ref string[] outputs)
                   (1 line will be one entry)
         api_maker = A delegate that makes an API object based on the address
 
+    Result:
+        0 if successful, otherwise 1
+
 *******************************************************************************/
 
 public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_maker)
