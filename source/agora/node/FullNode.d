@@ -906,7 +906,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public override void postTransaction (in Transaction tx) @safe
+    public override TransactionResult postTransaction (in Transaction tx) @safe
     {
         this.recordReq("transaction");
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
@@ -915,7 +915,7 @@ public class FullNode : API
         if (this.hasTransactionHash(hashFull(tx)))
         {
             this.tx_stats.increaseMetricBy!"agora_transactions_duplicate_total"(1);
-            return;
+            return TransactionResult(TransactionResult.Status.Duplicated);
         }
 
         if (auto reason = this.ledger.acceptTransaction(tx, config.node.double_spent_threshold_pct,
@@ -923,13 +923,15 @@ public class FullNode : API
         {
             this.log.info("Rejected tx: {}, txHash: {}, Reason: {}.", prettify(tx), hashFull(tx), reason);
             this.tx_stats.increaseMetricBy!"agora_transactions_rejected_total"(1);
-            return;
+            return TransactionResult(TransactionResult.Status.Rejected, reason);
         }
 
         log.info("Accepted tx: {}, txHash: {}", prettify(tx), hashFull(tx));
         this.tx_stats.increaseMetricBy!"agora_transactions_accepted_total"(1);
         this.transaction_relayer.addTransaction(tx);
         this.pushTransaction(tx);
+
+        return TransactionResult(TransactionResult.Status.Accepted);
     }
 
     /// GET: /has_transaction_hash

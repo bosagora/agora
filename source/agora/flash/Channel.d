@@ -63,7 +63,7 @@ mixin AddLogger!();
 public class Channel
 {
     /// Used to publish funding / trigger / update / settlement txs to blockchain
-    public const void delegate (in Transaction) txPublisher;
+    public const TransactionResult delegate (in Transaction) txPublisher;
 
     /// Database
     private ManagedDatabase db;
@@ -151,7 +151,7 @@ public class Channel
     public this (FlashConfig flash_conf, ChannelConfig conf, in KeyPair kp,
         PrivateNonce priv_nonce, PublicNonce peer_nonce, FlashAPI peer,
         Engine engine, ITaskManager taskman,
-        void delegate (in Transaction) txPublisher,
+        TransactionResult delegate (in Transaction) txPublisher,
         PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
@@ -204,7 +204,7 @@ public class Channel
 
     public this (in PublicKey key, Hash chan_id, FlashConfig flash_conf, Engine engine,
         ITaskManager taskman,
-        void delegate (in Transaction) txPublisher,
+        TransactionResult delegate (in Transaction) txPublisher,
         PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
@@ -258,7 +258,7 @@ public class Channel
         FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
             Address address = Address.init) getFlashClient,
         Engine engine, ITaskManager taskman,
-        void delegate (in Transaction) txPublisher, PaymentRouter paymentRouter,
+        TransactionResult delegate (in Transaction) txPublisher, PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
         OnPaymentComplete onPaymentComplete,
         OnUpdateComplete onUpdateComplete,

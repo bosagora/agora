@@ -1644,13 +1644,15 @@ private mixin template TestNodeMixin ()
 
     ***************************************************************************/
 
-    public override void postTransaction (in Transaction tx) @safe
+    public override TransactionResult postTransaction (in Transaction tx) @safe
     {
-        super.postTransaction(tx);
+        auto result = super.postTransaction(tx);
         const tx_hash = tx.hashFull();
         if (tx_hash !in this.accepted_txs &&
             this.pool.hasTransactionHash(tx_hash))
             this.accepted_txs.put(tx_hash);
+
+        return result;
     }
 
     /***************************************************************************
