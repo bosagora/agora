@@ -79,7 +79,7 @@ public class NameRegistry: NameRegistryAPI
 
     /// Supported DNS query types
     private immutable QTYPE[] supported_query_types = [
-        QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA,
+        QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA, QTYPE.NS,
     ];
 
     ///
@@ -686,6 +686,9 @@ private struct ZoneData
     /// The SOA record
     public SOA soa;
 
+    /// The NS record
+    public ResourceRecord nsRecord;
+
     ///
     private ZoneConfig config;
 
@@ -737,6 +740,12 @@ private struct ZoneData
         this.log.info("Registry is {} DNS server for zone '{}'",
             serverType(this.config.authoritative, this.config.primary.set),
             this.root);
+
+        if (this.config.primary.set)
+            // FIXME: Make it a Domain in the config
+            this.nsRecord = ResourceRecord.make!(TYPE.NS)(root, 600, Domain.fromString(this.config.primary.value));
+        else
+            this.nsRecord = ResourceRecord.init;
 
         this.query_count = format("SELECT COUNT(*) FROM registry_%s_utxo",
             zone_name);
@@ -849,6 +858,13 @@ private struct ZoneData
             else
                 reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
 
+            return Header.RCode.NoError;
+        }
+        else if (q.qtype == QTYPE.NS)
+        {
+            if (!matches)
+                return Header.RCode.Refused;
+            reply.answers ~= this.nsRecord;
             return Header.RCode.NoError;
         }
         else if (!matches)

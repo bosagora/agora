@@ -617,6 +617,13 @@ public struct ResourceRecord
         return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, RDATA(ipv4));
     }
 
+    /// Make a record of NS type
+    public static ResourceRecord make (TYPE type : TYPE.NS) (
+        Domain name, uint ttl, Domain server) @safe
+    {
+        return ResourceRecord(name, TYPE.NS, CLASS.IN, ttl, RDATA(server));
+    }
+
     /// Make a record of URI type
     public static ResourceRecord make (TYPE type : TYPE.URI) (
         Domain name, uint ttl, Address uri, ushort prio = 0, ushort weight = 0)
@@ -818,7 +825,7 @@ public struct ResourceRecord
                     foreach (ip; this.rdata.a)
                         tmp_ip ~= ip.serializeFull(CompactMode.No);
                     return tmp_ip;
-                case TYPE.CNAME:
+                case TYPE.CNAME, TYPE.NS:
                     return this.rdata.name.serializeFull();
                 case TYPE.SOA:
                     return this.rdata.soa.serializeFull(CompactMode.No);
