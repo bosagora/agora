@@ -286,6 +286,9 @@ public interface API
         API:
             POST /transaction
 
+        Params:
+            tx = a Transaction being posted
+
     ***************************************************************************/
 
     public void postTransaction (in Transaction tx);
