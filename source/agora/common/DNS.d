@@ -182,21 +182,6 @@ public struct SOA
     }
 }
 
-/// https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
-public struct RDATA
-{
-    /// A 32 bit Internet address.
-    public uint address;
-}
-
-/// https://datatracker.ietf.org/doc/html/rfc3596#section-2.2
-public struct AAAARDATA
-{
-    /// A 128 bit IPv6 address is encoded in the data portion of an AAAA
-    /// resource record in network byte order (high-order byte first).
-    public ulong[2] address;
-}
-
 /// https://datatracker.ietf.org/doc/html/rfc2782
 public struct SRVRDATA
 {
@@ -661,10 +646,24 @@ public struct ResourceRecord
     /// the RDATA field is a 4 octet ARPA Internet address.
     public union RDATA
     {
-        ubyte[] binary;
-        uint[] a;
-        Domain cname;
-        SOA soa;
+        /// The binary data, if the `TYPE` is not known / implemented
+        public ubyte[] binary;
+
+        /// An `A` record, meaning one or more IPv4 addresses
+        /// https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
+        public uint[] a;
+
+        /// A 128 bit IPv6 address is encoded in the data portion of an AAAA
+        /// resource record in network byte order (high-order byte first).
+        /// https://datatracker.ietf.org/doc/html/rfc3596#section-2.2
+        public ulong[2] aaaa;
+
+        /// A domain name: this is used by various record types,
+        /// for example as CNAME, MX, NS...
+        public Domain name;
+
+        /// The content of an SOA section
+        public SOA soa;
 
         public this (uint[] val) @safe
         {
@@ -673,7 +672,7 @@ public struct ResourceRecord
 
         public this (Domain val) @safe
         {
-            this.cname = val;
+            this.name = val;
         }
 
         public this (SOA val) @safe
@@ -712,7 +711,7 @@ public struct ResourceRecord
                        tmp_data.a ~= deserializeFull!(uint)(&ctx.read, ctx.options);
                     break;
                 case TYPE.CNAME:
-                    tmp_data.cname = Domain.fromBinary!(Domain)(ctx);
+                    tmp_data.name = Domain.fromBinary!(Domain)(ctx);
                     break;
                 case TYPE.SOA:
                     tmp_data.soa = SOA.fromBinary!(SOA)(ctx);
@@ -746,7 +745,7 @@ public struct ResourceRecord
                         tmp_ip ~= ip.serializeFull(CompactMode.No);
                     return tmp_ip;
                 case TYPE.CNAME:
-                    return this.rdata.cname.serializeFull();
+                    return this.rdata.name.serializeFull();
                 case TYPE.SOA:
                     return this.rdata.soa.serializeFull(CompactMode.No);
                 default:
