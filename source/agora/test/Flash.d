@@ -312,12 +312,17 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    private void postTransaction (in Transaction tx)
+    private TransactionResult postTransaction (in Transaction tx)
     {
         if (this.allow_publish)
-            this.agora_node.postTransaction(tx);
+        {
+            return this.agora_node.postTransaction(tx);
+        }
         else
+        {
             log.info("Skipping publishing {}", tx);
+            return TransactionResult(TransactionResult.Status.Accepted);
+        }
     }
 }
 

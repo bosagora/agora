@@ -204,7 +204,9 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     auto node = api_maker(op.address);
 
     // send the transaction
-    node.postTransaction(tx);
+    auto result = node.postTransaction(tx);
+    if (result.status != TransactionResult.Status.Accepted)
+        return 1;
 
     return 0;
 }
@@ -221,9 +223,10 @@ unittest
         /// Contains the transaction cache
         private Transaction[Hash] tx_cache;
 
-        public override void postTransaction (in Transaction tx) @safe
+        public override TransactionResult postTransaction (in Transaction tx) @safe
         {
             this.tx_cache[hashFull(tx)] = tx.serializeFull().deserializeFull!Transaction;
+            return TransactionResult(TransactionResult.Status.Accepted);
         }
 
         /// GET: /hasTransactionHash

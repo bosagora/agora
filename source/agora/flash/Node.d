@@ -173,7 +173,7 @@ public class FlashNode : FlashControlAPI
     private ManagedDatabase db;
 
     /// Callback for sending transactions to the network
-    protected void delegate (in Transaction tx) postTransaction;
+    protected TransactionResult delegate (in Transaction tx) postTransaction;
 
     /// Callback for fetching a block
     protected const(Block) delegate (ulong _height) @safe getBlock;
@@ -198,7 +198,8 @@ public class FlashNode : FlashControlAPI
     ***************************************************************************/
 
     public this (FlashConfig conf, string db_path, Hash genesis_hash,
-        Engine engine, ITaskManager taskman, void delegate (in Transaction tx) postTransaction,
+        Engine engine, ITaskManager taskman,
+        TransactionResult delegate (in Transaction tx) postTransaction,
         const(Block) delegate (ulong _height) @safe getBlock,
         NameRegistryAPI delegate (string address, Duration timeout) getNameRegistryClient)
     {

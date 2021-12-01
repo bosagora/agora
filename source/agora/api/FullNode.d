@@ -289,9 +289,12 @@ public interface API
         Params:
             tx = a Transaction being posted
 
+        Returns:
+            a TransactionResult object, the result of posting the transaction
+
     ***************************************************************************/
 
-    public void postTransaction (in Transaction tx);
+    public TransactionResult postTransaction (in Transaction tx);
 
     /***************************************************************************
 

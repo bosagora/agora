@@ -105,10 +105,12 @@ unittest
                 this.stateDB, &this.onAcceptedBlock);
         }
 
-        public override void postTransaction (in Transaction tx) @safe
+        public override TransactionResult postTransaction (in Transaction tx) @safe
         {
             // Dont accept any incoming TXs
             log.info("Picky node ignoring TX {}", tx);
+
+            return TransactionResult(TransactionResult.Status.Accepted); 
         }
     }
 
