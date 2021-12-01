@@ -377,6 +377,20 @@ unittest
     assert(expected2 == tx_freeze_hash, expected2.toString());
 }
 
+/// The information of the result of posting a transaction
+public struct TransactionResult
+{
+    public enum Status : uint
+    {
+        Accepted,
+        Duplicated,
+        Rejected,
+    }
+    
+    Status status;
+    string reason;
+}
+
 /*******************************************************************************
 
     Get sum of `Output`
