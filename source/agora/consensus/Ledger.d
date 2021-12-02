@@ -1337,6 +1337,27 @@ public class Ledger
         return this.utxo_set.peekUTXO(utxo, value);
     }
 
+    /// Returns: UTXOs for validator active at the given height
+    public UTXO[Hash] getEnrolledUTXOs (in Height height) @safe nothrow
+    {
+        UTXO[Hash] utxos;
+        Hash[] keys;
+        if (this.enroll_man.validator_set.getEnrolledUTXOs(height, keys))
+            foreach (key; keys)
+            {
+                UTXO val;
+                assert(this.peekUTXO(key, val));
+                utxos[key] = val;
+            }
+        return utxos;
+    }
+
+    /// Ditto
+    public UTXO[Hash] getEnrolledUTXOs () @safe nothrow
+    {
+        return this.getEnrolledUTXOs(this.getBlockHeight() + 1);
+    }
+
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated

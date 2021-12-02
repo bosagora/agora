@@ -484,7 +484,7 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
-        this.network.discover(this.registry);
+        this.network.discover(this.registry, this.ledger.getEnrolledUTXOs());
     }
 
     /***************************************************************************
