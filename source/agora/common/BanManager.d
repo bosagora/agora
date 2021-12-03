@@ -119,7 +119,8 @@ public class BanManager
         {
             // create banned if required
             this.db.execute("CREATE TABLE IF NOT EXISTS banned " ~
-                "(url TEXT PRIMARY KEY, until INTEGER NOT NULL)");
+                "(url TEXT PRIMARY KEY, until INTEGER NOT NULL, " ~
+                "CHECK (until >= 0))");
 
             // create whitelisted if required
             this.db.execute("CREATE TABLE IF NOT EXISTS whitelisted " ~

@@ -50,7 +50,8 @@ package class UTXODB
         this.db.execute("CREATE TABLE IF NOT EXISTS utxo " ~
             "(hash TEXT NOT NULL PRIMARY KEY, unlock_height INTEGER NOT NULL, " ~
             "type INTEGER NOT NULL, amount INTEGER NOT NULL, " ~
-            "locktype INTEGER NOT NULL, lock BLOB NOT NULL)");
+            "locktype INTEGER NOT NULL, lock BLOB NOT NULL, " ~
+            "CHECK (unlock_height >= 0 AND amount >= 0))");
     }
 
     /***************************************************************************

@@ -108,7 +108,8 @@ public class TransactionPool
 
         // create the table if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS tx_pool " ~
-            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, fee INTEGER NOT NULL)");
+            "(key TEXT PRIMARY KEY, val BLOB NOT NULL, fee INTEGER NOT NULL, " ~
+            "CHECK (fee >= 0))");
 
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
