@@ -212,7 +212,8 @@ public class FeeManager
     private void initialize ()
     {
         this.db.execute("CREATE TABLE IF NOT EXISTS block_fees " ~
-            "(height INTEGER, fee INTEGER, data_fee INTEGER)");
+            "(height INTEGER, fee INTEGER, data_fee INTEGER, " ~
+            "CHECK (height >= 0 AND fee >= 0 AND data_fee >=0))");
 
         auto results = this.db.execute("SELECT height, fee, data_fee FROM block_fees");
 

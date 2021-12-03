@@ -90,12 +90,13 @@ public class ValidatorSet
             "(key TEXT, public_key TEXT, " ~
             "enrolled_height INTEGER, " ~
             "nonce TEXT, slashed_height INTEGER, stake INTEGER,
-            PRIMARY KEY (key, enrolled_height))");
+            PRIMARY KEY (key, enrolled_height), " ~
+            "CHECK (enrolled_height >= 0 AND slashed_height >= 0 AND stake >=0))");
 
         // create the table for preimages if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS preimages " ~
             "(key TEXT, height INTEGER, preimage TEXT,
-            PRIMARY KEY (key))");
+            PRIMARY KEY (key), CHECK (height >= 0))");
     }
 
     /***************************************************************************

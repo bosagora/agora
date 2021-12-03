@@ -62,7 +62,7 @@ public class EnrollmentPool
         // create the table for enrollment pool if it doesn't exist yet
         this.db.execute("CREATE TABLE IF NOT EXISTS enrollment_pool " ~
             "(key TEXT PRIMARY KEY, val BLOB NOT NULL, " ~
-            "avail_height INTEGER)");
+            "avail_height INTEGER, CHECK (avail_height >= 0))");
     }
 
     /***************************************************************************
