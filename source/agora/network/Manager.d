@@ -1239,7 +1239,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public NetworkClient getNetworkClient (ITaskManager taskman,
+    protected NetworkClient getNetworkClient (ITaskManager taskman,
         BanManager banman, Address address, agora.api.Validator.API api,
         Duration retry, size_t max_retries)
     {
