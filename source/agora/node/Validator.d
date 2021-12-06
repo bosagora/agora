@@ -452,7 +452,9 @@ public class Validator : FullNode, API
     public override void postBlockSignature (ValidatorBlockSig block_sig) @safe
     {
         this.recordReq("postBlockSignature");
-        this.nominator.receiveBlockSignature(block_sig);
+        const new_header = this.nominator.receiveBlockSignature(block_sig);
+        if (new_header != BlockHeader.init)
+            this.pushBlockHeader(new_header);
     }
 
     /// Returns: The Logger to use for this class

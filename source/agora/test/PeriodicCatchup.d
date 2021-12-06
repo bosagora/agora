@@ -18,6 +18,7 @@ module agora.test.PeriodicCatchup;
 version (unittest):
 
 import agora.common.BitMask;
+import agora.consensus.data.Block;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.protocol.Nominator;
 import agora.crypto.Schnorr: Signature;
@@ -57,10 +58,11 @@ private extern(C++) class DoesNotExternalizeBlockNominator : Nominator
         }
     }
 
-    extern(D) public override void receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
+    extern(D) public override const(BlockHeader) receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
         if (block_sig.height == 1)
             log.trace("Ignore signatures for block 1 to test signature catchup");
+        return BlockHeader.init;
     }
 }
 

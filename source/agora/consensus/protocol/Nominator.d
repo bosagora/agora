@@ -690,27 +690,31 @@ extern(D):
         Params:
             block_sig = the structure with details of the block signature
 
+        Returns:
+            Updated block header
+
     ***************************************************************************/
 
-    public void receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
+    public const(BlockHeader) receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
         const cur_height = this.ledger.getBlockHeight();
         log.trace("Received BLOCK SIG {} from node {} for block {}",
                     block_sig.signature, block_sig.utxo, block_sig.height);
         if (block_sig.height > cur_height)
-            return;
+            return BlockHeader.init;
 
         const block = this.ledger.getBlocksFrom(Height(block_sig.height)).front;
         if (!this.collectBlockSignature(block_sig, block.hashFull()))
-            return;
+            return BlockHeader.init;
         const signed_block = this.updateMultiSignature(block);
         if (signed_block == Block.init)
         {
             log.trace("Failed to add signature {} for block {} utxo {}",
                 block_sig.signature, block_sig.height, block_sig.utxo);
-            return;
+            return BlockHeader.init;
         }
         this.ledger.updateBlockMultiSig(signed_block.header);
+        return signed_block.header;
     }
 
     /***************************************************************************

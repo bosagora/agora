@@ -1214,7 +1214,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    private void pushBlockHeader (const BlockHeader header) @trusted
+    protected void pushBlockHeader (const BlockHeader header) @trusted
     {
         foreach (address, handler; this.block_header_handlers)
         {
