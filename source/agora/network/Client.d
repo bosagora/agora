@@ -104,7 +104,7 @@ public class NetworkClient
         No,
 
         ///
-        Yes
+        Yes,
     }
 
     /// Address of the node we're interacting with (for logging)
