@@ -26,7 +26,7 @@ immutable BuildImg = [ "docker", "build",
                        "--build-arg", `DUB_OPTIONS=-b cov`,
                        "--build-arg", `AGORA_STANDALONE=true`,
                        "-t", "agora", RootPath, ];
-immutable TestContainer = [ "docker", "run", "--rm", "agora", "--help", ];
+immutable TestContainer = [ "docker", "run", "--rm", "-e", "TRACY_NO_INVARIANT_CHECK=1", "agora", "--help", ];
 immutable DockerCompose = [ "docker-compose", "-f", ComposeFile, "--env-file", EnvFile ];
 immutable DockerComposeUp = DockerCompose ~ [ "up", "--abort-on-container-exit",
     "--scale", "fuzzer=0",];
