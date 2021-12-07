@@ -42,9 +42,11 @@ registry:
   port: 5335
   validators:
     authoritative: true
+    primary: localhost
     email: no@no.no
   flash:
     authoritative: true
+    primary: localhost
     email: no@no.no
 
 admin:
