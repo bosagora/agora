@@ -100,8 +100,8 @@ void ___tracy_emit_zone_name (TracyCZoneCtx ctx, const(char)* txt, size_t size);
 void ___tracy_emit_zone_color (TracyCZoneCtx ctx, uint color);
 void ___tracy_emit_zone_value (TracyCZoneCtx ctx, ulong value);
 
-void ___tracy_emit_gpu_zone_begin_alloc (const ___tracy_gpu_zone_begin_data, int active);
-void ___tracy_emit_gpu_zone_end (const ___tracy_gpu_zone_end_data data, int active);
+void ___tracy_emit_gpu_zone_begin_alloc (const ___tracy_gpu_zone_begin_data);
+void ___tracy_emit_gpu_zone_end (const ___tracy_gpu_zone_end_data data);
 void ___tracy_emit_gpu_time (const ___tracy_gpu_time_data);
 void ___tracy_emit_gpu_new_context (const ___tracy_gpu_new_context_data);
 void ___tracy_emit_gpu_context_name (const ___tracy_gpu_context_name_data);
