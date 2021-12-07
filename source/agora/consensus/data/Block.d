@@ -127,6 +127,31 @@ public struct BlockHeader
 
     /***************************************************************************
 
+        Returns:
+            a copy of this block header with a different signature and
+            validators bitmask
+
+        Params:
+            signature = new signature
+            validators = mask to indicate who has signed
+
+    ***************************************************************************/
+
+    public BlockHeader updateSignature (in Signature signature,
+        BitMask validators) const @safe
+    {
+        return BlockHeader(
+                this.prev_block,
+                this.merkle_root,
+                signature,
+                validators,
+                this.height,
+                this.preimages.dup,
+                this.enrollments.dup);
+    }
+
+    /***************************************************************************
+
         Verify that the provided signature is a valid signature for `pubkey`
 
         This function only checks that `sig` is valid for `pubkey`.
@@ -242,7 +267,8 @@ public struct Block
     /***************************************************************************
 
         Returns:
-            a copy of this block with a different signature and validators bitmask
+            a copy of this block with an updated header with different signature
+            and validators bitmask
 
         Params:
             signature = new signature
@@ -253,15 +279,25 @@ public struct Block
     public Block updateSignature (in Signature signature, BitMask validators)
         const @safe
     {
+        return updateHeader(this.header.updateSignature(signature, validators));
+    }
+
+    /***************************************************************************
+
+        Returns:
+            a copy of this block with an updated header
+
+        Params:
+            signature = new signature
+            validators = mask to indicate who has signed
+
+    ***************************************************************************/
+
+    public Block updateHeader (BlockHeader header)
+        const @safe
+    {
         return Block(
-            BlockHeader(
-                this.header.prev_block,
-                this.header.merkle_root,
-                signature,
-                validators,
-                this.header.height,
-                this.header.preimages.dup,
-                this.header.enrollments.dup),
+            header,
             // TODO: Optimize this by using dup for txs also
             this.txs.map!(tx =>
                 tx.serializeFull.deserializeFull!Transaction).array,
