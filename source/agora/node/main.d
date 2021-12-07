@@ -44,11 +44,6 @@ import std.typecons : Nullable;
 import core.atomic;
 import core.exception;
 
-static this ()
-{
-    ___tracy_init_thread();
-}
-
 /// Application entry point
 private int main (string[] args)
 {
