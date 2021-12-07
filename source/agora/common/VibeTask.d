@@ -86,4 +86,10 @@ private final class VibedTimer : ITimer
     {
         this.timer.rearm(timeout, periodic);
     }
+
+    /// Ditto
+    public override bool pending () @safe nothrow
+    {
+        return this.timer.pending();
+    }
 }

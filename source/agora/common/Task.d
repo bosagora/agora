@@ -140,4 +140,15 @@ public interface ITimer
     ***************************************************************************/
 
     void rearm (Duration timeout, bool periodic) nothrow;
+
+    /***************************************************************************
+
+        See_also: https://vibed.org/api/vibe.core.core/Timer.pending
+
+        Returns:
+            True if timer is armed and pending to fire
+
+    ***************************************************************************/
+
+    public bool pending () @safe nothrow;
 }
