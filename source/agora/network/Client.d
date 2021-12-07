@@ -107,8 +107,15 @@ public class NetworkClient
         Yes,
     }
 
-    /// Address of the node we're interacting with (for logging)
-    public Address[] address;
+    ///
+    private struct ConnectionInfo
+    {
+        /// Address of the node we're interacting with (for logging)
+        public Address address;
+
+        /// API client to the node
+        private API api;
+    }
 
     /// Caller's retry delay
     /// TODO: This should be done at the client object level,
@@ -124,8 +131,8 @@ public class NetworkClient
     /// Ban manager
     private BanManager banman;
 
-    /// API client to the node
-    private API[] api;
+    /// The list of clients that we can communicate with
+    package ConnectionInfo[] connections;
 
     /// Reusable exception
     private Exception exception;
@@ -164,8 +171,7 @@ public class NetworkClient
         this.log = Log.lookup(__MODULE__);
         this.taskman = taskman;
         this.banman = banman;
-        this.address = [address];
-        this.api = [api];
+        this.connections ~= ConnectionInfo(address, api);
         this.retry_delay = retry;
         this.max_retries = max_retries;
         this.exception = new Exception(
@@ -201,33 +207,34 @@ public class NetworkClient
         switch (event.type) with (GossipType)
         {
         case Tx:
-            this.attemptRequest!(API.postTransaction, Throw.No)(this.api,
-                event.tx);
+            this.attemptRequest!(API.postTransaction, Throw.No)(event.tx);
             break;
 
         case Envelope:
-            this.attemptRequest!(API.postEnvelope, Throw.No)(this.api,
-                event.envelope);
+            this.attemptRequest!(API.postEnvelope, Throw.No)(event.envelope);
             break;
 
         case ValidatorBlockSig:
-            this.attemptRequest!(API.postBlockSignature, Throw.No)(this.api,
-                event.block_sig);
+            this.attemptRequest!(API.postBlockSignature, Throw.No)(event.block_sig);
             break;
 
         case Enrollment:
-            this.attemptRequest!(API.postEnrollment, Throw.No)(this.api,
-                event.enrollment);
+            this.attemptRequest!(API.postEnrollment, Throw.No)(event.enrollment);
             break;
 
         case Preimage:
-            this.attemptRequest!(API.postPreimage, Throw.No)(this.api,
-                event.preimage);
+            this.attemptRequest!(API.postPreimage, Throw.No)(event.preimage);
             break;
 
         default:
             assert(0);
         }
+    }
+
+    /// Convenience function to access all known addresses for this client
+    public auto addresses () const scope @safe pure nothrow @nogc
+    {
+        return this.connections.map!(c => c.address);
     }
 
     /***************************************************************************
@@ -261,14 +268,13 @@ public class NetworkClient
 
     public Identity getPublicKey (PublicKey key = PublicKey.init) @trusted
     {
-        return this.attemptRequest!(API.getPublicKey, Throw.Yes)(this.api,
-            key);
+        return this.attemptRequest!(API.getPublicKey, Throw.Yes)(key);
     }
 
     ///
     public Identity handshake (PublicKey key) @trusted
     {
-        return this.attemptRequest!(API.handshake, Throw.Yes)(this.api, key);
+        return this.attemptRequest!(API.handshake, Throw.Yes)(key);
     }
 
     /***************************************************************************
@@ -286,7 +292,7 @@ public class NetworkClient
 
     public NodeInfo getNodeInfo ()
     {
-        return this.attemptRequest!(API.getNodeInfo, Throw.Yes)(this.api);
+        return this.attemptRequest!(API.getNodeInfo, Throw.Yes)();
     }
 
     /***************************************************************************
@@ -300,7 +306,7 @@ public class NetworkClient
 
     public TimePoint getLocalTime () @trusted nothrow
     {
-        return this.attemptRequest!(API.getLocalTime, Throw.No)(this.api);
+        return this.attemptRequest!(API.getLocalTime, Throw.No)();
     }
 
     /***************************************************************************
@@ -366,7 +372,7 @@ public class NetworkClient
 
     public ulong getBlockHeight ()
     {
-        return this.attemptRequest!(API.getBlockHeight, Throw.Yes)(this.api);
+        return this.attemptRequest!(API.getBlockHeight, Throw.Yes)();
     }
 
     /***************************************************************************
@@ -389,8 +395,7 @@ public class NetworkClient
     public const(Block)[] getBlocksFrom (ulong height, uint max_blocks)
         nothrow
     {
-        return this.attemptRequest!(API.getBlocksFrom, Throw.No)(this.api,
-            height, max_blocks);
+        return this.attemptRequest!(API.getBlocksFrom, Throw.No)(height, max_blocks);
     }
 
     /***************************************************************************
@@ -444,8 +449,7 @@ public class NetworkClient
 
     public Transaction[] getTransactions (Set!Hash tx_hashes) @trusted nothrow
     {
-        return this.attemptRequest!(API.getTransactions, Throw.No)(this.api,
-            tx_hashes);
+        return this.attemptRequest!(API.getTransactions, Throw.No)(tx_hashes);
     }
 
     /***************************************************************************
@@ -460,8 +464,7 @@ public class NetworkClient
 
     public BlockHeader[] getBlockHeaders (Set!ulong heights) @trusted nothrow
     {
-        return this.attemptRequest!(API.getBlockHeaders, Throw.No)(this.api,
-            heights);
+        return this.attemptRequest!(API.getBlockHeaders, Throw.No)(heights);
     }
 
     /***************************************************************************
@@ -481,8 +484,7 @@ public class NetworkClient
 
     public PreImageInfo[] getPreimagesFrom (ulong start_height) nothrow
     {
-        return this.attemptRequest!(API.getPreimagesFrom, Throw.No)(this.api,
-            start_height);
+        return this.attemptRequest!(API.getPreimagesFrom, Throw.No)(start_height);
     }
 
     /***************************************************************************
@@ -505,7 +507,7 @@ public class NetworkClient
 
     public PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @trusted nothrow
     {
-        return this.attemptRequest!(API.getPreimages, Throw.No)(this.api, enroll_keys);
+        return this.attemptRequest!(API.getPreimages, Throw.No)(enroll_keys);
     }
 
     /***************************************************************************
@@ -520,9 +522,7 @@ public class NetworkClient
             DT = whether to throw an exception if the request failed after
                  all attempted retries
             log_level = the logging level to use for logging failed requests
-            API = deduced
             Args = deduced
-            api = the interface to communicate with a node
             args = the arguments to the API endpoint
 
         Returns:
@@ -531,20 +531,20 @@ public class NetworkClient
     ***************************************************************************/
 
     protected auto attemptRequest (alias endpoint, Throw DT,
-        LogLevel log_level = LogLevel.Trace, API, Args...)
-        (API[] apis, auto ref Args args, string file = __FILE__, uint line = __LINE__)
+        LogLevel log_level = LogLevel.Trace, Args...)
+        (auto ref Args args, string file = __FILE__, uint line = __LINE__)
     {
         import std.traits;
         enum name = __traits(identifier, endpoint);
         alias T = ReturnType!(__traits(getMember, API, name));
 
         foreach (idx; 0 .. this.max_retries)
-        foreach (api_idx, api; apis)
-        if (!this.banman.isBanned(this.address[api_idx]))
+        foreach (conn; this.connections)
+        if (!this.banman.isBanned(conn.address))
         {
             try
             {
-                return __traits(getMember, api, name)(args);
+                return __traits(getMember, conn.api, name)(args);
             }
             catch (Exception ex)
             {
@@ -560,7 +560,7 @@ public class NetworkClient
                 try
                 {
                     this.log.format(log_level, "Request '{}' to {} failed: {}",
-                        name, this.address[api_idx], ex.message);
+                        name, conn.address, ex.message);
                 }
                 catch (Exception ex)
                 {
@@ -573,8 +573,8 @@ public class NetworkClient
         }
 
         // request considered failed after max retries reached
-        foreach (addr; this.address)
-            this.banman.onFailedRequest(addr);
+        foreach (const ref conn; this.connections)
+            this.banman.onFailedRequest(conn.address);
 
         static if (DT == Throw.Yes)
         {
@@ -590,15 +590,14 @@ public class NetworkClient
     public bool merge (scope ref NetworkClient incoming)
     {
         import std.range;
-        assert(incoming.api.length == 1);
+        assert(incoming.connections.length == 1);
 
         if (this.tryMergeRPC(incoming))
             return true;
 
-        if (incoming.address[0] != Address.init)
+        if (incoming.connections[0].address != Address.init)
         {
-            this.api ~= incoming.api[0];
-            this.address ~= incoming.address[0];
+            this.connections ~= incoming.connections[0];
             return true;
         }
         return false;
@@ -607,19 +606,22 @@ public class NetworkClient
     /// Try to merge an incoming RPC connection to an existing one if possible
     public bool tryMergeRPC (scope ref NetworkClient incoming)
     {
+        import std.typecons;
         import agora.network.RPC;
 
-        RPCClient!(agora.api.Validator.API) incoming_peer =
-            cast (RPCClient!(agora.api.Validator.API)) incoming.api[0];
+        alias ValidatorClient = RPCClient!(agora.api.Validator.API);
+
+        auto incoming_peer = cast(ValidatorClient) incoming.connections[0].api;
         if (incoming_peer is null)
             return false;
 
-        auto rpc_idx = this.api.countUntil!(api => (cast (RPCClient!(agora.api.Validator.API)) api) !is null);
-        if (rpc_idx < 0)
+        auto range = this.connections
+            .map!(c => tuple!("address", "api")(c.address, cast(ValidatorClient) c.api))
+            .filter!(conn => conn.api !is null);
+        if (range.empty)
             return false;
-        auto existing_rpc = cast (RPCClient!(agora.api.Validator.API)) this.api[rpc_idx];
-        assert(this.address[rpc_idx] != Address.init);
-        existing_rpc.merge(incoming_peer);
+        assert(range.front.address != Address.init);
+        range.front.api.merge(incoming_peer);
         return true;
     }
 }
