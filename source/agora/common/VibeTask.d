@@ -51,6 +51,13 @@ public final class VibeTaskManager : ITaskManager
         assert(dg !is null, "Cannot call this delegate if null");
         return new VibedTimer(vibe.core.core.setTimer(timeout, dg, periodic));
     }
+
+    ///
+    public override ITimer createTimer (void delegate() nothrow @safe dg) nothrow
+    {
+        assert(dg !is null, "Cannot call this delegate if null");
+        return new VibedTimer(vibe.core.core.createTimer(dg));
+    }
 }
 
 /*******************************************************************************

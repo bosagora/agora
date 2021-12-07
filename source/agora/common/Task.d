@@ -91,6 +91,22 @@ public abstract class ITaskManager
 
     /***************************************************************************
 
+        Creates a new timer without arming it
+
+        See_Also: https://vibed.org/api/vibe.core.core/createTimer
+
+        Params:
+            dg = This delegate will be called when the timer fires
+
+        Returns:
+            An `ITimer` interface with the ability to control the timer
+
+    ***************************************************************************/
+
+    public ITimer createTimer (void delegate() nothrow @safe dg) nothrow;
+
+    /***************************************************************************
+
         Log out the request stats
 
     ***************************************************************************/

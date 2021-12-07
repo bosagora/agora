@@ -478,6 +478,25 @@ public class LocalRestTaskManager : ITaskManager
         return new LocalRestTimer(geod24.LocalRest.setTimer(timeout, dg,
             periodic));
     }
+
+    /***************************************************************************
+
+        Creates a new timer without arming it
+
+        Works similarly to Vibe.d's `createTimer`.
+
+        Params:
+            dg = This delegate will be called when the timer fires
+
+        Returns:
+            An `ITimer` interface with the ability to control the timer
+
+    ***************************************************************************/
+
+    public override ITimer createTimer (void delegate() nothrow @safe dg) nothrow
+    {
+        return new LocalRestTimer(geod24.LocalRest.createTimer(dg));
+    }
 }
 
 /*******************************************************************************
