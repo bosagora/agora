@@ -43,7 +43,6 @@ struct ___tracy_c_zone_context
 // This struct, as visible to user, is immutable, so treat it as if const was declared here.
 alias TracyCZoneCtx = const(___tracy_c_zone_context);
 
-void ___tracy_init_thread ();
 ulong ___tracy_alloc_srcloc (uint line, const(char)* source, size_t sourceSz,
                              const(char)* function_, size_t functionSz);
 ulong ___tracy_alloc_srcloc_name (uint line, const(char)* source, size_t sourceSz,
