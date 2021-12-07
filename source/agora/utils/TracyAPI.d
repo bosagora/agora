@@ -83,6 +83,11 @@ void ___tracy_emit_memory_alloc_callstack (const(void)* ptr, size_t size, int de
 void ___tracy_emit_memory_free (const(void)* ptr, int secure);
 void ___tracy_emit_memory_free_callstack (const(void)* ptr, int depth, int secure);
 
+void ___tracy_emit_memory_alloc_named (const void* ptr, size_t size, int secure, const char* name);
+void ___tracy_emit_memory_alloc_callstack_named (const void* ptr, size_t size, int depth, int secure, const char* name);
+void ___tracy_emit_memory_free_named (const void* ptr, int secure, const char* name);
+void ___tracy_emit_memory_free_callstack_named (const void* ptr, int depth, int secure, const char* name);
+
 void ___tracy_emit_message (const(char)* txt, size_t size, int callstack);
 void ___tracy_emit_messageL (const(char)* txt, int callstack);
 void ___tracy_emit_messageC (const(char)* txt, size_t size, uint color, int callstack);
