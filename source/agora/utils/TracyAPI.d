@@ -39,6 +39,42 @@ struct ___tracy_c_zone_context
     int active; // TODO: C int
 }
 
+struct ___tracy_gpu_time_data
+{
+    long   gpuTime; // int64_t
+    ushort queryId;
+    ubyte context;
+}
+
+struct ___tracy_gpu_zone_begin_data
+{
+    ulong srcloc;  // uint64_t
+    ushort queryId;
+    ubyte context;
+}
+
+struct ___tracy_gpu_zone_end_data
+{
+    ushort queryId;
+    ubyte context;
+}
+
+struct ___tracy_gpu_new_context_data
+{
+    long  gpuTime; // int64_t
+    float period;
+    ubyte context;
+    ubyte flags;
+    ubyte type;
+}
+
+struct ___tracy_gpu_context_name_data
+{
+    ubyte context;
+    const char* name;
+    ushort len;
+}
+
 // Some containers don't support storing const types.
 // This struct, as visible to user, is immutable, so treat it as if const was declared here.
 alias TracyCZoneCtx = const(___tracy_c_zone_context);
@@ -63,6 +99,12 @@ void ___tracy_emit_zone_text (TracyCZoneCtx ctx, const(char)* txt, size_t size);
 void ___tracy_emit_zone_name (TracyCZoneCtx ctx, const(char)* txt, size_t size);
 void ___tracy_emit_zone_color (TracyCZoneCtx ctx, uint color);
 void ___tracy_emit_zone_value (TracyCZoneCtx ctx, ulong value);
+
+void ___tracy_emit_gpu_zone_begin_alloc (const ___tracy_gpu_zone_begin_data, int active);
+void ___tracy_emit_gpu_zone_end (const ___tracy_gpu_zone_end_data data, int active);
+void ___tracy_emit_gpu_time (const ___tracy_gpu_time_data);
+void ___tracy_emit_gpu_new_context (const ___tracy_gpu_new_context_data);
+void ___tracy_emit_gpu_context_name (const ___tracy_gpu_context_name_data);
 
 // #if defined TRACY_HAS_CALLSTACK && defined TRACY_CALLSTACK
 // #  define TracyCZone( ctx, active ) static const struct ___tracy_source_location_data TracyConcat(__tracy_source_location,__LINE__) = { NULL, __FUNCTION__,  __FILE__, (uint)__LINE__, 0 }; TracyCZoneCtx ctx = ___tracy_emit_zone_begin_callstack( &TracyConcat(__tracy_source_location,__LINE__), TRACY_CALLSTACK, active);
