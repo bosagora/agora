@@ -527,6 +527,12 @@ private final class LocalRestTimer : ITimer
     {
         this.timer.rearm(timeout, periodic);
     }
+
+    /// Ditto
+    public override bool pending () @safe nothrow
+    {
+        return this.timer.pending();
+    }
 }
 
 /// We use a pair of (key, client) rather than a hashmap client[key],
