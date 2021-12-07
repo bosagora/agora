@@ -390,14 +390,7 @@ public class Validator : FullNode, API
         auto sig = this.nominator.signBlock(block);
         assert(node_validator_index < block.header.validators.count,
             format!"The validator index %s is invalid"(node_validator_index));
-        if (signed_validators[node_validator_index])
-        {
-            log.trace("This node's signature is already in the block signature");
-            // Gossip this signature as it may have been only shared via ballot signing
-            this.network.gossipBlockSignature(
-                ValidatorBlockSig(block.header.height, this_utxo, sig.R));
-        }
-        else
+        if (!signed_validators[node_validator_index])
         {
             if (this.nominator.safeToSign(block.header.height))
             {
