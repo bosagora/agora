@@ -80,12 +80,6 @@ public class NetworkManager
         /// Client
         NetworkClient client;
 
-        /// Convenience function to access the client's address
-        public const(Address[]) address () const scope @safe pure nothrow @nogc
-        {
-            return this.client.address;
-        }
-
         ///
         public bool isValidator () const scope @safe pure nothrow @nogc
         {
@@ -368,7 +362,8 @@ public class NetworkManager
                 }
                 finally
                 {
-                    if (!client.address.all!(addr => this.outer.banman.isBanned(addr)))
+                    if (!client.connections.all!(
+                            conn => this.outer.banman.isBanned(conn.address)))
                         this.clients.insertBack(client);
                 }
             }
@@ -477,22 +472,23 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
-        node.client.address.each!(address => this.connection_tasks.remove(address));
+        node.client.connections.each!(conn => this.connection_tasks.remove(conn.address));
         if (this.tryMerge(node) || this.peerLimitReached())
             return;
 
-        if (!node.client.address.any!(addr => addr == Address.init))
+        if (!node.client.connections.any!(conn => conn.address == Address.init))
         {
             this.peers.insertBack(node);
             this.discovery_task.add(node.client);
 
             if (node.isValidator())
             {
-                log.info("Found new Validator: {} (UTXO: {}, key: {})", node.client.address, node.utxo, node.key);
+                log.info("Found new Validator: {} (UTXO: {}, key: {})",
+                         node.client.addresses(), node.utxo, node.key);
                 this.required_peers.remove(node.utxo);
             }
             else
-                log.info("Found new FullNode: {}", node.client.address);
+                log.info("Found new FullNode: {}", node.client.addresses());
         }
         else // unidentified connection that we can not merge, just use it for a single shot of address discovery
         {
@@ -794,7 +790,7 @@ public class NetworkManager
 
     private bool shouldEstablishConnection (Address address) @safe
     {
-        auto existing_peer = this.peers[].find!(p => p.address.canFind(address));
+        auto existing_peer = this.peers[].find!(p => p.client.addresses.canFind(address));
         return !this.banman.isBanned(address) &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
@@ -943,7 +939,7 @@ public class NetworkManager
                 continue;  // this node does not have newer blocks than us
 
             log.info("Retrieving blocks [{}..{}] from {}..",
-                height, pair.height, pair.client.address);
+                height, pair.height, pair.client.addresses);
             const MaxBlocks = 1024;
             auto blocks = pair.client.getBlocksFrom(height, MaxBlocks);
             if (blocks.length == 0)
@@ -1108,7 +1104,7 @@ public class NetworkManager
         foreach (peer; this.peers)
             peer.client.shutdown();
         foreach (const ref peer; this.peers)
-        foreach (addr; peer.address.filter!(addr => addr != Address.init))
+        foreach (addr; peer.client.addresses.filter!(addr => addr != Address.init))
             this.cacheDB.execute(
                 "REPLACE INTO network_manager(address, utxo, pubkey) VALUES(?, ?, ?)",
                 addr, peer.utxo, peer.key);
@@ -1120,16 +1116,16 @@ public class NetworkManager
         return this.required_peers.length == 0 &&
             this.peers[].walkLength >= this.node_config.min_listeners &&
             this.validators().filter!(node =>
-                !node.client.address.all!(addr => this.banman.isBanned(addr))).count != 0;
+                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peers.length == 0 &&
             this.peers[].filter!(node =>
-                !node.client.address.all!(addr => this.banman.isBanned(addr))).count >= this.node_config.max_listeners &&
+                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count >= this.node_config.max_listeners &&
             this.validators().filter!(node =>
-                !node.client.address.all!(addr => this.banman.isBanned(addr))).count != 0;
+                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
 
     /// Returns: the list of node IPs this node is connected to
@@ -1352,7 +1348,7 @@ public class NetworkManager
     public void whitelist (Hash utxo)
     {
         this.peers[].filter!(p => p.utxo == utxo)
-            .each!(p => p.client.address.each!(addr => this.banman.whitelist(addr)));
+            .each!(p => p.client.addresses.each!(addr => this.banman.whitelist(addr)));
     }
 
     /***************************************************************************
@@ -1367,7 +1363,7 @@ public class NetworkManager
     public void unwhitelist (Hash utxo)
     {
         this.peers[].filter!(p => p.utxo == utxo)
-            .each!(p => p.client.address.each!(addr => this.banman.unwhitelist(addr)));
+            .each!(p => p.client.addresses.each!(addr => this.banman.unwhitelist(addr)));
     }
 
     ///
