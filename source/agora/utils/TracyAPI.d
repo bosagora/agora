@@ -193,3 +193,7 @@ alias TracyCAppInfo = ___tracy_emit_message_appinfo;
 // #  define TracyCMessageLS( txt, depth ) ___tracy_emit_messageL( txt, depth);
 // #  define TracyCMessageCS( txt, size, color, depth ) ___tracy_emit_messageC( txt, size, color, depth);
 // #  define TracyCMessageLCS( txt, color, depth ) ___tracy_emit_messageLC( txt, color, depth);
+
+/// This requires Tracy to be compiled with `TRACY_FIBERS`
+void ___tracy_fiber_enter (const char* fiber);
+void ___tracy_fiber_leave ();
