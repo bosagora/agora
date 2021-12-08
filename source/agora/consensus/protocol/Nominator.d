@@ -706,15 +706,9 @@ extern(D):
         const block = this.ledger.getBlocksFrom(Height(block_sig.height)).front;
         if (!this.collectBlockSignature(block_sig, block.hashFull()))
             return BlockHeader.init;
-        const signed_block = this.updateMultiSignature(block);
-        if (signed_block == Block.init)
-        {
-            log.trace("Failed to add signature {} for block {} utxo {}",
-                block_sig.signature, block_sig.height, block_sig.utxo);
-            return BlockHeader.init;
-        }
-        this.ledger.updateBlockMultiSig(signed_block.header);
-        return signed_block.header;
+        const updated_sig = this.updateMultiSignature(block.header);
+        this.ledger.updateBlockMultiSig(updated_sig);
+        return updated_sig;
     }
 
     /***************************************************************************
@@ -1000,7 +994,7 @@ extern(D):
             this.gossipBlockSignature(ValidatorBlockSig(height, self,
                 this.slot_sigs[height][self].R));
             this.ledger.addHeightAsExternalizing(height);
-            this.verifyBlock(this.updateMultiSignature(block));
+            this.verifyBlock(block.updateHeader(this.updateMultiSignature(block.header)));
         }
         catch (Exception exc)
         {
@@ -1034,36 +1028,46 @@ extern(D):
         this.network.gossipBlockSignature(block_sig);
     }
 
-    /// Were we active in this block (i.e. we are not catching up after being offline)
-    public bool safeToSign (in Height height)
-        nothrow
-    {
-        return !!(height in this.slot_sigs); // true if we were active in nomination during this block
-    }
+    /***************************************************************************
 
-    /// Create a combined Schnorr multisig and return the updated block
-    private Block updateMultiSignature (in Block block) @safe
-    {
-        const validators = this.ledger.getValidators(block.header.height);
+        Add missing block signatures to provided block header if known
 
-        if (block.header.height !in this.slot_sigs)
+        Params:
+            header = header to be updated
+
+        Returns:
+            the updated header or `BlockHeader.init`` if we have no signatures
+
+    ***************************************************************************/
+
+    public const(BlockHeader) updateMultiSignature (in BlockHeader header) @safe
+    {
+        const validators = this.ledger.getValidators(header.height);
+
+        if (header.height !in this.slot_sigs)
         {
-            log.warn("No signatures at height {}", block.header.height);
-            return Block.init;
+            log.warn("No known signatures at height {}", header.height);
+            return header;
         }
-        const Signature[Hash] block_sigs = this.slot_sigs[block.header.height];
+        const Signature[Hash] block_sigs = this.slot_sigs[header.height];
 
         auto validator_mask = BitMask(validators.length);
+        auto sigs_to_add = [ header.signature ];
         foreach (idx, const ref val; validators)
         {
-            if (val.utxo() in block_sigs)
+            if (header.validators[idx]) // in the header already
                 validator_mask[idx] = true;
+            else if (val.utxo() in block_sigs) // We have the missing signature
+            {
+                validator_mask[idx] = true;
+                sigs_to_add ~= block_sigs[val.utxo()];
+            }
         }
-        Block signed_block = block.updateSignature(multiSigCombine(block_sigs.byValue),
+        const signed_header = header.updateSignature(multiSigCombine(sigs_to_add),
             validator_mask);
         log.trace("Updated block signature for block {}, mask: {}",
-                block.header.height, validator_mask);
-        return signed_block;
+                header.height, validator_mask);
+        return signed_header;
     }
 
     /***************************************************************************

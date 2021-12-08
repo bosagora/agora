@@ -70,6 +70,12 @@ public struct BlockHeader
         return rng.empty ? Hash.init : rng.reduce!((a, b) => hashMulti(a, b));
     }
 
+    /// Create a mutable clone
+    public BlockHeader clone () const @safe
+    {
+        return this.serializeFull.deserializeFull!BlockHeader;
+    }
+
     /// Enrolled validators
     public Enrollment[] enrollments;
 
@@ -293,11 +299,11 @@ public struct Block
 
     ***************************************************************************/
 
-    public Block updateHeader (BlockHeader header)
+    public Block updateHeader (in BlockHeader header)
         const @safe
     {
         return Block(
-            header,
+            header.clone(),
             // TODO: Optimize this by using dup for txs also
             this.txs.map!(tx =>
                 tx.serializeFull.deserializeFull!Transaction).array,

@@ -513,12 +513,29 @@ public class FullNode : API
         this.network.getUnknownTXs(this.ledger);
         try
         {
-            this.network.getMissingBlockSigs(this.ledger).each!(h => pushBlockHeader(h));
+            this.network.getMissingBlockSigs(this.ledger, &this.acceptHeader);
         }
         catch (Exception e)
         {
             log.error("Error sending updated block headers:{}", e);
         }
+    }
+
+    /***************************************************************************
+
+        Push the header to upstream servers.
+
+        For Validators this is overridden so that it also adds missing
+        signatures it has stored.
+
+        Params:
+            header = the block header to distribute
+
+    ***************************************************************************/
+
+    protected void acceptHeader (const(BlockHeader) header) @safe
+    {
+        this.pushBlockHeader(header);
     }
 
     /***************************************************************************
