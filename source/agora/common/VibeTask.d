@@ -30,8 +30,10 @@ public final class VibeTaskManager : ITaskManager
         vibe.core.core.runTask(dg);
     }
 
+    @safe nothrow:
+
     ///
-    public override void wait (Duration dur) nothrow
+    public override void wait (Duration dur)
     {
         try
             vibe.core.core.sleep(dur);
@@ -44,8 +46,11 @@ public final class VibeTaskManager : ITaskManager
     }
 
     ///
-    public override ITimer setTimer (Duration timeout, void delegate() dg,
-        Periodic periodic = Periodic.No) nothrow
+    alias setTimer = typeof(super).setTimer;
+
+    ///
+    public override ITimer setTimer (Duration timeout, SafeTimerHandler dg,
+        Periodic periodic = Periodic.No)
     {
         this.tasks_started++;
         assert(dg !is null, "Cannot call this delegate if null");
@@ -53,7 +58,10 @@ public final class VibeTaskManager : ITaskManager
     }
 
     ///
-    public override ITimer createTimer (void delegate() nothrow @safe dg) nothrow
+    alias createTimer = typeof(super).createTimer;
+
+    ///
+    public override ITimer createTimer (SafeTimerHandler dg)
     {
         assert(dg !is null, "Cannot call this delegate if null");
         return new VibedTimer(vibe.core.core.createTimer(dg));
@@ -70,25 +78,27 @@ private final class VibedTimer : ITimer
 {
     private vibe.core.core.Timer timer;
 
-    public this (vibe.core.core.Timer timer) @safe nothrow
+    @safe nothrow:
+
+    public this (vibe.core.core.Timer timer)
     {
         this.timer = timer;
     }
 
     /// Ditto
-    public override void stop () @safe nothrow
+    public override void stop ()
     {
         this.timer.stop();
     }
 
     /// Ditto
-    public override void rearm (Duration timeout, bool periodic) nothrow
+    public override void rearm (Duration timeout, bool periodic)
     {
         this.timer.rearm(timeout, periodic);
     }
 
     /// Ditto
-    public override bool pending () @safe nothrow
+    public override bool pending ()
     {
         return this.timer.pending();
     }

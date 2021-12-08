@@ -38,6 +38,13 @@ public abstract class ITaskManager
     /// Logger used by this class
     protected Logger log;
 
+    /// Unsafe timer handler, these will be run in `trusted` and exceptions
+    /// inside the handler will be logged
+    protected alias UnsafeTimerHandler = void delegate();
+
+    /// Recommended handler delegate for timers
+    protected alias SafeTimerHandler = void delegate() nothrow @safe;
+
     ///
     public this () @trusted
     {
@@ -55,6 +62,24 @@ public abstract class ITaskManager
 
     public abstract void runTask (void delegate () nothrow dg) nothrow;
 
+    @safe nothrow:
+
+    /// Converts an unsafe timer handler to safe, `dg` will be executed in
+    /// `trusted` and exceptions happening inside the handler will be logged
+    private SafeTimerHandler toSafeHandler (UnsafeTimerHandler dg)
+    {
+        return (() @safe nothrow
+        {
+            () @trusted
+            {
+                try
+                    dg();
+                catch (Exception e)
+                    this.log.error("Timer handler caused an exception: {}", e.msg);
+            } ();
+        });
+    }
+
     /***************************************************************************
 
         Suspend the current task for the given duration
@@ -64,7 +89,7 @@ public abstract class ITaskManager
 
     ***************************************************************************/
 
-    public void wait (Duration dur) nothrow;
+    public void wait (Duration dur);
 
     /***************************************************************************
 
@@ -73,12 +98,16 @@ public abstract class ITaskManager
         The task will first run after the given `timeout`, and
         can either repeat or run only once (the default).
 
+        Currently non `@safe` and non `nothrow` handlers are allowed but not
+        recommended. It might be deprecated in the future.
+
         See_Also: https://vibed.org/api/vibe.core.core/setTimer
 
         Params:
             timeout = Determines the minimum amount of time that elapses before
                 the timer fires.
-            dg = This delegate will be called when the timer fires.
+            dg = This delegate will be called when the timer fires. It is recommended
+                to provide a `@safe` and `nothrow` handler.
             periodic = Specifies if the timer fires repeatedly or only once.
 
         Returns:
@@ -86,8 +115,15 @@ public abstract class ITaskManager
 
     ***************************************************************************/
 
-    public ITimer setTimer (Duration timeout, void delegate() dg,
-        Periodic periodic = Periodic.No) nothrow;
+    public ITimer setTimer (Duration timeout, SafeTimerHandler dg,
+        Periodic periodic = Periodic.No);
+
+    /// Ditto
+    public final ITimer setTimer (Duration timeout, UnsafeTimerHandler dg,
+        Periodic periodic = Periodic.No)
+    {
+        return setTimer(timeout, toSafeHandler(dg), periodic);
+    }
 
     /***************************************************************************
 
@@ -103,7 +139,13 @@ public abstract class ITaskManager
 
     ***************************************************************************/
 
-    public ITimer createTimer (void delegate() nothrow @safe dg) nothrow;
+    public ITimer createTimer (SafeTimerHandler dg);
+
+    /// Ditto
+    public final ITimer createTimer (UnsafeTimerHandler dg)
+    {
+        return createTimer(toSafeHandler(dg));
+    }
 
     /***************************************************************************
 
@@ -111,7 +153,7 @@ public abstract class ITaskManager
 
     ***************************************************************************/
 
-    public final void logStats () @safe nothrow
+    public final void logStats ()
     {
         log.info("Tasks started: {}", this.tasks_started);
     }
@@ -125,13 +167,15 @@ public abstract class ITaskManager
 
 public interface ITimer
 {
+    @safe nothrow:
+
     /***************************************************************************
 
         Stop or cancel this timer
 
     ***************************************************************************/
 
-    public void stop () @safe nothrow;
+    public void stop ();
 
     /***************************************************************************
 
@@ -139,7 +183,7 @@ public interface ITimer
 
     ***************************************************************************/
 
-    void rearm (Duration timeout, bool periodic) nothrow;
+    void rearm (Duration timeout, bool periodic);
 
     /***************************************************************************
 
@@ -150,5 +194,5 @@ public interface ITimer
 
     ***************************************************************************/
 
-    public bool pending () @safe nothrow;
+    public bool pending ();
 }
