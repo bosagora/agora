@@ -37,6 +37,8 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    env:
+      TRACY_NO_INVARIANT_CHECK: 1
     steps:
 
     # Checkout this repository and its submodules
