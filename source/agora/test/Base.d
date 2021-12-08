@@ -438,6 +438,7 @@ public class LocalRestTaskManager : ITaskManager
         geod24.LocalRest.runTask(dg);
     }
 
+    @safe nothrow:
     /***************************************************************************
 
         Suspend the current task for the given duration
@@ -447,7 +448,7 @@ public class LocalRestTaskManager : ITaskManager
 
     ***************************************************************************/
 
-    public override void wait (Duration dur) nothrow
+    public override void wait (Duration dur) @trusted
     {
         geod24.LocalRest.sleep(dur);
     }
@@ -470,9 +471,11 @@ public class LocalRestTaskManager : ITaskManager
            An `ITimer` interface with the ability to control the timer
 
     ***************************************************************************/
+    alias setTimer = typeof(super).setTimer;
 
-    public override ITimer setTimer (Duration timeout, void delegate() dg,
-        Periodic periodic = Periodic.No) nothrow
+    /// Ditto
+    public override ITimer setTimer (Duration timeout,
+        SafeTimerHandler dg, Periodic periodic = Periodic.No)
     {
         this.tasks_started++;
         return new LocalRestTimer(geod24.LocalRest.setTimer(timeout, dg,
@@ -492,8 +495,10 @@ public class LocalRestTaskManager : ITaskManager
             An `ITimer` interface with the ability to control the timer
 
     ***************************************************************************/
+    alias createTimer = typeof(super).createTimer;
 
-    public override ITimer createTimer (void delegate() nothrow @safe dg) nothrow
+    /// Ditto
+    public override ITimer createTimer (SafeTimerHandler dg)
     {
         return new LocalRestTimer(geod24.LocalRest.createTimer(dg));
     }
@@ -511,25 +516,26 @@ private final class LocalRestTimer : ITimer
 
     private LocalRest.Timer timer;
 
-    public this (LocalRest.Timer timer) @safe nothrow
+    @safe nothrow:
+    public this (LocalRest.Timer timer)
     {
         this.timer = timer;
     }
 
     /// Ditto
-    public override void stop () @safe nothrow
+    public override void stop ()
     {
         this.timer.stop();
     }
 
     /// Ditto
-    public override void rearm (Duration timeout, bool periodic) nothrow
+    public override void rearm (Duration timeout, bool periodic)
     {
         this.timer.rearm(timeout, periodic);
     }
 
     /// Ditto
-    public override bool pending () @safe nothrow
+    public override bool pending ()
     {
         return this.timer.pending();
     }
