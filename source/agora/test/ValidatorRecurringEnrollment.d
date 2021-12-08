@@ -211,6 +211,7 @@ unittest
 {
     TestConf conf;
     conf.consensus.quorum_threshold = 66;
+    conf.node.max_retries = 2; // less retries as two are sleeping later
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
