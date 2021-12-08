@@ -149,6 +149,18 @@ public struct WK
                 return NODE6;
             if (pubkey == NODE7.address)
                 return NODE7;
+            if (pubkey == NODE8.address)
+                return NODE8;
+            if (pubkey == NODE9.address)
+                return NODE9;
+            if (pubkey == NODE10.address)
+                return NODE10;
+            if (pubkey == NODE11.address)
+                return NODE11;
+            if (pubkey == NODE12.address)
+                return NODE12;
+            if (pubkey == NODE13.address)
+                return NODE13;
 
             auto result = this.byRange.find!(k => k.address == pubkey);
             return result.empty ? KeyPair.init : result.front();

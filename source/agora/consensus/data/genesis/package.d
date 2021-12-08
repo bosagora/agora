@@ -106,7 +106,7 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     import std.conv;
     import std.algorithm;
 
-    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.isFreeze).front;
+    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.isFreeze).array.back;
     Output[] sorted_freeze_outputs = freeze_tx.outputs.dup.sort.array;
     assert(sorted_freeze_outputs == freeze_tx.outputs);
     Hash txhash = hashFull(freeze_tx);

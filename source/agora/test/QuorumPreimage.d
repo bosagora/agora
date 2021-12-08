@@ -50,6 +50,10 @@ unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
+    // make sure outsiders are up to date
+    network.expectHeight(iota(GenesisValidators, validators),
+        Height(GenesisValidatorCycle - 2));
+
     void printQuorums (uint line = __LINE__)
     {
         foreach (idx, node; nodes.enumerate)
@@ -117,28 +121,28 @@ unittest
 
     enum quorums_2 = [
         // 0
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 1
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 2
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 3
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 4
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 5
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 6
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 7
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
     ];
 
     static assert(quorums_1 != quorums_2);
@@ -166,28 +170,28 @@ unittest
     // which use a different preimage
     enum quorums_3 = [
         // 0
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 1
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 2
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 3
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 4
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
 
         // 5
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 6
-        QuorumConfig(6, [1, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 4, 5, 6, 7]),
 
         // 7
-        QuorumConfig(6, [0, 2, 3, 4, 5, 6, 7]),
+        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 7]),
     ];
 
     static assert(quorums_2 != quorums_3);

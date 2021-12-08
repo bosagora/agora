@@ -43,6 +43,10 @@ unittest
     // generate 18 blocks, 1 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
+    // make sure outsiders are up to date
+    network.expectHeight(iota(GenesisValidators, validators),
+        Height(GenesisValidatorCycle - 2));
+
     // prepare frozen outputs for the outsider validator to enroll
     network.postAndEnsureTxInPool(network.freezeUTXO(iota(GenesisValidators, validators)));
 
