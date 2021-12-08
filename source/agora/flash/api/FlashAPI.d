@@ -407,7 +407,7 @@ public interface FlashAPI
 
     ***************************************************************************/
 
-    public Result!Signature requestSettleSig (PublicKey sender_pk,
+    public Result!SigPair requestSettleSig (PublicKey sender_pk,
         PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id);
 
     /***************************************************************************

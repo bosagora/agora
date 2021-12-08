@@ -41,6 +41,7 @@ import agora.utils.Log;
 
 mixin AddLogger!();
 
+import std.algorithm;
 import std.conv;
 import std.datetime.systime;
 import std.format;
@@ -231,12 +232,12 @@ public class UpdateSigner
 
     ***************************************************************************/
 
-    public Result!Signature getSettleSig ()
+    public Result!SigPair getSettleSig ()
     {
-        if (this.pending_settle.our_sig != Signature.init)
-            return Result!Signature(this.pending_settle.our_sig);
+        if (this.pending_settle.our_sig != SigPair.init)
+            return Result!SigPair(this.pending_settle.our_sig);
         else
-            return Result!Signature(ErrorCode.SettleNotSigned);
+            return Result!SigPair(ErrorCode.SettleNotSigned);
     }
 
     /***************************************************************************
@@ -322,7 +323,7 @@ public class UpdateSigner
         // todo: need to validate settlement against update, in case
         // balances are too big, etc.
 
-        Result!Signature settle_res = Result!Signature(ErrorCode.Unknown);
+        Result!SigPair settle_res = Result!SigPair(ErrorCode.Unknown);
         const settle_fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
         foreach (attempt; 0 .. uint.max)
         {
@@ -444,6 +445,7 @@ public class UpdateSigner
             seq_id : this.seq_id,
             settle_tx : this.pending_settle.tx,
             our_settle_sig : this.pending_settle.our_sig,
+            multi_settle_sig : this.pending_settle.multi_sig,
             update_tx : this.pending_update.tx,
             our_update_sig : this.pending_update.our_sig,
             multi_update_sig : this.pending_update.multi_sig,
@@ -566,12 +568,13 @@ public class UpdateSigner
 
         const uint input_idx = 0; // todo: this should ideally not be hardcoded
         auto settle_tx = createSettleTx(update_utxo_hash, this.conf.settle_time,
-            outputs);
+            outputs ~ Output.init);
+        auto output_idx = settle_tx.outputs.countUntil(Output.init);
+        assert(output_idx >= 0);
         const challenge_settle = getSequenceChallenge(settle_tx, this.seq_id,
-            input_idx);
-
-        const sig = sign(settle_key, settle_pair_pk, nonce_pair_pk,
-            priv_nonce.settle.v, challenge_settle);
+            input_idx, output_idx, SigHash.OmitSingle_NoInput_AnyoneCanPay);
+        const sig = SigPair(sign(settle_key, settle_pair_pk, nonce_pair_pk,
+            priv_nonce.settle.v, challenge_settle), SigHash.OmitSingle_NoInput_AnyoneCanPay, output_idx);
 
         PendingSettle settle =
         {
@@ -604,12 +607,17 @@ public class UpdateSigner
     ***************************************************************************/
 
     private string isInvalidSettleMultiSig (ref PendingSettle settle,
-        in Signature peer_sig, in PrivateNonce priv_nonce,
+        in SigPair peer_sig, in PrivateNonce priv_nonce,
         in PublicNonce peer_nonce)
     {
+        if (peer_sig.sig_hash != settle.our_sig.sig_hash ||
+            peer_sig.output_idx != settle.our_sig.output_idx)
+            return "Not matching SigPair from peer";
+
         const nonce_pair_pk = priv_nonce.settle.V + peer_nonce.settle;
-        const settle_multi_sig = Signature(nonce_pair_pk,
-              settle.our_sig.s + peer_sig.s);
+        const settle_multi_sig = SigPair(Signature(nonce_pair_pk,
+            settle.our_sig.signature.s + peer_sig.signature.s),
+            settle.our_sig.sig_hash, settle.our_sig.output_idx);
 
         Transaction settle_tx
             = settle.tx.serializeFull().deserializeFull!Transaction;
@@ -626,6 +634,7 @@ public class UpdateSigner
             return error;
 
         settle.tx = settle_tx;
+        settle.multi_sig = settle_multi_sig;
         return null;
     }
 
@@ -729,14 +738,17 @@ private struct PendingSettle
     private Transaction tx;
 
     /// Our own signature
-    private Signature our_sig;
+    private SigPair our_sig;
 
     /// The counter-party's signature
-    private Signature peer_sig;
+    private SigPair peer_sig;
 
     /// Whether the two signatures above are valid, which means we can
     /// proceed to signing the update transaction.
     private bool validated;
+
+    /// Combined signature
+    private SigPair multi_sig;
 }
 
 /// Pending update transaction which must be singed by all parties,

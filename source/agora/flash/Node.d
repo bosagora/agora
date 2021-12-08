@@ -871,26 +871,26 @@ public class FlashNode : FlashControlAPI
     }
 
     /// See `FlashAPI.requestSettleSig`
-    public override Result!Signature requestSettleSig (PublicKey sender_pk,
+    public override Result!SigPair requestSettleSig (PublicKey sender_pk,
         PublicKey recv_pk, /* in */ Hash chan_id, /* in */ uint seq_id) @trusted
     {
         auto secret_key = recv_pk in this.managed_keys;
         if (secret_key is null)
-            return Result!Signature(ErrorCode.KeyNotRecognized,
+            return Result!SigPair(ErrorCode.KeyNotRecognized,
                 format("The provided key %s is not managed by this "
                 ~ "Flash node. Do you have the right address..?", recv_pk));
 
         if (auto channel = chan_id in this.channels)
         {
             if (sender_pk != channel.peer_pk)
-                return Result!Signature(ErrorCode.KeyNotRecognized,
+                return Result!SigPair(ErrorCode.KeyNotRecognized,
                     format("Sender key does not belong to this channel: {}",
                         sender_pk));
 
             return channel.onRequestSettleSig(seq_id);
         }
 
-        return Result!Signature(ErrorCode.InvalidChannelID,
+        return Result!SigPair(ErrorCode.InvalidChannelID,
             "Channel ID not found");
     }
 

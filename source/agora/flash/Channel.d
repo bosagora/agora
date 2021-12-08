@@ -514,7 +514,7 @@ public class Channel
                     hashFull(this.conf.funding_tx), this.conf.funding_utxo_idx);
                 auto pair_res = this.update_signer.collectSignatures(this.peer, 0,
                     outputs, this.priv_nonce, this.peer_nonce, funding_utxo_hash, funding_utxo);
-                assert(pair_res.error == ErrorCode.None);  // todo: handle
+                assert(pair_res.error == ErrorCode.None, pair_res.message);  // todo: handle
                 this.onSetupComplete(pair_res.value);
 
                 // wait until the channel is open
@@ -774,13 +774,7 @@ LOuter: while (1)
         // ready to publish settlement
         if (this.height >= this.update_ext_height + this.conf.settle_time)
         {
-            auto settle_tx = this.channel_updates[$ - 1].settle_tx;
-            // point the input to the last update utxo
-            settle_tx.inputs[0].utxo = this.last_externalized_update_utxo;
-            log.info("{}: Publishing last settle tx {}: {}",
-                this.own_pk.flashPrettify, this.channel_updates.length,
-                settle_tx.hashFull().flashPrettify);
-            this.txPublisher(cast()settle_tx);
+            this.publishSettlementTx(this.channel_updates[$ - 1]);
         }
     }
 
@@ -847,14 +841,14 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    public Result!Signature onRequestSettleSig (in uint seq_id)
+    public Result!SigPair onRequestSettleSig (in uint seq_id)
     {
         if (seq_id < this.channel_updates.length)
-            return Result!Signature(this.channel_updates[seq_id].our_settle_sig);
+            return Result!SigPair(this.channel_updates[seq_id].our_settle_sig);
 
         const cur_seq_id = this.update_signer.getSeqID();
         if (seq_id != cur_seq_id)
-            return Result!Signature(ErrorCode.InvalidSequenceID,
+            return Result!SigPair(ErrorCode.InvalidSequenceID,
                 format("onRequestSettleSig: expected seq_id: %s. Got: %s",
                     cur_seq_id, seq_id));
 
@@ -2218,6 +2212,9 @@ LOuter: while (1)
         Params:
             update = update to be published
 
+        Returns:
+            published update TX
+
     ***************************************************************************/
 
     protected Transaction publishUpdateTx (in UpdatePair update)
@@ -2268,6 +2265,59 @@ LOuter: while (1)
             this.own_pk.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify);
         this.txPublisher(update_tx);
         return update_tx;
+    }
+
+    /***************************************************************************
+
+        Prepare the settlement TX and publish
+
+        Params:
+            update = update to be published
+
+        Returns:
+            published settlement TX
+
+    ***************************************************************************/
+
+    protected Transaction publishSettlementTx (in UpdatePair update)
+    {
+        auto settle_tx = update.settle_tx.clone();
+        assert(this.last_externalized_update_utxo != Hash.init);
+
+        settle_tx.inputs[0].utxo = this.last_externalized_update_utxo;
+
+        auto utxos = this.getFeeUTXOs(settle_tx.sizeInBytes());
+        settle_tx.inputs ~= utxos.utxos.map!(hash => Input(hash)).array;
+        settle_tx.inputs.sort();
+
+        if (utxos.total_value.sub(utxos.total_fee) && utxos.total_value > 0.coins)
+            settle_tx.outputs[update.multi_settle_sig.output_idx] = Output(utxos.total_value, this.flash_conf.key_pair.address);
+        else
+            // todo: this is a requirement of SigHash.OmitSingle, fix the need to always have a refund output
+            settle_tx.outputs[update.multi_settle_sig.output_idx] = Output(Amount(1), this.flash_conf.key_pair.address);
+        auto refund_output = settle_tx.outputs[update.multi_settle_sig.output_idx];
+        settle_tx.outputs.sort();
+
+        auto output_idx = settle_tx.outputs.countUntil(refund_output);
+        assert(output_idx > 0);
+        // update output_idx of the multi-sig, since it might have changed after sorting the outputs
+        auto multi_sig = update.multi_settle_sig.serializeFull.deserializeFull!SigPair();
+        multi_sig.output_idx = output_idx;
+
+        auto fee_sig = SigPair(this.kp.sign(settle_tx.getChallenge()));
+        // update input unlocks
+        foreach (ref input; settle_tx.inputs)
+            if (input.utxo == this.last_externalized_update_utxo)
+                input.unlock = createUnlockSettle(multi_sig, update.seq_id);
+            else
+                input.unlock = genKeyUnlock(fee_sig);
+
+        log.info("{}: Publishing last settle tx {}: {}",
+            this.own_pk.flashPrettify, this.channel_updates.length,
+            settle_tx.hashFull().flashPrettify);
+
+        this.txPublisher(settle_tx);
+        return settle_tx;
     }
 
     version (unittest)

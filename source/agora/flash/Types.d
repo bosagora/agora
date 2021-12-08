@@ -98,7 +98,10 @@ public struct UpdatePair
     public Transaction settle_tx;
 
     /// Our portion of the settlement multi-sig
-    public Signature our_settle_sig;
+    public SigPair our_settle_sig;
+
+    /// Combined settlement multi-sig
+    public SigPair multi_settle_sig;
 
     /// Update tx which spends the trigger tx's outputs and can replace
     /// any previous update containing a lower sequence ID than this one's.
@@ -107,7 +110,7 @@ public struct UpdatePair
     /// Our portion of the update multi-sig
     public SigPair our_update_sig;
 
-    /// Our portion of the update multi-sig
+    /// Combined update multi-sig
     public SigPair multi_update_sig;
 }
 
