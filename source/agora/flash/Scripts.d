@@ -147,12 +147,12 @@ public Unlock createUnlockUpdate (SigPair sig, in ulong seq_id) @safe nothrow
 
 *******************************************************************************/
 
-public Unlock createUnlockSettle (Signature sig, in ulong seq_id,
+public Unlock createUnlockSettle (SigPair sig, in ulong seq_id,
     SigHash sig_hash = SigHash.NoInput) @safe nothrow
 {
     // remember it's LIFO when popping, FALSE is pushed last
     const seq_bytes = nativeToLittleEndian(seq_id);
-    return Unlock([ubyte(65)] ~ SigPair(sig, sig_hash)[] ~ toPushOpcode(seq_bytes)
+    return Unlock(toPushOpcode(sig[]) ~ toPushOpcode(seq_bytes)
         ~ [ubyte(OP.FALSE)]);
 }
 
