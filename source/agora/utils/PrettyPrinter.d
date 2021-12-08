@@ -370,19 +370,45 @@ private struct TransactionFmt
 
 @safe unittest
 {
+    import agora.utils.Test;
+
+    auto frozen = Transaction(
+    [
+        // If we want these in order NODE2, NODE3 .. NODE7
+        // then we need to make sure the value of the Public key is in same order
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE5.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE6.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE7.address, OutputType.Freeze),
+    ]);
+
     static immutable ResultStr0 = `Inputs: None
 Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>`;
-    const actual0 = format("%s", TransactionFmt(GenesisBlock.frozens.front));
+    const actual0 = format("%s", TransactionFmt(frozen));
     assert(ResultStr0 == actual0, actual0);
+
+    auto payment = Transaction(
+    [
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+        Output(Amount(61_000_000L * 10_000_000L), WK.Keys.Genesis.address),
+    ]);
 
     static immutable ResultStr1 = `Inputs: None
 Outputs (8):
 boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>,
 boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>,
 boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>`;
-    const actual1 = format("%s", TransactionFmt(GenesisBlock.payments.front));
+    const actual1 = format("%s", TransactionFmt(payment));
     assert(ResultStr1 == actual1, actual1);
 }
 
@@ -418,7 +444,7 @@ private struct BlockHeaderFmt
 
 @safe unittest
 {
-    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
+    static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0xc5d2...103e, Enrollments: [
 { utxo: 0x210f...3b64, seed: 0xcfc5...33e1, sig: 0x0183...fb90 }
 { utxo: 0x3b44...ba77, seed: 0xff4e...d698, sig: 0xe3f9...0344 }
 { utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, sig: 0x375e...89e5 }
@@ -460,7 +486,7 @@ private struct BlockFmt
 
 @safe unittest
 {
-    static immutable ResultStr = `Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
+    static immutable ResultStr = "Height: 0, Prev: 0x0000...0000, Root: 0xc5d2...103e, Enrollments: [
 { utxo: 0x210f...3b64, seed: 0xcfc5...33e1, sig: 0x0183...fb90 }
 { utxo: 0x3b44...ba77, seed: 0xff4e...d698, sig: 0xe3f9...0344 }
 { utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, sig: 0x375e...89e5 }
@@ -470,16 +496,20 @@ private struct BlockFmt
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Pre-images: [],
-Transactions: 2
+Transactions: 3
+Inputs: None
+Outputs (6):
+boa1xqvalc7v...tcay(2,000,000)<Freeze>, boa1xqvala34...8ejz(2,000,000)<Freeze>, boa1xpval9gv...epv9(2,000,000)<Freeze>,
+boa1xzval8mq...l0dm(2,000,000)<Freeze>, boa1xzvale54...ah4d(2,000,000)<Freeze>, boa1xrvaldd5...2u5x(2,000,000)<Freeze>
 Inputs: None
 Outputs (8):
-boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>,
-boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>,
-boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>
+boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>,
+boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>,
+boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>
 Inputs: None
 Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
-boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>`;
+boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>";
     const actual = format("%s", BlockFmt(GenesisBlock));
     assert(ResultStr == actual);
 }
@@ -514,7 +544,7 @@ private struct RangeFmt (R)
 {
     static immutable ResultStr = `
 ====================================================
-Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
+Height: 0, Prev: 0x0000...0000, Root: 0xc5d2...103e, Enrollments: [
 { utxo: 0x210f...3b64, seed: 0xcfc5...33e1, sig: 0x0183...fb90 }
 { utxo: 0x3b44...ba77, seed: 0xff4e...d698, sig: 0xe3f9...0344 }
 { utxo: 0x7bac...ea8f, seed: 0xfb40...06ea, sig: 0x375e...89e5 }
@@ -524,26 +554,30 @@ Height: 0, Prev: 0x0000...0000, Root: 0xaf40...c93d, Enrollments: [
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Pre-images: [],
-Transactions: 2
+Transactions: 3
+Inputs: None
+Outputs (6):
+boa1xqvalc7v...tcay(2,000,000)<Freeze>, boa1xqvala34...8ejz(2,000,000)<Freeze>, boa1xpval9gv...epv9(2,000,000)<Freeze>,
+boa1xzval8mq...l0dm(2,000,000)<Freeze>, boa1xzvale54...ah4d(2,000,000)<Freeze>, boa1xrvaldd5...2u5x(2,000,000)<Freeze>
 Inputs: None
 Outputs (8):
-boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>,
-boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>,
-boa1xzgenes5...gm67(61,000,000)<Payment>, boa1xzgenes5...gm67(61,000,000)<Payment>
+boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>,
+boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>,
+boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>
 Inputs: None
 Outputs (6):
 boa1xzval2a3...gsh2(2,000,000)<Freeze>, boa1xzval3ah...tv9n(2,000,000)<Freeze>, boa1xzval4nv...6gfy(2,000,000)<Freeze>,
 boa1xrval5rz...jkm8(2,000,000)<Freeze>, boa1xrval6hd...34l5(2,000,000)<Freeze>, boa1xrval7gw...scrh(2,000,000)<Freeze>
 ====================================================
-Height: 1, Prev: 0x6db0...9b23, Root: 0xb039...ee32, Enrollments: []
+Height: 1, Prev: 0x498d...79ca, Root: 0xe1c1...0431, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
 Pre-images: [0xe998...9b3f, 0x4afa...b699, 0x31a2...e601, 0x62c3...6572, 0x58a4...9659, 0x2787...82ae],
 Transactions: 2
-Inputs (1): 0xb979...d9ca:0x4b6e...a32f
-Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
-Inputs (1): 0x359a...f346:0x4b6e...a32f
-Outputs (1): boa1xzgenes5...gm67(60,999,999.9,920,9)<Payment>
+Inputs (1): 0xd64d...d745:0x4b6e...a32f
+Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
+Inputs (1): 0x113c...0c39:0x4b6e...a32f
+Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
@@ -665,12 +699,12 @@ unittest
 
     const(ConsensusData) cd =
     {
-        tx_set: GenesisBlock.txs.map!(tx => tx.hashFull()).array,
+        tx_set: [hashFull(37), hashFull(44)],
         enrolls: [ record, record, ],
         missing_validators: [0, 2, 4],
     };
 
-    static immutable Res1 = `{ tx_set: [0x2686...31b7, 0xeb5e...4551], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }`;
+    static immutable Res1 = `{ tx_set: [0x793b...7f0c, 0xcfa3...8b03], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));

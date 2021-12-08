@@ -52,7 +52,7 @@ unittest
     network.postAndEnsureTxInPool(iota(GenesisValidators),
         network.freezeUTXO(iota(GenesisValidators, GenesisValidators + 3)));
 
-    network.generateBlocks(Height(GenesisValidatorCycle - 1));
+    network.generateBlocks(Height(GenesisValidatorCycle - 1), true);
 
     // wait for other nodes to get to same block height
     set_b.enumerate.each!((idx, node) =>
@@ -65,7 +65,7 @@ unittest
         .each!(i => network.enroll(i));
 
     // Block 20, After this the Genesis block enrolled validators will be expired.
-    network.generateBlocks(iota(GenesisValidators), Height(GenesisValidatorCycle));
+    network.generateBlocks(iota(GenesisValidators), Height(GenesisValidatorCycle), true);
     // Set B validators should catch up
     network.expectHeight(iota(GenesisValidators, GenesisValidators + conf.outsider_validators),
         Height(GenesisValidatorCycle));
@@ -80,7 +80,7 @@ unittest
     network.waitForDiscovery();
     // Block 21
     network.generateBlocks(iota(GenesisValidators - 1, GenesisValidators + conf.outsider_validators),
-        Height(GenesisValidatorCycle + 1));
+        Height(GenesisValidatorCycle + 1), true);
 
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.

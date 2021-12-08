@@ -92,14 +92,23 @@ public immutable Block GenesisBlock = {
     txs: [
         Transaction(
             [
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(61_000_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE8.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE9.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE10.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE11.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE12.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE13.address, OutputType.Freeze),
+            ]),
+        Transaction(
+            [
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
+                Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
             ]),
         Transaction(
             [
@@ -127,7 +136,7 @@ unittest
     assert(GenesisBlock.header.prev_block == Hash.init);
     assert(GenesisBlock.header.height == 0);
     assert(GenesisBlock.txs.isSorted(), "Block transaction must be sorted!");
-    assert(GenesisBlock.merkle_tree.length == 3);
+    assert(GenesisBlock.merkle_tree.length == 7);
     Hash[] merkle_tree;
     GenesisBlock.buildMerkleTree(GenesisBlock.txs, merkle_tree);
     assert(merkle_tree == GenesisMerkleTree, merkle_tree.to!string);
@@ -146,9 +155,13 @@ unittest
 }
 
 private immutable Hash[] GenesisMerkleTree = [
-    Hash(`0x26866bb263593d024a92103646c48cf35a2b1bfcc49b087915b85db14a432b373569d56f576242354328a31bf0102a0a78cb806cf6e25d88d7981367833631b7`),
+    Hash(`0x5289192825c751ac16649f59f4d4ee7b115af7918c625e944bbf9301a20f77c447d2c54f712fdf224c8d3564d9afcee6a85d70910ec892adb758471f3c55c7c5`),
+    Hash(`0x56c1aa99fb4c9795274b8b2ffa6fe555885b9bbf07ecf20c8556bf1c6f7949d9e356b72dcc6d9e2c0ff0afcfbe522b2a5a01f2309ae610c0a457d66d9a0b0165`),
     Hash(`0xeb5e0004d046422c84ddb7b9d54a0eba484a41b5179beda0b3dd7c54c3fca609437a9c8ef16b5bfc2335d9b258eb68908757e0f1a4c725752598aaa962924551`),
-    Hash(`0xaf402f71c175bc6f53ededdd9cfa1f4c074efcd2fe7090c9d0ca3b95c5d1e7513cd4b4f922c4f7ebf120958f449a2d3e23a397c7219e297b8ff1cfbc00ebc93d`)
+    Hash(`0xeb5e0004d046422c84ddb7b9d54a0eba484a41b5179beda0b3dd7c54c3fca609437a9c8ef16b5bfc2335d9b258eb68908757e0f1a4c725752598aaa962924551`),
+    Hash(`0xa8becf607ad1721aa25b9378d8b64ec906ea9e383ef079aa6e6e94f09c85979d300e9bdf8513cbdb311123ec0bc1ad6c83cc5ceabd3f58db98a4e75aaeb92244`),
+    Hash(`0x932c18001c1787ebd6440c69a4db00bc6bb98527bd0d41e7437df3d26b29b1603fc476c2b00870d304b04b3af4d886f67f12a0052a058919e86947f53af82cad`),
+    Hash(`0xc5d27cf200b9da791f976ddaaee3d6f96cc33da9012f862f49f5af676910a70fb3d21b197ee2a53b3bda2e51ef2d870bf5148e8a602cf33d89df5bf3bee1103e`),
 ];
 
 /// GDGENES4KXH7RQJELTONR7HSVISVSQ5POSVBEWLR6EEIIL72H24IEDT4

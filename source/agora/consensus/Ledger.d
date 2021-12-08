@@ -1884,7 +1884,7 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks);
 
     assert(ledger.utxo_set.length
-           == /* Genesis, Frozen */ 6 + 8 /* Block #1 Payments*/);
+           == /* Genesis, Frozen */ 12 + 8 /* Block #1 Payments*/);
 
     // Ensure that all previously-generated outputs are in the UTXO set
     {
@@ -2070,8 +2070,8 @@ unittest
     {
         assert(ex.message ==
                "Genesis block loaded from disk " ~
-               "(0x6db06ab1cae5c4b05e806401e2c42d526ebf4ac81411d0fcd82344561b5" ~
-               "a25ae0d29728f5c1c9bec6cf254f621c183be71858a6ed5339c06fc5b34d7881b9b23) "~
+               "(0x498d14496a0ea3159bae273719496a1a43158b67a9666ff5266126bde05" ~
+               "5d84bdfa39079d8fb6104b5b629a179836c8f33fbc25e1f0a290ddbdb553377d679ca) "~
                "is different from the one in the config file " ~
                "(0x47f30089ca49c3eacb09f2d96e4a27e1049697bbfe1002862344fd0b33b" ~
                "72d1b3b69467148905626e0a0f4845f5cdca69c25d2ec2663622acd45c38c974d0d91)");
@@ -2467,7 +2467,7 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
     ledger.simulatePreimages(Height(params.ValidatorCycle));
 
-    auto freeze_tx = GenesisBlock.txs.find!(tx => tx.isFreeze).front();
+    auto freeze_tx = GenesisBlock.txs.find!(tx => tx.isFreeze).array.back();
     auto melting_tx = TxBuilder(freeze_tx, 0).sign();
 
     // enrolled stake can't be spent

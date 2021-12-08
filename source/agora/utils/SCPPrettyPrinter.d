@@ -451,9 +451,19 @@ unittest
         enroll_sig: sig,
     };
 
+    auto tx_hash = Transaction(
+    [
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE5.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE6.address, OutputType.Freeze),
+        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE7.address, OutputType.Freeze),
+    ]).hashFull();
+
     const(ConsensusData) cd =
     {
-        tx_set:  GenesisBlock.txs[1 .. $].map!(tx => tx.hashFull()).array,
+        tx_set: [ tx_hash ],
         enrolls: [ record, record, ],
         missing_validators: [0, 2, 4],
     };

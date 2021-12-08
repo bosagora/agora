@@ -354,14 +354,14 @@ unittest
         assert(!block.isGenesisBlockValid());
 
         // at least 1 tx needed (todo: relax this?)
-        block.txs ~= txs.filter!(tx => tx.isFreeze).front;
+        block.txs ~= txs.filter!(tx => tx.isFreeze).array;
         buildMerkleTree(block);
         checkValidity(block);
 
         block = GenesisBlock.serializeFull.deserializeFull!Block;
         foreach (_; 0 .. 6)
             block.txs ~= makeNewTx();
-        assert(block.txs.length == 8);
+        assert(block.txs.length == GenesisBlock.txs.length + 6);
         buildMerkleTree(block);
         checkValidity(block);
 
@@ -378,7 +378,7 @@ unittest
         // there may be any number of txs, does not need to be power of 2
         block.txs ~= makeNewTx();
         buildMerkleTree(block);
-        assert(block.txs.length == 3);
+        assert(block.txs.length == GenesisBlock.txs.length + 1);
         checkValidity(block);
 
         block = GenesisBlock.serializeFull.deserializeFull!Block;
@@ -695,7 +695,7 @@ unittest
         findNonSpent, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
 
     // All `payment` utxos have been consumed
-    assert(used_set.length + GenesisBlock.frozens.front.outputs.length == utxo_set_len);
+    assert(used_set.length + GenesisBlock.frozens.map!(frozen => frozen.outputs.length).sum() == utxo_set_len);
 
     // reset state
     used_set.clear();

@@ -35,6 +35,10 @@ void manyValidators (size_t validators)
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
+    // make sure outsiders are up to date
+    network.expectHeight(iota(GenesisValidators, validators),
+        Height(GenesisValidatorCycle - 2));
+
     // prepare frozen outputs for the outsider validator to enroll
     network.postAndEnsureTxInPool(network.freezeUTXO(iota(GenesisValidators, GenesisValidators + conf.outsider_validators)));
 

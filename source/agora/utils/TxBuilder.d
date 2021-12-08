@@ -603,17 +603,17 @@ unittest
     auto implied_fees = tx.outputs.map!(o => o.value).fold!((a,b) => a - b)(sumOfGenesisFirstTxOutputs());
     assert(implied_fees >= fee_rate * tx.sizeInBytes);
     assert(tx.outputs == [
-        Output(Amount(60_999_999_9871_462L), WK.Keys.A.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.C.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.D.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.E.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.F.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.G.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.H.address),
-        Output(Amount(60_999_999_9871_462L), WK.Keys.J.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.A.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.C.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.D.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.E.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.F.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.G.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.H.address),
+        Output(Amount(59_499_999_9871_462L), WK.Keys.J.address),
     ].sort.array);
     // check we have not lost any coin
-    assert((Amount(60_999_999_9871_462L) * 8) + implied_fees == Amount(61_000_000_0000_000L) * 8);
+    assert((Amount(59_499_999_9871_462L) * 8) + implied_fees == Amount(59_500_000_0000_000L) * 8);
 }
 
 /// Test with twice as many outputs as inputs
@@ -710,7 +710,7 @@ unittest
     const result = TxBuilder(GenesisBlock.payments.front)
         // Refund needs to be called first as it resets the outputs
         .refund(WK.Keys.Z.address)
-        .draw(Amount(160_000_000_0000_000L), WK.Keys.byRange.map!(k => k.address).take(Number))
+        .draw(Amount(100_000_000_0000_000L), WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
     // This transaction has 4 outputs (3 draw and 1 refund)
@@ -722,10 +722,10 @@ unittest
     auto implied_fees = totalInputs - outputs;
     assert(implied_fees >= fee_rate * result.sizeInBytes);
     assert(result.outputs == [
-        Output(totalInputs - implied_fees - Amount(160_000_000_0000_000L) * 3, WK.Keys.Z.address),
-        Output(Amount(160_000_000_0000_000L), WK.Keys.A.address),
-        Output(Amount(160_000_000_0000_000L), WK.Keys.C.address),
-        Output(Amount(160_000_000_0000_000L), WK.Keys.D.address),
+        Output(totalInputs - implied_fees - Amount(100_000_000_0000_000L) * 3, WK.Keys.Z.address),
+        Output(Amount(100_000_000_0000_000L), WK.Keys.A.address),
+        Output(Amount(100_000_000_0000_000L), WK.Keys.C.address),
+        Output(Amount(100_000_000_0000_000L), WK.Keys.D.address),
     ].sort.array);
 }
 
@@ -781,7 +781,7 @@ unittest
         Output(Amount(50_000_0000_000L), WK.Keys.A.address, OutputType.Freeze),
         Output(Amount(50_000_0000_000L), WK.Keys.C.address, OutputType.Freeze),
         Output(Amount(50_000_0000_000L), WK.Keys.D.address, OutputType.Freeze),
-        Output(Amount(487_849_999_9129_200L) - 30_000.coins, WK.Keys.Genesis.address),
+        Output(Amount(475_819_999_9129_200L), WK.Keys.Genesis.address),
     ].sort.array);
 }
 
