@@ -352,8 +352,9 @@ public class Validator : FullNode, API
     /***************************************************************************
 
         Store the block in the ledger if valid.
-        If block is not yet signed by this node then sign it and also
-        gossip the block sig from this node to other nodes.
+
+        Then update the header with any known missing signatures and update the
+        header in storage and push updated header
 
         Params:
             block = block to be added to the Ledger
@@ -362,54 +363,39 @@ public class Validator : FullNode, API
 
     protected override string acceptBlock (in Block block) @trusted
     {
-        import agora.common.BitMask;
-        import agora.crypto.Schnorr;
-        import std.algorithm;
-        import std.range;
-        import std.format;
-
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
-        auto signed_validators = BitMask(block.header.validators.count);
-        signed_validators.copyFrom(block.header.validators);
-
-        const self_utxo = this.enroll_man.getEnrollmentKey();
-        auto validators = this.ledger.getValidators(block.header.height);
-        const ptrdiff_t node_validator_index = validators.countUntil!(v => v.utxo() == self_utxo);
-        // It can be a block before this validator was enrolled
-        if (node_validator_index < 0)
-        {
-            log.trace("This validator {} was not active at height {}",
-                this.config.validator.key_pair.address, block.header.height);
-            return format!"Validator %s was not active at height %s"
-                (this.config.validator.key_pair.address, block.header.height);
-        }
-
-        const this_utxo = this.enroll_man.getEnrollmentKey();
-        auto sig = this.nominator.signBlock(block);
-        assert(node_validator_index < block.header.validators.count,
-            format!"The validator index %s is invalid"(node_validator_index));
-        if (!signed_validators[node_validator_index])
-        {
-            if (this.nominator.safeToSign(block.header.height))
-            {
-                signed_validators[node_validator_index] = true;
-                this.network.gossipBlockSignature(ValidatorBlockSig(block.header.height,
-                    this_utxo, sig.R));
-                log.trace("Periodic Catchup: ADD to block signature R: {}", sig.R);
-                const signed_block = block.updateSignature(
-                    multiSigCombine([ block.header.signature, sig ]), signed_validators);
-                this.ledger.updateBlockMultiSig(signed_block.header);
-                log.trace("Adding Signature to fetched block as we know we did" ~
-                    " not sign it or another block at this height.");
-            }
-            else
-                log.warn("This node's signature is not in the block signature. " ~
-                    "However, we will not sign as we could not determine if we already " ~
-                    "signed a different block at this height and could reveal our private key.");
-        }
+        acceptHeader(block.header);
         return null;
+    }
+
+    /***************************************************************************
+
+        If block header is missing any signatures we have stored then add them
+        and then update in storage and call super function to push header to
+        configured listeners.
+
+        Params:
+            block = block to be added to the Ledger
+
+    ***************************************************************************/
+
+    protected override void acceptHeader (const(BlockHeader) header) @safe
+{
+        // Add any missing signatures we know
+        const updated_header = this.nominator.updateMultiSignature(header);
+        if (updated_header == BlockHeader.init) // There were no signatures added
+        {
+            this.ledger.updateBlockMultiSig(header);
+            super.acceptHeader(header);
+
+        }
+        else
+        {
+            this.ledger.updateBlockMultiSig(updated_header);
+            super.acceptHeader(updated_header);
+        }
     }
 
     /***************************************************************************

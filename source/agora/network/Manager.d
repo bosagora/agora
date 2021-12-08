@@ -1023,7 +1023,8 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public BlockHeader[] getMissingBlockSigs (Ledger ledger) @safe nothrow
+    public void getMissingBlockSigs (Ledger ledger,
+        scope void delegate(const(BlockHeader)) @safe acceptHeader) @safe nothrow
     {
         import std.algorithm;
         import std.conv;
@@ -1031,8 +1032,6 @@ public class NetworkManager
         import std.typecons;
 
         size_t[Height] signed_validators;
-
-        BlockHeader[] headers_updated;
 
         try
         {
@@ -1071,8 +1070,7 @@ public class NetworkManager
                                 try
                                 {
                                     log.trace("getMissingBlockSigs: updating header signature: {} validators: {}", header.signature, header.validators);
-                                    ledger.updateBlockMultiSig(header);
-                                    headers_updated ~= header;
+                                    acceptHeader(header);
                                 }
                                 catch (Exception e)
                                 {
@@ -1095,7 +1093,6 @@ public class NetworkManager
         {
             log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
         }
-        return headers_updated;
     }
 
     /// Shut down timers & dump the metadata
