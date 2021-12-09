@@ -1069,30 +1069,19 @@ public class TestAPIManager
         // target height will be one more than previous block
         Height target_height = Height(last_height + 1);
 
-        while (!no_txs)
+        if (!no_txs)
         {
-            const last_block = first_client.getBlock(last_height);
+            auto utxo_pairs = first_client.getSpendables(1.coins, OutputType.Payment);
+            auto tx = TxBuilder(utxo_pairs[0].utxo.output.address) // refund
+                .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
+                .sign();
 
-            // Get spendables from a previous block
-            auto spendables = last_block.spendable().array;
-
-            if (spendables.length == 0)
-            {
-                assert(last_height != 0, "Can't find spendables");
-                last_height--;
-            }
-            else
-            {
-                // Send transaction to the first client
-                auto tx = spendables.takeExactly(1).map!(txb => txb.sign()).front;
-                first_client.postTransaction(tx);
-                // Wait for tx gossipping before setting time for block
-                client_idxs.each!(idx =>
-                    retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
-                        4.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
-                            (file, line, idx, target_height)));
-                break;
-            }
+            first_client.postTransaction(tx);
+            // Wait for tx gossipping before setting time for block
+            client_idxs.each!(idx =>
+                retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
+                    4.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
+                        (file, line, idx, target_height)));
         }
 
         // Get preimage height from enrollment to this next block
