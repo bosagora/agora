@@ -991,8 +991,6 @@ extern(D):
             log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
             const self = this.enroll_man.getEnrollmentKey();
             this.slot_sigs[height][self] = this.signBlock(block);
-            this.gossipBlockSignature(ValidatorBlockSig(height, self,
-                this.slot_sigs[height][self].R));
             this.ledger.addHeightAsExternalizing(height);
             this.verifyBlock(block.updateHeader(this.updateMultiSignature(block.header)));
         }
@@ -1022,7 +1020,7 @@ extern(D):
 
     /// function for gossip of block sig which can be overriden in byzantine unit tests
     extern(D) protected void gossipBlockSignature (in ValidatorBlockSig block_sig)
-        nothrow
+        @safe nothrow
     {
         // Send to other nodes in the network
         this.network.gossipBlockSignature(block_sig);
@@ -1060,7 +1058,11 @@ extern(D):
             else if (val.utxo() in block_sigs) // We have the missing signature
             {
                 validator_mask[idx] = true;
-                sigs_to_add ~= block_sigs[val.utxo()];
+                const sig = block_sigs[val.utxo()];
+                sigs_to_add ~= sig;
+                log.trace("updateMultiSignature: Adding missing signature for {} at height {}",
+                    val.address, header.height);
+                this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
             }
         }
         const signed_header = header.updateSignature(multiSigCombine(sigs_to_add),
