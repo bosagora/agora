@@ -51,7 +51,7 @@ public struct Lock
     public const(ubyte)[] bytes;
 
     ///
-    public void toString (scope void delegate (scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         const @safe
     {
         final switch (this.type)
@@ -226,7 +226,7 @@ public struct Unlock
     public const(ubyte)[] bytes;
 
     ///
-    public void toString (scope void delegate (scope const(char)[]) @safe sink)
+    public void toString (scope void delegate (in char[]) @safe sink)
         const @safe
     {
         sink("0x");

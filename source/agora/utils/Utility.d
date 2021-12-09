@@ -212,7 +212,7 @@ public struct UbyteHexString
 {
     const(ubyte)[] bin;
 
-    void toString (scope void delegate (scope const(char)[]) @safe sink)
+    void toString (scope void delegate (in char[]) @safe sink)
         const @safe
     {
         // Copied this code from BitBlob

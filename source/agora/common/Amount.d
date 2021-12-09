@@ -48,7 +48,7 @@ public struct Amount
         Amount(UnitPerCoin.value * 40_000, true);
 
     /// Helper type for `toString`
-    private alias SinkT = void delegate(scope const(char)[] v) @safe;
+    private alias SinkT = void delegate(in char[] v) @safe;
 
     /// Internal data storage
     private ulong value;
@@ -86,7 +86,7 @@ public struct Amount
     public string toString () const @safe
     {
         string ret;
-        scope SinkT dg = (scope v) { ret ~= v; };
+        scope SinkT dg = (in v) { ret ~= v; };
         this.toString(dg);
         return ret;
     }
