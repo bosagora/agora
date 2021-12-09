@@ -147,7 +147,7 @@ public struct PublicKey
     }
 
     /// Make sure the sink overload of BitBlob is not picked
-    public void toString (scope void delegate(const(char)[]) sink) const @trusted
+    public void toString (scope void delegate(in char[]) sink) const @trusted
     {
         ubyte[VersionWidth + PublicKey.sizeof] bin;
         bin[0] = VersionByte.AccountID;
@@ -287,7 +287,7 @@ public struct SecretKey
 
     ***************************************************************************/
 
-    public void toString (scope void delegate(const(char)[]) @safe sink,
+    public void toString (scope void delegate(in char[]) @safe sink,
                           PrintMode mode = PrintMode.Obfuscated) const
     {
         final switch (mode)
@@ -310,7 +310,7 @@ public struct SecretKey
     public string toString (PrintMode mode = PrintMode.Obfuscated) const
     {
         string result;
-        this.toString((data) { result ~= data; }, mode);
+        this.toString((in data) { result ~= data; }, mode);
         return result;
     }
 

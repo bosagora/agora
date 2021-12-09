@@ -40,7 +40,7 @@ public struct BitMask
     }
 
     /// Serialization
-    public void toString (scope void delegate (scope const char[]) @safe sink) const
+    public void toString (scope void delegate (in char[]) @safe sink) const
     {
         formattedWrite(sink, "%s", iota(this.length).map!(i => this[i] ? "1" : "0").join(""));
     }
@@ -49,7 +49,7 @@ public struct BitMask
     public string toString () const
     {
         string ret;
-        scope void delegate (scope const char[]) @safe sink = (scope v) { ret ~= v; };
+        scope void delegate (in char[]) @safe sink = (in v) { ret ~= v; };
         this.toString(sink);
         return ret;
     }

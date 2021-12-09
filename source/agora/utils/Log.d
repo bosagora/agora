@@ -52,10 +52,22 @@ public struct Logger
         this.logger.buffer(new char[](16_384));
     }
 
+    /// See `ocean.util.log.Logger : Logger.dbg`
+    public void dbg (Args...) (cstring fmt, Args args)
+    {
+        this.format(LogLevel.Debug, fmt, args);
+    }
+
     /// See `ocean.util.log.Logger : Logger.trace`
     public void trace (Args...) (cstring fmt, Args args)
     {
         this.format(LogLevel.Trace, fmt, args);
+    }
+
+    /// See `ocean.util.log.Logger : Logger.verbose`
+    public void verbose (Args...) (cstring fmt, Args args)
+    {
+        this.format(LogLevel.Verbose, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.info`
@@ -330,7 +342,7 @@ public class CircularAppender (size_t BufferSize = 2^^20) : Appender
         }
 
         this.layout.format(event,
-            (cstring content)
+            (in cstring content)
             {
                 this.cyclic.put(content);
                 this.used_length = min(this.buffer.length,
@@ -428,7 +440,7 @@ public class PhobosFileAppender : Appender
         scope (exit) this.file.flush();
         scope writer = this.file.lockingTextWriter();
         this.layout.format(event,
-            (cstring content)
+            (in cstring content)
             {
                 writer.put(content);
             });
@@ -560,6 +572,10 @@ private extern(C++, "agora") int getLogLevel (const(char)* logger)
     Params:
         level = The level at which we want to set the logger
 
+    See_Also:
+      https://vibed.org/api/vibe.core.log/LogLevel
+      https://github.com/vibe-d/vibe-core/blob/a9dbc9b8953f98790f8f94cda89067e3bf99a2b6/source/vibe/core/log.d#L238-L255
+
 *******************************************************************************/
 
 public void setVibeLogLevel (Ocean.Level level) @safe
@@ -568,11 +584,19 @@ public void setVibeLogLevel (Ocean.Level level) @safe
 
     final switch (level)
     {
-    case Ocean.Level.Trace:
+    case Ocean.Level.Debug:
         setLogLevel(LogLevel.trace);
         break;
-    case Ocean.Level.Info:
+    case Ocean.Level.Trace:
+        setLogLevel(LogLevel.debugV);
+        break;
+    // There is one extra level between debugV and diagnostic (debug_),
+    // but we choose to just include it in verbose.
+    case Ocean.Level.Verbose:
         setLogLevel(LogLevel.diagnostic);
+        break;
+    case Ocean.Level.Info:
+        setLogLevel(LogLevel.info);
         break;
     case Ocean.Level.Warn:
         setLogLevel(LogLevel.warn);

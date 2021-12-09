@@ -32,7 +32,7 @@ import vibe.data.json;
 public struct Set (T)
 {
     /// Helper type for `toString`
-    private alias SinkT = void delegate(scope const(char)[] v) @safe;
+    private alias SinkT = void delegate(in char[] v) @safe;
 
     ///
     bool[T] _set;
@@ -57,13 +57,13 @@ public struct Set (T)
     public string toString () const
     {
         string ret;
-        scope SinkT dg = (scope v) { ret ~= v; };
+        scope SinkT dg = (in v) { ret ~= v; };
         this.toString(dg);
         return ret;
     }
 
     /// Ditto
-    public void toString (scope void delegate(const(char)[]) @safe sink) const
+    public void toString (scope void delegate(in char[]) @safe sink) const
     {
         import std.format : formattedWrite;
 

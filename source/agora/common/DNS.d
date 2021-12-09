@@ -349,7 +349,7 @@ public struct Message
 public struct Header
 {
     /// Humean readable representation loosely inspired from `dig`
-    public void toString (scope void delegate(scope const(char)[]) @safe sink)
+    public void toString (scope void delegate(in char[]) @safe sink)
         const scope @safe
     {
         formattedWrite!"ID: %04x %s"(sink, this.ID, this.OPCODE);
@@ -680,7 +680,7 @@ public struct ResourceRecord
             this.soa = val;
         }
 
-        public void toString (scope void delegate(scope const(char)[]) @safe sink)
+        public void toString (scope void delegate(in char[]) @safe sink)
         const scope @trusted
         {
             formattedWrite!"%u byte(s)"(sink, this.binary.length);
