@@ -763,7 +763,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public Signature signBlock (in Block block) @safe nothrow
+    protected Signature signBlock (in Block block) @safe nothrow
     {
         return block.header.sign(this.kp.secret,
             this.enroll_man.getOurPreimage(block.header.height));
