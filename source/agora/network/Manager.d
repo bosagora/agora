@@ -1249,7 +1249,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void gossipBlockSignature (ValidatorBlockSig block_sig) nothrow
+    public void gossipBlockSignature (ValidatorBlockSig block_sig) @safe nothrow
     {
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.utxo);

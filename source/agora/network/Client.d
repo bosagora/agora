@@ -353,7 +353,7 @@ public class NetworkClient
 
     ***************************************************************************/
 
-    public void sendBlockSignature (ValidatorBlockSig block_sig) nothrow
+    public void sendBlockSignature (ValidatorBlockSig block_sig) @trusted nothrow
     {
         this.gossip_queue.insertBack(GossipEvent(block_sig));
         this.gossip_timer.rearm(GossipDelay, Periodic.No);
