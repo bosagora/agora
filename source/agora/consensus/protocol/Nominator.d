@@ -280,7 +280,33 @@ extern(D):
     public void setQuorumConfig (ref const(NodeID) node_id,
         const(QuorumConfig)[NodeID] quorums) nothrow @safe
     {
-        assert(!this.is_nominating);
+        // If a nomination is running, we determine the nomination is not
+        // fatal only when the slot id is for the next height. In that case,
+        // we stop the nomination and set the new quorum set.
+        if(this.is_nominating)
+        {
+            const height = this.ledger.getBlockHeight();
+            try
+            {
+                () @trusted {
+                    const slot_idx = this.scp.getHighSlotIndex();
+                    if (slot_idx == height.value + 1)
+                        this.stopNominationRound(Height(slot_idx));
+                    else
+                    {
+                        log.fatal("Invalid call to setQuorumConfig for SCP " ~
+                            "slot #{} at ledger height #{}", slot_idx, height);
+                        assert(0);
+                    }
+                }();
+            }
+            catch (Exception e)
+            {
+                log.error("setQuorumConfig: Exception thrown: {} " ~
+                    "at height #{}", e, height);
+            }
+        }
+
         () @trusted { this.known_quorums.clear(); }();
 
         foreach (qpair; quorums.byKeyValue)  // opApply2 is not nothrow..
@@ -419,7 +445,7 @@ extern(D):
 
     ***************************************************************************/
 
-    private void checkNominate () @safe
+    protected void checkNominate () @safe
     {
         const slot_idx = this.ledger.getBlockHeight() + 1;
         // are we done nominating this round
