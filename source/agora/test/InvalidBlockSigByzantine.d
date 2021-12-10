@@ -31,8 +31,8 @@ mixin AddLogger!();
 
 private enum ByzantineReason
 {
-    BadCommitmentR,
-    BadSignature
+    BadPreimage,
+    BadSecretKey
 }
 
 private extern(C++) class BadBlockSigningNominator : Nominator
@@ -48,26 +48,16 @@ private extern(C++) class BadBlockSigningNominator : Nominator
     extern(D) override protected Signature signBlock (in Block block)
         @trusted nothrow
     {
-        import agora.crypto.Hash;
-
-        const Hash preimage = "preimage".hashFull();
-        // challenge = Hash(block) to Scalar
-        const Scalar challenge = hashFull(block);
         final switch (reason)
         {
-            case ByzantineReason.BadCommitmentR:
-                const Scalar rc = Scalar.random(); // This is normally the enrollment commitment
-                const Scalar r = rc + Scalar(preimage);
-                const Point R = r.toPoint();
-                return sign(this.kp.secret, R, r, challenge);
-            case ByzantineReason.BadSignature:
-                const Scalar rc = Scalar(hashMulti(WK.Keys.NODE2.secret,
-                    "consensus.signature.noise", 0));
-                const Scalar r = rc + Scalar(preimage);
-                const Point R = r.toPoint();
+            case ByzantineReason.BadPreimage:
+                // use preimage from wrong height
+                return sign(this.kp.secret,
+                    this.enroll_man.getOurPreimage(Height(block.header.height + 1)));
+            case ByzantineReason.BadSecretKey:
                 // Sign with random in place of validator secret key
-                const wrong_scalar_v = Scalar.random();
-                return sign(wrong_scalar_v, R, r, challenge);
+                return sign(Scalar.random(),
+                    this.enroll_man.getOurPreimage(block.header.height));
         }
     }
 
@@ -118,13 +108,13 @@ private class ByzantineManager (ByzantineReason reason) : TestAPIManager
     }
 }
 
-/// MultiSig test: One node signs with an invalid block signature.
+/// MultiSig test: One node signs with an invalid preimage.
 /// The block should only have 5 / 6 block signatures added
 unittest
 {
     TestConf conf;
     conf.consensus.quorum_threshold = 83;
-    auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSignature))(conf);
+    auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadPreimage))(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
@@ -141,13 +131,13 @@ unittest
     assertValidatorsBitmask(last_node.getAllBlocks()[1]);
 }
 
-/// MultiSig test: One node signs with a valid block signature using incorrect R.
+/// MultiSig test: One node signs with an invalid secretkey.
 /// The block should only have 5 / 6 block signatures added
 unittest
 {
     TestConf conf;
     conf.consensus.quorum_threshold = 83;
-    auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadCommitmentR))(conf);
+    auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSecretKey))(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
