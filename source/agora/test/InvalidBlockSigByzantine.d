@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    Contains Byzantine node tests, which refuse to co-operate in the
-    SCP consensus protocol in various ways.
+    Test that when a node signs the block with an invalid signature that it is
+    not included in the block multisignature.
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
