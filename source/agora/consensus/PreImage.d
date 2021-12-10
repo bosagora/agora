@@ -523,36 +523,38 @@ public void getCycleSeed (in KeyPair pair, in uint validator_cycle, out Hash see
     // pre-images, which are `Hash` values at the height of 199 (= 200 - 1) and
     // in fact the hash values hashed (PreImageCycle.PreImageCount - 200) times
     // from the values of `hashMulti(secret, "consensus.preimages", 0)` for each secret.
-    if (pair == NODE2)
-        seed = Hash(`0x1ae4bf7d4ace6f158357602bcca93c275be9ea42b189aa39e209479aa57f7e62cbe2a5ec8ead1297637937e6929d1ddd2d21e864bef02bff3fffafb2026f3db1`);
+    if (pair == Genesis)
+        seed = Hash(`0xc5a2d1cccbd541dbc94193c71f92df64ee946270926dbc42c16a21ae80ff67c83da20637eb6e769dc044d6d7fe15b97abed9f56ef3e81e6f09b7c149af275b60`);
+    else if (pair == NODE2)
+        seed = Hash(`0xf33d75944960b07065f0d29ccb7403f1f0c6d9e01fe32ee4a3f16c01d9a34657bee9e02af2c51a6f00afc33802445fc3d2056f4e0051d55ac07078b4a8b3024e`);
     else if (pair == NODE3)
-        seed = Hash(`0xd1a46d0201452a5bac305966dba8f245cf23ae167d11cf21e196f953372719b193b2def6bc91f5428bb0b4091473e2f386ce6ee42d7f4845282dae9ac9d5ac5a`);
+        seed = Hash(`0x8f5239f23dc1a59dbe714b3476f229afa07d5c00b180dc0bd88947e7852a81cae39bf6f68aa181eafcba726168da98407da03c96ae93225b3914ea5311311214`);
     else if (pair == NODE4)
-        seed = Hash(`0xe28ec36906b56a853bd7eef2f28affde35296e5bd81d1f130095494a9bd4779b74b895e3d386135a2a72355f79db81f817d336f1ca0a8337f7f7571ea4eac468`);
+        seed = Hash(`0xb88bb7e5cf0c2ffc33978cbe1c41ce5f5d12cce2b96c67e908e4d03044d782b46606048b24071041e0dafaf015623628e136e66693681686bd30b33c75222b24`);
     else if (pair == NODE5)
-        seed = Hash(`0x5c55c17261648edc0764b2cd3bdb97f0fa4cc171f329837f90db2382784a0ef04da53e32462add25ad2c88f8b45ea546c0ab7bc6735e657cd45f7c6fd64c69d1`);
+        seed = Hash(`0x1c0cb8113eeaede322e5429cd210ba9f0834021cb595c2c4b9ff4b14022c28ca81a1550447d6cca57f7b37c9f37f4ab7a6455367d7112ece892ed55bb1943f21`);
     else if (pair == NODE6)
-        seed = Hash(`0x429cb1d508a5fe277e7a8b6bad671514581f0f024023e6eecebda03e86462ae330c59c1807d807e52ceefe6e2b556734c7a0dd2c32e632dc5e37a6cb48c3d49a`);
+        seed = Hash(`0x6917a265e852182cf7a309378905ccc23a9f05967c1acec3854a9a54ebc59e75a3beea61443d04de90866595b8c710e89734f2d5bfa1a215461380eeb5db6c4a`);
     else if (pair == NODE7)
-        seed = Hash(`0xd7b512cab6ace6a563d50efedac3beea021410887e46eb338439f6fa8cae281c75eac7e1f9a164a0094e0f95a7b8b6d52f7bc3f959e685ec4f33e3100091bde5`);
+        seed = Hash(`0xa656589184be1055d12e60821ccf933023665db1903892b5814c6bbcc0e3bcd47067b6c4a6a2241c1f8e174bf417dc11edf03715ab9c50c7923500cf987fc717`);
     else if (pair == A)
-        seed = Hash(`0x3a481cb1576d79002755239b8d4019587d7e5394ddd448f92d5dca74baf742f4899dd53daefda9136e9d3cc6887b3456ffcfc85cfc711e5cf8659998047771cb`);
+        seed = Hash(`0xf552fa1caf80d22b3d5b6307b83ccd664065d099c5f830fab6886c0808815f724abc032ee31c2efa2d382077f56f38b6b841027a5392a9f47137176e1cf383d3`);
     else if (pair == C)
-        seed = Hash(`0x1a7ebfe71dd438ac96da520917680ff4278c3e4de031890cea2305de009dc750dfd3d9b714ef7b4cf983633a540ca4614ff1eae38d9d121604907f2dc2a7e885`);
+        seed = Hash(`0xfa126384ce0da0fc135fa7670fbe9686c7263daaa6cded62cf33d88c94c690d6f6d339aa7fa4da0aecae836d4882de2f951a3f7d247f9c0aa289022997498abf`);
     else if (pair == D)
-        seed = Hash(`0x64d1b6e98019df73b59c3593e2ca1baea53aeeb3cac18748d3ab50473a64963c76c318913158349caf368730b027eb8c4596b743308a7e53a65e484016c8e2ca`);
+        seed = Hash(`0x988430c307a2699a82a3c9f49f719b113d5c669458b9dbc12d51416ae4e4fd62ccad3bc7350a10c2f8bd77e462ea6400d2e6b65a8c35b684dbdd1cb03e7e494d`);
     else if (pair == E)
-        seed = Hash(`0x0bb70cf7d265661d006bc5bfd5bf70a66c5b32e54d05ee37bf023c4c0bf9b3bc76faf38d656c25e254aae7ea73aabba1902192575da80cfe10a24363d3e41118`);
+        seed = Hash(`0x9b65e3277352ed506736179bd3b49dd2577e5279fffbd0dc208d2e70e2534b1e66f74bb76c386056b9db5c8a6f543413ca807b7a0265f34cfebb0ee5950c8745`);
     else if (pair == F)
-        seed = Hash(`0xbb19e8bae8f03ce2aee0c15f83089c87dd208b44d17683ace877696a98680730c4cae9f762366a70dd00885cf0ff2eb228f285885ebda9e6dc11c0288158d8cf`);
+        seed = Hash(`0x4a3e76d46eface58683e647a456e5812de51db4dfbeab261a90418c9b43bf306c36c12b9b6c0f2e541a859ddf2f8d1f7621391ece992d5947ccbe3a86d411326`);
     else if (pair == G)
-        seed = Hash(`0x90f2a3d469831bad2d27f4698c463dad56c8d942b28859e38c2f4b1bc975605f0641f62aff2edf23326b67ad3b34c47bc43f96167485d4db2529d5e84fc7e994`);
+        seed = Hash(`0x18f65d7f34ce57b5a92f5647e6c5190d28e5fb28ef9edd9dec4762f8c7e3efbd01fbe062bbce0640fba4f90d918af93da27a409ef76dc6787741f3a34159dfb6`);
     else if (pair == H)
-        seed = Hash(`0xa84c60d88e1c075d8d70c77426c4724ac8bd38f83030fb16a3db71890396548572031907fbf7adba1034a7f9b7b4f2ae11155010cf677ed81cc32728f6ec7a06`);
+        seed = Hash(`0xec5f4d0538b5f60b4fe1dac8bad6fe5d9527531165fa3ea139d36c61b89eb37bd896a613d878d0f4140a59fae6b1e7ad95381a17bb54089943a39acf4c3b998e`);
     else if (pair == J)
-        seed = Hash(`0xe39ae981988560d89e85f340c087fea46f1d9eefe73400f2a85edd3d3adee2bc5a3efd6e6ce9de04d73a3fe2554a1b1035450b7be9eaade24bbb789585aa0015`);
+        seed = Hash(`0x3256f762cee8e5345361d3db3d500ce7fb1c9591a0f051a264e383f764dc8c41033ce5f094917f58311c8597a450784c92bdfae947ca9c39a4ce62373a8631b4`);
     else if (pair == K)
-        seed = Hash(`0x72d84ce0dfc74f856909a3f49dffdb8b68c39212f1229fddec3fb071c3bff84983645f8caab335189a710502c1020ec4b855f70f8b1493718848aa9dcc761fa7`);
+        seed = Hash(`0xf32b9715a5ba6c8c26ac9dd92179c9e549cdbbe18066c02db7dc6fff62e83b8c3ac4052265b1320af39b93f3a70e2f9b5f860c39d1f2b27a7e66d3554628bcec`);
     else
     {
         auto cycle = PreImageCycle(pair.secret, 20, PreImageCycle.PreImageCount, Height(0));
@@ -578,36 +580,38 @@ private void getCycleSeed1008 (in KeyPair pair, in uint validator_cycle, out Has
     // pre-images, which are `Hash` values at the height of 2015 (= 2016 - 1) and
     // in fact the hash values hashed (PreImageCycle.PreImageCount - 2016) times
     // from the values of `hashMulti(secret, "consensus.preimages", 0)` for each secret.
-    if (pair == NODE2)
-        seed = Hash(`0x953ea564d1f8c9ea2147e8be7a982a9e13731b2e21a6c389744a7dcd69dc23d21684f388dc7719274c922fc93de69d8912fd528f1d831f5e61609b9243eccb83`);
+    if (pair == Genesis)
+        seed = Hash(`0xd0cd58f439dfa3cf14303cfbfc64d931d6ed5eb92e118aed1cdd80a6d8459db5746daacea2e3b6cca1ee8916674ac4c73adeb9a703f2063bce7e532fbc5e6bd2`);
+    else if (pair == NODE2)
+        seed = Hash(`0x8a79521ecbafea8c567a51a5da7fadc55493c28d49ea923358be9e1f9d9d25d24815cad1138988d80d2ffb64e8a95629676b1848949c8fa33fb1c76d5ed99a79`);
     else if (pair == NODE3)
-        seed = Hash(`0x3f9a695a810120ce158c0d135f5a08eb0f7abb114a4cf1e9a6d35acb9f24202921ec3db3081d2bc343006bcee249bb609f6197ec07792df9dec65a4c66419c34`);
+        seed = Hash(`0xeb1cfd198b705ff7ecfc6616c2af470fc143cd9f30b28cdc5c7959e3dd16993f2bc7fab14dffc01013c5e9f99bd695cbfba79d9f7a69fc947b2753c89703c3cd`);
     else if (pair == NODE4)
-        seed = Hash(`0x739174927d577f7600a497a410526174810745d466a9eb667bff47e34f63f101272cb5c97a8c2a7baa8553b99af838b00c0908d93c8670a616cabd7bae8eb639`);
+        seed = Hash(`0xf8e0ff19a2d15aeaf777dc075002c45921fed3773fa6faf3a1e2fd644f11c0bffffac3c4696538356002f661fd5ee1bfe0d82d072dff479c4a73030c1ff60c2a`);
     else if (pair == NODE5)
-        seed = Hash(`0xb37a9677e30ade4907abcb5dd21221f8378012ab40ecc90f1b8fad435fa4ef246fb4d11489402b2b60262bdd3c8a52df4853d140ba96a726446f9ed5508914ec`);
+        seed = Hash(`0x81d76a9fb44d4da47903f09f29c8d6de63d0414d908c2422da26cc5f5c3b9eeea75877688ec018eca2e7221a7c2e00b51b50f55ad6016c1f23513e2d7f2e96ca`);
     else if (pair == NODE6)
-        seed = Hash(`0x59f1291846188a8b344e43460bf2baeda269be3e0529e1f54cf64408796c86b1e93eb45d65769485f37d20af93fe019a312f09e8b99ef714ca067b3f3dd23b79`);
+        seed = Hash(`0xd822e98070c7038330f126ad2eab1581891688420414580dcfe686e7ada66370e0499a602927b3e7d1ff345db439035619120cb4875a11de17a57635c9b6b536`);
     else if (pair == NODE7)
-        seed = Hash(`0x2c9baab303ff0f2c574f0134db19e4340bd8191c16a34c9d7da0d907b2db496def4d7191ecfa360e8da196ee926d4eeb88d96f997a24646e6d4bc53e7fd4fdc1`);
+        seed = Hash(`0x39bd3d0a6ef55e0bc54e1fbcfc0d33508613a9272c6b79c68fd3f08edfe1328e1deee3e81b7e0f10a53e0f1f39b36d93047c86c4e3e507bece76a034628dd056`);
     else if (pair == A)
-        seed = Hash(`0xc9e2284968f9f4305806e46d6e106648d7c5f396a46bb34fb3e6a364733413a984e8e4d243c17eb445dcaf13583781c02ad03ea9ac3f18ab8ba7e8525a1da3da`);
+        seed = Hash(`0xed6b4f9d229d1fa691dd7776b220770a7be4627e38ee8b2181f3418d8b0dd7492fbf432d76807be80bacf3c02e9e30e4c5f654562a14783306e0c63d75959cfe`);
     else if (pair == C)
-        seed = Hash(`0x9d97c67b7e9aedfb27bdb176704c25fd1d540ea857a3c1574169b4df7b16e929670e73c1f7e5085e3ecba8b635bec13ae1b573173d6504c196490af8a77a3ad4`);
+        seed = Hash(`0xb96e04de6ac67789506bfaf0785faba1e09c878e21c5cf80f417f441395b30c0ff0e9913115e5fa767358b60b2ea3f3f887f2f0108bf0f9fae57ae03ff1b74a0`);
     else if (pair == D)
-        seed = Hash(`0xd7550ad9b654fb9f6911609d6167ab8b5ba814ef7c046e78b49624f54bec7949e185c3db76df77af15f2eea95d03717188d4ed1d290744f8fb88aae727bad90f`);
+        seed = Hash(`0x9267a9b3840a3576b94d87aea74cf60d73f74db0f16a571e466539bf36bfb60a443a96c97903d017dd9a0e0bb5f0a9d06272f514d7d61a19e33fd5de2c81b1ff`);
     else if (pair == E)
-        seed = Hash(`0xb2cf21c06192535af972debdb4f966e8d5cb552d2d663472bea2cbf6bf04a14413db0ff88fbc171c110fe5a8d38ed8da97a9a55df35fa51273fdb3b28f343314`);
+        seed = Hash(`0x91ee22da3a9654a705fff1e8ba42166418b7b8452cc12aec8facaf108fd95f37c192f93013d4c3ff70ff0c620d1036d13f48d624e3b7eb4b34152725689f8d90`);
     else if (pair == F)
-        seed = Hash(`0xdbd4a527c35d6de88605b70760cf9cd91fa2cf4bd7286d460f0f7227545d4cf3096305c91512e0978c32ae75510a415bba1afcf94d77ea12cd6ce4b5bd39de92`);
+        seed = Hash(`0xe5bb9c74171f0924b12a14fdca9336c849c5ded618ae56fc9484cb265b6edcc536f495516504ae0ad1f1e213f400bccf7a487294677edb496d224e5b3f60fe21`);
     else if (pair == G)
-        seed = Hash(`0xe23194a7e7452c5204b5aebd37a48ba67f32b2b5dfb63fd4c963b6c1fe798d59a5d8f818672105e5688ff0d9b71d89f28e07c2fd19c7efaeb79b3d242aea96d7`);
+        seed = Hash(`0xef14cfd2be0ddde17778779fdcba873be0fabfec72b61640c609886a140b2feb16f11cd6c5c3632a763df6de17b8818104259ac48afb67a4b424f130fdc1e91b`);
     else if (pair == H)
-        seed = Hash(`0x970c773f30876d148d5beac30d5b35dd35145f4cc6b0922e6538338fc01e0b3116422d38bce483006e5ef0a211a5da2954edf155e4475812565f20d1450c746c`);
+        seed = Hash(`0xfa7dfdfc0fb7bc10d9cc28b66042a189bd2f9efadc24eb3bb7324fa679d54dcb47d52e8ba14ae0f224e6ec5c78b982327242678423bf4a60ff227f5583a3c268`);
     else if (pair == J)
-        seed = Hash(`0x9fe29ab7f933da33c4727eb67dbe5d3859c34d425538c8f2e6bd1d9fb5d35bef404787799dfb316a0b943bd6235a7cccf1f9d386b0636996c9079eaa803d65bd`);
+        seed = Hash(`0xb058e527f47cdc15bb1c531c188c32f690bb2790086170ab8e057fb0dfcb1250c705e12ccc5761aefaec73a40540aa30519ae24bd0ae9e4fe87e8888f7a2281f`);
     else if (pair == K)
-        seed = Hash(`0x9a4fa1aa78c7b7aee273002b5d33c96fdc12cd9f7fbb881024d5589569854e95b456f23211331aa5b4d5ba8420fca926c8936d32df662996c5f85c88dd1b6115`);
+        seed = Hash(`0xb2b707e091ec6a708896ec6421a517f6a5b8f3df4dc76103dbc620d4a5e669ac4500c23bb46d0a4adbc415a36c12d3111748840912f4b19d1b576b37238cd646`);
     else
     {
         auto cycle = PreImageCycle(pair.secret, 1008, PreImageCycle.PreImageCount, Height(0));
@@ -628,10 +632,25 @@ unittest
     getCycleSeed(NODE5, 20, seed, seed_height);
     assert(seed != Hash.init);
     assert(seed_height != Height(0));
-    assertThrown!Exception(getCycleSeed(L, 20, seed, seed_height));
 
     getCycleSeed(NODE5, 1008, seed, seed_height);
     assert(seed != Hash.init);
     assert(seed_height != Height(0));
-    assertThrown!Exception(getCycleSeed(L, 1008, seed, seed_height));
+}
+
+version(none)
+unittest
+{
+    KeyPair[] kps = [Genesis, NODE2, NODE3, NODE4, NODE5, NODE6, NODE7, A, C, D, E, F, G, H, J, K];
+
+    Hash seed;
+    Height seed_height;
+
+    foreach(vc; [20, 1008])
+    foreach(kp; kps)
+    {
+        try getCycleSeed(kp, vc, seed, seed_height);
+        catch (Exception e) {}
+        writefln("%s %d seed = Hash(`%s`);", kp.address, vc, seed);
+    }
 }

@@ -341,26 +341,20 @@ struct SCPQuorumSet {
     import std.conv;
 
     const qc1 = toSCPQuorumSet(QuorumConfig(2, [0, 1]));
-
-    assert(qc1.hashFull() == Hash.fromString(
-        "0x57744ff3b19f006505cb69a617f99314119dbfa7bff94eb59b058b7088076ae8f4631085db5dca56c0b97d208e8276801a7602453f0fa57ec0ce2dfe25669db2"));
-
     const qc2 = toSCPQuorumSet(QuorumConfig(3, [0, 1]));
-
-    assert(qc2.hashFull() == Hash.fromString(
-        "0xdccacd796d28677dd3690c5dea888262c40c8d904e452eed3d56f99154fd209303ed4a270a81a51ed4224375889d86d1a441c914a2ec5ece78313a12a60aca72"));
+    assert(qc1.hashFull() != qc2.hashFull());
 
     const qc3 = toSCPQuorumSet(QuorumConfig(2, [0, 1],
              [QuorumConfig(2, [0, 1])]));
-
-    assert(qc3.hashFull() == Hash.fromString(
-        "0xac26280aaea44f23c11fb6dc14eda3c83e5642288049244edb9bb0331a99f7e5f5e614e07e6d5b1009cc80e7895181f1eb0f0ad299cbb5fffe2d7994e970f6ee"));
+    assert(qc1.hashFull() != qc3.hashFull());
+    assert(qc2.hashFull() != qc3.hashFull());
 
     const qc4 = toSCPQuorumSet(QuorumConfig(2, [0, 1],
              [QuorumConfig(3, [0, 1])]));
 
-    assert(qc4.hashFull() == Hash.fromString(
-        "0xeaafeb7634d31143b235b8d1e45d57deda854d3a8cca6af0e78379d5cdb2e547e15e67d8d2da01510f4de45b7d650b418da4051d34ca1d2760a7be2772ac66d0"));
+    assert(qc1.hashFull() != qc4.hashFull());
+    assert(qc2.hashFull() != qc4.hashFull());
+    assert(qc3.hashFull() != qc4.hashFull());
 }
 static assert(SCPQuorumSet.sizeof == 56);
 

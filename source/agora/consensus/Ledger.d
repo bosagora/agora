@@ -2063,11 +2063,11 @@ unittest
     {
         assert(ex.message ==
                "Genesis block loaded from disk " ~
-               "(0x498d14496a0ea3159bae273719496a1a43158b67a9666ff5266126bde05" ~
-               "5d84bdfa39079d8fb6104b5b629a179836c8f33fbc25e1f0a290ddbdb553377d679ca) "~
+               "(0x8365f069fe37ee02f2c4dc6ad816702088fab5fc875c3c67b01f82c285aa" ~
+               "2d90b605f57e068139eba1f20ce20578d712f75be4d8568c8f3a7a34604e72aa3175) "~
                "is different from the one in the config file " ~
-               "(0x47f30089ca49c3eacb09f2d96e4a27e1049697bbfe1002862344fd0b33b" ~
-               "72d1b3b69467148905626e0a0f4845f5cdca69c25d2ec2663622acd45c38c974d0d91)");
+               "(0x70c39bda1082ff0715afecd942650bca1773ce4a2fe83fc206234141b8c0e" ~
+               "a5199c5c46f1705c48cb717bea633e5d5c3b6dba08e4fc9e1aa28b09e3bf268eaaa)");
     }
 
     immutable good_params = new immutable(ConsensusParams)();
@@ -2454,7 +2454,7 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
     ledger.simulatePreimages(Height(params.ValidatorCycle));
 
-    auto freeze_tx = GenesisBlock.txs.find!(tx => tx.isFreeze).array.back();
+    auto freeze_tx = GenesisBlock.txs.find!(tx => tx.isFreeze).front();
     auto melting_tx = TxBuilder(freeze_tx, 0).sign();
 
     // enrolled stake can't be spent
@@ -2488,4 +2488,21 @@ unittest
 
     import std.stdio;
     assert(ledger.validateConsensusData(data, []) !is null);
+}
+
+/// throw if the gen block in block storage is for a different chain id
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    immutable params = new immutable(ConsensusParams)();
+    try
+    {
+        setHashMagic(0x44); // Test GenesisBlock is signed for ChainID=0
+        scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], params);
+        assert(0);
+    } catch (Exception ex) {}
+
+    setHashMagic(0); // should work just fine
+    scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], params);
 }

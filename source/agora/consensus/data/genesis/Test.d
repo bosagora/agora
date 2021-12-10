@@ -36,7 +36,7 @@ import agora.utils.Test;
 
 /*******************************************************************************
 
-    The genesis block as used by most tests
+    The genesis block as used by most tests (Chain ID: 0)
 
     Note that this is more of a 'test' block than a 'unittest' block,
     and it's currently used in a few integration test, hence why it is not
@@ -56,40 +56,51 @@ public immutable Block GenesisBlock = {
         validators:  BitMask(0),
         signature:   Signature.init,
         enrollments: [
-            // boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh
-            Enrollment(
-                Hash(`0x210f6551d648a4da654da116b100e941e434e4f232b8579439c2ef64b04819bd2782eb3524c7a29c38c347cdf26006bccac54a58a58f103ae7eb5b252eb53b64`),
-                Hash(`0xcfc5b09bc53136c1691e0991ffae7f2657bba248da07fb153ddf08a5109ce1c7d38206bfab6da57d70c428286d65081db992fbade6c67b97c62e9cb2862433e1`),
-                Signature.fromString(`0x018389f5876ebac77ad4c2269415bf8a5b14e2374e9d30a933f70a10abbca2a4035ec0640ba07ea8b39416e65ff66d373e25265ce78541b582ac34f2e625fb90`)),
-            // boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2
-            Enrollment(
-                Hash(`0x3b44d65edb3361dd91441ab4f449eeda55644026624c4b8ae12ecf0264fa8a228dbf672ef97e2c4f87fb98ad7099e17b7f9ba7dbe8479672066912b1ea24ba77`),
-                Hash(`0xff4e39063d315690608429a08b1b74c4a32c9f1529f1d9a3243ece4227765e98c564da4f8b083494c1b542ffb375b0dfa600be83653a5854d274602533a6d698`),
-                Signature.fromString(`0xe3f959407fe99cb23f352be4477bbef8f619a11283319192418ac869eeb204060facc7e99186a09d9d6aa951d548e6ab228196f96ec104ae2f94741efa760344`)),
-            // boa1xzval3ah8z7ewhuzx6mywveyr79f24w49rdypwgurhjkr8z2ke2mycftv9n
-            Enrollment(
-                Hash(`0x7bacc99e9bf827f0fa6dc6a77303d2e6ba6f1591277b896a9305a9e200853986fe9527fd551077a4ac2b511633ada4190a7b82cddaf606171336e1efba87ea8f`),
-                Hash(`0xfb40764acd8b0d7a8307278fb4ba9805a1b652c004f8f1dbcf0b1d019632458793b82e662687e041691660ac231223b732ed5339e2793c48233ccb04444806ea`),
-                Signature.fromString(`0x375eefbe1990a6e37b2f9a11b1ba68e3c8f8d0976f51a5de55e4d58a6798cd4f023fe780113d551a9afe61f6f56ee0a93fe8752ba92869103b8a1aaa6c8b89e5`)),
-            // boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5
-            Enrollment(
-                Hash(`0x9b2726e79f05abc107b6531486a46c977414e13ed9f3ee994ec14504964f86fcf9464055b891b9c34020feb72535c300ff19e8b5167eb9d202db1a053d746b2c`),
-                Hash(`0xe0dce92ebd44c6398e582e5439dfe03a08a0cb9c45075f6ecbe1edac3bcacf201baddc9c522415eb2f8033f263122becaa7fc078aa2423d39de05df7eaa27c3e`),
-                Signature.fromString(`0xa72ed0e4b392632c51a923a79b319d9db6c5269319bb94ecff4588c18d0a9a1c0c754ea4dbea99c0386afb8bfae9a65d5c9ed0fe7ddba53521badbc957271e81`)),
-            // boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8
-            Enrollment(
-                Hash(`0xab19131ad8974a20881e2cd0798684a06ca0054160735cdf67fe8ee5a0eb4e28e9bf3f4c735f9ed3da958778978c86b409b8d133f30992141f0ac7e01e7f1255`),
-                Hash(`0x2bd87a2f9aa23437d7ce913f3d646bf9f5a5fc0db24822ab7451e3d0746eefd2fab29749c245f8ad2c40718db6fd4de618637575b6c6eef37c58a47968d1ee80`),
-                Signature.fromString(`0xe9a3c6c63d9810e61561fb7e4379849d57d7d47942d6ca4ecf993ad7aafe76f50efe67bb7c2a3dd54877b5c2738d4db2f97c277a4e7bad459235e19c9a3fc88d`)),
-            // boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy
-            Enrollment(
-                Hash(`0xdb7664caba94c8d4602c10992c13176307e1e05361c150217166ee77fc4af9bf176f31dc61aba61e634dfc0b4c5f729d59e604607f61c9f66b10c6841f972a0a`),
-                Hash(`0x00eb7bc977af8044f37453b7498f0db9e58bb21c5d0065a05d6ca656b40758e62bd2fd18a403b99bfd6f8e2530528a12b76cf70fead17145e503f5a6bb78fb56`),
-                Signature.fromString(`0x07ffcebf03b8e7c2f14209f0999bfbd80f2704d69d1383434c9c0ff7f52ad22c09e7b71a5d9bd8605f04db19fdbe35e2078a920ea3cd46b69dac6c2749f64ad1`)),
+        // boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8
+        Enrollment(
+            Hash(`0x0666c4d505b55b6840fbb669ec08a1849e699d5a30ba246989b65ea71292f8ac9a3d7126ca9061313d3225d6e324146f37cdc5dab51facbbc3beead6854e89a4`),
+            Hash(`0x12f7fc1c953a13101e60c823ecd502fc9215a4dc7c1f3408db37ed70e62e45f9dda92c3b0592ad3fde04c4241bfe65e207704db9794e6fd92641f54a17747ab3`),
+            Signature.fromString(`0x6d7a10ce4912b89806800cd66c6b58e66ccb78625afa865119c6d598aa061d18098e45596199261710d32c8c1b6565a1b2341cae9f773b6dca53dc26b7d49cf2`)),
+        // boa1xzval3ah8z7ewhuzx6mywveyr79f24w49rdypwgurhjkr8z2ke2mycftv9n
+        Enrollment(
+            Hash(`0x2b1fcfb62b868a53287fbdfbc17631f5a4e1cfdb91e58dfc0a8ebf083e92994dd327b0b574c81f0e29394d3abbf67f609ad67bce49c9d9b59672fa5a61a37495`),
+            Hash(`0x659467b85b216489e090d8b77e4de9fa67d4c0824ee27a798d302e3cac0f2e527abe04db5e84a87fadb101edb60342687fec3d094af2a4bfdd3f73b4176f00a0`),
+            Signature.fromString(`0xa669a117712a49b470c2bfe885015a185c60fc158b8086a74f585804bf8962de0f076c77115f49a043035fd293318d8c9462f943db4d9a9b7c9bc9cccfd1254f`)),
+        // boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh
+        Enrollment(
+            Hash(`0x6bceb7f5997df362bd0808826ef9577d7f8389bf9c75a471362aa5a24f1d64c9074850f29c6c078e2a7fa8555ec81fde75c2c8b6a8c0adc8d75057bbcb51116a`),
+            Hash(`0x3c4e8f32879e16a6d856f6360045ad263b7be2c22cfa55d6178dcf138955b92748a105cf9cc3f697b8b6dfc126ab81fb56a7349f57b9ddb443fbd880658b94f0`),
+            Signature.fromString(`0x221c3179366b4f12cb2ac1a323c312a2c56d96854b9b1aa0a50eb348766b50f5080735f10ccaba022a8e6d540b679a5453d622bd398915c143b5cbb4195da1d7`)),
+        // boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5
+        Enrollment(
+            Hash(`0x84daa1d361afd9238041431b838500103eeb16d7952486077830a31a77ecc31d40f3a9d3f3a1c92dc3a0e5723ba6de9d87f107a73c73aef6a45bf9862c663493`),
+            Hash(`0x2ef9c7042d38c6a212907ff065e355d0ce78cf315ba63c37dff58fbe4f484ccddaf03753918730a79a64927b2c1e4996296506abfeb484d8fe338311494cc3b3`),
+            Signature.fromString(`0x8ff3e4f89919ce3f010223ffa03ea908c4963cddae7165fa9eaa53d071780d1a086bf1e2594e6745c597cbedd491fa3aa568e58faee89a31ec05bb8f5c1a1e28`)),
+        // boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy
+        Enrollment(
+            Hash(`0x94b78736ae8ddf97f05a30e549f5eab377648a9116f3033ab7dcb8c9528ee717fd8d94dae7fe3ecc9d43290204ca2a41f710e798a3446b553c7a415d968e7177`),
+            Hash(`0xbdb489da86fb8aeda9d09478b1936d9dc57b243eae9d31381270e533d48985a2a235e880c4b225e8a2f23aace36a6c5590ef47d5c3143b5115bc5137b6a200c2`),
+            Signature.fromString(`0x7702482cdbed0ef9751cad41ca46b172edbd4c0db7fe8536ecb82e87aead31fa01fb58b031b139074ef97a17d7c746fe9261b194bad95a906648bee08234f199`)),
+        // boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2
+        Enrollment(
+            Hash(`0xa3c2660bd4c65d6153bbe5bfac2cff06f68364c92e1f2619a4faede13943267df958efd9117c87125180241d678ff7278557fb8e83e486872a1eb8d83c41b4e1`),
+            Hash(`0x5666c8993722e5ba725a60174fa2ec28c37ea0569e0366c612b278de7afa0e25c40d6e1a3f1e3c62fe67712df211f989f0f4cb3f0a2745d24e9f830c88c3d6c3`),
+            Signature.fromString(`0x0c7110ea3fcc9fd683ad4b0edcd8956a8716830dee4c8755e773d10f611b32aa0e32d68f5c7961054356148e99c9abc978019fca71b1d4fc9685ecc6a9575fd1`)),
         ],
     },
     merkle_tree: GenesisMerkleTree,
     txs: [
+        Transaction(
+            [
+                // If we want these in order NODE2, NODE3 .. NODE7
+                // then we need to make sure the value of the Public key is in same order
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE5.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE6.address, OutputType.Freeze),
+                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE7.address, OutputType.Freeze),
+            ]),
         Transaction(
             [
                 Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE8.address, OutputType.Freeze),
@@ -109,17 +120,6 @@ public immutable Block GenesisBlock = {
                 Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
                 Output(Amount(59_500_000L * 10_000_000L), GenesisOutputAddress),
-            ]),
-        Transaction(
-            [
-                // If we want these in order NODE2, NODE3 .. NODE7
-                // then we need to make sure the value of the Public key is in same order
-                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE5.address, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE6.address, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE7.address, OutputType.Freeze),
             ]),
     ],
 };
@@ -155,13 +155,13 @@ unittest
 }
 
 private immutable Hash[] GenesisMerkleTree = [
-    Hash(`0x5289192825c751ac16649f59f4d4ee7b115af7918c625e944bbf9301a20f77c447d2c54f712fdf224c8d3564d9afcee6a85d70910ec892adb758471f3c55c7c5`),
-    Hash(`0x56c1aa99fb4c9795274b8b2ffa6fe555885b9bbf07ecf20c8556bf1c6f7949d9e356b72dcc6d9e2c0ff0afcfbe522b2a5a01f2309ae610c0a457d66d9a0b0165`),
-    Hash(`0xeb5e0004d046422c84ddb7b9d54a0eba484a41b5179beda0b3dd7c54c3fca609437a9c8ef16b5bfc2335d9b258eb68908757e0f1a4c725752598aaa962924551`),
-    Hash(`0xeb5e0004d046422c84ddb7b9d54a0eba484a41b5179beda0b3dd7c54c3fca609437a9c8ef16b5bfc2335d9b258eb68908757e0f1a4c725752598aaa962924551`),
-    Hash(`0xa8becf607ad1721aa25b9378d8b64ec906ea9e383ef079aa6e6e94f09c85979d300e9bdf8513cbdb311123ec0bc1ad6c83cc5ceabd3f58db98a4e75aaeb92244`),
-    Hash(`0x932c18001c1787ebd6440c69a4db00bc6bb98527bd0d41e7437df3d26b29b1603fc476c2b00870d304b04b3af4d886f67f12a0052a058919e86947f53af82cad`),
-    Hash(`0xc5d27cf200b9da791f976ddaaee3d6f96cc33da9012f862f49f5af676910a70fb3d21b197ee2a53b3bda2e51ef2d870bf5148e8a602cf33d89df5bf3bee1103e`),
+    Hash(`0xaf63ca7d0b555bbbe65d398165c3d921421114003ee6d42fe11a1b4eaafa6d6e9a57ffc6d35b820d001beeebdcdec9a9d6b7d34fe0062a6d9eb719d8d47237f2`),
+    Hash(`0xbf5685b8bc230a0463d1b5c64a8dd3cab09de95cd6e71649a43af680569770b279646a8a5453bd157a6d2066850c27e941c662eb22c8ebae922989487bc53e58`),
+    Hash(`0xf1b227276819be01f574bad7bcb26afddafbc14a3cb6052c5006e4b35c483e20864ba8388adcf8f9870cc2a028ec41dc563a91b8c09d13f95277e0b5bdad1ac3`),
+    Hash(`0xf1b227276819be01f574bad7bcb26afddafbc14a3cb6052c5006e4b35c483e20864ba8388adcf8f9870cc2a028ec41dc563a91b8c09d13f95277e0b5bdad1ac3`),
+    Hash(`0x0ab1d2f167db7529ce0663388e65e7f5435d575a08eda158ff8cda871aaefc8cc38bf2e84de39d41bbb7936ad3decf78ff7a9760dfd84f6712d09ca5f0f511cc`),
+    Hash(`0x3fe30fe15a6355264d72224d6661ced1da44c57ea020a45a9cde6f3af9d85a82a88ee984100ea4b9dd426f6af43c4f4f7abb71c7a22a98a4c188328439dbfd72`),
+    Hash(`0x0923b97e7a4dc9443089471545e796115ef5ad2eed8e92bb8b1de4744f94a95e297a536eb7c152752ca685af7602bc296f5590c2ddf0d91e4fe3dd24fb8e3f72`),
 ];
 
 /// GDGENES4KXH7RQJELTONR7HSVISVSQ5POSVBEWLR6EEIIL72H24IEDT4
@@ -180,10 +180,10 @@ unittest
 
 // These are the genesis validators ordered to match Genesis enrollments
 public immutable KeyPair[] genesis_validator_keys = [
-    WK.Keys.NODE7,
-    WK.Keys.NODE2,
-    WK.Keys.NODE3,
-    WK.Keys.NODE6,
     WK.Keys.NODE5,
+    WK.Keys.NODE3,
+    WK.Keys.NODE7,
+    WK.Keys.NODE6,
     WK.Keys.NODE4,
+    WK.Keys.NODE2,
 ];

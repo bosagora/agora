@@ -361,20 +361,12 @@ unittest
         [Output.init]
     );
 
-    const tx_payment_hash = Hash(
-        `0xbf16b1bb63c50170ce0e2624e13bda540c268c74a677d2d8a0571eb79cd8a3b28c408793d43e3bbee0ffd39913903c77fbd1b0cbe36b6a0b503514bbbe84b492`);
-    const expected1 = payment_tx.hashFull();
-    assert(expected1 == tx_payment_hash, expected1.toString());
-
     Transaction freeze_tx = Transaction(
         [Input(Hash.init, 0)],
         [Output(Amount(20), Lock.init, OutputType.Freeze)]
     );
 
-    const tx_freeze_hash = Hash(
-        `0x21b2cc64d38563d63a15f1d2488233e5fa6191d166a6d8f3ec570410aea99fb9273a3228bd2a2adc76df3a7daf1ee24d81a18c84a19409928579a9cd302cb7dc`);
-    const expected2 = freeze_tx.hashFull();
-    assert(expected2 == tx_freeze_hash, expected2.toString());
+    assert(payment_tx.hashFull() != freeze_tx.hashFull());
 }
 
 /// The information of the result of posting a transaction

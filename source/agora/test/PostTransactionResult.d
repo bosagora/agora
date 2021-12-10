@@ -40,13 +40,21 @@ unittest
     auto input_txs = GenesisBlock.txs.filter!(tx => tx.isPayment).array;
     auto output_addr = WK.Keys.AA.address;
 
-    // create a transaction with the fee rate of 10000
+    setHashMagic(0x44); // Sign TX with an incompatible chainID
     auto tx = TxBuilder(input_txs[0], 0).feeRate(Amount(10_000))
+            .draw(Amount(100_000), [output_addr])
+            .sign();
+    auto result = nodes[0].postTransaction(tx);
+    assert(result.status == TransactionResult.status.Rejected);
+
+    setHashMagic(0); // correct chainID
+    // create a transaction with the fee rate of 10000
+    tx = TxBuilder(input_txs[0], 0).feeRate(Amount(10_000))
         .draw(Amount(100_000), [output_addr])
         .sign();
 
     // post the transaction, expect `Accepted`
-    auto result = nodes[0].postTransaction(tx);
+    result = nodes[0].postTransaction(tx);
     assert(result == TransactionResult(TransactionResult.Status.Accepted));
 
     // post the same transaction again, expect `Duplicated`

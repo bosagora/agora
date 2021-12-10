@@ -249,6 +249,7 @@ public class FullNode : API
         import std.datetime.timezone: UTC;
 
         this.config = config;
+        setHashMagic(this.config.node.chain_id);
         this.log = this.makeLogger();
         this.params = FullNode.makeConsensusParams(config);
 
