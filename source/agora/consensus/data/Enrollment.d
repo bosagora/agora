@@ -68,10 +68,13 @@ public struct Enrollment
 /// test for the computeHash function
 unittest
 {
+    import agora.crypto.Key;
     import std.conv;
-    Enrollment enroll = Enrollment.init;
-    assert(enroll.hashFull() == Hash("0x412ce227771d98240ffb0015ae49349670eded40267865c18f655db662d4e698f7caa4fcffdc5c068a07532637cf5042ae39b7af418847385480e620e1395986"),
-        enroll.hashFull().to!string);
+    Hash inithash = Enrollment.init.hashFull();
+    assert(Enrollment(hashFull(1)).hashFull() != inithash);
+    assert(Enrollment(Hash.init, hashFull(2)).hashFull() != inithash);
+    assert(Enrollment(Hash.init, Hash.init,
+        KeyPair.random().sign(Enrollment.init)).hashFull() == inithash);
 }
 
 unittest

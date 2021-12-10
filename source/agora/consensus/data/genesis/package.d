@@ -89,8 +89,10 @@ unittest
 {
     import agora.consensus.data.genesis.Coinnet;
 
+    setHashMagic(1);
     checkGenesisEnrollments(GenesisBlock, genesis_validator_keys);
     checkGenesisTransactions(GenesisBlock);
+    setHashMagic(0);
 }
 
 /// Assert the enrollments of a GenesisBlock match expected values and are sorted by utxo (print the potential replacement set when not matching)
@@ -106,7 +108,7 @@ version (unittest) public NodeEnrollment[] checkGenesisEnrollments (
     import std.conv;
     import std.algorithm;
 
-    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.isFreeze).array.back;
+    auto freeze_tx = genesisBlock.txs.filter!(tx => tx.isFreeze).front;
     Output[] sorted_freeze_outputs = freeze_tx.outputs.dup.sort.array;
     assert(sorted_freeze_outputs == freeze_tx.outputs);
     Hash txhash = hashFull(freeze_tx);

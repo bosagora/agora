@@ -358,9 +358,6 @@ unittest
     Hash hash = hashFull(encryptionKey);
     encryptionKey.signature = key_pair.secret.sign(hash);
     assert(encryptionKey.validator.verify(encryptionKey.signature, hash));
-    assert(hash == Hash("0xda361e1772c9030afe761e6a7b3b0c79be6a28779750cd45891d9" ~
-        "3bf51440d2839a81d97c66c1f4706d2a90e442c9955406a412598c5" ~
-        "196fb8200c92844bd38a"));
 }
 
 unittest

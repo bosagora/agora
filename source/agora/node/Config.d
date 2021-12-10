@@ -198,6 +198,10 @@ public struct NodeConfig
     /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
     public bool testing;
 
+    /// Chain ID to be used while calculating hashes
+    /// Used to protect against replay attacks between networks
+    public @Optional ulong chain_id;
+
     /// Should only be set if `test` is set, can be set to the number of desired
     /// enrollment in the test Genesis block (1 - 6)
     public @Optional ubyte limit_test_validators;

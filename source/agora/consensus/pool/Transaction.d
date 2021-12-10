@@ -892,7 +892,7 @@ unittest
 
     // double spent transaction, transaction trying to spend parent
     Transaction tx2 = Transaction([Input(tx1.hashFull(), 0)],
-        [Output(Amount(200), WK.Keys.NZ.address)]);
+        [Output(Amount(800), WK.Keys.NZ.address)]);
 
     // double spent transaction, trying to spend parent
     Transaction tx3 = Transaction([Input(tx1.hashFull(), 0)],

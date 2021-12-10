@@ -406,17 +406,19 @@ unittest
         // revert
         tx.inputs = tx.inputs[0 .. $ - 1];
 
+        auto old_input_0 = tx.inputs[0];
         // cannot change an input
         tx.inputs[0] = Input(hashFull(0));
         assert(challenge_idx_0 != getChallenge(tx, SigHash.OmitSingle, 0, 0));
         // revert
-        tx.inputs[0] = Input(hashFull(1));
+        tx.inputs[0] = old_input_0;
 
+        auto old_output_1_value = tx.outputs[1].value;
         // cannot change signed output
         tx.outputs[1].value = Amount(3);
         assert(challenge_idx_0 != getChallenge(tx, SigHash.OmitSingle, 0, 0));
         // revert
-        tx.outputs[1].value = Amount(2);
+        tx.outputs[1].value = old_output_1_value;
 
         // can change omitted output
         tx.outputs[0].value = Amount(3);

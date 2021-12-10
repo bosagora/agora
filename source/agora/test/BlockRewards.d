@@ -240,8 +240,8 @@ unittest
         assert(cb_tx.outputs.walkLength == activeValidators + 1);
         assert(cb_tx.outputs.map!(o => o.value).sum() == (ValRewards + CommonsReward) * PayoutPeriod + total_fees);
         assert(cb_tx.outputs.filter!(o => o.address() != WK.Keys.CommonsBudget.address)
-            .map!(o => o.value).array == [ val_payout_rest, val_payout_rest, val_payout_rest,
-                val_payout_rest, val_payout_node0]);
+            .map!(o => o.value).array == [ val_payout_rest, val_payout_rest, val_payout_node0,
+                val_payout_rest, val_payout_rest]);
         assert(cb_tx.outputs.filter!(o => o.address() == WK.Keys.CommonsBudget.address)
             .front.value == commons_payout);
     }
