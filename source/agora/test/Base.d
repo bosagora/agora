@@ -2268,6 +2268,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
 
+    import agora.config.Attributes : SetInfo;
     Config registry_config = {
       banman : ban_conf,
       node : makeNodeConfig(),
@@ -2276,7 +2277,17 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
       network : net.nodes.map!(pair => "http://"~pair.address).array.idup,
       logging: test_conf.logging,
       event_handlers : test_conf.event_handlers,
-      registry: { enabled: true, },
+      registry: {
+          enabled: true,
+          validators: {
+              type: ZoneConfig.type.primary,
+              soa: { email: SetInfo!string("test@testnet"), },
+          },
+          flash: {
+              type: ZoneConfig.type.primary,
+              soa: { email: SetInfo!string("test@testnet"), },
+          },
+      },
     };
     net.createNameRegistry(registry_config, file, line);
 

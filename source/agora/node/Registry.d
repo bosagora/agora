@@ -472,10 +472,15 @@ public class NameRegistry: NameRegistryAPI
         @safe
     {
         auto validators_zone = this.validators in this.zones;
-        validators_zone.each!((TypedPayload tpayload) {
-            if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
-                validators_zone.remove(tpayload.payload.data.public_key);
-       });
+        ZoneConfig.Type validator_type = validators_zone.config.type;
+
+        if (validator_type == ZoneConfig.Type.primary)
+        {
+            validators_zone.each!((TypedPayload tpayload) {
+                if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
+                    validators_zone.remove(tpayload.payload.data.public_key);
+            });
+        }
     }
 }
 
@@ -524,7 +529,7 @@ unittest
 private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
 {
     SOA soa;
-    soa.mname = Domain(zone.primary);
+    soa.mname = Domain(format("ns1.%s", name.value));
     soa.rname = Domain(zone.soa.email.value.replace('@', '.'));
     soa.serial = serial;
     // Casts are safe as the values are validated during config parsing
@@ -649,13 +654,19 @@ private struct ZoneData
         this.config = config;
         this.root = root;
 
-        static string serverType (bool auth, bool primary)
+        static string serverType (ZoneConfig.Type zone_type)
         {
-            return primary ? "primary" : (auth ? "secondary" : "caching");
+            switch (zone_type)
+            {
+                case ZoneConfig.Type.primary: return "primary (authoritative)";
+                case ZoneConfig.Type.secondary: return "secondary (authoritative)";
+                case ZoneConfig.Type.caching: return "caching (non-authoritative)";
+                default: return "Unknown";
+            }
         }
 
         this.log.info("Registry is {} DNS server for zone '{}'",
-            serverType(this.config.authoritative, this.config.primary.set),
+            serverType(this.config.type),
             this.root);
 
         this.query_count = format("SELECT COUNT(*) FROM registry_%s_utxo",
@@ -693,7 +704,7 @@ private struct ZoneData
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
 
-        if (this.config.primary.set)
+        if (this.config.type == ZoneConfig.Type.primary)
         {
             // Serial's value wraps around so the cast is safe
             const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();

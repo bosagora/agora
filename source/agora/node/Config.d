@@ -507,20 +507,18 @@ public struct RegistryConfig
 
         static void validateZone (string name, in ZoneConfig zone)
         {
-            // Those two fields must be both set or both unset
-            ensure(zone.primary.set == zone.soa.email.set,
-                   "registry.{}: Authoritative zones require both 'primary' and " ~
-                   "'email' fields to be set", name);
-
-            // If we're not primary, there's no configuration to validate
-            if (!zone.primary.set)
+            // Nothing to validate for caching yet
+            if (zone.type == ZoneConfig.Type.caching)
                 return;
 
-            ensure(!zone.authoritative.set || zone.authoritative.value == true,
-                   "registry.{}.authoritative: Cannot be false for primary server", name);
+            if (zone.type == ZoneConfig.Type.secondary)
+                return;
 
-            ensure(zone.primary.length > 0,
-                   "registry.{}.primary: Field must be set for primary server", name);
+            // Validation for primary starts
+
+            ensure(zone.soa != ZoneConfig.SOAConfig.init,
+                "registry.{} is primary and SOA is not configured", name);
+
             ensure(zone.soa.email.length > 0,
                    "registry.{}.email: Field must be set for primary server", name);
 
@@ -557,11 +555,21 @@ public struct RegistryConfig
 /// All `Duration` values are precise to the second
 public struct ZoneConfig
 {
-    /// Whether this server is authoritative
-    public SetInfo!bool authoritative;
+    /// Type of name registry for the zone
+    public enum Type
+    {
+        /// Server is non-authoritative resolver for the zone
+        caching = 0,
 
-    /// CNAME of the primary server for this zone
-    public SetInfo!string primary;
+        /// Server is authoritative and primary for the zone
+        primary = 1,
+
+        /// Server is authoritative and secondary for the zone
+        secondary = 2,
+    }
+
+    /// Ditto
+    public @Optional Type type;
 
     /// SOA Configuration of the zone, required for master server
     /// All `Duration` values are precise to the second
