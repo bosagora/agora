@@ -332,7 +332,7 @@ public class NameRegistry: NameRegistryAPI
     ***************************************************************************/
 
     public void answerQuestions (
-        in Message query, scope void delegate (in Message) @safe sender)
+        in Message query, string peer, scope void delegate (in Message) @safe sender)
         @safe
     {
         Message reply;
@@ -412,7 +412,7 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            reply.header.RCODE = answer(q, reply);
+            reply.header.RCODE = answer(q, reply, peer);
 
             if (reply.maxSerializedSize() > payloadSize)
             {
@@ -945,16 +945,19 @@ private struct ZoneData
           `Header.RCode.Refused` is returned for the following conditions;
             - Query type is AXFR and query name is not matching with zone
             - Query type is not AXFR and query name is not owned by zone
+            - Requesting peer is not whitelisted to perform AXFR
 
           Check `doAXFR` (AXFR queries) or `getKeyDNSRecord` (other queries)
           for other returns.
 
     ***************************************************************************/
 
-    public Header.RCode answer (bool matches, in Question q, ref Message reply) @safe
+    public Header.RCode answer (bool matches, in Question q,
+        ref Message reply, string peer) @safe
     {
         if (q.qtype == QTYPE.AXFR)
-            return matches ? this.doAXFR(reply) : Header.RCode.Refused;
+            return matches && this.config.allow_transfer.canFind(peer) ?
+                this.doAXFR(reply) : Header.RCode.Refused;
         else if (q.qtype == QTYPE.SOA)
         {
             if (matches)
@@ -971,15 +974,17 @@ private struct ZoneData
     }
 
     /// Ditto
-    public Header.RCode answer_matches (in Question q, ref Message reply) @safe
+    public Header.RCode answer_matches (in Question q, ref Message reply,
+        string peer) @safe
     {
-        return this.answer(true, q, reply);
+        return this.answer(true, q, reply, peer);
     }
 
     /// Ditto
-    public Header.RCode answer_owns (in Question q, ref Message reply) @safe
+    public Header.RCode answer_owns (in Question q, ref Message reply,
+        string peer) @safe
     {
-        return this.answer(false, q, reply);
+        return this.answer(false, q, reply, peer);
     }
 
     /***************************************************************************

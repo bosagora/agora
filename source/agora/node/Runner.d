@@ -305,7 +305,8 @@ private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry regis
     // The `listenUDP` needs to be in the `runTask` otherwise we get
     // a fatal error due to a bug in vibe-core (see comment #2):
     /// https://github.com/vibe-d/vibe-core/issues/289
-    auto udp = listenUDP(config.port, config.address);
+    auto udp = listenUDP(config.port, config.address,
+        UDPListenOptions.reuseAddress | UDPListenOptions.reusePort);
     scope (exit) udp.close();
     // Otherwise `recv` allocates 65k per call (!!!)
     ubyte[2048] buffer;
@@ -319,7 +320,7 @@ private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry regis
             auto pack = udp.recv(buffer, ppeer);
             auto query = deserializeFull!Message(pack);
             registry.answerQuestions(
-                query,
+                query, peer.toAddressString,
                 (in Message msg) @safe => udp.send(msg.serializeFull(), ppeer));
 
         }
@@ -420,7 +421,7 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
 
         auto query = deserializeFull!Message(buffer[0 .. size]);
         registry.answerQuestions(
-            query,
+            query, conn.peerAddress(),
             (in Message msg) @safe => msg.serializePart(writer, CompactMode.No));
 
         // Write the length at the begining

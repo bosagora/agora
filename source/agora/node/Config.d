@@ -577,6 +577,9 @@ public struct ZoneConfig
     /// Ditto
     public @Optional Type type;
 
+    /// Servers that are allowed to do AXFR queries, applicable for authoritatives
+    public @Optional immutable string[] allow_transfer;
+
     /// Primary servers to send AXFR queries, only applicaple and
     /// required for secondary servers
     public @Optional immutable string[] primary_servers;
