@@ -517,6 +517,11 @@ public struct RegistryConfig
                     "registry.{} is secondary and at least one primary is required",
                     name);
 
+                ensure(zone.redirect_primary.length > 0,
+                    "registry.{} is secondary (authoritative), thus requires an " ~
+                    "address registering endpoint to an Agora node",
+                    name);
+
                 return;
             }
 
@@ -583,6 +588,10 @@ public struct ZoneConfig
     /// Primary servers to send AXFR queries, only applicaple and
     /// required for secondary servers
     public @Optional immutable string[] primary_servers;
+
+    /// Rest interface of an Agora node with registry capability,
+    /// probably one of the `primary_servers`; required for secondary servers
+    public @Optional immutable string redirect_primary;
 
     /// SOA Configuration of the zone, required for master server
     /// All `Duration` values are precise to the second

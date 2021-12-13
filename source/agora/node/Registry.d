@@ -232,6 +232,12 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
+        if (this.zones[1].config.type == ZoneConfig.Type.secondary)
+        {
+            this.zones[1].redirect_primary.postValidator(registry_payload);
+            return;
+        }
+
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[1].get(registry_payload.data.public_key));
 
@@ -301,6 +307,12 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
+        if (this.zones[2].config.type == ZoneConfig.Type.secondary)
+        {
+            this.zones[2].redirect_primary.postFlashNode(registry_payload, channel);
+            return;
+        }
+
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[2].get(registry_payload.data.public_key));
 
@@ -674,6 +686,9 @@ private struct ZoneData
     /// Task manager to manage timers
     private ITaskManager taskman;
 
+    /// REST API of a primary registry to redirect API calls, only for secondary
+    private NameRegistryAPI redirect_primary;
+
     /***************************************************************************
 
          Params:
@@ -752,6 +767,16 @@ private struct ZoneData
                 peer => peer_addrs ~= Address("dns://" ~ peer)
             );
             this.resolver = new DNSResolver(peer_addrs);
+
+            // Since a secondary zone cannot transfer UTXO, sequence and signature
+            // fields of data from a primary, it redirects API calls to API of the
+            // configured primary
+            auto settings = new RestInterfaceSettings;
+            settings.baseURL = Address(this.config.redirect_primary);
+            settings.httpClientSettings = new HTTPClientSettings;
+            settings.httpClientSettings.connectTimeout = 2.seconds;
+            settings.httpClientSettings.readTimeout = 2.seconds;
+            this.redirect_primary = new RestInterfaceClient!NameRegistryAPI(settings);
 
             this.soa_update_timer = this.taskman.createTimer(&this.updateSOA);
             this.soa_update_expire_timer = this.taskman.createTimer(&this.disable);
