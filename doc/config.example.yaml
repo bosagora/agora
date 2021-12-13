@@ -313,48 +313,65 @@ registry:
 
   # The zone responsible for validators registration
   validators:
-    # Whether we should consider ourselves authoritative
+    # Type of the registry for the zone
     #
-    # Authoritative servers should have an NS entry in the parent zone,
-    # for example the authoritative server for bosagora.io should have:
-    # NS ns1.bosagora.io.
-    # NS ns2.bosagora.io.
-    # By convention, ns1 is the primary (source of truth) and ns2 is a secondary,
-    # that periodically fetches records from ns1.
-    # Secondary servers should have `authoritative` set to `true`. Primary servers
-    # should have `authoritative` unset or set to `true`, and `primary` and `email` set.
-    authoritative: true
+    # There are three types which are primary, secondary and caching.
+    # Primary registry is an authoritative server and actual source of resource records.
+    # Secondary registry is also an authoritative server and copies resource records
+    # from configured primary servers according to the SOA record for the zone.
+    # Zone transferring uses AXFR protocol of the DNS.
+    type: primary
 
-    # The *hostname* (not IP address) of the primary name server for this zone
+    # Whitelist for AXFR zone transfers
     #
-    # If this is set, `email` must be set too. If this isn't set, `email` must be unset.
-    #
-    # The value here is typically the hostname of the server itself.
-    # For example, if the node that read this configuration will be reachable via
-    # `agora.example.com`, then this string can be used.
-    # However, the typical naming convention would be to use `ns1.example.com`.
-    primary: ns1.bosagora.io
+    # Only servers listed in this field will be allowed to initiate an AXFR zone
+    # transfer from this server. Server will not allow zone transfer to any
+    # requester if not configured. Applicable for primary and secondary servers.
+    allow_transfer:
+      - ns2.bosagora.io
 
-    # Email of the DNS server administrator
-    # This field is required for authoritative servers.
-    # `email` support DNS-style syntax, that is, using `.` instead of `@`
-    email: dns@validators.bosagora.io
+    # SOA record for the zone, only applicable for primary servers
+    soa:
+      # Email of the DNS server administrator
+      # This field is required for authoritative servers.
+      # `email` support DNS-style syntax, that is, using `.` instead of `@`
+      email: dns@validators.bosagora.io
 
-    # The rate at which secondary servers will refresh their zones from this server
-    refresh:
-      minutes: 1
-    # Time interval between two retries when a secondary server fails to retrieve data
-    retry:
-      seconds: 30
-    # Initial interval after which the zone data should be purged from cache
-    expire:
-      minutes: 10
-    # The minimum TTL to apply to the zone
-    minimum:
-      minutes: 1
+      # The rate at which secondary servers will refresh their zones from this server
+      refresh:
+        minutes: 1
+      # Time interval between two retries when a secondary server fails to retrieve data
+      retry:
+        seconds: 30
+      # Initial interval after which the zone data should be purged from cache
+      expire:
+        minutes: 10
+      # The minimum TTL to apply to the zone
+      minimum:
+        minutes: 1
 
   # Zone responsible for flash nodes registration
   flash:
-    # Having separate authoritative server increases redundancy and reduces load,
+    # Having a secondary server increases redundancy and reduces load,
     # hence this configuration, while unlikely in a small to medium network, is supported.
-    authoritative: false
+    type: secondary
+
+    # Redirect server for REST endpoints of the registry
+    redirect_primary: http://nsHidden.bosagora.io
+
+    # List of servers to AXFR zone transfer from
+    #
+    # Servers are tried in the configuration order until zone transfer can be
+    # completed from a server.
+    primary_servers:
+      - ns1.bosagora.io
+
+    # A secondary server can be primary of an another server, thus secondary
+    # servers can also limit AXFR zone transfers from them to a configured
+    # whitelist
+    allow_transfer:
+      - ns3.bosagora.io
+
+  # Zone responsible for realm
+  realm:
+    type: caching

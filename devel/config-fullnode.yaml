@@ -33,9 +33,13 @@ validator:
 registry:
   enabled: true
   flash:
-    email: github@bosagora.io
+    type: primary
+    soa:
+      email: github@bosagora.io
   validators:
-    email: github@bosagora.io
+    type: primary
+    soa:
+      email: github@bosagora.io
 
 # Note: You may want to comment some of those to selectively test
 network:
