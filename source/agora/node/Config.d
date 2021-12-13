@@ -508,7 +508,7 @@ public struct RegistryConfig
         static void validateZone (string name, in ZoneConfig zone)
         {
             // Those two fields must be both set or both unset
-            ensure(zone.primary.set == zone.email.set,
+            ensure(zone.primary.set == zone.soa.email.set,
                    "registry.{}: Authoritative zones require both 'primary' and " ~
                    "'email' fields to be set", name);
 
@@ -521,30 +521,30 @@ public struct RegistryConfig
 
             ensure(zone.primary.length > 0,
                    "registry.{}.primary: Field must be set for primary server", name);
-            ensure(zone.email.length > 0,
+            ensure(zone.soa.email.length > 0,
                    "registry.{}.email: Field must be set for primary server", name);
 
             // Now validate the durations are consistent with one another
-            ensure(zone.refresh <= zone.expire,
+            ensure(zone.soa.refresh <= zone.soa.expire,
                    "registry.{}.refresh ({}) should be lower than field 'expire' ({})",
-                   name, zone.refresh, zone.expire);
+                   name, zone.soa.refresh, zone.soa.expire);
             // The other ones could actually be set to very low values to
             // avoid clients caching data, so don't validate them besides
             // checking they fit in an `int`.
             const intMaxSecs = int.max.seconds;
             const uintMaxSecs = uint.max.seconds;
-            ensure(zone.refresh <= intMaxSecs,
+            ensure(zone.soa.refresh <= intMaxSecs,
                    "registry.{}.refresh ({}) should be at most {}",
-                   name, zone.refresh, intMaxSecs);
-            ensure(zone.retry <= intMaxSecs,
+                   name, zone.soa.refresh, intMaxSecs);
+            ensure(zone.soa.retry <= intMaxSecs,
                    "registry.{}.retry ({}) should be at most {}",
-                   name, zone.retry, intMaxSecs);
-            ensure(zone.expire <= intMaxSecs,
+                   name, zone.soa.retry, intMaxSecs);
+            ensure(zone.soa.expire <= intMaxSecs,
                    "registry.{}.expire ({}) should be at most {}",
-                   name, zone.expire, intMaxSecs);
-            ensure(zone.minimum <= uintMaxSecs,
+                   name, zone.soa.expire, intMaxSecs);
+            ensure(zone.soa.minimum <= uintMaxSecs,
                    "registry.{}.minimum ({}) should be at most {}",
-                   name, zone.minimum, uintMaxSecs);
+                   name, zone.soa.minimum, uintMaxSecs);
         }
 
         validateZone("realm", this.realm);
@@ -563,42 +563,50 @@ public struct ZoneConfig
     /// CNAME of the primary server for this zone
     public SetInfo!string primary;
 
-    /// Email address of the person responsible for the zone
-    public SetInfo!string email;
+    /// SOA Configuration of the zone, required for master server
+    /// All `Duration` values are precise to the second
+    public struct SOAConfig
+    {
+        /// Email address of the person responsible for the zone
+        public SetInfo!string email;
 
-    /// How often secondary servers should refresh this zone
-    /// Default to 9 minutes, slightly lower than the block interval
-    public Duration refresh = 9.minutes;
+        /// How often secondary servers should refresh this zone
+        /// Default to 9 minutes, slightly lower than the block interval
+        public Duration refresh = 9.minutes;
 
-    /// How much time should elapse before a request should be retried
-    public Duration retry = 10.seconds;
+        /// How much time should elapse before a request should be retried
+        public Duration retry = 10.seconds;
 
-    /***************************************************************************
+        /***************************************************************************
 
-        How much time should elapse before the zone is no longer authoritative
+            How much time should elapse before the zone is no longer authoritative
 
-        This value should be higher than `refresh` so that a client attempt to
-        refresh its zone data before completely discarding it.
+            This value should be higher than `refresh` so that a client attempt to
+            refresh its zone data before completely discarding it.
 
-        Default to 10 blocks, or 100 minutes.
+            Default to 10 blocks, or 100 minutes.
 
-    ***************************************************************************/
+        ***************************************************************************/
 
-    public Duration expire = 100.minutes;
+        public Duration expire = 100.minutes;
 
-    /***************************************************************************
+        /***************************************************************************
 
-        The minimum value to TTL for any record in the zone
+            The minimum value to TTL for any record in the zone
 
-        The TTL define the amount of time (expressed in second in the record)
-        that a record is valid for. With a minimum of 2 minutes, the clients
-        will cache DNS queries for at least 2 minutes before querying us again.
+            The TTL define the amount of time (expressed in second in the record)
+            that a record is valid for. With a minimum of 2 minutes, the clients
+            will cache DNS queries for at least 2 minutes before querying us again.
 
-        This value needs to be lower than the block interval.
+            This value needs to be lower than the block interval.
 
-    ***************************************************************************/
+        ***************************************************************************/
 
-    public Duration minimum = 2.minutes;
+        public Duration minimum = 2.minutes;
+    }
+
+    /// Ditto
+    public @Optional SOAConfig soa;
 }
 
 //
