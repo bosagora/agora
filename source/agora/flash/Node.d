@@ -602,12 +602,6 @@ public class FlashNode : FlashControlAPI
                 return null;
             }
 
-            if (!payload.verifySignature(peer_pk))
-            {
-                log.warn("RegistryPayload signature is incorrect for {}", peer_pk);
-                return null;
-            }
-
             if (payload.data.addresses.length == 0)
                 return null;
 

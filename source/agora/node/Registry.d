@@ -619,7 +619,7 @@ private struct ZoneData
     private string query_payload;
 
     /// Query for adding registry signature table
-    private string query_signature_add;
+    private string query_utxo_add;
 
     /// Query for adding registry to addresses table
     private string query_addresses_add;
@@ -658,36 +658,36 @@ private struct ZoneData
             serverType(this.config.authoritative, this.config.primary.set),
             this.root);
 
-        this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature",
+        this.query_count = format("SELECT COUNT(*) FROM registry_%s_utxo",
             zone_name);
 
         this.query_registry_get = format("SELECT pubkey " ~
-            "FROM registry_%s_signature", zone_name);
+            "FROM registry_%s_utxo", zone_name);
 
-        this.query_payload = format("SELECT signature, sequence, address, type, utxo " ~
+        this.query_payload = format("SELECT sequence, address, type, utxo " ~
             "FROM registry_%s_addresses l " ~
-            "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
+            "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", zone_name, zone_name);
 
-        this.query_signature_add = format("REPLACE INTO registry_%s_signature " ~
-            "(pubkey, signature, sequence, utxo) VALUES (?, ?, ?, ?)", zone_name);
+        this.query_utxo_add = format("REPLACE INTO registry_%s_utxo " ~
+            "(pubkey, sequence, utxo) VALUES (?, ?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
                     "(pubkey, address, type) VALUES (?, ?, ?)", zone_name);
 
-        this.query_remove_sig = format("DELETE FROM registry_%s_signature WHERE pubkey = ?",
+        this.query_remove_sig = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
             zone_name);
 
         this.query_addresses_get = format("SELECT address " ~
             "FROM registry_%s_addresses", zone_name);
 
-        string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
-            "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
+        string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_utxo " ~
+            "(pubkey TEXT, sequence INTEGER NOT NULL, " ~
             "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", zone_name);
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
-            "FOREIGN KEY(pubkey) REFERENCES registry_%s_signature(pubkey) ON DELETE CASCADE, " ~
+            "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
         this.db.execute(query_sig_create);
@@ -889,7 +889,6 @@ private struct ZoneData
             return TypedPayload.init;
 
         const ulong sequence = results.front["sequence"].as!ulong;
-        const Signature signature = Signature.fromString(results.front["signature"].as!string);
         const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
 
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
@@ -902,7 +901,6 @@ private struct ZoneData
                 addresses : addresses,
                 seq : sequence,
             },
-            signature: signature,
         };
 
         // CNAME and A cannot exist at the same time for a node
@@ -970,9 +968,8 @@ private struct ZoneData
         log.info("Registering addresses {}: {} for public key: {}", payload.type,
             payload.payload.data.addresses, payload.payload.data.public_key);
 
-        db.execute(this.query_signature_add,
+        db.execute(this.query_utxo_add,
             payload.payload.data.public_key,
-            payload.payload.signature,
             payload.payload.data.seq,
             payload.utxo);
 

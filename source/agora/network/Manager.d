@@ -737,11 +737,6 @@ public class NetworkManager
                             return false;
                         }
 
-                        if (!payload.verifySignature(ckey))
-                        {
-                            log.error("RegistryPayload signature is incorrect for {}: {}", ckey, payload);
-                            return false;
-                        }
                         foreach (addr; payload.data.addresses)
                             this.addAddress(addr);
                         return true;
