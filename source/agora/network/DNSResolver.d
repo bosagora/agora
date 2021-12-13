@@ -25,6 +25,7 @@ import vibe.core.net;
 
 import std.array;
 import std.algorithm;
+import std.format;
 import std.random;
 static import std.socket;
 import std.stdio;
@@ -49,10 +50,25 @@ public final class DNSResolver
 
     ***************************************************************************/
 
-    public this (const string[] peers = DefaultDNS)
+    public this (Address[] peers = null)
     {
         this.log = Log.lookup(__MODULE__);
         this.log.enableConsole();
+
+        if (!peers)
+        {
+            /// The 'default' DNS resolver if none is provided
+            peers = [
+                // Cloudflare
+                Address("dns://1.1.1.1"), Address("dns://1.0.0.1"),
+                // Google public DNS
+                Address("dns://8.8.8.8"), Address("dns://8.8.4.4"),
+                // CISCO OpenDNS
+                Address("dns://208.67.222.222"), Address("dns://208.67.220.220"),
+                // Quad9
+                Address("dns://9.9.9.9"), Address("dns://149.112.112.112"),
+            ];
+        }
 
         this.resolvers.length = peers.length;
         // "Connect" to each of the resolvers
@@ -60,8 +76,8 @@ public final class DNSResolver
         // underlying address.
         foreach (idx, ref res; this.resolvers)
         {
-            res.address = resolveHost(peers[idx]);
-            res.address.port = 53;
+            res.address = resolveHost(peers[idx].host);
+            res.address.port = peers[idx].port;
             res.connection = listenUDP(0, "0.0.0.0",
                 UDPListenOptions.reuseAddress | UDPListenOptions.reusePort);
             res.connection.connect(res.address);
@@ -156,10 +172,10 @@ public final class DNSResolver
             // have done that for us.
             if (res.type == TYPE.CNAME)
             {
-                ensure(res.name.length > 0,
+                ensure(res.rdata.name.value.length > 0,
                        "Found a CNAME to the root domain (empty) while resolving '{}'", address);
-                log.trace("Address '{}': Found CNAME '{}'", address, res.name);
-                address.host = res.name;
+                log.trace("Address '{}': Found CNAME '{}'", address, res.rdata.name.value);
+                address.host = cast(string) res.rdata.name.value;
                 return this.resolve(address);
             }
 
@@ -167,13 +183,13 @@ public final class DNSResolver
             if (res.type == TYPE.A)
             {
                 // Ignore broken record
-                if (res.a.length < 1) continue;
+                if (res.rdata.a.length < 1) continue;
                 // Just pick the first record.
                 // TODO: What is expected when there's more than one record ?
                 // Should we use it as a fall back, round robin, something else?
                 const straddr = format("%d.%d.%d.%d",
-                    res.a[0] >> 24 & 0xFF, res.a[0] >> 16 & 0xFF,
-                    res.a[0] >>  8 & 0xFF, res.a[0] >>  0 & 0xFF);
+                    res.rdata.a[0] >> 24 & 0xFF, res.rdata.a[0] >> 16 & 0xFF,
+                    res.rdata.a[0] >>  8 & 0xFF, res.rdata.a[0] >>  0 & 0xFF);
                 log.trace("Address '{}' resolved to A record '{}'", address, straddr);
                 address.host = straddr;
                 return address;
@@ -213,18 +229,6 @@ private struct PeerInfo
     /// Re-usable UDP connection bound to that peer
     public UDPConnection connection;
 }
-
-/// The 'default' DNS resolver if none is provided
-public immutable string[] DefaultDNS = [
-    // Cloudflare
-    "1.1.1.1", "1.0.0.1",
-    // Google public DNS
-    "8.8.8.8", "8.8.4.4",
-    // CISCO OpenDNS
-    "208.67.222.222", "208.67.220.220",
-    // Quad9
-    "9.9.9.9", "149.112.112.112",
-];
 
 version (AgoraStandaloneDNSResolver)
 {

@@ -456,7 +456,6 @@ public class NetworkManager
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
         this.cacheDB = cache;
-        this.resolver = new DNSResolver();
         this.banman = this.getBanManager(config.banman, clock, cache);
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
