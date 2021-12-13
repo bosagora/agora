@@ -512,7 +512,13 @@ public struct RegistryConfig
                 return;
 
             if (zone.type == ZoneConfig.Type.secondary)
+            {
+                ensure(zone.primary_servers.length > 0,
+                    "registry.{} is secondary and at least one primary is required",
+                    name);
+
                 return;
+            }
 
             // Validation for primary starts
 
@@ -570,6 +576,10 @@ public struct ZoneConfig
 
     /// Ditto
     public @Optional Type type;
+
+    /// Primary servers to send AXFR queries, only applicaple and
+    /// required for secondary servers
+    public @Optional immutable string[] primary_servers;
 
     /// SOA Configuration of the zone, required for master server
     /// All `Duration` values are precise to the second
