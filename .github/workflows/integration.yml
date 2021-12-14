@@ -38,8 +38,7 @@ jobs:
       run: |
         cd ${{ github.workspace }}/faucet/
         git -C submodules/agora fetch origin ${{ github.sha }}:agora-ci-integration-test-donotuse
-        git -C submodules/agora checkout     agora-ci-integration-test-donotuse
-        git submodule update --init --recursive
+        git -C submodules/agora checkout --recurse-submodules agora-ci-integration-test-donotuse
         # For debug output
         git submodule
 
