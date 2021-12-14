@@ -15,7 +15,7 @@ jobs:
         path: agora
         # For Codecov
         fetch-depth: 2
-        submodules: true
+        submodules: recursive
 
     - name: Prepare compiler
       uses: dlang-community/setup-dlang@v1
@@ -32,13 +32,14 @@ jobs:
       with:
         path: faucet
         repository: bosagora/faucet
-        submodules: true
+        submodules: recursive
 
     - name: Update Faucet submodule to point to our clone
       run: |
         cd ${{ github.workspace }}/faucet/
         git -C submodules/agora fetch origin ${{ github.sha }}:agora-ci-integration-test-donotuse
         git -C submodules/agora checkout     agora-ci-integration-test-donotuse
+        git submodule update --init --recursive
         # For debug output
         git submodule
 
