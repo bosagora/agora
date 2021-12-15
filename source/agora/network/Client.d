@@ -539,38 +539,38 @@ public class NetworkClient
         alias T = ReturnType!(__traits(getMember, API, name));
 
         foreach (idx; 0 .. this.max_retries)
-        foreach (conn; this.connections)
-        if (!this.banman.isBanned(conn.address))
-        {
-            try
-            {
-                return __traits(getMember, conn.api, name)(args);
-            }
-            catch (Exception ex)
-            {
-                import vibe.http.common : HTTPStatusException;
-                if (auto http = cast(HTTPStatusException)ex)
+            foreach (conn; this.connections)
+                if (!this.banman.isBanned(conn.address))
                 {
-                    static if (DT == Throw.Yes)
-                        throw http;  // e.g. getPublicKey() might not be implemented
-                    else
-                        break;
-                }
+                    try
+                    {
+                        return __traits(getMember, conn.api, name)(args);
+                    }
+                    catch (Exception ex)
+                    {
+                        import vibe.http.common : HTTPStatusException;
+                        if (auto http = cast(HTTPStatusException)ex)
+                        {
+                            static if (DT == Throw.Yes)
+                                throw http;  // e.g. getPublicKey() might not be implemented
+                            else
+                                break;
+                        }
 
-                try
-                {
-                    this.log.format(log_level, "Request '{}' to {} failed: {}",
-                        name, conn.address, ex.message);
-                }
-                catch (Exception ex)
-                {
-                    // nothing we can do
-                }
+                        try
+                        {
+                            this.log.format(log_level, "Request '{}' to {} failed: {}",
+                                name, conn.address, ex.message);
+                        }
+                        catch (Exception ex)
+                        {
+                            // nothing we can do
+                        }
 
-                if (idx + 1 < this.max_retries) // wait after each failure except last
-                    this.taskman.wait(this.retry_delay);
-            }
-        }
+                        if (idx + 1 < this.max_retries) // wait after each failure except last
+                            this.taskman.wait(this.retry_delay);
+                    }
+                }
 
         // request considered failed after max retries reached
         foreach (const ref conn; this.connections)
