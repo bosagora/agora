@@ -473,9 +473,15 @@ public class AgoraLayout : Appender.Layout
     {
         switch (lvl)
         {
+            // White on Cyan
+        case LogLevel.Debug:
+            return "\u001b[46mDebug\u001b[0m";
             // Cyan
         case LogLevel.Trace:
             return "\u001b[36mTrace\u001b[0m";
+            // Blue
+        case LogLevel.Verbose:
+            return "\u001b[34mVerbose\u001b[0m";
             // Green
         case LogLevel.Info:
             return "\u001b[32mInfo\u001b[0m";
@@ -490,11 +496,11 @@ public class AgoraLayout : Appender.Layout
             return "\u001b[31mFatal\u001b[0m";
 
             // The following two should never be printed,
-            // so use red and make them noticeable
+            // so use white on red and make them noticeable
         case LogLevel.None:
-            return "\u001b[31mNone\u001b[0m";
+            return "\u001b[41mNone\u001b[0m";
         default:
-            return "\u001b[31mUnknown\u001b[0m";
+            return "\u001b[41mUnknown\u001b[0m";
         }
     }
 }
