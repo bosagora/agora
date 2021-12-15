@@ -539,6 +539,7 @@ public class NetworkClient
         alias T = ReturnType!(__traits(getMember, API, name));
 
         foreach (idx; 0 .. this.max_retries)
+        {
             foreach (conn; this.connections)
                 if (!this.banman.isBanned(conn.address))
                 {
@@ -567,10 +568,11 @@ public class NetworkClient
                             // nothing we can do
                         }
 
-                        if (idx + 1 < this.max_retries) // wait after each failure except last
-                            this.taskman.wait(this.retry_delay);
                     }
                 }
+            if (idx + 1 < this.max_retries) // wait after each failure except last
+                this.taskman.wait(this.retry_delay);
+        }
 
         // request considered failed after max retries reached
         foreach (const ref conn; this.connections)
