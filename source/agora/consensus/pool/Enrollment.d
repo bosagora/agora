@@ -362,7 +362,7 @@ unittest
     auto params = new immutable(ConsensusParams)();
     scope storage = new TestUTXOSet;
     scope pool = new EnrollmentPool(new ManagedDatabase(":memory:"));
-    KeyPair key_pair = KeyPair.random();
+    KeyPair key_pair = WK.Keys.A;
     Enrollment[] enrollments;
     Height avail_height;
 
@@ -385,8 +385,7 @@ unittest
     {
         auto utxo_hash = utxo_hashes[index];
         avail_height = Height(params.ValidatorCycle);
-        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height,
-            NodeCycleSeeds[index], Height(params.ValidatorCycle * 2 - 1));
+        enrollments ~= EnrollmentManager.makeEnrollment(utxo_hash, key_pair, avail_height, params.ValidatorCycle);
         assert(pool.add(enrollments[$ - 1], avail_height,
                                 storage.getUTXOFinder(), &findEnrollment, &getPenaltyDeposit));
         assert(pool.count() == index + 1);

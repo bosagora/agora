@@ -491,28 +491,14 @@ unittest
     testPreImageCycle(cycle_length, number_of_cycles);
 }
 
-/// This is a cycle seed commonly used for testing.
 version (unittest)
 {
-    static immutable CommonCycleSeed = Hash(`0xb7f3802d774665c6ccb4d24f3e6128542185f847e6da4e9c5a0254cfeb885d2536a89be8b882f0917f3ed43dae4760bb3a85b4c5a9e1871872a794fcf5e5236d`);
+    import agora.utils.WellKnownKeys;
+    import std.stdio;
 }
 
 /// Each `PreImageCycle` for random keys can be created just with a cycle seed without generating
 /// 5 million preimages. These pre-defined cycle seeds are used for that.
-version (unittest)
-{
-    static immutable Hash[] NodeCycleSeeds = [
-        Hash(`0x3a481cb1576d79002755239b8d4019587d7e5394ddd448f92d5dca74baf742f4899dd53daefda9136e9d3cc6887b3456ffcfc85cfc711e5cf8659998047771cb`),
-        Hash(`0x1a7ebfe71dd438ac96da520917680ff4278c3e4de031890cea2305de009dc750dfd3d9b714ef7b4cf983633a540ca4614ff1eae38d9d121604907f2dc2a7e885`),
-        Hash(`0x64d1b6e98019df73b59c3593e2ca1baea53aeeb3cac18748d3ab50473a64963c76c318913158349caf368730b027eb8c4596b743308a7e53a65e484016c8e2ca`),
-        Hash(`0x0bb70cf7d265661d006bc5bfd5bf70a66c5b32e54d05ee37bf023c4c0bf9b3bc76faf38d656c25e254aae7ea73aabba1902192575da80cfe10a24363d3e41118`),
-        Hash(`0xbb19e8bae8f03ce2aee0c15f83089c87dd208b44d17683ace877696a98680730c4cae9f762366a70dd00885cf0ff2eb228f285885ebda9e6dc11c0288158d8cf`),
-        Hash(`0x90f2a3d469831bad2d27f4698c463dad56c8d942b28859e38c2f4b1bc975605f0641f62aff2edf23326b67ad3b34c47bc43f96167485d4db2529d5e84fc7e994`),
-        Hash(`0xa84c60d88e1c075d8d70c77426c4724ac8bd38f83030fb16a3db71890396548572031907fbf7adba1034a7f9b7b4f2ae11155010cf677ed81cc32728f6ec7a06`),
-        Hash(`0xe39ae981988560d89e85f340c087fea46f1d9eefe73400f2a85edd3d3adee2bc5a3efd6e6ce9de04d73a3fe2554a1b1035450b7be9eaade24bbb789585aa0015`),
-    ];
-}
-
 /// To get the cycle seeds for `PreImageCycle`s of some of well-known keys,
 /// which are used for getting 10 * `validator cycle(20)` number of pre-images
 version (unittest)
@@ -520,7 +506,6 @@ public void getCycleSeed (in KeyPair pair, in uint validator_cycle, out Hash see
     out Height seed_height)
 {
     import agora.consensus.PreImage;
-    import agora.utils.WellKnownKeys;
     import std.format;
 
     // If the validator_cycle is 1008, call special function for that
@@ -572,7 +557,7 @@ public void getCycleSeed (in KeyPair pair, in uint validator_cycle, out Hash see
     {
         auto cycle = PreImageCycle(pair.secret, 20, PreImageCycle.PreImageCount, Height(0));
         seed = cycle[seed_height];
-        throw new Exception(format!"There's no seed for %s. The Hash of (Hash(`%s`) should be added."
+        writeln(format!"There's no seed for %s. The Hash of (Hash(`%s`) should be added."
                 (pair.address, seed));
     }
 }
@@ -582,7 +567,6 @@ private void getCycleSeed1008 (in KeyPair pair, in uint validator_cycle, out Has
     out Height seed_height)
 {
     import agora.consensus.PreImage;
-    import agora.utils.WellKnownKeys;
     import std.format;
 
     assert(validator_cycle == 1008);
@@ -628,7 +612,7 @@ private void getCycleSeed1008 (in KeyPair pair, in uint validator_cycle, out Has
     {
         auto cycle = PreImageCycle(pair.secret, 1008, PreImageCycle.PreImageCount, Height(0));
         seed = cycle[seed_height];
-        throw new Exception(format!"There's no seed for %s. The Hash of (Hash(`%s`) should be added."
+        writeln(format!"There's no seed for %s. The Hash of (Hash(`%s`) should be added."
                 (pair.address, seed));
     }
 }

@@ -1681,16 +1681,9 @@ public class ValidatingLedger : Ledger
             auto validators = this.getValidators(this.getBlockHeight());
             foreach (v; validators)
             {
-                Hash cycle_seed;
-                Height cycle_seed_height;
                 auto kp = WK.Keys[v.address];
-                getCycleSeed(kp, this.params.ValidatorCycle, cycle_seed, cycle_seed_height);
-                assert(cycle_seed != Hash.init);
-                assert(cycle_seed_height != Height(0));
                 auto enroll = EnrollmentManager.makeEnrollment(
-                    v.utxo, kp, next_block,
-                    cycle_seed, cycle_seed_height);
-
+                    v.utxo, kp, next_block, this.params.ValidatorCycle);
                 data.enrolls ~= enroll;
             }
         }
@@ -2217,14 +2210,8 @@ unittest
     auto pairs = iota(4).map!(idx => WK.Keys[idx]).array;
     foreach (idx, kp; pairs)
     {
-        Hash cycle_seed;
-        Height cycle_seed_height;
-        getCycleSeed(kp, params.ValidatorCycle, cycle_seed, cycle_seed_height);
-        assert(cycle_seed != Hash.init);
-        assert(cycle_seed_height != Height(0));
         auto enroll = EnrollmentManager.makeEnrollment(
-            utxos[idx], kp, Height(params.ValidatorCycle),
-            cycle_seed, cycle_seed_height);
+            utxos[idx], kp, Height(params.ValidatorCycle), params.ValidatorCycle);
         assert(ledger.addEnrollment(enroll, kp.address,
             Height(params.ValidatorCycle)));
         enrollments ~= enroll;
@@ -2483,7 +2470,7 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
     ledger.simulatePreimages(Height(params.ValidatorCycle));
 
-    KeyPair kp = WK.Keys.GG;
+    KeyPair kp = WK.Keys.A;
     auto freeze_tx = genesisSpendable().front().refund(kp.address).sign(OutputType.Freeze);
     assert(ledger.acceptTransaction(freeze_tx) is null);
     ledger.forceCreateBlock(1);
@@ -2497,7 +2484,7 @@ unittest
     assert(ledger.validateConsensusData(data, []) is null);
 
     // can't enroll and spend the stake at the same height
-    data.enrolls ~= EnrollmentManager.makeEnrollment(UTXO.getHash(freeze_tx.hashFull, 0), kp, Height(1));
+    data.enrolls ~= EnrollmentManager.makeEnrollment(UTXO.getHash(freeze_tx.hashFull, 0), kp, Height(1), params.ValidatorCycle);
 
     import std.stdio;
     assert(ledger.validateConsensusData(data, []) !is null);
