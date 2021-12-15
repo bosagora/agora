@@ -99,7 +99,7 @@ jobs:
       id: get-date
       shell: bash
       run: |
-        echo "::set-output name=date::$(/bin/date -u "+%Y%m")"
+        echo "::set-output name=date::$(/bin/date -u '+%Y%m')"
 
     - name: 'Load GeoIP from cache'
       id: cache-geoip
