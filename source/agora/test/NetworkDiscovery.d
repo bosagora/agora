@@ -50,19 +50,19 @@ unittest
         full_nodes : 4,
     };
     conf.node.min_listeners = 9;
-    conf.node.network_discovery_interval = 2.seconds;
-    conf.node.retry_delay = 250.msecs;
+    conf.node.network_discovery_interval = 1.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
 
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
-    network.waitForDiscovery();
+    network.waitForDiscovery;
 
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count >= 9,  // >= since it may connect to itself (#772)
+        // It can connect to between min of 9 and max of 6 validators + 4 fullnode + registry
+        assert(addresses.sort.uniq.count >= 9 && addresses.sort.uniq.count <= 11,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
     }
 }

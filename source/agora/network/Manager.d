@@ -340,32 +340,49 @@ public class NetworkManager
 
         private void getNewAddresses () nothrow
         {
-            while (1)
+            log.dbg("getNewAddresses: Start never ending loop");
+            while (this.is_running)
             {
-                scope (success)
-                    this.outer.taskman.wait(this.outer.node_config.retry_delay);
-
-                if (this.clients.empty())
-                    continue;
-
-                NetworkClient client = this.clients.front;
-                this.clients.removeFront();
-
-                try
+                auto peers = this.clients[].walkLength;
+                foreach (i; 1 .. peers + 1)
                 {
-                    auto node_info = client.getNodeInfo();
-                    this.onNewAddresses(node_info.addresses);
+                    if (!this.is_running)
+                        break; // We are shutting down
+
+                    NetworkClient client = this.clients.front;
+                    log.dbg("getNewAddresses: Update client {}/{} with current addresses {}", i, peers, client.addresses());
+                    this.clients.removeFront();
+
+                    try
+                    {
+                        auto node_info = client.getNodeInfo();
+                        this.onNewAddresses(node_info.addresses);
+                    }
+                    catch (Exception ex)
+                    {
+                        // request failures are already logged
+                    }
+                    finally
+                    {
+                        if (!client.connections.all!(
+                                conn => this.outer.banman.isBanned(conn.address)))
+                        {
+                            this.clients.insertBack(client);
+                            log.dbg("getNewAddresses: Updated client {}/{} with addresses {}", i, peers, client.addresses());
+                        }
+                        else
+                            log.dbg("getNewAddresses: client has all addresses {} banned",
+                                client.addresses());
+                    }
                 }
-                catch (Exception ex)
+                if (this.is_running)
                 {
-                    // request failures are already logged
+                    log.dbg("getNewAddresses: Wait for {} msecs",
+                        this.outer.node_config.network_discovery_interval.total!"msecs");
+                    this.outer.taskman.wait(this.outer.node_config.network_discovery_interval);
                 }
-                finally
-                {
-                    if (!client.connections.all!(
-                            conn => this.outer.banman.isBanned(conn.address)))
-                        this.clients.insertBack(client);
-                }
+                else
+                    log.dbg("getNewAddresses: Shutting down so exit");
             }
         }
     }
@@ -472,6 +489,7 @@ public class NetworkManager
     /// Called after a node's handshake is complete
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
+        log.dbg("onHandshakeComplete: addresses: {}", node.client.addresses());
         node.client.connections.each!(conn => this.connection_tasks.remove(conn.address));
         if (this.tryMerge(node))
         {
@@ -497,6 +515,7 @@ public class NetworkManager
         }
         else // unidentified connection that we can not merge, just use it for a single shot of address discovery
         {
+            log.dbg("onHandshakeComplete: an unidentified connection was included");
             auto node_info = node.client.getNodeInfo();
             this.addAddresses(node_info.addresses);
         }
@@ -1103,6 +1122,7 @@ public class NetworkManager
     /// Shut down timers & dump the metadata
     public void shutdown () @trusted
     {
+        this.discovery_task.is_running = false; // Exit never ending loop in addAddresses
         foreach (peer; this.peers)
             peer.client.shutdown();
         foreach (const ref peer; this.peers)
@@ -1115,6 +1135,8 @@ public class NetworkManager
     ///
     private bool minPeersConnected () nothrow @safe
     {
+        log.dbg("minPeersConnected: missing = {}, peers = {}, min = {}",
+            this.required_peers.length, this.peers[].walkLength, this.node_config.min_listeners);
         return this.required_peers.length == 0 &&
             this.peers[].walkLength >= this.node_config.min_listeners &&
             this.validators().filter!(node =>
