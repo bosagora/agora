@@ -541,10 +541,15 @@ public class NetworkClient
         foreach (idx; 0 .. this.max_retries)
         {
             foreach (conn; this.connections)
+            {
+                log.dbg("Client.attemptRequest '{}' to {}: {}/{}",
+                    name, conn.address, idx + 1, this.max_retries);
                 if (!this.banman.isBanned(conn.address))
                 {
                     try
                     {
+                        this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
+                            name, conn.address, idx + 1, this.max_retries);
                         return __traits(getMember, conn.api, name)(args);
                     }
                     catch (Exception ex)
@@ -560,8 +565,8 @@ public class NetworkClient
 
                         try
                         {
-                            this.log.format(log_level, "Request '{}' to {} failed: {}",
-                                name, conn.address, ex.message);
+                            this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED",
+                                name, idx +1, this.max_retries, conn.address, ex.message);
                         }
                         catch (Exception ex)
                         {
@@ -570,9 +575,15 @@ public class NetworkClient
 
                     }
                 }
+            }
             if (idx + 1 < this.max_retries) // wait after each failure except last
+            {
+                log.dbg("Client.attemptRequest '{}' to all {} connections {}/{} FAILED - wait {} before retry",
+                    name, idx + 1, this.connections.length, this.max_retries, this.retry_delay);
                 this.taskman.wait(this.retry_delay);
+            }
         }
+        log.info("Client.attemptRequest '{}' to all {} connections FAILED after {} retries", name, this.connections.length, this.max_retries);
 
         // request considered failed after max retries reached
         foreach (const ref conn; this.connections)
