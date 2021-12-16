@@ -343,7 +343,7 @@ public class NetworkManager
             while (1)
             {
                 scope (success)
-                    this.outer.taskman.wait(this.outer.node_config.retry_delay);
+                    this.outer.taskman.wait(this.outer.node_config.network_discovery_interval);
 
                 if (this.clients.empty())
                     continue;
