@@ -222,7 +222,7 @@ public class Validator : FullNode, API
             &this.onPreImageRevealTimer, Periodic.Yes);
 
         this.timers ~= this.taskman.setTimer(
-            this.config.validator.preimage_reveal_interval,
+            this.config.validator.preimage_catchup_interval,
             &this.preImageCatchupTask, Periodic.Yes);
 
         if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.utxo_set.peekUTXO))
