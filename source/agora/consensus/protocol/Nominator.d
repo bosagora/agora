@@ -682,17 +682,6 @@ extern(D):
         }
         else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
-            if (last_block.header.height > 1) // Genesis block is not signed
-            {
-                auto signed = last_block.header.validators;
-                if (signed.setCount <= signed.count() / 2)
-                {
-                    this.log.trace(
-                        "Ignoring nomination as less than half signed the last block, signed={}",
-                        signed);
-                    return;
-                }
-            }
             // show some tolerance to early nominations
             ulong tolerance = this.params.BlockInterval.total!"seconds" / 20; // 5%
 
@@ -908,6 +897,19 @@ extern(D):
             log.error("validateValue(): Validation failed: {}. Data: {}",
                 fail_reason, data.prettify);
             return ValidationLevel.kInvalidValue;
+        }
+        const Block last_block = this.ledger.getLastBlock();
+        if (last_block.header.height + 1 == slot_idx) // Let's check last block is still one before this one
+        {
+            const validators = last_block.header.validators.count();
+            auto signed = last_block.header.validators.setCount;
+            if (last_block.header.height > 1 // Genesis block is not signed
+                && signed <= validators / 2) // Not more than half have signed previous block
+            {
+                log.info("Waiting for more than half to sign the last block, signed={}",
+                    last_block.header.validators.setCount);
+                return ValidationLevel.kMaybeValidValue; // this node is not ready to continue but will not block progress
+            }
         }
 
         return ValidationLevel.kFullyValidatedValue;
