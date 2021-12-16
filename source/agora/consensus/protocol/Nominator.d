@@ -1102,6 +1102,14 @@ extern(D):
 
     public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
+
+        // Per SCP rules, once we CONFIRM a NOMINATE; we can't
+        // nominate new values. Keep track of the biggest slot_idx we confirmed
+        // a NOMINATE on
+        if (envelope.statement.slotIndex > this.last_confirmed_height &&
+            envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
+            this.last_confirmed_height = Height(envelope.statement.slotIndex);
+
         SCPEnvelope env = cast()envelope;
         log.trace("Emitting envelope: {}", scpPrettify(&envelope, &this.getQSet));
 
@@ -1117,13 +1125,6 @@ extern(D):
         }
 
         this.network.validators().each!(v => v.client.sendEnvelope(env));
-
-        // Per SCP rules, once we CONFIRM a NOMINATE; we can't
-        // nominate new values. Keep track of the biggest slot_idx we confirmed
-        // a NOMINATE on
-        if (envelope.statement.slotIndex > this.last_confirmed_height &&
-            envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
-            this.last_confirmed_height = Height(envelope.statement.slotIndex);
     }
 
     /***************************************************************************
