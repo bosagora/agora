@@ -646,27 +646,26 @@ extern(D):
                     envelope.statement.pledges.confirm_.ballot.value, ex);
                 return;
             }
+            const validators = last_block.header.validators.count();
+            auto signed = last_block.header.validators.setCount;
+            if (last_block.header.height > 1 // Genesis block is not signed
+                && signed <= validators / 2) // Not more than half have signed previous block
+            {
+                log.info("Waiting for more than half to sign the last block, signed={}",
+                    last_block.header.validators.setCount);
+                this.queued_envelopes.insertBack(envelope.serializeFull.deserializeFull!SCPEnvelope); // Put back in queue
+                this.envelope_timer.rearm(nomination_interval, Periodic.No);
+                return; // Not ready yet to proceed with current state of last block signatures
+            }
             Transaction[] received_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set, this.ledger.getUTXOFinder()))
             {
-                log.info("Missing TXs while checking envelope signature : {}",
-                    scpPrettify(&envelope, &this.getQSet));
-                return; // We dont have all the TXs for this block. Try to catchup
+                log.info("Tx set being confirmed is not yet valid: {}", fail_reason);
+                return; // Maybe we dont have all the TXs for this block. Try to catchup
             }
         }
         else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
-            if (last_block.header.height > 1) // Genesis block is not signed
-            {
-                auto signed = last_block.header.validators;
-                if (signed.setCount <= signed.count() / 2)
-                {
-                    this.log.trace(
-                        "Ignoring nomination as less than half signed the last block, signed={}",
-                        signed);
-                    return;
-                }
-            }
             // show some tolerance to early nominations
             ulong tolerance = this.params.BlockInterval.total!"seconds" / 20; // 5%
 
