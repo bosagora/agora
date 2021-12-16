@@ -767,9 +767,7 @@ extern(D):
 
     /***************************************************************************
 
-        Signs the SCPEnvelope with the node's private key, and if it's
-        a confirm ballot additionally provides the block header signature
-        and saves the header signature for later collection on externalize.
+        Signs the SCPEnvelope with the node's private key.
 
         Params:
             envelope = the SCPEnvelope to sign
@@ -778,62 +776,10 @@ extern(D):
 
     public override void signEnvelope (ref SCPEnvelope envelope)
     {
-        // if we're ready to confirm then derive the block and sign its hash
-        if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
-            this.signConfirmBallot(envelope);
-
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         envelope.signature = this.kp.sign(challenge).toBlob();
         log.trace("SIGN Envelope signature {}: {}", envelope.signature,
                   scpPrettify(&envelope, &this.getQSet));
-    }
-
-    /***************************************************************************
-
-        Signs the confirm ballot in the SCPEnvelope
-
-        Params:
-            envelope = the SCPEnvelope
-
-    ***************************************************************************/
-
-    private void signConfirmBallot (ref SCPEnvelope envelope) nothrow
-    {
-        assert(envelope.statement.pledges.type_ ==
-            SCPStatementType.SCP_ST_CONFIRM);
-
-        const Block last_block = this.ledger.getLastBlock();
-
-        if (Height(envelope.statement.slotIndex) != last_block.header.height + 1)
-        {
-            log.trace("signConfirmBallot: Ignoring envelope with slot id {} as ledger is at height {}",
-                envelope.statement.slotIndex, last_block.header.height);
-            return;  // slot was already externalized or envelope is too new
-        }
-
-        ConsensusData con_data = () {
-            try return deserializeFull!ConsensusData(
-                envelope.statement.pledges.confirm_.ballot.value[]);
-            catch (Exception ex)
-                assert(0);  // this should never happen
-        }();
-
-        try
-        {
-            Transaction[] signed_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(con_data, signed_tx_set, this.ledger.getUTXOFinder()))
-            {
-                log.info("Missing TXs while signing confirm ballot {}",
-                    scpPrettify(&envelope, &this.getQSet));
-                return;
-            }
-        }
-        catch (Exception e)
-        {
-            log.error("signConfirmBallot: Exception thrown: {}", e);
-            return;
-        }
-
     }
 
     /***************************************************************************
