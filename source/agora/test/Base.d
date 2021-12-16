@@ -1976,7 +1976,7 @@ public struct TestConf
     /// How often the validator should try to catchup for the preimages for the
     /// next block
     /// Matches the eponymous field in the `validator` section.
-    public Duration preimage_catchup_interval = 100.seconds;
+    public Duration preimage_catchup_interval = 1.seconds;
 
     /// max failed requests before a node is banned
     /// Matches the eponymous field in the `banman` section.
@@ -2141,7 +2141,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             registry_address : "http://name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
             name_registration_interval : 10.seconds,
-            preimage_reveal_interval : 1.seconds,  // check revealing frequently
+            preimage_reveal_interval : 500.msecs,  // check revealing frequently
             nomination_interval: 100.msecs,
             preimage_catchup_interval: test_conf.preimage_catchup_interval,
             cycle_seed : cycle_seed,
