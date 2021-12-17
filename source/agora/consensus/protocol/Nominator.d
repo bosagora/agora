@@ -563,7 +563,7 @@ extern(D):
 
     public void receiveEnvelope (in SCPEnvelope envelope) @trusted
     {
-        auto copied = envelope.serializeFull.deserializeFull!SCPEnvelope;
+        auto copied = envelope.clone();
         this.queued_envelopes.insertBack(copied);
         this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
     }

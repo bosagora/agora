@@ -336,13 +336,6 @@ unittest
         flashPrettify(PublicKey(Scalar.fromString(s).toPoint())));
 }
 
-/// Clone any type via the serializer
-public T clone (T)(in T input)
-{
-    import agora.serialization.Serializer;
-    return input.serializeFull.deserializeFull!T;
-}
-
 /// Rudimentary support for serializing hashmaps
 public struct SerializeMap (Value : Value[Key], Key)
 {
