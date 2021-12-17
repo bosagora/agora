@@ -24,6 +24,13 @@ import vibe.inet.url;
 
 import geod24.bitblob;
 
+/// Clone any type via the serializer
+public T clone (T)(in T input)
+{
+    import agora.serialization.Serializer;
+    return input.serializeFull.deserializeFull!T;
+}
+
 shared static this ()
 {
     registerCommonInternetSchema("agora", 2826);
