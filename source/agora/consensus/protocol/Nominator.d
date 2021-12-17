@@ -660,8 +660,15 @@ extern(D):
             Transaction[] received_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set, this.ledger.getUTXOFinder()))
             {
-                log.info("Tx set being confirmed is not yet valid: {}", fail_reason);
-                return; // Maybe we dont have all the TXs for this block. Try to catchup
+                if (fail_reason == this.ledger.InvalidConsensusDataReason.NotInPool)
+                {
+                    log.trace("Tx set being confirmed is not yet valid: {}", fail_reason);
+                    this.queued_envelopes.insertBack(envelope.serializeFull.deserializeFull!SCPEnvelope); // Put back in queue
+                    this.envelope_timer.rearm(nomination_interval, Periodic.No);
+                }
+                else
+                    log.dbg("Tx set being confirmed is not valid: {}", fail_reason);
+                return; // Not able to proceed with envelope in current state
             }
         }
         else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
