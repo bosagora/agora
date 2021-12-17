@@ -555,6 +555,19 @@ public void getCycleSeed (in KeyPair pair, in uint validator_cycle, out Hash see
         seed = Hash(`0x3256f762cee8e5345361d3db3d500ce7fb1c9591a0f051a264e383f764dc8c41033ce5f094917f58311c8597a450784c92bdfae947ca9c39a4ce62373a8631b4`);
     else if (pair == K)
         seed = Hash(`0xf32b9715a5ba6c8c26ac9dd92179c9e549cdbbe18066c02db7dc6fff62e83b8c3ac4052265b1320af39b93f3a70e2f9b5f860c39d1f2b27a7e66d3554628bcec`);
+    // Coinnet validators
+    else if (pair.address.toString == "boa1xzd6zuhueq5nyd0m4c4qm66az5dyq8r29hrynd3phezh50gf5c7u54eqtdh")
+        seed = Hash(`0xa497313661b23a84fc039c91ebc773e7fb1538b6f51215ccb2e0ae2244b20ceb4c440ec267a38b94d80aaab72f1b172d8b880aa7b681ddc6776fdf531979fb2c`);
+    else if (pair.address.toString == "boa1xzdmznw099p8e2h54pe8ed7599c99qez0f2m756ecmtamqtlq0vm73jg5mj")
+        seed = Hash(`0xff648362a15f333a034bbb54d2cd3421432e12b58fed495ca71e61b7b2f2d45bb3b6c1b4b1640d4e20208788ff41e0efd1e493f0f5677f8d995e51de1cae99e8`);
+    else if (pair.address.toString == "boa1xzduznmm7kp7gg20azr8k9c9pzdwapx6culll96s8dqah5kj5cjsj0le8rk")
+        seed = Hash(`0xf55f73de5de178d252bf5357e9b88ae2d498d5ab8e395f5b4f7ac535d23812a7320c9bf6632d6a47ded075d6f549cdaa23efaf6f92a82bab58c85bd230fe163c`);
+    else if (pair.address.toString == "boa1xzdaz4hx35kmp7zfd854yf98hx6ksdv3ps363dunvfl6l39m4v63qmyccsm")
+        seed = Hash(`0x6a58710b8e0ceb1d46ef91d65674a7689c27ab6297eb76f66265d77618bb2d92f4b05573f42f92f222802c0beb4b4935167b4a502b4b7b433fa2c47d724cabb6`);
+    else if (pair.address.toString == "boa1xzd7zmk7rnun06psp9d0r0p0lj2m6zfz63w55pguzlem7nkv274e6hn2hg3")
+        seed = Hash(`0x53171235a501342219eabbd3cf021ae220e89af8a0a10341ccbf89740233f1549c05f48ccbc4461b8c433f43f8b4ef8c47f4015d1a4a44113c164d3141689d34`);
+    else if (pair.address.toString == "boa1xzdlzl5znnssm3dlslqgrayrl4frdmh0s7dyqwgvkdqaqkf5994aw53cn58")
+        seed = Hash(`0x4600086afc04e5650070e7288749d24d57e1f395f954f450e1e7dd30405e419499e59935742f8e7213dab598b8ec69a195e8ac80a196b5c10698c28c7fb688a8`);
     else
     {
         auto cycle = PreImageCycle(pair.secret, 20, PreImageCycle.PreImageCount, Height(0));
