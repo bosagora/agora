@@ -672,13 +672,6 @@ extern(D):
                     envelope.statement.pledges.confirm_.ballot.value, ex);
                 return;
             }
-            Transaction[] received_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(con_data, received_tx_set, this.ledger.getUTXOFinder()))
-            {
-                log.info("Missing TXs while checking envelope signature : {}",
-                    scpPrettify(&envelope, &this.getQSet));
-                return; // We dont have all the TXs for this block. Try to catchup
-            }
         }
         else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
@@ -894,9 +887,16 @@ extern(D):
 
         if (auto fail_reason = this.ledger.validateConsensusData(data, this.initial_missing_validators))
         {
-            log.error("validateValue(): Validation failed: {}. Data: {}",
-                fail_reason, data.prettify);
-            return ValidationLevel.kInvalidValue;
+            if (fail_reason == this.ledger.InvalidConsensusDataReason.NotInPool)
+            {
+                log.trace("validateValue(): This node can not yet fully validate this value: {}. Data: {}", fail_reason, data.prettify);
+                return ValidationLevel.kMaybeValidValue;
+            }
+            else
+            {
+                log.error("validateValue(): Validation failed: {}. Data: {}", fail_reason, data.prettify);
+                return ValidationLevel.kInvalidValue;
+            }
         }
         const Block last_block = this.ledger.getLastBlock();
         if (last_block.header.height + 1 == slot_idx) // Let's check last block is still one before this one
