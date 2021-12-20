@@ -473,7 +473,12 @@ public class NetworkManager
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
         node.client.connections.each!(conn => this.connection_tasks.remove(conn.address));
-        if (this.tryMerge(node) || this.peerLimitReached())
+        if (this.tryMerge(node))
+        {
+            this.required_peers.remove(node.utxo);
+            return;
+        }
+        if (this.peerLimitReached())
             return;
 
         if (!node.client.connections.any!(conn => conn.address == Address.init))
