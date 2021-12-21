@@ -34,8 +34,10 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count >= GenesisValidators - 1,  // >= since it may connect to itself (#772)
-               format("Node %s has %d peers: %s", key, addresses.length, addresses));
+        const expectedCount = network.nodes.count + 1; // include name registry
+        assert(addresses.sort.uniq.count == expectedCount,
+            format("Node %s has %d peers but expected %d: %s",
+                key, addresses.length, expectedCount, addresses));
     }
 }
 
@@ -84,8 +86,10 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys;
-        assert(addresses.sort.uniq.count >= GenesisValidators - 1,  // >= since it may connect to itself (#772)
-               format("Node %s has %d peers: %s", key, addresses.length, addresses));
+        const expectedCount = network.nodes.count + 1; // include name registry
+        assert(addresses.sort.uniq.count == expectedCount,
+               format("Node %s has %d peers but expected %d: %s",
+                key, addresses.length, expectedCount, addresses));
     }
 }
 
