@@ -57,9 +57,8 @@ unittest
 /// test gossiping behavior for an outsider node
 unittest
 {
-    // node #7 is the outsider, so total foreign nodes may be 6
+    // node #7 is the fullnode
     TestConf conf = { full_nodes : 1 };
-    conf.node.max_listeners = 6;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -71,10 +70,9 @@ unittest
 
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
 
-    auto send_txs = txs[0 .. $ - 1];  // 1 short of making a block (don't start consensus)
-    send_txs.each!(tx => node_1.postTransaction(tx));
+    txs.each!(tx => node_1.postTransaction(tx));
     nodes.each!(node =>
-       send_txs.each!(tx =>
+       txs.each!(tx =>
            node.hasTransactionHash(hashFull(tx)).retryFor(5.seconds)
     ));
 }
