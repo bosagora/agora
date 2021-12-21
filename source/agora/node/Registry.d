@@ -1294,7 +1294,9 @@ unittest
     assert(ledger.getBlockHeight() == 1);
 
     auto payload = RegistryPayload(RegistryPayloadData(WK.Keys[0].address, [Address("agora://address")], 0));
+    auto payloadA = RegistryPayload(RegistryPayloadData(WK.Keys[1].address, [Address("agora://127.0.0.1")], 0));
     payload.signPayload(WK.Keys[0]);
+    payloadA.signPayload(WK.Keys[1]);
 
     try
     {
@@ -1311,9 +1313,16 @@ unittest
     enroll.enroll_sig = WK.Keys[0].sign(enroll);
     assert(ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[0].address,
         Height(2), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
+    enroll = Enrollment(UTXO.getHash(txs[1].hashFull(), 0), Hash.init);
+    enroll.enroll_sig = WK.Keys[1].sign(enroll);
+    ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[1].address,
+        Height(2), &ledger.peekUTXO, &ledger.getPenaltyDeposit);
 
     try
+    {
         registry.postValidator(payload);
+        registry.postValidator(payloadA);
+    }
     catch (Exception e)
         assert(0, e.message);
 
@@ -1321,6 +1330,131 @@ unittest
     ledger.forceCreateBlock(0);
     assert(ledger.getBlockHeight() == 2);
     assert(RegistryPayload.init != registry.getValidator(WK.Keys[0].address));
+
+    // Test DNS implementation
+    import std.random : uniform;
+
+    Message ask;
+    ask.header.ID = uniform!short;
+    ask.header.RD = true;
+    ask.header.QDCOUNT = 1;
+    ask.questions ~= Question.init;
+
+    Question[] test_qs = [
+        /* valid_cname */
+        Question(
+            Domain(WK.Keys[0].address.toString~".validators.test"),
+            QTYPE.CNAME, QCLASS.IN
+        ),
+        /* unsup_query */
+        Question(
+            Domain(WK.Keys[0].address.toString~".validators.test"),
+            QTYPE.HINFO, QCLASS.IN
+        ),
+        /* nonexisting_zone */
+        Question(
+            Domain(WK.Keys[0].address.toString~".nonexist.not"),
+            QTYPE.CNAME, QCLASS.IN
+        ),
+        /* soa_answer */
+        Question(
+            Domain("validators.test"), QTYPE.SOA, QCLASS.IN
+        ),
+        /* soa_auth */
+        Question(
+            Domain(WK.Keys[0].address.toString~".validators.test"),
+            QTYPE.SOA, QCLASS.IN
+        ),
+        /* AXFR not matches */
+        Question(
+            Domain(WK.Keys[0].address.toString~".validators.test"),
+            QTYPE.AXFR, QCLASS.IN
+        ),
+        /* AXFR */
+        Question(
+            Domain("validators.test"),
+            QTYPE.AXFR, QCLASS.IN
+        ),
+        /* A query shall return CNAME */
+        Question(
+            Domain(WK.Keys[0].address.toString~".validators.test"),
+            QTYPE.A, QCLASS.IN
+        ),
+        /* valid A */
+        Question(
+            Domain(WK.Keys[1].address.toString~".validators.test"),
+            QTYPE.A, QCLASS.IN
+        ),
+    ];
+
+    void dns_answer(in Message msg) @trusted
+    {
+        if (msg.questions.length != 1)
+            assert(0);
+
+        if (msg.questions[0] == test_qs[0])
+        {
+            assert(msg.header.RCODE == Header.RCode.NoError);
+            assert(1 == msg.answers.length);
+            assert(TYPE.CNAME == msg.answers[0].type);
+            assert(Domain("address") == msg.answers[0].rdata.name);
+        }
+        else if (msg.questions[0] == test_qs[1])
+            assert(msg.header.RCODE == Header.RCode.NotImplemented);
+        else if (msg.questions[0] == test_qs[2])
+            assert(msg.header.RCODE == Header.RCode.Refused);
+        else if (msg.questions[0] == test_qs[3])
+        {
+            assert(msg.header.RCODE == Header.RCode.NoError);
+            assert(1 == msg.answers.length);
+            assert(TYPE.SOA == msg.answers[0].type);
+            assert(Domain("ns1.validators.test") == msg.answers[0].rdata.soa.mname);
+        }
+        else if (msg.questions[0] == test_qs[4])
+        {
+            assert(msg.header.RCODE == Header.RCode.NoError);
+            assert(1 == msg.authorities.length);
+            assert(TYPE.SOA == msg.authorities[0].type);
+            assert(Domain("ns1.validators.test") == msg.authorities[0].rdata.soa.mname);
+        }
+        else if (msg.questions[0] == test_qs[5])
+            assert(msg.header.RCODE == Header.RCode.Refused);
+        else if (msg.questions[0] == test_qs[6])
+        {
+            assert(msg.header.RCODE == Header.RCode.NoError);
+            assert(4 == msg.answers.length);
+            assert(TYPE.SOA == msg.answers[0].type);
+            assert(TYPE.CNAME == msg.answers[2].type);
+            assert(TYPE.SOA == msg.answers[3].type);
+            assert(msg.answers[0] == msg.answers[3]);
+            assert(Domain("address") == msg.answers[2].rdata.name);
+        }
+        else if (msg.questions[0] == test_qs[7])
+        {
+            assert(msg.header.RCODE == Header.RCode.NoError);
+            assert(TYPE.CNAME == msg.answers[0].type);
+            assert(Domain("address") == msg.answers[0].rdata.name);
+        }
+        else if (msg.questions[0] == test_qs[8])
+        {
+            assert(msg.header.RCODE == Header.RCode.NoError);
+            assert(1 == msg.answers.length);
+            assert(TYPE.A == msg.answers[0].type);
+            assert("127.0.0.1:0" ==
+                new InternetAddress(msg.answers[0].rdata.a[0],
+                    InternetAddress.PORT_ANY).toString);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+
+    foreach (q; test_qs)
+    {
+        ask.questions[0] = q;
+        registry.answerQuestions(ask, "localhost", &dns_answer);
+    }
 
     ledger.forceCreateBlock(0);
     assert(ledger.getBlockHeight() == 3);
