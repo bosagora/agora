@@ -53,6 +53,22 @@ validator:
   # Public address:  boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy
   seed: SBIJAVYYCSRV5RNO2WVTT25H6VZTEV3YSE7U7WT7UQUNSVBUGB6QNBWG
 
+  registry_address: http://node-0:1826
+  addresses_to_register:
+    - http://node-4:4826
+
+registry:
+  enabled: true
+  port: 3453
+
+  validators:
+    type: secondary
+
+    redirect_primary: http://node-0:1826
+
+    primary_servers:
+      - node-2:3253
+
 ################################################################################
 ##                               Node discovery                               ##
 ##                                                                            ##

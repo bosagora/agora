@@ -48,6 +48,25 @@ validator:
   # An eligible account has at least 40k coins frozen in it
   enabled: false
 
+registry:
+  enabled: true
+  port: 3053
+
+  validators:
+    type: primary
+
+    allow_transfer:
+      - node-2
+
+    soa:
+      email: dns@integration.test
+      refresh:
+        seconds: 10
+      retry:
+        seconds: 30
+      expire:
+        minutes: 1
+
 ################################################################################
 ##                               Node discovery                               ##
 ##                                                                            ##
