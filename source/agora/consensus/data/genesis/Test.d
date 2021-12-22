@@ -43,8 +43,8 @@ import agora.utils.Test;
     `version (unittest)`.
     It can also be used for system integration testing.
 
-    It contains a total of 500M initial coins, of which 12M have been frozen
-    among 6 nodes, and the rest is evenly split between 8 outputs (61M each).
+    It contains a total of 500M initial coins, of which 24M have been evenly frozen
+    among 12 nodes, and the rest is evenly split between 8 outputs (59.5M each).
 
 *******************************************************************************/
 
