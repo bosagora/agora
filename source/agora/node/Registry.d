@@ -1064,7 +1064,8 @@ unittest
         Hash.init,
     );
     enroll.enroll_sig = WK.Keys[0].sign(enroll);
-    assert(ledger.addEnrollment(enroll, WK.Keys[0].address, Height(2)));
+    assert(ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[0].address,
+        Height(2), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
 
     try
         registry.postValidator(payload);
