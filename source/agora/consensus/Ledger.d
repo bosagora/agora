@@ -1401,27 +1401,6 @@ public class Ledger
             &this.getPenaltyDeposit, utxo_finder);
     }
 
-    /***************************************************************************
-
-        Add an enrollment data to the enrollment pool
-
-        Params:
-            enroll = the enrollment data to add
-            pubkey = the public key of the enrollment
-            height = block height for enrollment
-
-        Returns:
-            true if the enrollment data has been added to the enrollment pool
-
-    ***************************************************************************/
-
-    public bool addEnrollment (in Enrollment enroll, in PublicKey pubkey,
-        in Height height) @safe nothrow
-    {
-        return this.enroll_man.addEnrollment(enroll, pubkey, height,
-            &this.peekUTXO, &this.getPenaltyDeposit);
-    }
-
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated
@@ -2212,8 +2191,9 @@ unittest
     {
         auto enroll = EnrollmentManager.makeEnrollment(
             utxos[idx], kp, Height(params.ValidatorCycle), params.ValidatorCycle);
-        assert(ledger.addEnrollment(enroll, kp.address,
-            Height(params.ValidatorCycle)));
+        assert(ledger.enrollment_manager.addEnrollment(enroll, kp.address,
+            Height(params.ValidatorCycle),
+            &ledger.peekUTXO, &ledger.getPenaltyDeposit));
         enrollments ~= enroll;
     }
 
