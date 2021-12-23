@@ -506,7 +506,7 @@ public class FeeManager
     {
         try
         {
-            const firstHeight = height - this.params.PayoutPeriod;
+            const firstHeight = height - this.params.PayoutPeriod + 1;
             this.db.execute("DELETE FROM block_fees where height <= ?", height);
             iota(firstHeight, height + 1)
                 .map!(h => Height(h)).each!((Height h)
