@@ -69,7 +69,13 @@ private mixin template CPPBindingMixin (T, bool Copyable = true, bool DefaultCon
             dtorCPPObject!T(&this);
         }
 
-        @disable this (this);
+        // Workaround for https://issues.dlang.org/show_bug.cgi?id=22505
+        static if (Copyable)
+        this (this) @trusted nothrow @nogc pure
+        {
+            T temp = T(this);
+            copyCtorCPPObject!T(&this, &temp);
+        }
 
         static if (Copyable)
         this (ref return scope inout T rhs) inout @trusted nothrow @nogc pure
