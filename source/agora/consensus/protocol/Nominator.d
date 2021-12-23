@@ -911,6 +911,8 @@ extern(D):
                 return ValidationLevel.kMaybeValidValue; // this node is not ready to continue but will not block progress
             }
         }
+        else if (slot_idx > last_block.header.height + 1)   // Too early for us to check for signatures
+            return ValidationLevel.kMaybeValidValue;
 
         return ValidationLevel.kFullyValidatedValue;
     }
