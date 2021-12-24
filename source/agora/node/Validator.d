@@ -385,17 +385,8 @@ public class Validator : FullNode, API
 {
         // Add any missing signatures we know
         const updated_header = this.nominator.updateMultiSignature(header);
-        if (updated_header == BlockHeader.init) // There were no signatures added
-        {
-            this.ledger.updateBlockMultiSig(header);
-            super.acceptHeader(header);
-
-        }
-        else
-        {
-            this.ledger.updateBlockMultiSig(updated_header);
-            super.acceptHeader(updated_header);
-        }
+        this.ledger.updateBlockMultiSig(updated_header);
+        super.acceptHeader(updated_header);
     }
 
     /***************************************************************************
