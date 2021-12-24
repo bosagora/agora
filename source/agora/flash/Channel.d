@@ -2285,8 +2285,9 @@ LOuter: while (1)
         assert(this.last_externalized_update_utxo != Hash.init);
 
         settle_tx.inputs[0].utxo = this.last_externalized_update_utxo;
+        auto mock_refund = Output(Amount(1), this.flash_conf.key_pair.address);
 
-        auto utxos = this.getFeeUTXOs(settle_tx.sizeInBytes());
+        auto utxos = this.getFeeUTXOs(settle_tx.sizeInBytes() + mock_refund.sizeInBytes());
         settle_tx.inputs ~= utxos.utxos.map!(hash => Input(hash)).array;
         settle_tx.inputs.sort();
 
@@ -2294,7 +2295,7 @@ LOuter: while (1)
             settle_tx.outputs[update.multi_settle_sig.output_idx] = Output(utxos.total_value, this.flash_conf.key_pair.address);
         else
             // todo: this is a requirement of SigHash.OmitSingle, fix the need to always have a refund output
-            settle_tx.outputs[update.multi_settle_sig.output_idx] = Output(Amount(1), this.flash_conf.key_pair.address);
+            settle_tx.outputs[update.multi_settle_sig.output_idx] = mock_refund;
         auto refund_output = settle_tx.outputs[update.multi_settle_sig.output_idx];
         settle_tx.outputs.sort();
 
