@@ -349,8 +349,8 @@ public class NameRegistry: NameRegistryAPI
     {
         Message reply;
         reply.header.RCODE = Header.RCode.FormatError;
-        reply.header.RA = false; // TODO: Implement
-        reply.header.AA = true;  // TODO: Make configurable
+        reply.header.RA = false;
+        reply.header.AA = true;
 
         // EDNS(0) support
         // payloadSize must be treated to be at least 512. A payloadSize of 0
@@ -424,6 +424,7 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
+            // Relying on the note of loop
             reply.header.RCODE = answer(q, reply, peer);
 
             if (reply.maxSerializedSize() > payloadSize)
@@ -756,7 +757,8 @@ private struct ZoneData
 
             this.db.execute(query_sig_create);
         }
-        else if (this.config.type == ZoneConfig.Type.secondary)
+        else if (this.config.type == ZoneConfig.Type.secondary
+                    || this.config.type == ZoneConfig.Type.caching)
         {
             // Zone type changed from primary
             if (utxo_exists)
@@ -769,8 +771,6 @@ private struct ZoneData
             this.query_payload = format("SELECT address, type " ~
                 "FROM registry_%s_addresses " ~
                 "WHERE pubkey = ?", name);
-
-            this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", name);
 
             query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
                 "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
@@ -785,18 +785,22 @@ private struct ZoneData
             );
             this.resolver = new DNSResolver(peer_addrs);
 
-            // Since a secondary zone cannot transfer UTXO, sequence and signature
-            // fields of data from a primary, it redirects API calls to API of the
-            // configured primary
-            auto settings = new RestInterfaceSettings;
-            settings.baseURL = Address(this.config.redirect_primary);
-            settings.httpClientSettings = new HTTPClientSettings;
-            settings.httpClientSettings.connectTimeout = 2.seconds;
-            settings.httpClientSettings.readTimeout = 2.seconds;
-            this.redirect_primary = new RestInterfaceClient!NameRegistryAPI(settings);
+            if (this.config.type == ZoneConfig.Type.secondary)
+            {
+                this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", name);
+                // Since a secondary zone cannot transfer UTXO, sequence and signature
+                // fields of data from a primary, it redirects API calls to API of the
+                // configured primary
+                auto settings = new RestInterfaceSettings;
+                settings.baseURL = Address(this.config.redirect_primary);
+                settings.httpClientSettings = new HTTPClientSettings;
+                settings.httpClientSettings.connectTimeout = 2.seconds;
+                settings.httpClientSettings.readTimeout = 2.seconds;
+                this.redirect_primary = new RestInterfaceClient!NameRegistryAPI(settings);
+                this.soa_update_expire_timer = this.taskman.createTimer(&this.disable);
+            }
 
             this.soa_update_timer = this.taskman.createTimer(&this.updateSOA);
-            this.soa_update_expire_timer = this.taskman.createTimer(&this.disable);
         }
         else // Caching (not implemented yet) or unknown
             return;
@@ -832,7 +836,6 @@ private struct ZoneData
         according to the SOA RR's refresh field. SOA RR update period will be
         changed to the SOA RR's retry field and zone will be disabled after
         `EXPIRE` time when SOA RR request from primary fails.
-        if (this.config.primary.set)
 
         See also RFC 1034 - Section 4.3.5
 
@@ -848,31 +851,36 @@ private struct ZoneData
             } ();
             return;
         }
-        else if (this.config.type == ZoneConfig.Type.secondary)
+
+        auto soa_answer = this.resolver.query(this.root.value, QTYPE.SOA);
+        if (soa_answer.length != 1 || soa_answer[0].type != TYPE.SOA)
         {
-            auto soa_answer = this.resolver.query(this.root.value, QTYPE.SOA);
-            if (soa_answer.length != 1 || soa_answer[0].type != TYPE.SOA)
-            {
-                this.log.warn("{}: Couldn't get SOA record, will retry in {} seconds",
-                    this.name, this.soa.retry);
+            this.log.warn("{}: Couldn't get SOA record, will retry in {} seconds",
+                this.name, this.soa.retry);
 
-                this.soa_update_timer.rearm(this.soa.retry.seconds, false);
+            this.soa_update_timer.rearm(this.soa.retry.seconds, false);
+            if (this.config.type == ZoneConfig.Type.secondary)
                 this.soa_update_expire_timer.rearm(this.soa.expire.seconds, false);
-                return;
-            }
 
-            SOA new_soa = soa_answer[0].rdata.soa;
-            if (new_soa.serial > this.soa.serial)
-            {
-                this.soa = new_soa;
-                this.axfrTransfer();
-            }
-            else
-                this.log.info("{}: Zone SOA is up-to-date", this.name);
-
-            this.soa_update_timer.rearm(this.soa.refresh.seconds, false);
-            this.soa_update_expire_timer.stop();
+            return;
         }
+
+        SOA new_soa = soa_answer[0].rdata.soa;
+        if (new_soa.serial > this.soa.serial)
+        {
+            this.soa = new_soa;
+            if (this.config.type == ZoneConfig.Type.secondary)
+                this.axfrTransfer();
+        }
+        else
+            this.log.info("{}: Zone SOA is up-to-date", this.name);
+
+        auto refresh = (this.config.type == ZoneConfig.Type.secondary)
+                        ? this.soa.refresh.seconds : soa_answer[0].ttl.seconds;
+        this.soa_update_timer.rearm(refresh, false);
+
+        if (this.config.type == ZoneConfig.Type.secondary)
+            this.soa_update_expire_timer.stop();
     }
 
     /***************************************************************************
@@ -997,9 +1005,17 @@ private struct ZoneData
     public Header.RCode answer (bool matches, in Question q,
         ref Message reply, string peer) @safe
     {
+        if (this.config.type == ZoneConfig.Type.caching)
+        {
+            reply.header.AA = false;
+            reply.header.RA = true;
+        }
+
         if (q.qtype == QTYPE.AXFR)
-            return matches && this.config.allow_transfer.canFind(peer) ?
-                this.doAXFR(reply) : Header.RCode.Refused;
+            return matches
+                    && this.config.allow_transfer.canFind(peer)
+                    && this.config.type != ZoneConfig.Type.caching
+                    ? this.doAXFR(reply) : Header.RCode.Refused;
         else if (q.qtype == QTYPE.SOA)
         {
             if (matches)
@@ -1090,13 +1106,26 @@ private struct ZoneData
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
+        ResourceRecord[] answers;
         TypedPayload payload = this.get(public_key, question.qtype);
-        // We are authoritative, so we can set `NameError`
         if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
+            if (this.config.type == ZoneConfig.Type.caching)
+                answers = this.resolver.query(question.qname.value, question.qtype);
+            else
+                return Header.RCode.NameError;
+        else
+            answers = payload.toRR(question.qname);
+
+        if (this.config.type != ZoneConfig.Type.caching ||
+            (this.config.type == ZoneConfig.Type.caching && !answers.length))
+                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(
+                                        this.root, 0, this.soa); // optional
+
+        if (!answers.length)
             return Header.RCode.NameError;
 
-        reply.answers ~= payload.toRR(question.qname);
-        reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa); // optional
+        reply.answers ~= answers;
+
         return Header.RCode.NoError;
     }
 
