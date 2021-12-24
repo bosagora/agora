@@ -421,9 +421,10 @@ public class FlashNodeFactory : TestAPIManager
 
     public override void printLogs (string file = __FILE__, int line = __LINE__)
     {
+        super.printLogs();
         synchronized  // make sure logging output is not interleaved
         {
-            writeln("---------------------------- START OF LOGS ----------------------------");
+            writeln("---------------------------- START OF FLASH LOGS ----------------------------");
             writefln("%s(%s): Flash node logs:\n", file, line);
             foreach (node; this.flash_nodes)
             {
