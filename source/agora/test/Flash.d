@@ -593,19 +593,16 @@ private class FlashListener : TestFlashListenerAPI
 
     public Amount getEstimatedTxFee ()
     {
-        return Amount(1);
+        return flashTestConf().consensus.min_fee;
     }
 }
 
-private TestConf flashTestConf ()
+private TestConf flashTestConf () @safe
 {
     import agora.node.Config;
 
     TestConf conf;
     conf.consensus.quorum_threshold = 100;
-    // TODO: remove this line when fees are handled
-    conf.consensus.min_fee = Amount(0);
-    conf.node.min_fee_pct = 0;
     conf.event_handlers = [
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.A.address.to!string()]),
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.C.address.to!string()]),
@@ -911,7 +908,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -935,7 +932,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
-        Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        Amount(300_000), Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1188,7 +1185,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1211,7 +1208,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[2].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1243,7 +1240,7 @@ unittest
     const charlie_utxo_2 = UTXO(0, txs[3].outputs[0]);
     const charlie_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
     const charlie_diego_chan_id_2_res = charlie.openNewChannel(charlie_utxo_2, charlie_utxo_hash_2,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
     assert(charlie_diego_chan_id_2_res.error == ErrorCode.None,
         charlie_diego_chan_id_2_res.message);
     const charlie_diego_chan_id_2 = charlie_diego_chan_id_2_res.value;
@@ -1285,7 +1282,7 @@ unittest
     assert(infos.length == 1);
     info = infos[0];
     assert(info.state == ChannelState.Open);
-    assert(info.owner_balance == Amount(10_000), info.owner_balance.to!string);
+    assert(info.owner_balance == 1.coins, info.owner_balance.to!string);
     assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
 
     update = ChannelUpdate(charlie_diego_chan_id_2,
@@ -1303,7 +1300,7 @@ unittest
     diego.waitForChannelDiscovery(alice_charlie_chan_id);
 
     // begin off-chain transactions
-    auto inv_1 = diego.createNewInvoice(WK.Keys.D.address, Amount(2_000),
+    auto inv_1 = diego.createNewInvoice(WK.Keys.D.address, Amount(200_000),
         time_t.max, "payment 1");
 
     // Alice is expected to route the payment through the channel
@@ -1321,9 +1318,10 @@ unittest
     network.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.StartedCollaborativeClose);
     auto close_tx = charlie.getClosingTx(WK.Keys.C.address, charlie_diego_chan_id_2);
+    auto close_tx_fees = conf.consensus.min_fee * close_tx.sizeInBytes;
     assert(close_tx.outputs.length == 2);
-    assert(close_tx.outputs.count!(o => o.value == Amount(8000)) == 1); // No fees
-    assert(close_tx.outputs.count!(o => o.value == Amount(2000 - close_tx.sizeInBytes)) == 1);
+    assert(close_tx.outputs.count!(o => o.value == Amount(9800000)) == 1, to!string(close_tx.outputs)); // No fees
+    assert(close_tx.outputs.count!(o => o.value == Amount(200000) - close_tx_fees) == 1, to!string(close_tx.outputs));
     network.expectTxExternalization(close_tx);
     network.listener.waitUntilChannelState(charlie_diego_chan_id_2,
         ChannelState.Closed);
@@ -1333,9 +1331,10 @@ unittest
     network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.StartedCollaborativeClose);
     close_tx = alice.getClosingTx(WK.Keys.A.address, alice_charlie_chan_id);
+    close_tx_fees = conf.consensus.min_fee * close_tx.sizeInBytes;
     assert(close_tx.outputs.length == 2);
-    assert(close_tx.outputs.count!(o => o.value == Amount(7990)) == 1); // Fees
-    assert(close_tx.outputs.count!(o => o.value == Amount(2010 - close_tx.sizeInBytes)) == 1);
+    assert(close_tx.outputs.count!(o => o.value == Amount(9799990)) == 1, to!string(close_tx.outputs)); // Fees
+    assert(close_tx.outputs.count!(o => o.value == Amount(200010) - close_tx_fees) == 1, to!string(close_tx.outputs));
     network.expectTxExternalization(close_tx);
     network.listener.waitUntilChannelState(alice_charlie_chan_id,
         ChannelState.Closed);
@@ -1394,7 +1393,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        Amount(10_000), 0, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        1.coins, 0, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
