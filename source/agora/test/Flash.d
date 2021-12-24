@@ -65,6 +65,9 @@ public interface TestFlashListenerAPI : FlashListenerAPI
     /// wait until we get a notification about the given channel state,
     /// and return any associated error codes
     ErrorCode waitUntilChannelState (Hash, ChannelState, PublicKey node = PublicKey.init);
+
+    /// set fee per byte rate to be paid for the tx
+    void setEstimatedTxFee(in Amount min_fee);
 }
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
@@ -407,6 +410,7 @@ public class FlashNodeFactory : TestAPIManager
     {
         auto api = RemoteAPI!TestFlashListenerAPI.spawn!Listener(
             &this.registry, this.nodes[0].address, 5.seconds);
+        api.setEstimatedTxFee(this.test_conf.consensus.min_fee);
         this.registry.register(Address(address).host, api.listener());
         this.listener_addresses ~= address;
         this.listener_nodes ~= api;
@@ -487,6 +491,7 @@ private class FlashListener : TestFlashListenerAPI
     ErrorCode[Invoice] invoices;
     LocalRestTaskManager taskman;
     FullNodeAPI agora_node;
+    Amount estimated_tx_fee;
 
     public this (AnyRegistry* registry, string agora_address)
     {
@@ -591,9 +596,14 @@ private class FlashListener : TestFlashListenerAPI
         return utxos;
     }
 
+    public void setEstimatedTxFee(in Amount fee)
+    {
+        this.estimated_tx_fee = fee;
+    }
+
     public Amount getEstimatedTxFee ()
     {
-        return Amount(1);
+        return this.estimated_tx_fee;
     }
 }
 
@@ -603,9 +613,6 @@ private TestConf flashTestConf ()
 
     TestConf conf;
     conf.consensus.quorum_threshold = 100;
-    // TODO: remove this line when fees are handled
-    conf.consensus.min_fee = Amount(0);
-    conf.node.min_fee_pct = 0;
     conf.event_handlers = [
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.A.address.to!string()]),
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.C.address.to!string()]),
