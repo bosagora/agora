@@ -178,7 +178,11 @@
         "bitblob":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "config":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "crypto":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
-        "d2sqlite3":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "d2sqlite3":        { "version": "*",
+                              "dflags" : [ "-preview=in", "-revert=dtorfields" ],
+                              "dflags-linux" : [ "--d-version=SqliteEnableUnlockNotify" ],
+                              "dflags-osx" : [ "--d-version=SqliteFakeUnlockNotify" ]
+                            },
         "dyaml":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "libsodiumd":       { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "localrest":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
