@@ -748,7 +748,7 @@ private struct ZoneData
             this.query_remove_sig = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
                 name);
 
-            this.query_payload = format("SELECT sequence, address, type, utxo " ~
+            this.query_payload = format("SELECT sequence, address, type, utxo, ttl " ~
                 "FROM registry_%s_addresses l " ~
                 "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
                 "WHERE l.pubkey = ?", name, name);
@@ -776,7 +776,7 @@ private struct ZoneData
                     format("DROP TABLE IF EXISTS registry_%s_addresses", name));
             }
 
-            this.query_payload = format("SELECT address, type " ~
+            this.query_payload = format("SELECT address, type, ttl " ~
                 "FROM registry_%s_addresses " ~
                 "WHERE pubkey = ?", name);
 
@@ -824,7 +824,7 @@ private struct ZoneData
 
         // Initialize common fields
         this.soa = this.config.fromConfig(this.root);
-        this.soa_ttl = 0;
+        this.soa_ttl = 60;
 
         this.query_count = format("SELECT COUNT(DISTINCT pubkey) FROM registry_%s_addresses",
             name);
@@ -939,7 +939,8 @@ private struct ZoneData
             auto pubkey = PublicKey.fromString(row["pubkey"].as!string);
             auto qtype = row["type"].as!QTYPE;
 
-            auto answer = this.resolver.query(pubkey.toString ~ this.root.value,
+            this.log.dbg("TTL asking for {}", pubkey.toString ~ this.root.value);
+            auto answer = this.resolver.query(pubkey.toString ~ "." ~ this.root.value,
                 qtype);
 
             if (!answer.length)
@@ -1168,14 +1169,14 @@ private struct ZoneData
             () @trusted {
 
                 auto ttl_res = this.db.execute(
-                    format("SELECT expires FROM registry_%s_addresses " ~
+                    format("SELECT ttl FROM registry_%s_addresses " ~
                         "ORDER BY expires ASC", this.name)
                     );
 
                 if (ttl_res.empty())
                     return;
 
-                auto ttl_duration = ttl_res.front["expires"].as!uint;
+                auto ttl_duration = ttl_res.front["ttl"].as!uint;
 
                 this.expire_timer.stop();
                 this.expire_timer.rearm(ttl_duration.seconds, false);
@@ -1225,8 +1226,8 @@ private struct ZoneData
         if (this.config.type == ZoneConfig.Type.primary)
             utxo = Hash.fromString(results.front["utxo"].as!string);
 
+        const auto ttl = results.front["ttl"].as!uint;
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
-
         const RegistryPayload payload =
         {
             data:
@@ -1234,6 +1235,7 @@ private struct ZoneData
                 public_key : public_key,
                 addresses : addresses,
                 seq : sequence,
+                ttl : ttl,
             },
         };
 
