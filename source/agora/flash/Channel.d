@@ -1802,9 +1802,9 @@ LOuter: while (1)
                 break;
             }
 
-            this.collectCloseSignatures(priv_nonce, close_res.value, fee);
-            this.onChannelNotify(this.own_pk, this.conf.chan_id, ChannelState.StartedCollaborativeClose,
-                ErrorCode.None);
+            if (this.collectCloseSignatures(priv_nonce, close_res.value, fee))
+                this.onChannelNotify(this.own_pk, this.conf.chan_id, ChannelState.StartedCollaborativeClose,
+                    ErrorCode.None);
         });
 
         return Result!bool(true);
@@ -1915,18 +1915,20 @@ LOuter: while (1)
 
     ***************************************************************************/
 
-    private void collectCloseSignatures (Pair priv_nonce, Point peer_nonce, Amount fee)
+    private bool collectCloseSignatures (Pair priv_nonce, Point peer_nonce, Amount fee)
     {
         // todo: index is hardcoded
         const utxo = UTXO.getHash(hashFull(this.funding_tx_signed), 0);
         const nofee_outputs = this.buildBalanceOutputs(this.cur_balance);
         auto dummy_closing_tx = createClosingTx(utxo, nofee_outputs);
         dummy_closing_tx.inputs[0].unlock = genKeyUnlock(Signature.init);
-        if (!fee.mul(dummy_closing_tx.sizeInBytes))
+        auto spendable = this.cur_balance.refund_amount + this.cur_balance.payment_amount;
+        if (!fee.mul(dummy_closing_tx.sizeInBytes) || spendable <= fee)
         {
             this.state = ChannelState.RejectedCollaborativeClose;
             this.onChannelNotify(this.own_pk, this.conf.chan_id,
                 this.state, ErrorCode.RejectedClosingFee);
+            return false;
         }
 
         const outputs = this.buildBalanceOutputs(this.cur_balance, fee);
@@ -1948,7 +1950,7 @@ LOuter: while (1)
                 this.state = ChannelState.RejectedCollaborativeClose;
                 this.onChannelNotify(this.own_pk, this.conf.chan_id,
                     this.state, sig_res.error);
-                return;
+                return false;
             }
 
             this.taskman.wait(WaitTime);
@@ -1972,7 +1974,7 @@ LOuter: while (1)
                 this.state = ChannelState.RejectedCollaborativeClose;
                 this.onChannelNotify(this.own_pk, this.conf.chan_id,
                     this.state, ErrorCode.InvalidSignature);
-                return;
+                return false;
             }
 
             break;
@@ -1985,6 +1987,7 @@ LOuter: while (1)
         log.info("{}: Publishing close tx: {}",
             this.own_pk.flashPrettify, this.pending_close.tx.hashFull.flashPrettify);
         this.txPublisher(this.pending_close.tx);
+        return true;
     }
 
     /***************************************************************************
@@ -2034,10 +2037,6 @@ LOuter: while (1)
                 format("requestCloseChannel: expected seq_id: %s. Got: %s",
                     this.cur_seq_id, seq_id));
 
-        // todo: check fee
-        // todo: need to calculate *our* balance here and see if we can
-        // cover this fee.
-
         this.state = ChannelState.StartedCollaborativeClose;
         Pair priv_nonce = Pair.random();
         Point pub_nonce = priv_nonce.V;
@@ -2047,9 +2046,9 @@ LOuter: while (1)
         // this again.
         this.taskman.setTimer(100.msecs,
         {
-            this.collectCloseSignatures(priv_nonce, peer_nonce, fee);
-            this.onChannelNotify(this.own_pk, this.conf.chan_id,
-                ChannelState.StartedCollaborativeClose, ErrorCode.None);
+            if (this.collectCloseSignatures(priv_nonce, peer_nonce, fee))
+                this.onChannelNotify(this.own_pk, this.conf.chan_id,
+                    ChannelState.StartedCollaborativeClose, ErrorCode.None);
         });
 
         return Result!Point(pub_nonce);
