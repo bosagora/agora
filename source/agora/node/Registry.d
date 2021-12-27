@@ -610,7 +610,8 @@ private struct TypedPayload
              * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
             assert(this.payload.data.addresses.length == 1);
-            return ResourceRecord.make!(TYPE.CNAME)(name, 0, Domain(this.payload.data.addresses[0].host));
+            return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.data.ttl,
+                Domain(this.payload.data.addresses[0].host));
 
         case TYPE.A:
             // FIXME: Remove allocation
@@ -622,7 +623,7 @@ private struct TypedPayload
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, this);
             }
-            return ResourceRecord.make!(TYPE.A)(name, 0, tmp);
+            return ResourceRecord.make!(TYPE.A)(name, this.payload.data.ttl, tmp);
         default:
             ensure(0, "Unknown type: {} - {}", this.type, this);
             assert(0);
@@ -644,6 +645,9 @@ private struct ZoneData
 
     /// The SOA record
     public SOA soa;
+
+    /// TTL of the SOA RR
+    private uint soa_ttl;
 
     ///
     private ZoneConfig config;
@@ -750,9 +754,9 @@ private struct ZoneData
                 "(pubkey TEXT, sequence INTEGER NOT NULL," ~
                 "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", name);
 
-            // TODO add TTL
             query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
                 "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
+                "ttl INTEGER NOT NULL, " ~
                 "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
                 "PRIMARY KEY(pubkey, address))", name, name);
 
@@ -773,10 +777,9 @@ private struct ZoneData
                 "FROM registry_%s_addresses " ~
                 "WHERE pubkey = ?", name);
 
-            // TODO add TTL
-            // TODO add expires
             query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
                 "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
+                "ttl INTEGER NOT NULL, expires INTEGER, " ~
                 "PRIMARY KEY(pubkey, address))", name);
 
             this.taskman = taskman;
@@ -810,6 +813,7 @@ private struct ZoneData
 
         // Initialize common fields
         this.soa = this.config.fromConfig(this.root);
+        this.soa_ttl = 0;
 
         this.query_count = format("SELECT COUNT(DISTINCT pubkey) FROM registry_%s_addresses",
             name);
@@ -818,7 +822,7 @@ private struct ZoneData
             "FROM registry_%s_addresses", name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
-                    "(pubkey, address, type) VALUES (?, ?, ?)", name);
+                    "(pubkey, address, type, ttl) VALUES (?, ?, ?, ?)", name);
 
         this.query_addresses_get = format("SELECT address " ~
             "FROM registry_%s_addresses", name);
@@ -873,6 +877,7 @@ private struct ZoneData
             return;
         }
 
+        this.soa_ttl = soa_answer[0].ttl;
         SOA new_soa = soa_answer[0].rdata.soa;
         if (new_soa.serial > this.soa.serial)
         {
@@ -884,7 +889,7 @@ private struct ZoneData
             this.log.info("{}: Zone SOA is up-to-date", this.name);
 
         auto refresh = (this.config.type == ZoneConfig.Type.secondary)
-                        ? this.soa.refresh.seconds : soa_answer[0].ttl.seconds;
+                        ? this.soa.refresh.seconds : this.soa_ttl.seconds;
 
         refresh = (refresh == 0) ? 5.seconds : refresh;
 
@@ -941,7 +946,8 @@ private struct ZoneData
                 this.db.execute(this.query_addresses_add,
                     label,
                     "http://" ~ address.value, // TODO SRV is needed to keep intact
-                    rr.type.to!ushort);
+                    rr.type.to!ushort,
+                    rr.ttl);
             }
             else if (rr.type == TYPE.A)
             {
@@ -953,7 +959,8 @@ private struct ZoneData
                     this.db.execute(this.query_addresses_add,
                         label,
                         "http://" ~ inaddr.toAddrString(), // TODO SRV is needed to keep intact
-                        rr.type.to!ushort);
+                        rr.type.to!ushort,
+                        rr.ttl);
                 }
             }
         }
@@ -1030,9 +1037,11 @@ private struct ZoneData
         else if (q.qtype == QTYPE.SOA)
         {
             if (matches)
-                reply.answers ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
+                reply.answers ~= ResourceRecord.make!(TYPE.SOA)(this.root,
+                    this.soa_ttl, this.soa);
             else
-                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
+                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root,
+                    this.soa_ttl, this.soa);
 
             return Header.RCode.NoError;
         }
@@ -1074,7 +1083,7 @@ private struct ZoneData
     {
         log.info("Performing AXFR for {} ({} entries)", this.root.value, this.count());
 
-        auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
+        auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, this.soa_ttl, this.soa);
         reply.answers ~= soa;
 
         foreach (const ref payload; this)
@@ -1130,7 +1139,7 @@ private struct ZoneData
         if (this.config.type != ZoneConfig.Type.caching ||
             (this.config.type == ZoneConfig.Type.caching && !answers.length))
                 reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(
-                                        this.root, 0, this.soa); // optional
+                                        this.root, this.soa_ttl, this.soa); // optional
 
         if (!answers.length)
             return Header.RCode.NameError;
@@ -1272,7 +1281,8 @@ private struct ZoneData
             db.execute(this.query_addresses_add,
                 payload.payload.data.public_key,
                 address,
-                payload.type.to!ushort);
+                payload.type.to!ushort,
+                payload.payload.data.ttl);
         }
 
         this.updateSOA();

@@ -286,7 +286,8 @@ public class FlashNode : FlashControlAPI
                     addresses : this.conf.addresses_to_register.map!(
                         addr => Address(addr)
                     ).array,
-                    seq : time(null)
+                    seq : time(null),
+                    ttl: 0,
                 }
             };
 

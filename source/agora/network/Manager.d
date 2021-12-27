@@ -881,7 +881,8 @@ public class NetworkManager
             {
                 public_key : this.validator_config.key_pair.address,
                 addresses : addresses,
-                seq : time(null)
+                seq : time(null),
+                ttl: 0,
             }
         };
 
