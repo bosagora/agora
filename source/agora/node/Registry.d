@@ -750,6 +750,7 @@ private struct ZoneData
                 "(pubkey TEXT, sequence INTEGER NOT NULL," ~
                 "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", name);
 
+            // TODO add TTL
             query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
                 "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
                 "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
@@ -772,6 +773,8 @@ private struct ZoneData
                 "FROM registry_%s_addresses " ~
                 "WHERE pubkey = ?", name);
 
+            // TODO add TTL
+            // TODO add expires
             query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
                 "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
                 "PRIMARY KEY(pubkey, address))", name);
@@ -839,6 +842,11 @@ private struct ZoneData
 
         See also RFC 1034 - Section 4.3.5
 
+        Caching zone will cache the SOA RR and will refresh the record according
+        to the TTL value.
+
+        Caching the SOA is allowed, see RFC 2181 - Section 7.2
+
     ***************************************************************************/
 
     private void updateSOA ()
@@ -877,6 +885,9 @@ private struct ZoneData
 
         auto refresh = (this.config.type == ZoneConfig.Type.secondary)
                         ? this.soa.refresh.seconds : soa_answer[0].ttl.seconds;
+
+        refresh = (refresh == 0) ? 5.seconds : refresh;
+
         this.soa_update_timer.rearm(refresh, false);
 
         if (this.config.type == ZoneConfig.Type.secondary)
@@ -1123,6 +1134,11 @@ private struct ZoneData
 
         if (!answers.length)
             return Header.RCode.NameError;
+        else if (this.config.type == ZoneConfig.type.caching)
+        {
+            // TODO add to DB if TTL > 0
+            // TODO setup TTL timer
+        }
 
         reply.answers ~= answers;
 
