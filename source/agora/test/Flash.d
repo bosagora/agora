@@ -2099,3 +2099,74 @@ unittest
     inv_res = network.listener.waitUntilNotified(inv_2.value);
     assert(inv_res == ErrorCode.None, format("Couldn't pay invoice: %s", inv_res));
 }
+
+// Reject collaborative close, if a too generous fee was set for close TX
+// that it can not be paid using the channel funds
+unittest
+{
+    static class GenerousFlashListener : FlashListener
+    {
+        mixin ForwardCtor!();
+
+        public override Amount getEstimatedTxFee ()
+        {
+            return 10.coins;
+        }
+    }
+
+    auto conf = flashTestConf();
+    auto network = makeTestNetwork!FlashNodeFactory(conf);
+    scope (exit) network.shutdown();
+    scope (failure) network.printLogs();
+
+    auto alice = network.createFlashNode(WK.Keys.A);
+    auto charlie = network.createFlashNode(WK.Keys.C);
+
+    network.start!GenerousFlashListener();
+    network.waitForDiscovery();
+
+    // split the genesis funds into WK.Keys[0] .. WK.Keys[7]
+    auto txs = genesisSpendable().take(8).enumerate()
+        .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+        .array();
+
+    txs.each!(tx => network.postAndEnsureTxInPool(tx));
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
+
+    // 0 blocks settle time after trigger tx is published (unsafe)
+    const Settle_1_Blocks = 0;
+    //const Settle_10_Blocks = 10;
+
+    // the utxo the funding tx will spend (only relevant to the funder)
+    const utxo = UTXO(0, txs[0].outputs[0]);
+    const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
+    const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
+        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+    assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
+    const chan_id = chan_id_res.value;
+    network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
+
+    // await funding transaction
+    network.expectTxExternalization(chan_id);
+
+    // wait for the parties & listener to detect the funding tx
+    alice.waitForChannelOpen(chan_id);
+    charlie.waitForChannelOpen(chan_id);
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Open);
+
+    log.info("Alice collaboratively closing the channel..");
+    auto error = alice.beginCollaborativeClose(WK.Keys.A.address, chan_id).error;
+    assert(error == ErrorCode.None, error.to!string);
+    network.listener.waitUntilChannelState(chan_id,
+        ChannelState.RejectedCollaborativeClose);
+
+    log.info("Alice unilaterally closing the channel..");
+    error = alice.beginUnilateralClose(WK.Keys.A.address, chan_id).error;
+    assert(error == ErrorCode.None, error.to!string);
+    network.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose);
+
+    // trigger tx & latest update tx & latest settle tx
+    iota(4).each!(idx => network.addBlock(true));
+    network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
+}
