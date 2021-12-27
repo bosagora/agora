@@ -507,9 +507,17 @@ public struct RegistryConfig
 
         static void validateZone (string name, in ZoneConfig zone)
         {
-            // Nothing to validate for caching yet
-            if (zone.type == ZoneConfig.Type.caching)
+            if (zone.type == ZoneConfig.Type.disabled)
                 return;
+
+            if (zone.type == ZoneConfig.Type.caching)
+            {
+                ensure(zone.primary_servers.length > 0,
+                    "registry.{} is secondary and at least one primary is required",
+                    name);
+
+                return;
+            }
 
             if (zone.type == ZoneConfig.Type.secondary)
             {
@@ -569,14 +577,17 @@ public struct ZoneConfig
     /// Type of name registry for the zone
     public enum Type
     {
+        /// Zone is disabled
+        disabled = 0,
+
         /// Server is non-authoritative resolver for the zone
-        caching = 0,
+        caching = 1,
 
         /// Server is authoritative and primary for the zone
-        primary = 1,
+        primary = 2,
 
         /// Server is authoritative and secondary for the zone
-        secondary = 2,
+        secondary = 3,
     }
 
     /// Ditto

@@ -720,6 +720,7 @@ private struct ZoneData
                 case ZoneConfig.Type.primary: return "primary (authoritative)";
                 case ZoneConfig.Type.secondary: return "secondary (authoritative)";
                 case ZoneConfig.Type.caching: return "caching (non-authoritative)";
+                case ZoneConfig.Type.disabled: return "disabled";
                 default: return "Unknown";
             }
         }
