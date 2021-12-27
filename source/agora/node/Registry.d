@@ -676,6 +676,8 @@ private struct ZoneData
     /// Query for clean up zone before AXFR, only for secondary zone
     private string query_axfr_cleanup;
 
+    private string query_ttl_expired;
+
     /// Database to store data
     private ManagedDatabase db;
 
@@ -686,7 +688,7 @@ private struct ZoneData
     private ITimer soa_update_timer;
 
     /// Timer for disabling zone when SOA check cannot be completed, only for secondary
-    private ITimer soa_update_expire_timer;
+    private ITimer expire_timer;
 
     /// Task manager to manage timers
     private ITaskManager taskman;
@@ -763,7 +765,7 @@ private struct ZoneData
             this.db.execute(query_sig_create);
         }
         else if (this.config.type == ZoneConfig.Type.secondary
-                    || this.config.type == ZoneConfig.Type.caching)
+                || this.config.type == ZoneConfig.Type.caching)
         {
             // Zone type changed from primary
             if (utxo_exists)
@@ -803,12 +805,20 @@ private struct ZoneData
                 settings.httpClientSettings.connectTimeout = 2.seconds;
                 settings.httpClientSettings.readTimeout = 2.seconds;
                 this.redirect_primary = new RestInterfaceClient!NameRegistryAPI(settings);
-                this.soa_update_expire_timer = this.taskman.createTimer(&this.disable);
+
+                this.expire_timer = this.taskman.createTimer(&this.disable);
+            }
+            else
+            {
+                this.query_ttl_expired = format("SELECT * FROM registry_%s_addresses " ~
+                 "WHERE expires <= ? ORDER BY expires ASC", name);
+
+                this.expire_timer = this.taskman.createTimer(&this.ttlUpdate);
             }
 
             this.soa_update_timer = this.taskman.createTimer(&this.updateSOA);
         }
-        else // Caching (not implemented yet) or unknown
+        else
             return;
 
         // Initialize common fields
@@ -872,7 +882,7 @@ private struct ZoneData
 
             this.soa_update_timer.rearm(this.soa.retry.seconds, false);
             if (this.config.type == ZoneConfig.Type.secondary)
-                this.soa_update_expire_timer.rearm(this.soa.expire.seconds, false);
+                this.expire_timer.rearm(this.soa.expire.seconds, false);
 
             return;
         }
@@ -891,12 +901,12 @@ private struct ZoneData
         auto refresh = (this.config.type == ZoneConfig.Type.secondary)
                         ? this.soa.refresh.seconds : this.soa_ttl.seconds;
 
-        refresh = (refresh == 0) ? 5.seconds : refresh;
+        refresh = (refresh == 0.seconds) ? 5.seconds : refresh;
 
         this.soa_update_timer.rearm(refresh, false);
 
         if (this.config.type == ZoneConfig.Type.secondary)
-            this.soa_update_expire_timer.stop();
+            this.expire_timer.stop();
     }
 
     /***************************************************************************
@@ -917,6 +927,34 @@ private struct ZoneData
             this.name);
     }
 
+    private void ttlUpdate ()
+    {
+        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        auto expired_records = this.db.execute(this.query_ttl_expired, time);
+
+        foreach (row; expired_records)
+        {
+            auto pubkey = PublicKey.fromString(row["pubkey"].as!string);
+            auto qtype = row["type"].as!QTYPE;
+
+            auto answer = this.resolver.query(pubkey.toString ~ this.root.value,
+                qtype);
+
+            if (!answer.length)
+            {
+                // TODO remove data from cache
+                continue;
+            }
+
+            // TODO update fields of the data and the TTL
+        }
+
+        auto ttl_duration = this.db.execute(format("SELECT expires FROM " ~
+            "registry_%s_addresses ORDER BY expires ASC", this.name)).front["expires"].as!uint;
+
+        this.expire_timer.rearm(ttl_duration.seconds, false);
+    }
+
     /***************************************************************************
 
         Perform AXFR zone transfer
@@ -935,35 +973,7 @@ private struct ZoneData
         this.db.execute(this.query_axfr_cleanup);
 
         foreach (ResourceRecord rr; axfr_answer)
-        {
-            auto label = this.parsePublicKeyFromDomain(rr.name.value);
-            if (label == PublicKey.init)
-                continue;
-
-            if (rr.type == TYPE.CNAME)
-            {
-                auto address = rr.rdata.name;
-                this.db.execute(this.query_addresses_add,
-                    label,
-                    "http://" ~ address.value, // TODO SRV is needed to keep intact
-                    rr.type.to!ushort,
-                    rr.ttl);
-            }
-            else if (rr.type == TYPE.A)
-            {
-                import std.socket : InternetAddress;
-                auto addresses = rr.rdata.a;
-                foreach (addr; addresses)
-                {
-                    auto inaddr = new InternetAddress(addr, InternetAddress.PORT_ANY);
-                    this.db.execute(this.query_addresses_add,
-                        label,
-                        "http://" ~ inaddr.toAddrString(), // TODO SRV is needed to keep intact
-                        rr.type.to!ushort,
-                        rr.ttl);
-                }
-            }
-        }
+            this.add(rr);
     }
 
     /***************************************************************************
@@ -1134,7 +1144,7 @@ private struct ZoneData
             else
                 return Header.RCode.NameError;
         else
-            answers = payload.toRR(question.qname);
+            answers ~= payload.toRR(question.qname);
 
         if (this.config.type != ZoneConfig.Type.caching ||
             (this.config.type == ZoneConfig.Type.caching && !answers.length))
@@ -1145,11 +1155,26 @@ private struct ZoneData
             return Header.RCode.NameError;
         else if (this.config.type == ZoneConfig.type.caching)
         {
-            // TODO add to DB if TTL > 0
-            // TODO setup TTL timer
+            uint lowest_ttl = uint.max;
+
+            foreach (rr; answers)
+            {
+                if (rr.ttl > 0)
+                {
+                    this.add(rr);
+
+                    if (rr.ttl < lowest_ttl)
+                        lowest_ttl = rr.ttl;
+                }
+            }
+
+            // TODO check timer remaining if it is bigger than lowest ttl
+            if (!expire_timer.pending())
+                expire_timer.rearm(lowest_ttl.seconds, false);
+
         }
 
-        reply.answers ~= answers;
+        reply.answers = answers;
 
         return Header.RCode.NoError;
     }
@@ -1241,6 +1266,37 @@ private struct ZoneData
 
         if (this.db.changes)
             this.updateSOA();
+    }
+
+    public void add (ResourceRecord rr) @trusted
+    {
+        auto label = this.parsePublicKeyFromDomain(rr.name.value);
+        if (label == PublicKey.init)
+            return;
+
+        if (rr.type == TYPE.CNAME)
+        {
+            auto address = rr.rdata.name;
+            this.db.execute(this.query_addresses_add,
+                label,
+                "http://" ~ address.value, // TODO SRV is needed to keep intact
+                rr.type.to!ushort,
+                rr.ttl);
+        }
+        else if (rr.type == TYPE.A)
+        {
+            import std.socket : InternetAddress;
+            auto addresses = rr.rdata.a;
+            foreach (addr; addresses)
+            {
+                auto inaddr = new InternetAddress(addr, InternetAddress.PORT_ANY);
+                this.db.execute(this.query_addresses_add,
+                    label,
+                    "http://" ~ inaddr.toAddrString(), // TODO SRV is needed to keep intact
+                    rr.type.to!ushort,
+                    rr.ttl);
+            }
+        }
     }
 
     /***************************************************************************
