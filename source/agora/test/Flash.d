@@ -65,6 +65,9 @@ public interface TestFlashListenerAPI : FlashListenerAPI
     /// wait until we get a notification about the given channel state,
     /// and return any associated error codes
     ErrorCode waitUntilChannelState (Hash, ChannelState, PublicKey node = PublicKey.init);
+
+    /// Print out the contents of the log
+    public void printLog ();
 }
 
 /// In addition to the Flash APIs, we provide methods for conditional waits
@@ -439,6 +442,8 @@ public class FlashNodeFactory : TestAPIManager
             }
         }
 
+        this.listener.printLog();
+
         auto output = stdout.lockingTextWriter();
         output.put("Flash log for tests\n");
         output.put("======================================================================\n");
@@ -500,11 +505,13 @@ private class FlashListener : TestFlashListenerAPI
 
     public void onPaymentSuccess (PublicKey, Invoice invoice)
     {
+        log.info("Payment succeded {}", invoice);
         this.invoices[invoice] = ErrorCode.None;
     }
 
     public void onPaymentFailure (PublicKey, Invoice invoice, ErrorCode error)
     {
+        log.info("Payment failed {} reason {}", invoice, error);
         this.invoices[invoice] = error;
     }
 
@@ -549,6 +556,7 @@ private class FlashListener : TestFlashListenerAPI
     public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
         ErrorCode error, Height = Height(0))
     {
+        log.info("Channel event {}, id {}", state, chan_id.flashPrettify);
         if (chan_id !in this.channel_state)
             this.channel_state[chan_id] = typeof(this.channel_state[chan_id]).init;
         this.channel_state[chan_id][pk] = State(state, error);
@@ -595,6 +603,16 @@ private class FlashListener : TestFlashListenerAPI
     public Amount getEstimatedTxFee ()
     {
         return flashTestConf().consensus.min_fee;
+    }
+
+    public void printLog ()
+    {
+        auto output = stdout.lockingTextWriter();
+        output.formattedWrite("Log for Flash Listener\n");
+        output.put("======================================================================\n");
+        CircularAppender!()().print(output);
+        output.put("======================================================================\n\n");
+        stdout.flush();
     }
 }
 
