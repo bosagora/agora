@@ -929,6 +929,7 @@ private struct ZoneData
 
     private void ttlUpdate ()
     {
+        this.log.dbg("Updating due to TTL expire");
         auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
         auto expired_records = this.db.execute(this.query_ttl_expired, time);
 
@@ -942,11 +943,15 @@ private struct ZoneData
 
             if (!answer.length)
             {
-                // TODO remove data from cache
+                this.db.execute(
+                    format("DELETE FROM registry_%s_addresses WHERE pubkey = ?",
+                        name),
+                    pubkey.toString);
                 continue;
             }
 
-            // TODO update fields of the data and the TTL
+            foreach (rr; answer)
+                this.add(rr);
         }
 
         auto ttl_duration = this.db.execute(format("SELECT expires FROM " ~
@@ -1155,23 +1160,25 @@ private struct ZoneData
             return Header.RCode.NameError;
         else if (this.config.type == ZoneConfig.type.caching)
         {
-            uint lowest_ttl = uint.max;
-
             foreach (rr; answers)
-            {
                 if (rr.ttl > 0)
-                {
                     this.add(rr);
 
-                    if (rr.ttl < lowest_ttl)
-                        lowest_ttl = rr.ttl;
-                }
-            }
+            () @trusted {
 
-            // TODO check timer remaining if it is bigger than lowest ttl
-            if (!expire_timer.pending())
-                expire_timer.rearm(lowest_ttl.seconds, false);
+                auto ttl_res = this.db.execute(
+                    format("SELECT expires FROM registry_%s_addresses " ~
+                        "ORDER BY expires ASC", this.name)
+                    );
 
+                if (ttl_res.empty())
+                    return;
+
+                auto ttl_duration = ttl_res.front["expires"].as!uint;
+
+                this.expire_timer.stop();
+                this.expire_timer.rearm(ttl_duration.seconds, false);
+            } ();
         }
 
         reply.answers = answers;
@@ -1296,6 +1303,13 @@ private struct ZoneData
                     rr.type.to!ushort,
                     rr.ttl);
             }
+        }
+
+        if (this.config.type == ZoneConfig.Type.caching)
+        {
+            auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+            this.db.execute(format("UPDATE registry_%s_addresses SET expires = ? " ~
+                "WHERE pubkey = ?", name), time + rr.ttl, label);
         }
     }
 
