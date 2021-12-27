@@ -723,8 +723,17 @@ private struct ZoneData
 
          // Initialize zone type specific queries
         string query_addr_create;
+        auto utxo_exists = !this.db.execute(
+                format("SELECT name FROM sqlite_master WHERE type='table' " ~
+                    "AND name='registry_%s_utxo'", name)
+            ).empty();
         if (this.config.type == ZoneConfig.Type.primary)
         {
+            // Zone type might be changed to primary
+            if (!utxo_exists)
+                this.db.execute(
+                    format("DROP TABLE IF EXISTS registry_%s_addresses", name));
+
             this.query_utxo_add = format("REPLACE INTO registry_%s_utxo " ~
                 "(pubkey, sequence, utxo) VALUES (?, ?, ?)", name);
 
@@ -749,6 +758,14 @@ private struct ZoneData
         }
         else if (this.config.type == ZoneConfig.Type.secondary)
         {
+            // Zone type changed from primary
+            if (utxo_exists)
+            {
+                this.db.execute(format("DROP TABLE registry_%s_utxo", name));
+                this.db.execute(
+                    format("DROP TABLE IF EXISTS registry_%s_addresses", name));
+            }
+
             this.query_payload = format("SELECT address, type " ~
                 "FROM registry_%s_addresses " ~
                 "WHERE pubkey = ?", name);
