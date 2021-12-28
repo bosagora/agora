@@ -259,6 +259,7 @@ public class NameRegistry: NameRegistryAPI
         assert(stake != Hash.init);
 
         this.zones[1].update(TypedPayload(payload_type, registry_payload, stake));
+        this.zones[1].updateSOA();
     }
 
     /***************************************************************************
@@ -324,6 +325,7 @@ public class NameRegistry: NameRegistryAPI
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
         this.zones[2].update(TypedPayload(payload_type, registry_payload));
+        this.zones[2].updateSOA();
     }
 
     /***************************************************************************
@@ -583,6 +585,55 @@ private struct TypedPayload
     /// UTXO
     public Hash utxo;
 
+    /// Timestamp for expiration
+    public uint expires;
+
+    public this (TYPE type, RegistryPayload payload, Hash utxo = Hash.init) @safe
+    {
+        this.type = type;
+        this.payload = payload;
+        this.utxo = utxo;
+    }
+
+    public this (ResourceRecord rr,
+        PublicKey delegate(in char[]) const scope @safe pubKeyParser) @trusted
+    {
+        this.type = rr.type;
+
+        auto public_key = pubKeyParser(rr.name.value);
+        assert(public_key != PublicKey.init,
+            "PublicKey cannot be extracted from domain");
+
+        this.payload.data.public_key = public_key;
+        this.payload.data.ttl = rr.ttl;
+
+        if (rr.type == TYPE.CNAME)
+        {
+            auto address = rr.rdata.name;
+
+            // TODO SRV is needed to keep intact
+            this.payload.data.addresses ~= Address("http://" ~ cast(string) address.value);
+
+        }
+        else if (rr.type == TYPE.A)
+        {
+            import std.socket : InternetAddress;
+            auto addresses = rr.rdata.a;
+            this.payload.data.addresses = addresses.map!(
+                (addr) {
+                    auto in_addr = new InternetAddress(addr,
+                                        InternetAddress.PORT_ANY);
+
+                    // TODO SRV is needed to keep intact
+                    return Address("http://" ~ in_addr.toAddrString());
+                }
+            ).array;
+        }
+
+        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        this.expires = time + rr.ttl;
+    }
+
     /***************************************************************************
 
         Converts a `TypedPayload` to a valid `ResourceRecord`
@@ -668,7 +719,7 @@ private struct ZoneData
     private string query_addresses_add;
 
     /// Query for removing from registry signature table, only for primary
-    private string query_remove_sig;
+    private string query_utxo_remove;
 
     /// Query for getting all registered network addresses
     private string query_addresses_get;
@@ -712,6 +763,7 @@ private struct ZoneData
         this.log = logger;
         this.config = config;
         this.root = root;
+        this.taskman = taskman;
 
         static string serverType (ZoneConfig.Type zone_type)
         {
@@ -729,63 +781,66 @@ private struct ZoneData
             serverType(this.config.type),
             this.root);
 
-         // Initialize zone type specific queries
-        string query_addr_create;
-        auto utxo_exists = !this.db.execute(
-                format("SELECT name FROM sqlite_master WHERE type='table' " ~
-                    "AND name='registry_%s_utxo'", name)
-            ).empty();
+        this.query_utxo_add = format("REPLACE INTO registry_%s_utxo " ~
+            "(pubkey, sequence, utxo) VALUES (?, ?, ?)", name);
+
+        this.query_utxo_remove = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
+            name);
+
+        this.query_payload = format("SELECT sequence, address, type, utxo, ttl " ~
+            "FROM registry_%s_addresses l " ~
+            "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
+            "WHERE l.pubkey = ?", name, name);
+
+        this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", name);
+
+        this.query_ttl_expired = format("SELECT * FROM registry_%s_addresses " ~
+            "WHERE expires <= ? ORDER BY expires ASC", name);
+
+        this.query_count = format("SELECT COUNT(DISTINCT pubkey) FROM registry_%s_addresses",
+            name);
+
+        this.query_registry_get = format("SELECT DISTINCT(pubkey) " ~
+            "FROM registry_%s_addresses", name);
+
+        this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
+            "(pubkey, address, type, ttl, expires) VALUES (?, ?, ?, ?, ?)", name);
+
+        this.query_addresses_get = format("SELECT address " ~
+            "FROM registry_%s_addresses", name);
+
+        string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_utxo " ~
+            "(pubkey TEXT, sequence INTEGER NOT NULL," ~
+            "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", name);
+
+        string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
+            "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
+            "ttl INTEGER NOT NULL, expires INTEGER, " ~
+            "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
+            "PRIMARY KEY(pubkey, address))", name, name);
+
+        // TODO add this back with another check (may be with null UTXOs)
+        // auto utxo_exists = !this.db.execute(
+        //         format("SELECT name FROM sqlite_master WHERE type='table' " ~
+        //             "AND name='registry_%s_utxo'", name)
+        //     ).empty();
         if (this.config.type == ZoneConfig.Type.primary)
         {
-            // Zone type might be changed to primary
-            if (!utxo_exists)
-                this.db.execute(
-                    format("DROP TABLE IF EXISTS registry_%s_addresses", name));
-
-            this.query_utxo_add = format("REPLACE INTO registry_%s_utxo " ~
-                "(pubkey, sequence, utxo) VALUES (?, ?, ?)", name);
-
-            this.query_remove_sig = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
-                name);
-
-            this.query_payload = format("SELECT sequence, address, type, utxo, ttl " ~
-                "FROM registry_%s_addresses l " ~
-                "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
-                "WHERE l.pubkey = ?", name, name);
-
-            string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_utxo " ~
-                "(pubkey TEXT, sequence INTEGER NOT NULL," ~
-                "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", name);
-
-            query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
-                "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
-                "ttl INTEGER NOT NULL, " ~
-                "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
-                "PRIMARY KEY(pubkey, address))", name, name);
-
-            this.db.execute(query_sig_create);
+            // TODO: Zone type might be changed to primary
+            // if (!utxo_exists)
+            //     this.db.execute(
+            //         format("DROP TABLE IF EXISTS registry_%s_addresses", name));
         }
         else if (this.config.type == ZoneConfig.Type.secondary
                 || this.config.type == ZoneConfig.Type.caching)
         {
-            // Zone type changed from primary
-            if (utxo_exists)
-            {
-                this.db.execute(format("DROP TABLE registry_%s_utxo", name));
-                this.db.execute(
-                    format("DROP TABLE IF EXISTS registry_%s_addresses", name));
-            }
-
-            this.query_payload = format("SELECT address, type, ttl " ~
-                "FROM registry_%s_addresses " ~
-                "WHERE pubkey = ?", name);
-
-            query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
-                "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
-                "ttl INTEGER NOT NULL, expires INTEGER, " ~
-                "PRIMARY KEY(pubkey, address))", name);
-
-            this.taskman = taskman;
+            // TODO Zone type changed from primary
+            // if (utxo_exists)
+            // {
+            //     this.db.execute(format("DROP TABLE registry_%s_utxo", name));
+            //     this.db.execute(
+            //         format("DROP TABLE IF EXISTS registry_%s_addresses", name));
+            // }
 
             // DNS resolver is used to get SOA RR and performing AXFR
             Address[] peer_addrs;
@@ -796,7 +851,6 @@ private struct ZoneData
 
             if (this.config.type == ZoneConfig.Type.secondary)
             {
-                this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", name);
                 // Since a secondary zone cannot transfer UTXO, sequence and signature
                 // fields of data from a primary, it redirects API calls to API of the
                 // configured primary
@@ -810,12 +864,7 @@ private struct ZoneData
                 this.expire_timer = this.taskman.createTimer(&this.disable);
             }
             else
-            {
-                this.query_ttl_expired = format("SELECT * FROM registry_%s_addresses " ~
-                 "WHERE expires <= ? ORDER BY expires ASC", name);
-
                 this.expire_timer = this.taskman.createTimer(&this.ttlUpdate);
-            }
 
             this.soa_update_timer = this.taskman.createTimer(&this.updateSOA);
         }
@@ -824,21 +873,9 @@ private struct ZoneData
 
         // Initialize common fields
         this.soa = this.config.fromConfig(this.root);
-        this.soa_ttl = 60;
+        this.soa_ttl = 90;
 
-        this.query_count = format("SELECT COUNT(DISTINCT pubkey) FROM registry_%s_addresses",
-            name);
-
-        this.query_registry_get = format("SELECT DISTINCT(pubkey) " ~
-            "FROM registry_%s_addresses", name);
-
-        this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
-                    "(pubkey, address, type, ttl) VALUES (?, ?, ?, ?)", name);
-
-        this.query_addresses_get = format("SELECT address " ~
-            "FROM registry_%s_addresses", name);
-
-        // UTXO table is only available on primary Zones
+        this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
         this.updateSOA();
     }
@@ -864,7 +901,7 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    private void updateSOA ()
+    public void updateSOA () @trusted
     {
         if (this.config.type == ZoneConfig.Type.primary)
         {
@@ -902,7 +939,7 @@ private struct ZoneData
         auto refresh = (this.config.type == ZoneConfig.Type.secondary)
                         ? this.soa.refresh.seconds : this.soa_ttl.seconds;
 
-        refresh = (refresh == 0.seconds) ? 5.seconds : refresh;
+        refresh = (refresh == 0.seconds) ? 90.seconds : refresh;
 
         this.soa_update_timer.rearm(refresh, false);
 
@@ -939,27 +976,41 @@ private struct ZoneData
             auto pubkey = PublicKey.fromString(row["pubkey"].as!string);
             auto qtype = row["type"].as!QTYPE;
 
-            this.log.dbg("TTL asking for {}", pubkey.toString ~ this.root.value);
-            auto answer = this.resolver.query(pubkey.toString ~ "." ~ this.root.value,
-                qtype);
+            auto answer = this.resolver.query(
+                    pubkey.toString ~ "." ~ this.root.value,
+                    qtype);
 
             if (!answer.length)
             {
-                this.db.execute(
-                    format("DELETE FROM registry_%s_addresses WHERE pubkey = ?",
-                        name),
-                    pubkey.toString);
+                this.remove(pubkey);
                 continue;
             }
 
             foreach (rr; answer)
-                this.add(rr);
+                this.update(TypedPayload(rr, &this.parsePublicKeyFromDomain));
         }
 
-        auto ttl_duration = this.db.execute(format("SELECT expires FROM " ~
-            "registry_%s_addresses ORDER BY expires ASC", this.name)).front["expires"].as!uint;
+        setTTLTime();
+    }
 
-        this.expire_timer.rearm(ttl_duration.seconds, false);
+    private void setTTLTime () @trusted
+    {
+        assert(this.config.type == ZoneConfig.Type.caching,
+            "TTL is only for caching zone");
+
+        this.expire_timer.stop();
+
+        auto expires_res = this.db.execute(
+            format("SELECT expires FROM registry_%s_addresses " ~
+                "ORDER BY expires ASC", this.name)
+        );
+
+        if (expires_res.empty())
+            return;
+
+        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        auto expires = expires_res.front["expires"].as!uint;
+        this.expire_timer.rearm((expires - time).seconds, false);
     }
 
     /***************************************************************************
@@ -980,7 +1031,7 @@ private struct ZoneData
         this.db.execute(this.query_axfr_cleanup);
 
         foreach (ResourceRecord rr; axfr_answer)
-            this.add(rr);
+            this.update(TypedPayload(rr, &this.parsePublicKeyFromDomain));
     }
 
     /***************************************************************************
@@ -1063,7 +1114,14 @@ private struct ZoneData
             return Header.RCode.NoError;
         }
         else if (!matches)
-            return this.getKeyDNSRecord(q, reply);
+        {
+            auto rcode = this.getKeyDNSRecord(q, reply);
+            if (rcode == Header.RCode.NameError
+                && this.config.type == ZoneConfig.Type.caching)
+                    rcode = this.fetchUncached(q, reply);
+
+            return rcode;
+        }
         else
             return Header.RCode.Refused;
     }
@@ -1080,6 +1138,25 @@ private struct ZoneData
         string peer) @safe
     {
         return this.answer(false, q, reply, peer);
+    }
+
+    private Header.RCode fetchUncached (const ref Question q, ref Message r)
+    @trusted
+    {
+        auto answers = this.resolver.query(q.qname.value, q.qtype);
+
+        if (!answers.length)
+            return Header.RCode.NameError;
+
+        r.answers = answers;
+
+        foreach (rr; answers)
+            if (rr.ttl > 0)
+                this.update(TypedPayload(rr,
+                    &this.parsePublicKeyFromDomain));
+
+        setTTLTime();
+        return Header.RCode.NoError;
     }
 
     /***************************************************************************
@@ -1146,42 +1223,13 @@ private struct ZoneData
         ResourceRecord[] answers;
         TypedPayload payload = this.get(public_key, question.qtype);
         if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
-            if (this.config.type == ZoneConfig.Type.caching)
-                answers = this.resolver.query(question.qname.value, question.qtype);
-            else
-                return Header.RCode.NameError;
-        else
-            answers ~= payload.toRR(question.qname);
-
-        if (this.config.type != ZoneConfig.Type.caching ||
-            (this.config.type == ZoneConfig.Type.caching && !answers.length))
-                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(
-                                        this.root, this.soa_ttl, this.soa); // optional
-
-        if (!answers.length)
             return Header.RCode.NameError;
-        else if (this.config.type == ZoneConfig.type.caching)
-        {
-            foreach (rr; answers)
-                if (rr.ttl > 0)
-                    this.add(rr);
 
-            () @trusted {
+        answers ~= payload.toRR(question.qname);
 
-                auto ttl_res = this.db.execute(
-                    format("SELECT ttl FROM registry_%s_addresses " ~
-                        "ORDER BY expires ASC", this.name)
-                    );
-
-                if (ttl_res.empty())
-                    return;
-
-                auto ttl_duration = ttl_res.front["ttl"].as!uint;
-
-                this.expire_timer.stop();
-                this.expire_timer.rearm(ttl_duration.seconds, false);
-            } ();
-        }
+        if (this.config.type != ZoneConfig.Type.caching)
+            reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(
+                                 this.root, this.soa_ttl, this.soa); // optional
 
         reply.answers = answers;
 
@@ -1240,13 +1288,7 @@ private struct ZoneData
         };
 
         // CNAME and A cannot exist at the same time for a node
-        TypedPayload typed_payload =
-        {
-            type: node_type,
-            payload: payload,
-            utxo: utxo,
-        };
-
+        TypedPayload typed_payload = TypedPayload(node_type, payload, utxo);
         return typed_payload;
     }
 
@@ -1272,48 +1314,10 @@ private struct ZoneData
 
     public void remove (PublicKey public_key) @trusted
     {
-        this.db.execute(this.query_remove_sig, public_key);
+        this.db.execute(this.query_utxo_remove, public_key);
 
-        if (this.db.changes)
+        if (this.db.changes && this.config.type == ZoneConfig.Type.primary)
             this.updateSOA();
-    }
-
-    public void add (ResourceRecord rr) @trusted
-    {
-        auto label = this.parsePublicKeyFromDomain(rr.name.value);
-        if (label == PublicKey.init)
-            return;
-
-        if (rr.type == TYPE.CNAME)
-        {
-            auto address = rr.rdata.name;
-            this.db.execute(this.query_addresses_add,
-                label,
-                "http://" ~ address.value, // TODO SRV is needed to keep intact
-                rr.type.to!ushort,
-                rr.ttl);
-        }
-        else if (rr.type == TYPE.A)
-        {
-            import std.socket : InternetAddress;
-            auto addresses = rr.rdata.a;
-            foreach (addr; addresses)
-            {
-                auto inaddr = new InternetAddress(addr, InternetAddress.PORT_ANY);
-                this.db.execute(this.query_addresses_add,
-                    label,
-                    "http://" ~ inaddr.toAddrString(), // TODO SRV is needed to keep intact
-                    rr.type.to!ushort,
-                    rr.ttl);
-            }
-        }
-
-        if (this.config.type == ZoneConfig.Type.caching)
-        {
-            auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
-            this.db.execute(format("UPDATE registry_%s_addresses SET expires = ? " ~
-                "WHERE pubkey = ?", name), time + rr.ttl, label);
-        }
     }
 
     /***************************************************************************
@@ -1331,16 +1335,19 @@ private struct ZoneData
         if (payload.payload.data.addresses.length == 0)
             return;
 
-        // Payload is equal to Zone's data, no need to update
-        if (this.get(payload.payload.data.public_key) == payload)
+        if (this.config.type == ZoneConfig.Type.primary)
         {
-            log.info("{} sent same payload data, zone is not updated",
-                payload.payload.data.public_key);
-            return;
-        }
+            // Payload is equal to Zone's data, no need to update
+            if (this.get(payload.payload.data.public_key) == payload)
+            {
+                log.info("{} sent same payload data, zone is not updated",
+                    payload.payload.data.public_key);
+                return;
+            }
 
-        log.info("Registering addresses {}: {} for public key: {}", payload.type,
-            payload.payload.data.addresses, payload.payload.data.public_key);
+            log.info("Registering addresses {}: {} for public key: {}", payload.type,
+                payload.payload.data.addresses, payload.payload.data.public_key);
+        }
 
         db.execute(this.query_utxo_add,
             payload.payload.data.public_key,
@@ -1355,10 +1362,9 @@ private struct ZoneData
                 payload.payload.data.public_key,
                 address,
                 payload.type.to!ushort,
-                payload.payload.data.ttl);
+                payload.payload.data.ttl,
+                payload.expires);
         }
-
-        this.updateSOA();
     }
 
     /***************************************************************************
@@ -1375,7 +1381,7 @@ private struct ZoneData
 
     private PublicKey parsePublicKeyFromDomain (in char[] domain) const scope
         @safe
-    {
+{
         // In the future, we may allow things like:
         // `admin.$PUBKEY.domain`, but for the moment, restrict it to
         // `$PUBKEY.domain`, and a public key is 63 chars with HRP,
