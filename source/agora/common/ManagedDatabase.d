@@ -74,6 +74,7 @@ public class ManagedDatabase
     {
         this.database = emplace(cast(Database*) malloc(Database.sizeof), path, flags);
         this.database.run("PRAGMA foreign_keys = ON");
+        this.database.run("PRAGMA busy_timeout = 100"); // 100 msec timeout
         thread_dbs ~= this.database;
     }
 
