@@ -283,8 +283,8 @@ public class Ledger
 
         const old_count = this.enroll_man.validator_set.countActive(block.header.height);
 
-        this.storage.saveBlock(block);
         this.addValidatedBlock(block);
+        this.storage.saveBlock(block);
 
         const new_count = this.enroll_man.validator_set.countActive(block.header.height + 1);
         // there was a change in the active validator set
