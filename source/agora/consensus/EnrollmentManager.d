@@ -288,7 +288,7 @@ public class EnrollmentManager
     public string addValidator (in Enrollment enroll, in PublicKey pubkey,
         in Height height, scope UTXOFinder finder,
         scope GetPenaltyDeposit getPenaltyDeposit,
-        in UTXO[Hash] self_utxos) @safe nothrow
+        in UTXO[Hash] self_utxos) @safe
     {
         this.enroll_pool.remove(enroll.utxo_key);
 
@@ -621,19 +621,11 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private void setCommitment (in Hash commitment) @trusted nothrow
+    private void setCommitment (in Hash commitment) @trusted
     {
         this.commitment = commitment;
-
-        try
-        {
-            this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "commitment", commitment);
-        }
-        catch (Exception ex)
-        {
-            log.warn("ManagedDatabase operation error {}", ex.msg);
-        }
+        this.db.execute("REPLACE into node_enroll_data " ~
+            "(key, val) VALUES (?, ?)", "commitment", commitment);
     }
 
     /***************************************************************************
@@ -682,19 +674,11 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    private void setEnrollmentKey (in Hash utxo) @trusted nothrow
+    private void setEnrollmentKey (in Hash utxo) @trusted
     {
         this.enroll_key = utxo;
-
-        try
-        {
-            this.db.execute("REPLACE into node_enroll_data " ~
-                "(key, val) VALUES (?, ?)", "utxo", enroll_key);
-        }
-        catch (Exception ex)
-        {
-            log.warn("ManagedDatabase operation error {}", ex.msg);
-        }
+        this.db.execute("REPLACE into node_enroll_data " ~
+            "(key, val) VALUES (?, ?)", "utxo", enroll_key);
     }
 
     /***************************************************************************
