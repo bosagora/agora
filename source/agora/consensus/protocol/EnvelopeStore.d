@@ -72,28 +72,16 @@ public class SCPEnvelopeStore
 
     public void lock () @trusted nothrow
     {
-        try
-            this.db.begin();
-        catch (Exception exc)
-            // This should only trigger if there was a code flow error
-            assert(0, "SQLite BEGIN statement failed: " ~ exc.message);
+        this.db.beginBatch();
     }
 
     /// Ditto
     public void unlock (bool commit) @trusted nothrow
     {
-        try
-        {
-            if (commit)
-                this.db.commit();
-            else
-                this.db.rollback();
-        }
-        catch (Exception exc)
-            // This should only trigger if there was a code flow error
-            assert(0,
-                   (commit ? "SQLite COMMIT statement failed: " : "SQLite ROLLBACK statement failed: ") ~
-                   exc.message);
+        if (commit)
+            this.db.commitBatch();
+        else
+            this.db.rollback();
     }
 
     /***************************************************************************
