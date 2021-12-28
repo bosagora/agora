@@ -180,17 +180,10 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public void remove (in Hash enroll_hash) @trusted nothrow
+    public void remove (in Hash enroll_hash) @trusted
     {
-        try
-        {
-            this.db.execute("DELETE FROM enrollment_pool WHERE key = ?",
-                enroll_hash.toString());
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error on remove");
-        }
+        this.db.execute("DELETE FROM enrollment_pool WHERE key = ?",
+            enroll_hash.toString());
     }
 
     /***************************************************************************

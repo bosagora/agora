@@ -119,7 +119,7 @@ public class ValidatorSet
 
     public string add (in Height height, scope UTXOFinder finder,
         scope GetPenaltyDeposit getPenaltyDeposit,
-        in Enrollment enroll, in PublicKey pubkey) @safe nothrow
+        in Enrollment enroll, in PublicKey pubkey) @safe
     {
         import agora.consensus.validation.Enrollment : isInvalidReason;
 
@@ -137,31 +137,21 @@ public class ValidatorSet
         if (this.hasPublicKey(height + 1, pubkey))
             return "A validator with the same public key is already enrolled";
 
-        try
-        {
-            () @trusted {
-                this.db.execute("INSERT OR REPLACE INTO preimages " ~
-                    "(key, height, preimage) " ~
-                    "VALUES (?, ?, ?)",
-                    enroll.utxo_key, height.value,
-                    enroll.commitment);
-                this.db.execute("INSERT INTO validator " ~
-                    "(key, public_key, enrolled_height, nonce, stake) " ~
-                    "VALUES (?, ?, ?, ?, ?)",
-                    enroll.utxo_key,
-                    pubkey,
-                    height.value,
-                    enroll.enroll_sig.R,
-                    stake);
-            }();
-        }
-        catch (Exception ex)
-        {
-            // This should never happen, hence why we log it as well
-            log.error("Unexpected error while adding a validator: {} ({})",
-                      ex, enroll);
-            return "Internal error in `ValidatorSet.add`";
-        }
+        () @trusted {
+            this.db.execute("INSERT OR REPLACE INTO preimages " ~
+                "(key, height, preimage) " ~
+                "VALUES (?, ?, ?)",
+                enroll.utxo_key, height.value,
+                enroll.commitment);
+            this.db.execute("INSERT INTO validator " ~
+                "(key, public_key, enrolled_height, nonce, stake) " ~
+                "VALUES (?, ?, ?, ?, ?)",
+                enroll.utxo_key,
+                pubkey,
+                height.value,
+                enroll.enroll_sig.R,
+                stake);
+        }();
 
         return null;
     }
@@ -195,18 +185,9 @@ public class ValidatorSet
 
     ***************************************************************************/
 
-    public void slashValidator (in Hash enroll_hash, in Height height) @trusted nothrow
+    public void slashValidator (in Hash enroll_hash, in Height height) @trusted
     {
-        try
-        {
-            () @trusted {
-                this.db.execute("UPDATE validator SET slashed_height = ? WHERE key = ?", height, enroll_hash);
-            }();
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error: {}", ex.msg);
-        }
+        this.db.execute("UPDATE validator SET slashed_height = ? WHERE key = ?", height, enroll_hash);
     }
 
     /***************************************************************************
