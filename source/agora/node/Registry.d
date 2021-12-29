@@ -528,7 +528,7 @@ private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
     return soa;
 }
 
-/// Associate a `RegistryPayload` with internal data
+/// Internal registry data
 private struct TypedPayload
 {
     /// The DNS RR TYPE
@@ -539,6 +539,53 @@ private struct TypedPayload
 
     /// UTXO
     public Hash utxo;
+
+    /***************************************************************************
+
+        Make an instance of an `TypedPayload` from DNS payload
+        (Resource record)
+
+        Params:
+            rr = DNS Resource record
+            pubKeyParser = Delegate for parsing public key from RR domain
+
+    ***************************************************************************/
+
+    public static TypedPayload make (ResourceRecord rr,
+        PublicKey delegate(in char[]) const scope @safe pubKeyParser)
+    {
+        auto public_key = pubKeyParser(rr.name.value);
+        assert(public_key != PublicKey.init,
+            "PublicKey cannot be extracted from domain");
+
+        RegistryPayload reg_payload;
+        reg_payload.data.public_key = public_key;
+
+        if (rr.type == TYPE.CNAME)
+        {
+            auto address = rr.rdata.name;
+
+            // TODO SRV is needed to keep intact
+            reg_payload.data.addresses ~= Address("http://" ~
+                                            cast(string) address.value);
+        }
+        else if (rr.type == TYPE.A)
+        {
+            import std.socket : InternetAddress;
+            auto addresses = rr.rdata.a;
+            reg_payload.data.addresses = addresses.map!(
+                (addr) {
+                    scope in_addr = new InternetAddress(addr,
+                                        InternetAddress.PORT_ANY);
+
+                    // TODO SRV is needed to keep intact
+                    return Address("http://" ~ in_addr.toAddrString());
+                }
+            ).array;
+        }
+
+        return TypedPayload(rr.type, reg_payload);
+    }
 
     /***************************************************************************
 
@@ -896,15 +943,7 @@ private struct ZoneData
             },
         };
 
-        // CNAME and A cannot exist at the same time for a node
-        TypedPayload typed_payload =
-        {
-            type: node_type,
-            payload: payload,
-            utxo: utxo,
-        };
-
-        return typed_payload;
+        return TypedPayload(node_type, payload, utxo);
     }
 
     public Address[] getAddresses ()
