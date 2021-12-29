@@ -611,14 +611,14 @@ private struct ZoneData
     /// Query for getting payload
     private string query_payload;
 
-    /// Query for adding registry signature table
-    private string query_signature_add;
+    /// Query for adding registry utxo table
+    private string query_utxo_add;
 
     /// Query for adding registry to addresses table
     private string query_addresses_add;
 
-    /// Query for removing from registry signature table
-    private string query_remove_sig;
+    /// Query for removing from registry utxo table
+    private string query_utxo_remove;
 
     /// Query for getting all registered network addresses
     private string query_addresses_get;
@@ -651,36 +651,36 @@ private struct ZoneData
             serverType(this.config.authoritative, this.config.primary.set),
             this.root);
 
-        this.query_count = format("SELECT COUNT(*) FROM registry_%s_signature",
+        this.query_count = format("SELECT COUNT(*) FROM registry_%s_utxo",
             zone_name);
 
         this.query_registry_get = format("SELECT pubkey " ~
-            "FROM registry_%s_signature", zone_name);
+            "FROM registry_%s_utxo", zone_name);
 
         this.query_payload = format("SELECT sequence, address, type, utxo " ~
             "FROM registry_%s_addresses l " ~
-            "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
+            "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", zone_name, zone_name);
 
-        this.query_signature_add = format("REPLACE INTO registry_%s_signature " ~
+        this.query_utxo_add = format("REPLACE INTO registry_%s_utxo " ~
             "(pubkey, sequence, utxo) VALUES (?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
                     "(pubkey, address, type) VALUES (?, ?, ?)", zone_name);
 
-        this.query_remove_sig = format("DELETE FROM registry_%s_signature WHERE pubkey = ?",
+        this.query_utxo_remove = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
             zone_name);
 
         this.query_addresses_get = format("SELECT address " ~
             "FROM registry_%s_addresses", zone_name);
 
-        string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
+        string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_utxo " ~
             "(pubkey TEXT, sequence INTEGER NOT NULL, " ~
             "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", zone_name);
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
-            "FOREIGN KEY(pubkey) REFERENCES registry_%s_signature(pubkey) ON DELETE CASCADE, " ~
+            "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
         this.db.execute(query_sig_create);
@@ -929,7 +929,7 @@ private struct ZoneData
 
     public void remove (PublicKey public_key) @trusted
     {
-        this.db.execute(this.query_remove_sig, public_key);
+        this.db.execute(this.query_utxo_remove, public_key);
 
         if (this.db.changes)
             this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
@@ -961,7 +961,7 @@ private struct ZoneData
         log.info("Registering addresses {}: {} for public key: {}", payload.type,
             payload.payload.data.addresses, payload.payload.data.public_key);
 
-        db.execute(this.query_signature_add,
+        db.execute(this.query_utxo_add,
             payload.payload.data.public_key,
             payload.payload.data.seq,
             payload.utxo);
