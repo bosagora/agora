@@ -560,6 +560,7 @@ private struct TypedPayload
 
         RegistryPayload reg_payload;
         reg_payload.data.public_key = public_key;
+        reg_payload.data.ttl = rr.ttl;
 
         if (rr.type == TYPE.CNAME)
         {
@@ -614,7 +615,8 @@ private struct TypedPayload
              * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
             assert(this.payload.data.addresses.length == 1);
-            return ResourceRecord.make!(TYPE.CNAME)(name, 0, Domain(this.payload.data.addresses[0].host));
+            return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.data.ttl,
+                Domain(this.payload.data.addresses[0].host));
 
         case TYPE.A:
             // FIXME: Remove allocation
@@ -626,7 +628,7 @@ private struct TypedPayload
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, this);
             }
-            return ResourceRecord.make!(TYPE.A)(name, 0, tmp);
+            return ResourceRecord.make!(TYPE.A)(name, this.payload.data.ttl, tmp);
         default:
             ensure(0, "Unknown type: {} - {}", this.type, this);
             assert(0);
@@ -704,7 +706,7 @@ private struct ZoneData
         this.query_registry_get = format("SELECT pubkey " ~
             "FROM registry_%s_utxo", zone_name);
 
-        this.query_payload = format("SELECT sequence, address, type, utxo " ~
+        this.query_payload = format("SELECT sequence, address, type, utxo, ttl " ~
             "FROM registry_%s_addresses l " ~
             "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", zone_name, zone_name);
@@ -713,7 +715,7 @@ private struct ZoneData
             "(pubkey, sequence, utxo) VALUES (?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
-                    "(pubkey, address, type) VALUES (?, ?, ?)", zone_name);
+                    "(pubkey, address, type, ttl) VALUES (?, ?, ?, ?)", zone_name);
 
         this.query_utxo_remove = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
             zone_name);
@@ -727,6 +729,7 @@ private struct ZoneData
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
+            "ttl INTEGER NOT NULL, " ~
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
@@ -930,7 +933,7 @@ private struct ZoneData
 
         const ulong sequence = results.front["sequence"].as!ulong;
         const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
-
+        const auto ttl = results.front["ttl"].as!uint;
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
 
         const RegistryPayload payload =
@@ -940,6 +943,7 @@ private struct ZoneData
                 public_key : public_key,
                 addresses : addresses,
                 seq : sequence,
+                ttl : ttl,
             },
         };
 
@@ -1012,7 +1016,8 @@ private struct ZoneData
             db.execute(this.query_addresses_add,
                 payload.payload.data.public_key,
                 address,
-                payload.type.to!ushort);
+                payload.type.to!ushort,
+                payload.payload.data.ttl);
         }
 
         this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
