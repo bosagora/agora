@@ -335,23 +335,24 @@ registry:
     # However, the typical naming convention would be to use `ns1.example.com`.
     primary: ns1.bosagora.io
 
-    # Email of the DNS server administrator
-    # This field is required for authoritative servers.
-    # `email` support DNS-style syntax, that is, using `.` instead of `@`
-    email: dns@validators.bosagora.io
+    soa:
+      # Email of the DNS server administrator
+      # This field is required for authoritative servers.
+      # `email` support DNS-style syntax, that is, using `.` instead of `@`
+      email: dns@validators.bosagora.io
 
-    # The rate at which secondary servers will refresh their zones from this server
-    refresh:
-      minutes: 1
-    # Time interval between two retries when a secondary server fails to retrieve data
-    retry:
-      seconds: 30
-    # Initial interval after which the zone data should be purged from cache
-    expire:
-      minutes: 10
-    # The minimum TTL to apply to the zone
-    minimum:
-      minutes: 1
+      # The rate at which secondary servers will refresh their zones from this server
+      refresh:
+        minutes: 1
+      # Time interval between two retries when a secondary server fails to retrieve data
+      retry:
+        seconds: 30
+      # Initial interval after which the zone data should be purged from cache
+      expire:
+        minutes: 10
+      # The minimum TTL to apply to the zone
+      minimum:
+        minutes: 1
 
   # Zone responsible for flash nodes registration
   flash:

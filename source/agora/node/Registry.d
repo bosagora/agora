@@ -518,13 +518,13 @@ private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
 {
     SOA soa;
     soa.mname = Domain(zone.primary);
-    soa.rname = Domain(zone.email.value.replace('@', '.'));
+    soa.rname = Domain(zone.soa.email.value.replace('@', '.'));
     soa.serial = serial;
     // Casts are safe as the values are validated during config parsing
-    soa.refresh = cast(int) zone.refresh.total!"seconds";
-    soa.retry = cast(int) zone.retry.total!"seconds";
-    soa.expire = cast(int) zone.expire.total!"seconds";
-    soa.minimum = cast(uint) zone.minimum.total!"seconds";
+    soa.refresh = cast(int) zone.soa.refresh.total!"seconds";
+    soa.retry = cast(int) zone.soa.retry.total!"seconds";
+    soa.expire = cast(int) zone.soa.expire.total!"seconds";
+    soa.minimum = cast(uint) zone.soa.minimum.total!"seconds";
     return soa;
 }
 
