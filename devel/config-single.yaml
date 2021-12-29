@@ -43,11 +43,13 @@ registry:
   validators:
     authoritative: true
     primary: localhost
-    email: no@no.no
+    soa:
+      email: no@no.no
   flash:
     authoritative: true
     primary: localhost
-    email: no@no.no
+    soa:
+      email: no@no.no
 
 admin:
   enabled: true
