@@ -226,6 +226,9 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
+        ensure(this.zones[ZoneIndex.Validator].type == ZoneType.primary,
+            "Couldn't register, server is not primary for the zone");
+
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
 
@@ -303,6 +306,9 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
+        ensure(this.zones[ZoneIndex.Flash].type == ZoneType.primary,
+           "Couldn't register, server is not primary for the zone");
+
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
 
@@ -482,10 +488,13 @@ public class NameRegistry: NameRegistryAPI
     public void onAcceptedBlock (in Block, bool)
         @safe
     {
-        this.zones[ZoneIndex.Validator].each!((TypedPayload tpayload) {
-            if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
-                this.zones[ZoneIndex.Validator].remove(tpayload.payload.data.public_key);
-       });
+        if (this.zones[ZoneIndex.Validator].type == ZoneType.primary)
+        {
+            this.zones[ZoneIndex.Validator].each!((TypedPayload tpayload) {
+                if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
+                    this.zones[ZoneIndex.Validator].remove(tpayload.payload.data.public_key);
+            });
+        }
     }
 }
 
@@ -694,9 +703,22 @@ private struct TypedPayload
     }
 }
 
+/// Type of a zone
+private enum ZoneType
+{
+    /// When both `authoritative` and `SOA` configurations are set
+    primary = 1,
+
+    ///
+    secondary = 2,
+}
+
 /// Contains infos related to either `validators` or `flash`
 private struct ZoneData
 {
+    /// Type of the zone
+    public ZoneType type = ZoneType.secondary;
+
     /// Logger instance used by this zone
     private Logger log;
 
@@ -752,14 +774,23 @@ private struct ZoneData
         this.config = config;
         this.root = root;
 
-        static string serverType (bool auth, bool primary)
+        if (this.config.authoritative)
         {
-            return primary ? "primary" : (auth ? "secondary" : "caching");
+            if (this.config.soa.email.set)
+                this.type = ZoneType.primary;
+        }
+
+        static string serverType (ZoneType zone_type)
+        {
+            switch (zone_type)
+            {
+                case ZoneType.primary: return "primary (authoritative)";
+                default: return "secondary";
+            }
         }
 
         this.log.info("Registry is {} DNS server for zone '{}'",
-            serverType(this.config.authoritative, this.config.primary.set),
-            this.root);
+            serverType(this.type), this.root.value);
 
         if (this.config.primary.set)
             // FIXME: Make it a Domain in the config
@@ -803,7 +834,7 @@ private struct ZoneData
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
 
-        if (this.config.primary.set)
+        if (this.type == ZoneType.primary)
         {
             // Serial's value wraps around so the cast is safe
             const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
@@ -1117,14 +1148,19 @@ unittest
     import agora.consensus.data.Transaction;
     import agora.consensus.data.Enrollment;
     import agora.consensus.data.UTXO;
+    import configy.Attributes : SetInfo;
 
     NameRegistry registry;
     scope ledger = new TestLedger(genesis_validator_keys[0], null, null,
         (in Block block, bool changed) @safe {
             registry.onAcceptedBlock(block, changed);
         });
+
+    auto validator_zone = ZoneConfig(SetInfo!bool(true, true), SetInfo!string("ns1.test", true),
+        null, ZoneConfig.SOAConfig(SetInfo!string("test@test.local", true)));
     registry = new NameRegistry(Domain.fromSafeString("test."),
-        RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
+        RegistryConfig(true, "0.0.0.0", 53, ZoneConfig.init, validator_zone),
+        ledger, new ManagedDatabase(":memory:"));
 
     static RegistryPayload makeTestPayload (in KeyPair pair)
     {
