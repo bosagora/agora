@@ -657,13 +657,13 @@ private struct ZoneData
         this.query_registry_get = format("SELECT pubkey " ~
             "FROM registry_%s_signature", zone_name);
 
-        this.query_payload = format("SELECT signature, sequence, address, type, utxo " ~
+        this.query_payload = format("SELECT sequence, address, type, utxo " ~
             "FROM registry_%s_addresses l " ~
             "INNER JOIN registry_%s_signature r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", zone_name, zone_name);
 
         this.query_signature_add = format("REPLACE INTO registry_%s_signature " ~
-            "(pubkey, signature, sequence, utxo) VALUES (?, ?, ?, ?)", zone_name);
+            "(pubkey, sequence, utxo) VALUES (?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
                     "(pubkey, address, type) VALUES (?, ?, ?)", zone_name);
@@ -675,7 +675,7 @@ private struct ZoneData
             "FROM registry_%s_addresses", zone_name);
 
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_signature " ~
-            "(pubkey TEXT, signature TEXT NOT NULL, sequence INTEGER NOT NULL, " ~
+            "(pubkey TEXT, sequence INTEGER NOT NULL, " ~
             "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", zone_name);
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
@@ -882,7 +882,6 @@ private struct ZoneData
             return TypedPayload.init;
 
         const ulong sequence = results.front["sequence"].as!ulong;
-        const Signature signature = Signature.fromString(results.front["signature"].as!string);
         const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
 
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
@@ -895,7 +894,6 @@ private struct ZoneData
                 addresses : addresses,
                 seq : sequence,
             },
-            signature: signature,
         };
 
         // CNAME and A cannot exist at the same time for a node
@@ -965,7 +963,6 @@ private struct ZoneData
 
         db.execute(this.query_signature_add,
             payload.payload.data.public_key,
-            payload.payload.signature,
             payload.payload.data.seq,
             payload.utxo);
 
