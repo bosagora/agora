@@ -19,6 +19,49 @@ module agora.utils.TracyAPI;
 extern(C):
 @system:
 nothrow:
+
+version (Tracy_NoDemangle) {}
+else
+{
+    /***************************************************************************
+
+        Demangles a symbol
+
+        Support demangling either a D or a C++ symbol.
+        D symbols start with `_D`, and C++ symbols start with `_Z`.
+
+        Params:
+          mangled = The nul-terminated string to demangle
+          out_    = An output buffer to write a nul-terminated string into
+          len     = The size of `out_`
+
+        Returns:
+          A non-zero value in case of success.
+
+    ***************************************************************************/
+
+    extern(C) int ___tracy_demangle (const(char)* mangled, char* out_, size_t len)
+    {
+        if (mangled is null || mangled[0] != '_') return 0;
+        if (mangled[1] == 'D')
+        {
+            static import core.demangle;
+            import core.stdc.string : strlen;
+
+            const size = strlen(mangled);
+            auto result = core.demangle.demangle(mangled[0 .. size], out_[0 .. len]);
+            return result.length > 0;
+        }
+        int status;
+        __cxa_demangle(mangled, out_, &len, &status);
+        return status == 0;
+    }
+}
+
+/// https://itanium-cxx-abi.github.io/cxx-abi/abi.html#demangler
+private char* __cxa_demangle (const(char)* mangled_name, char* buf,
+                              size_t* n, int* status);
+
 @nogc:
 
 
