@@ -34,8 +34,11 @@ public struct RegistryPayloadData
     /// monotonically increasing sequence number
     public ulong seq;
 
+    /// TTL of the registry record
+    public uint ttl;
+
     /// Compares payload data for equality, ignores `seq`
-    /// and permutations of `addresses` are considered as equal
+    /// and permutations of `addresses` are considered as equal, `ttl` is ignored
     bool opEquals (in RegistryPayloadData other) const nothrow @safe
     {
         return (this.public_key == other.public_key)
