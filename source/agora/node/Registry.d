@@ -243,6 +243,7 @@ public class NameRegistry: NameRegistryAPI
         ensure(stake !is Hash.init, "Couldn't find an existing stake to match this key");
 
         this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, registry_payload, stake));
+        this.zones[ZoneIndex.Validator].updateSOA();
     }
 
     /// Get the stake for which a validator is registering
@@ -320,6 +321,7 @@ public class NameRegistry: NameRegistryAPI
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
         this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, registry_payload));
+        this.zones[ZoneIndex.Flash].updateSOA();
     }
 
     /***************************************************************************
@@ -582,12 +584,12 @@ unittest
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
-private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe
+private SOA fromConfig (in ZoneConfig zone, Domain name) @safe
 {
     return SOA(
         // mname, rname
         Domain.fromString(zone.primary), Domain.fromString(zone.soa.email.value.replace('@', '.')),
-        serial,
+        0, // Serial is not a config value, Will be set through `updateSOA`
         // Casts are safe as the values are validated during config parsing
         cast(int) zone.soa.refresh.total!"seconds",
         cast(int) zone.soa.retry.total!"seconds",
@@ -831,18 +833,31 @@ private struct ZoneData
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
+        // Initialize common fields
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
 
-        if (this.type == ZoneType.primary)
-        {
-            // Serial's value wraps around so the cast is safe
-            const serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
-            this.soa = this.config.fromConfig(this.root, serial);
-        }
-        else
-            // SOA is not default-constructible, so the compiler complains
-            this.soa = SOA.init;
+        this.soa = (this.type == ZoneType.primary) ?
+            this.config.fromConfig(this.root)
+            : SOA.init;
+
+        this.updateSOA();
+    }
+
+    /***************************************************************************
+
+        Update the SOA RR of the zone
+
+        Zone serial is set to current time when the zone is primary.
+
+    ***************************************************************************/
+
+    public void updateSOA () @trusted
+    {
+        if (this.type != ZoneType.primary)
+            return;
+
+        this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
     }
 
     /***************************************************************************
@@ -1090,7 +1105,7 @@ private struct ZoneData
         this.db.execute(this.query_utxo_remove, public_key);
 
         if (this.db.changes)
-            this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
+            this.updateSOA();
     }
 
     /***************************************************************************
@@ -1134,8 +1149,6 @@ private struct ZoneData
                 payload.type.to!ushort,
                 payload.payload.data.ttl);
         }
-
-        this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
     }
 }
 
