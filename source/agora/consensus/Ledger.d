@@ -949,14 +949,12 @@ public class Ledger
             return "Internal error: Could not list active validators at current height";
         }
 
-        assert(validators.length == block.header.validators.count);
         // Check that more than half have signed
-        auto signed = block.header.validators.setCount;
-        if (signed <= validators.length / 2)
+        if (!this.hasMajoritySignature(block.header))
             if (auto fail_msg = this.handleNotSignedByMajority(block.header, validators))
                 return fail_msg;
 
-        log.trace("Checking signature, participants: {}/{}", signed, validators.length);
+        log.trace("Checking signature, participants: {}/{}", block.header.validators.setCount, validators.length);
         foreach (idx, validator; validators)
         {
             const K = validator.address;
@@ -1017,6 +1015,47 @@ public class Ledger
         log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",
             header.height, header.validators.setCount, header.validators.count, validators);
         return "The majority of validators hasn't signed this block";
+    }
+
+    /***************************************************************************
+
+        Params:
+            header = header to check the signatures of
+
+        Returns:
+            If the signatures have reached majority
+
+    ***************************************************************************/
+
+    public bool hasMajoritySignature (const BlockHeader header) @safe nothrow
+    {
+        if (header.height == 0)  // Genesis block is not signed
+            return true;
+
+        ulong num_validators;
+        try
+            num_validators = this.getValidators(header.height).length;
+        catch (Exception exc)
+            return false;
+
+        assert(num_validators == header.validators.count);
+        // Check that more than half have signed
+        auto signed = header.validators.setCount;
+        return signed > num_validators / 2;
+    }
+
+    /// Ditto
+    public bool hasMajoritySignature (Height height) @safe nothrow
+    {
+        if (height > this.getBlockHeight())
+            return false;
+        else if (height == this.last_block.header.height) // most common case
+            return this.hasMajoritySignature(this.last_block.header);
+
+        try
+            return this.hasMajoritySignature(this.storage.readBlock(height).header);
+        catch (Exception exc)
+            return false;
     }
 
     /***************************************************************************
@@ -2504,7 +2543,21 @@ unittest
     assert(ledger.acceptTransaction(freeze_tx) is null);
     ledger.forceCreateBlock(1, false);
 
-    auto header = ledger.getLastBlock().header;
-    assert(header.height == 1);
-    assert(header.validators.setCount < header.validators.count);
+    Block block = ledger.getLastBlock().clone();
+    assert(block.header.height == 1);
+    assert(block.header.validators.setCount < block.header.validators.count);
+
+    auto validators = ledger.getValidators(block.header.height);
+    foreach (i; block.header.validators.setCount..validators.length)
+    {
+        block.header.validators[i] = true;
+        auto tmp = block.header.sign(WK.Keys[validators[i].address].secret, block.header.preimages[i]);
+        block.header.signature.R += tmp.R;
+        block.header.signature.s += tmp.s;
+
+        ledger.updateBlockMultiSig(block.header);
+
+        auto majority = block.header.validators.setCount > block.header.validators.count / 2;
+        assert(majority == ledger.hasMajoritySignature(block.header.height));
+    }
 }

@@ -898,20 +898,17 @@ extern(D):
                 return ValidationLevel.kInvalidValue;
             }
         }
-        const Block last_block = this.ledger.getLastBlock();
-        if (last_block.header.height + 1 == slot_idx) // Let's check last block is still one before this one
+
+        const last_height = this.ledger.getBlockHeight();
+        if (last_height + 1 == slot_idx) // Let's check last block is still one before this one
         {
-            const validators = last_block.header.validators.count();
-            auto signed = last_block.header.validators.setCount;
-            if (last_block.header.height > 1 // Genesis block is not signed
-                && signed <= validators / 2) // Not more than half have signed previous block
+            if (!this.ledger.hasMajoritySignature(last_height))
             {
-                log.info("Waiting for more than half to sign the last block, signed={}",
-                    last_block.header.validators.setCount);
+                log.info("Waiting for more than half to sign the last block");
                 return ValidationLevel.kMaybeValidValue; // this node is not ready to continue but will not block progress
             }
         }
-        else if (slot_idx > last_block.header.height + 1)   // Too early for us to check for signatures
+        else if (slot_idx > last_height + 1)   // Too early for us to check for signatures
             return ValidationLevel.kMaybeValidValue;
 
         return ValidationLevel.kFullyValidatedValue;
