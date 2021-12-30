@@ -462,9 +462,20 @@ public struct RegistryConfig
                    "registry.{}: Authoritative zones require both 'primary' and " ~
                    "'email' fields to be set", name);
 
-            // If we're not primary, there's no configuration to validate
-            if (!zone.primary.set)
+            // Secondary registry
+            if (!zone.primary.set && zone.authoritative.set)
+            {
+                ensure(zone.query_servers.length > 0,
+                    "registry.{} is secondary and at least one primary is required",
+                    name);
+
+                ensure(zone.redirect_register.length > 0,
+                    "registry.{} is secondary (authoritative), thus requires an " ~
+                    "address registering endpoint to an Agora node",
+                    name);
+
                 return;
+            }
 
             ensure(!zone.authoritative.set || zone.authoritative.value == true,
                    "registry.{}.authoritative: Cannot be false for primary server", name);
@@ -508,7 +519,7 @@ public struct RegistryConfig
 public struct ZoneConfig
 {
     /// IP address configuration type for `allow_transfer`
-    private struct IPAddress
+    public struct IPAddress
     {
         /// Address
         public string ip;
@@ -536,6 +547,14 @@ public struct ZoneConfig
 
     /// Servers that are allowed to do AXFR queries, applicable for authoritatives
     public @Optional immutable IPAddress[] allow_transfer;
+
+    /// Servers to zone transfer (AXFR) from, only applicaple and
+    /// required for secondary servers
+    public @Optional immutable string[] query_servers;
+
+    /// Rest interface of an Agora node with name registering capability,
+    /// probably one of the `query_servers`; required for secondary servers
+    public @Optional immutable string redirect_register;
 
     /// SOA Configuration of the zone, required for master server
     /// All `Duration` values are precise to the second
@@ -577,7 +596,7 @@ public struct ZoneConfig
     }
 
     /// Ditto
-    public SOAConfig soa;
+    public @Optional SOAConfig soa;
 }
 
 //

@@ -308,7 +308,8 @@ public class FullNode : API
         );
 
         this.registry = new NameRegistry(config.node.realm, config.registry,
-                                         this.ledger, this.cacheDB);
+                                         this.ledger, this.cacheDB, this.taskman,
+                                         this.network);
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
