@@ -841,12 +841,10 @@ public class Ledger
                 return "Block: Number of preimages does not match active validators";
             foreach (idx, const ref hash; block.header.preimages)
             {
-                if (hash is Hash.init)
-                {
-                    // TODO: Check that the block contains a slashing transaction
-                }
+                if (hash is Hash.init) // Slashed
+                    continue;
                 // We don't have this pre-image yet
-                else if (validators[idx].preimage.height < block.header.height)
+                if (validators[idx].preimage.height < block.header.height)
                 {
                     PreImageInfo pi = validators[idx].preimage;
                     pi.height = block.header.height;
