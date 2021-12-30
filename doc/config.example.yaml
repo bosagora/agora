@@ -392,3 +392,8 @@ registry:
   # Zone responsible for realm
   realm:
     authoritative: false
+
+    # List of servers to update records cache from
+    # Default DNS resolvers are (i.e. 8.8.8.8 / 1.1.1.1) used when not configured
+    query_servers:
+      - ns1.bosagora.io
