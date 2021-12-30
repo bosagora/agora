@@ -1609,7 +1609,7 @@ public class ValidatingLedger : Ledger
 
     version (unittest):
 
-    private string externalize (ConsensusData data) @trusted
+    private string externalize (ConsensusData data, bool sign_all = true) @trusted
     {
         const height = Height(this.last_block.header.height + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
@@ -1625,7 +1625,14 @@ public class ValidatingLedger : Ledger
         auto block = this.buildBlock(externalized_tx_set,
             data.enrolls, data.missing_validators);
 
-        this.getValidators(height).enumerate.each!((i, v)
+        auto validators = this.getValidators(height);
+        if (!sign_all)
+        {
+            this.addHeightAsExternalizing(height);
+            validators.length = 1;
+        }
+
+        validators.enumerate.each!((i, v)
         {
             if (!data.missing_validators.canFind(i))
             {
@@ -1639,7 +1646,7 @@ public class ValidatingLedger : Ledger
     }
 
     /// simulate block creation as if a nomination and externalize round completed
-    public void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock)
+    public void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock, bool sign_all = true)
     {
         const next_block = this.getBlockHeight() + 1;
         this.simulatePreimages(next_block);
@@ -1663,7 +1670,7 @@ public class ValidatingLedger : Ledger
             }
         }
 
-        if (auto reason = this.externalize(data))
+        if (auto reason = this.externalize(data, sign_all))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized: %s"(
                        this.getBlockHeight() + 1, reason));
@@ -2481,4 +2488,23 @@ unittest
 
     setHashMagic(0); // should work just fine
     scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], params);
+}
+
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    auto params = new immutable(ConsensusParams)();
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+    ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+    KeyPair kp = WK.Keys.A;
+    auto freeze_tx = genesisSpendable().front().refund(kp.address).sign(OutputType.Freeze);
+    assert(ledger.acceptTransaction(freeze_tx) is null);
+    ledger.forceCreateBlock(1, false);
+
+    auto header = ledger.getLastBlock().header;
+    assert(header.height == 1);
+    assert(header.validators.setCount < header.validators.count);
 }
