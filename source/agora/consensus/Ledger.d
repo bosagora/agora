@@ -1013,7 +1013,6 @@ public class Ledger
 
     ***************************************************************************/
 
-
     protected string handleNotSignedByMajority (in BlockHeader header,
         in ValidatorInfo[] validators) @safe nothrow
     {
