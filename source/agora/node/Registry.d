@@ -232,6 +232,9 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
+        ensure(this.zones[ZoneIndex.Validator].type != ZoneType.caching,
+            "Couldn't register, server is not authoritative for the zone");
+
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
 
@@ -316,6 +319,9 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
+        ensure(this.zones[ZoneIndex.Flash].type != ZoneType.caching,
+            "Couldn't register, server is not authoritative for the zone");
+
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
 
@@ -363,8 +369,6 @@ public class NameRegistry: NameRegistryAPI
     {
         Message reply;
         reply.header.RCODE = Header.RCode.FormatError;
-        reply.header.RA = false; // TODO: Implement
-        reply.header.AA = true;  // TODO: Make configurable
 
         // EDNS(0) support
         // payloadSize must be treated to be at least 512. A payloadSize of 0
@@ -639,6 +643,9 @@ private struct TypedPayload
     /// UTXO
     public Hash utxo;
 
+    /// Timestamp for expiration
+    public uint expires;
+
     /***************************************************************************
 
         Make an instance of an `TypedPayload` from DNS payload
@@ -683,7 +690,9 @@ private struct TypedPayload
             ).array;
         }
 
-        return TypedPayload(rr.type, reg_payload);
+        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+
+        return TypedPayload(rr.type, reg_payload, Hash.init, time + rr.ttl);
     }
 
     /***************************************************************************
@@ -742,13 +751,16 @@ private enum ZoneType
 
     /// `authoritative` is set but `SOA` configuration is not
     secondary = 2,
+
+    /// `authoritative` is not set
+    caching = 3,
 }
 
 /// Contains infos related to either `validators` or `flash`
 private struct ZoneData
 {
     /// Type of the zone
-    public ZoneType type = ZoneType.secondary;
+    public ZoneType type = ZoneType.caching;
 
     /// Logger instance used by this zone
     private Logger log;
@@ -761,6 +773,9 @@ private struct ZoneData
 
     /// The NS record
     public ResourceRecord nsRecord;
+
+    /// TTL of the SOA RR
+    private uint soa_ttl;
 
     ///
     private ZoneConfig config;
@@ -789,10 +804,16 @@ private struct ZoneData
     /// Query for clean up zone before AXFR, only for secondary zone
     private string query_axfr_cleanup;
 
+    /// Query for fetching records with expired TTLs
+    private string query_ttl_expired;
+
+    /// Query for getting next value for TTL timer
+    private string query_ttl_timer;
+
     /// Database to store data
     private ManagedDatabase db;
 
-    /// DNS resolver to send request, only for secondary
+    /// DNS resolver to send request, only for secondary and caching
     private DNSResolver resolver;
 
     /// Timer for requesting SOA from a primary to check serial, only for secondary
@@ -840,7 +861,8 @@ private struct ZoneData
             {
                 case ZoneType.primary: return "primary (authoritative)";
                 case ZoneType.secondary: return "secondary (authoritative)";
-                default: return "caching";
+                case ZoneType.caching: return "caching (non-authoritative)";
+                default: return "Unsupported";
             }
         }
 
@@ -859,8 +881,8 @@ private struct ZoneData
         this.query_registry_get = format("SELECT DISTINCT(pubkey) " ~
             "FROM registry_%s_addresses", zone_name);
 
-        this.query_payload = format("SELECT sequence, address, type, utxo, ttl " ~
-            "FROM registry_%s_addresses l " ~
+        this.query_payload = format("SELECT sequence, address, type, utxo, ttl, " ~
+            "expires FROM registry_%s_addresses l " ~
             "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
             "WHERE l.pubkey = ?", zone_name, zone_name);
 
@@ -868,7 +890,7 @@ private struct ZoneData
             "(pubkey, sequence, utxo) VALUES (?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
-            "(pubkey, address, type, ttl) VALUES (?, ?, ?, ?)", zone_name);
+            "(pubkey, address, type, ttl, expires) VALUES (?, ?, ?, ?, ?)", zone_name);
 
         this.query_utxo_remove = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
             zone_name);
@@ -878,13 +900,19 @@ private struct ZoneData
 
         this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", zone_name);
 
+        this.query_ttl_expired = format("SELECT * FROM registry_%s_addresses " ~
+            "WHERE expires <= ? ORDER BY expires ASC", zone_name);
+
+        this.query_ttl_timer = format("SELECT expires FROM registry_%s_addresses " ~
+                "ORDER BY expires ASC", zone_name);
+
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_utxo " ~
             "(pubkey TEXT, sequence INTEGER NOT NULL, " ~
             "utxo TEXT NOT NULL, PRIMARY KEY(pubkey))", zone_name);
 
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
-            "ttl INTEGER NOT NULL, " ~
+            "ttl INTEGER NOT NULL, expires INTEGER, " ~
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
@@ -911,7 +939,8 @@ private struct ZoneData
             this.config.fromConfig(this.root);
             this.updateSOA();
         }
-        else if (this.type == ZoneType.secondary)
+        else if (this.type == ZoneType.secondary
+                || this.type == ZoneType.caching)
         {
             if (was_primary)
             {
@@ -927,13 +956,18 @@ private struct ZoneData
             ).array();
             this.resolver = network.makeDNSResolver(peer_addrs);
 
-            // Since a secondary zone cannot transfer UTXO, sequence and signature
-            // fields of data from a primary, it redirects API calls to API of the
-            // configured primary
-            this.redirect_register = network.getRegistryClient(
-                this.config.redirect_register);
+            if (this.type == ZoneType.secondary)
+            {
+                // Since a secondary zone cannot transfer UTXO, sequence and signature
+                // fields of data from a primary, it redirects API calls to API of the
+                // configured primary
+                this.redirect_register = network.getRegistryClient(
+                    this.config.redirect_register);
 
-            this.expire_timer = this.taskman.createTimer(&this.disable);
+                this.expire_timer = this.taskman.createTimer(&this.disable);
+            }
+            else
+                this.expire_timer = this.taskman.createTimer(&this.updateTTLExpired);
 
             // Initialize timing fields with defaults in-case we couldn't reach
             // any primary to get our initial SOA record
@@ -946,6 +980,7 @@ private struct ZoneData
         // Initialize common fields
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
+        this.soa_ttl = 90;
     }
 
     /***************************************************************************
@@ -961,6 +996,11 @@ private struct ZoneData
         `EXPIRE` time when SOA RR request from primary fails.
 
         See also RFC 1034 - Section 4.3.5
+
+        Caching zone will cache the SOA RR and will refresh the record according
+        to the TTL value.
+
+        Caching the SOA is allowed, see RFC 2181 - Section 7.2
 
     ***************************************************************************/
 
@@ -979,23 +1019,32 @@ private struct ZoneData
                 this.root.value, this.soa.retry);
 
             this.soa_update_timer.rearm(this.soa.retry.seconds, false);
-            this.expire_timer.rearm(this.soa.expire.seconds, false);
+            if (this.type == ZoneType.secondary)
+                this.expire_timer.rearm(this.soa.expire.seconds, false);
 
             return;
         }
 
+        this.soa_ttl = soa_answer[0].ttl;
         SOA new_soa = soa_answer[0].rdata.soa;
         if (new_soa.serial > this.soa.serial)
         {
             this.soa = new_soa;
-            this.axfrTransfer();
+            if (this.type == ZoneType.secondary)
+                this.axfrTransfer();
         }
         else
             this.log.info("{}: Zone SOA is up-to-date", this.root.value);
 
-        this.soa_update_timer.rearm(this.soa.refresh.seconds, false);
+        auto refresh = (this.type == ZoneType.secondary)
+                        ? this.soa.refresh.seconds : this.soa_ttl.seconds;
 
-        this.expire_timer.stop();
+        refresh = (refresh == 0.seconds) ? 90.seconds : refresh;
+
+        this.soa_update_timer.rearm(refresh, false);
+
+        if (this.type == ZoneType.secondary)
+            this.expire_timer.stop();
     }
 
     /***************************************************************************
@@ -1014,6 +1063,69 @@ private struct ZoneData
         this.db.execute(this.query_axfr_cleanup);
         this.log.warn("{}: Zone is disabled until one of primaries is reachable",
             this.root.value);
+    }
+
+    /***************************************************************************
+
+        Update expired RRs of the caching zone
+
+        Caching zone holds RRs with TTL values, records with TTL expired are
+        updated from configured primary.
+
+    ***************************************************************************/
+
+    private void updateTTLExpired ()
+    {
+        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        auto expired_records = this.db.execute(this.query_ttl_expired, time);
+
+        foreach (row; expired_records)
+        {
+            auto pubkey = PublicKey.fromString(row["pubkey"].as!string);
+            auto qtype = row["type"].as!QTYPE;
+
+            auto answer = this.resolver.query(
+                        pubkey.toString ~ "." ~ this.root.value,
+                        qtype
+                        );
+
+            if (!answer.length)
+            {
+                this.remove(pubkey);
+                continue;
+            }
+
+            foreach (rr; answer)
+                this.update(TypedPayload.make(rr));
+        }
+
+        setTTLTimer();
+    }
+
+    /***************************************************************************
+
+        Set-up TTL timer for next expiring Records
+
+        Get next expiring record from the storage and setup timer to its
+        expiring time.
+
+    ***************************************************************************/
+
+    private void setTTLTimer () @trusted
+    {
+        assert(this.type == ZoneType.caching,
+            "TTL is only for caching zone");
+
+        this.expire_timer.stop();
+
+        auto expires_res = this.db.execute(this.query_ttl_timer);
+
+        if (expires_res.empty())
+            return;
+
+        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        auto expires = expires_res.front["expires"].as!uint;
+        this.expire_timer.rearm((expires - time).seconds, false);
     }
 
     /***************************************************************************
@@ -1099,15 +1211,22 @@ private struct ZoneData
     public Header.RCode answer (bool matches, in Question q, ref Message reply,
         string peer) @safe
     {
+        reply.header.AA = (this.type != ZoneType.caching);
+        reply.header.RA = (this.type == ZoneType.caching);
+
         if (q.qtype == QTYPE.AXFR)
-            return matches && this.config.allow_transfer.canFind(peer)
-                ? this.doAXFR(reply) : Header.RCode.Refused;
+            return matches
+                    && this.config.allow_transfer.canFind(peer)
+                    && this.type != ZoneType.caching
+                    ? this.doAXFR(reply) : Header.RCode.Refused;
         else if (q.qtype == QTYPE.SOA)
         {
             if (matches)
-                reply.answers ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
+                reply.answers ~= ResourceRecord.make!(TYPE.SOA)(this.root,
+                    this.soa_ttl, this.soa);
             else
-                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
+                reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root,
+                    this.soa_ttl, this.soa);
 
             return Header.RCode.NoError;
         }
@@ -1119,7 +1238,14 @@ private struct ZoneData
             return Header.RCode.NoError;
         }
         else if (!matches)
-            return this.getKeyDNSRecord(q, reply);
+        {
+            auto rcode = this.getKeyDNSRecord(q, reply);
+            if (rcode == Header.RCode.NameError
+                && this.type == ZoneType.caching)
+                    rcode = this.getAndCacheRecords(q, reply);
+
+            return rcode;
+        }
         else
             return Header.RCode.Refused;
     }
@@ -1140,6 +1266,44 @@ private struct ZoneData
 
     /***************************************************************************
 
+        Get and cache unknown record
+
+        Caching zone start with empty storage and caches records through queries
+        to itself from a configured primary. If a record could be found, it is
+        cached and returned to the node that queried.
+
+        Returns:
+          A code corresponding to the result of the lookup.
+          If the record could be found, `Header.RCode.NoError` is returned,
+          `Header.RCode.NameError` is returned otherwise.
+
+    ***************************************************************************/
+
+    private Header.RCode getAndCacheRecords (const ref Question q, ref Message r)
+    @trusted
+    {
+        this.log.trace("Caching records for query {}", q);
+        auto answers = this.resolver.query(q.qname.value, q.qtype);
+
+        if (!answers.length)
+        {
+            r.authorities ~= ResourceRecord.make!(TYPE.SOA)(
+                                 this.root, this.soa_ttl, this.soa);
+            return Header.RCode.NameError;
+        }
+
+        r.answers = answers;
+
+        foreach (rr; answers)
+            if (rr.ttl > 0) // TTL value is not set, don't cache
+                this.update(TypedPayload.make(rr));
+
+        setTTLTimer(); // DB updated, re-set timer to nearest expiring record
+        return Header.RCode.NoError;
+    }
+
+    /***************************************************************************
+
         Perform AXFR for this zone
 
         Allow servers to synchronize with one another using this standard DNS
@@ -1156,7 +1320,7 @@ private struct ZoneData
     {
         log.info("Performing AXFR for {} ({} entries)", this.root.value, this.count());
 
-        auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa);
+        auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, this.soa_ttl, this.soa);
         reply.answers ~= soa;
 
         foreach (const ref payload; this)
@@ -1199,13 +1363,20 @@ private struct ZoneData
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
+        ResourceRecord[] answers;
         TypedPayload payload = this.get(public_key, question.qtype);
-        // We are authoritative, so we can set `NameError`
         if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
             return Header.RCode.NameError;
 
-        reply.answers ~= payload.toRR(question.qname);
-        reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(this.root, 0, this.soa); // optional
+        answers ~= payload.toRR(question.qname);
+
+        // Caching zone is non-authoritative
+        if (this.type != ZoneType.caching)
+            reply.authorities ~= ResourceRecord.make!(TYPE.SOA)(
+                                 this.root, this.soa_ttl, this.soa); // optional
+
+        reply.answers = answers;
+
         return Header.RCode.NoError;
     }
 
@@ -1245,6 +1416,8 @@ private struct ZoneData
             results.front["sequence"].as!ulong : 0;
         Hash utxo = (this.type == ZoneType.primary) ?
             Hash.fromString(results.front["utxo"].as!string) : Hash.init;
+        uint expires = (this.type == ZoneType.caching) ?
+            results.front["expires"].as!uint : 0;
 
         const auto ttl = results.front["ttl"].as!uint;
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
@@ -1259,7 +1432,7 @@ private struct ZoneData
             },
         };
 
-        return TypedPayload(node_type, payload, utxo);
+        return TypedPayload(node_type, payload, utxo, expires);
     }
 
     /***************************************************************************
@@ -1335,7 +1508,8 @@ private struct ZoneData
                 payload.payload.data.public_key,
                 address,
                 payload.type.to!ushort,
-                payload.payload.data.ttl);
+                payload.payload.data.ttl,
+                payload.expires);
         }
     }
 }

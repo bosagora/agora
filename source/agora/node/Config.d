@@ -462,6 +462,10 @@ public struct RegistryConfig
                    "registry.{}: Authoritative zones require both 'primary' and " ~
                    "'email' fields to be set", name);
 
+            // Caching registry, nothing to validate
+            if (!zone.authoritative.set || zone.authoritative.value == false)
+                return;
+
             // Secondary registry
             if (!zone.primary.set && zone.authoritative.set)
             {
@@ -548,8 +552,8 @@ public struct ZoneConfig
     /// Servers that are allowed to do AXFR queries, applicable for authoritatives
     public @Optional immutable IPAddress[] allow_transfer;
 
-    /// Servers to zone transfer (AXFR) from, only applicaple and
-    /// required for secondary servers
+    /// Servers to zone transfer (AXFR) from, required for secondary servers
+    /// or servers to update record cache from for caching servers
     public @Optional immutable string[] query_servers;
 
     /// Rest interface of an Agora node with name registering capability,
