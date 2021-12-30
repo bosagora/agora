@@ -275,6 +275,9 @@ public class Ledger
 
     public string acceptBlock (in Block block) @safe
     {
+        if (!this.hasMajoritySignature(this.getBlockHeight()))
+            return "Previous height does not have majority signature";
+
         if (auto fail_reason = this.validateBlock(block))
         {
             log.trace("Rejected block: {}: {}", fail_reason, block.prettify());
@@ -2546,6 +2549,8 @@ unittest
     Block block = ledger.getLastBlock().clone();
     assert(block.header.height == 1);
     assert(block.header.validators.setCount < block.header.validators.count);
+    assert(!ledger.hasMajoritySignature(block.header.height));
+    assert(ledger.externalize(ConsensusData.init) == "Previous height does not have majority signature");
 
     auto validators = ledger.getValidators(block.header.height);
     foreach (i; block.header.validators.setCount..validators.length)
@@ -2560,4 +2565,8 @@ unittest
         auto majority = block.header.validators.setCount > block.header.validators.count / 2;
         assert(majority == ledger.hasMajoritySignature(block.header.height));
     }
+
+    // should be able to create a new block after previous height receives majority signatures
+    ledger.forceCreateBlock(0);
+    assert(ledger.getBlockHeight() == 2);
 }
