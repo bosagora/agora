@@ -347,6 +347,7 @@ registry:
     allow_transfer:
       - 127.0.0.1
 
+    # SOA record for the zone, only applicable for primary servers
     soa:
       # Email of the DNS server administrator
       # This field is required for authoritative servers.
@@ -368,6 +369,26 @@ registry:
 
   # Zone responsible for flash nodes registration
   flash:
-    # Having separate authoritative server increases redundancy and reduces load,
+    # Having one or more secondary servers increase redundancy and reduces load,
     # hence this configuration, while unlikely in a small to medium network, is supported.
+    authoritative: true
+
+    # Redirect server for REST endpoints of the registry
+    redirect_register: http://nsHidden.bosagora.io
+
+    # List of servers to AXFR zone transfer from
+    #
+    # Servers are tried in the configuration order until zone transfer can be
+    # completed from a server.
+    query_servers:
+      - ns1.bosagora.io
+
+    # A secondary server can be an upstream of an another server, thus secondary
+    # servers can also limit AXFR zone transfers from them to a configured
+    # whitelist
+    allow_transfer:
+      - 127.0.0.1
+
+  # Zone responsible for realm
+  realm:
     authoritative: false

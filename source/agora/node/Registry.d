@@ -18,6 +18,7 @@ import agora.common.Amount;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
+import agora.common.Task;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.UTXO;
@@ -26,6 +27,8 @@ import agora.consensus.Ledger;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
+import agora.network.DNSResolver;
+import agora.network.Manager;
 import agora.node.Config;
 import agora.flash.api.FlashAPI;
 import agora.serialization.Serializer;
@@ -42,9 +45,13 @@ import std.range;
 import std.socket : InternetAddress;
 import std.string;
 
+import core.time;
+
 static import std.uni;
 
 import d2sqlite3 : ResultRange;
+import vibe.http.client;
+import vibe.web.rest;
 
 /// Implementation of `NameRegistryAPI` using associative arrays
 public class NameRegistry: NameRegistryAPI
@@ -91,7 +98,7 @@ public class NameRegistry: NameRegistryAPI
 
     ///
     public this (Domain realm, RegistryConfig config, NodeLedger ledger,
-        ManagedDatabase cache_db)
+        ManagedDatabase cache_db, ITaskManager taskman, NetworkManager network)
     {
         assert(ledger !is null);
         assert(cache_db !is null);
@@ -107,11 +114,11 @@ public class NameRegistry: NameRegistryAPI
 
         this.zones = [
             ZoneData("realm", this.realm,
-                this.config.realm, cache_db, log),
+                this.config.realm, cache_db, log, taskman, network),
             ZoneData("validator", this.validators,
-                this.config.validators, cache_db, log),
+                this.config.validators, cache_db, log, taskman, network),
             ZoneData("flash",  this.flash,
-                this.config.flash, cache_db, log)
+                this.config.flash, cache_db, log, taskman, network)
         ];
 
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
@@ -225,11 +232,14 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
-        ensure(this.zones[ZoneIndex.Validator].type == ZoneType.primary,
-            "Couldn't register, server is not primary for the zone");
-
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
+
+        if (this.zones[ZoneIndex.Validator].type == ZoneType.secondary)
+        {
+            this.zones[ZoneIndex.Validator].redirect_register.postValidator(registry_payload);
+            return;
+        }
 
         // Last step is to check the state of the chain
         auto last_height = this.ledger.height() + 1;
@@ -306,11 +316,14 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        ensure(this.zones[ZoneIndex.Flash].type == ZoneType.primary,
-           "Couldn't register, server is not primary for the zone");
-
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
+
+        if (this.zones[ZoneIndex.Flash].type == ZoneType.secondary)
+        {
+            this.zones[ZoneIndex.Flash].redirect_register.postFlashNode(registry_payload, channel);
+            return;
+        }
 
         auto range = this.ledger.getBlocksFrom(channel.height);
         ensure(!range.empty, "Channel is at height {} but local Ledger is at height {}",
@@ -488,15 +501,30 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    public void onAcceptedBlock (in Block, bool)
+    public void onAcceptedBlock (in Block, bool validators_changed)
         @safe
     {
+        ZoneType validator_type = this.zones[ZoneIndex.Validator].type;
+
         if (this.zones[ZoneIndex.Validator].type == ZoneType.primary)
         {
             this.zones[ZoneIndex.Validator].each!((TypedPayload tpayload) {
                 if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
                     this.zones[ZoneIndex.Validator].remove(tpayload.payload.data.public_key);
             });
+        }
+        else if (validator_type == ZoneType.secondary
+                    && validators_changed)
+        {
+            // Even this manipulates the SOA timings, we can think it as a
+            // NOTIFY request of the DNS, new node is found and zone needs update
+            () @trusted {
+                if (this.zones[ZoneIndex.Validator].soa_update_timer.pending)
+                {
+                    this.zones[ZoneIndex.Validator].soa_update_timer.stop;
+                    this.zones[ZoneIndex.Validator].updateSOA();
+                }
+            } ();
         }
     }
 }
@@ -712,7 +740,7 @@ private enum ZoneType
     /// When both `authoritative` and `SOA` configurations are set
     primary = 1,
 
-    ///
+    /// `authoritative` is set but `SOA` configuration is not
     secondary = 2,
 }
 
@@ -758,8 +786,26 @@ private struct ZoneData
     /// Query for getting all registered network addresses
     private string query_addresses_get;
 
+    /// Query for clean up zone before AXFR, only for secondary zone
+    private string query_axfr_cleanup;
+
     /// Database to store data
     private ManagedDatabase db;
+
+    /// DNS resolver to send request, only for secondary
+    private DNSResolver resolver;
+
+    /// Timer for requesting SOA from a primary to check serial, only for secondary
+    private ITimer soa_update_timer;
+
+    /// Timer for disabling zone when SOA check cannot be completed, only for secondary
+    private ITimer expire_timer;
+
+    /// Task manager to manage timers
+    private ITaskManager taskman;
+
+    /// REST API of a primary registry to redirect API calls, only for secondary
+    private NameRegistryAPI redirect_register;
 
     /***************************************************************************
 
@@ -770,17 +816,22 @@ private struct ZoneData
     ***************************************************************************/
 
     public this (string zone_name, Domain root, ZoneConfig config,
-        ManagedDatabase cache_db, Logger logger)
+        ManagedDatabase cache_db, Logger logger, ITaskManager taskman,
+        NetworkManager network)
     {
         this.db = cache_db;
         this.log = logger;
         this.config = config;
         this.root = root;
+        this.taskman = taskman;
+        this.soa = SOA.init;
 
         if (this.config.authoritative)
         {
             if (this.config.soa.email.set)
                 this.type = ZoneType.primary;
+            else
+                this.type = ZoneType.secondary;
         }
 
         static string serverType (ZoneType zone_type)
@@ -788,7 +839,8 @@ private struct ZoneData
             switch (zone_type)
             {
                 case ZoneType.primary: return "primary (authoritative)";
-                default: return "secondary";
+                case ZoneType.secondary: return "secondary (authoritative)";
+                default: return "caching";
             }
         }
 
@@ -801,11 +853,11 @@ private struct ZoneData
         else
             this.nsRecord = ResourceRecord.init;
 
-        this.query_count = format("SELECT COUNT(*) FROM registry_%s_utxo",
+        this.query_count = format("SELECT COUNT(DISTINCT pubkey) FROM registry_%s_addresses",
             zone_name);
 
-        this.query_registry_get = format("SELECT pubkey " ~
-            "FROM registry_%s_utxo", zone_name);
+        this.query_registry_get = format("SELECT DISTINCT(pubkey) " ~
+            "FROM registry_%s_addresses", zone_name);
 
         this.query_payload = format("SELECT sequence, address, type, utxo, ttl " ~
             "FROM registry_%s_addresses l " ~
@@ -816,13 +868,15 @@ private struct ZoneData
             "(pubkey, sequence, utxo) VALUES (?, ?, ?)", zone_name);
 
         this.query_addresses_add = format("REPLACE INTO registry_%s_addresses " ~
-                    "(pubkey, address, type, ttl) VALUES (?, ?, ?, ?)", zone_name);
+            "(pubkey, address, type, ttl) VALUES (?, ?, ?, ?)", zone_name);
 
         this.query_utxo_remove = format("DELETE FROM registry_%s_utxo WHERE pubkey = ?",
             zone_name);
 
         this.query_addresses_get = format("SELECT address " ~
             "FROM registry_%s_addresses", zone_name);
+
+        this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", zone_name);
 
         string query_sig_create = format("CREATE TABLE IF NOT EXISTS registry_%s_utxo " ~
             "(pubkey TEXT, sequence INTEGER NOT NULL, " ~
@@ -834,15 +888,64 @@ private struct ZoneData
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
+        string query_prev_type = format("SELECT * FROM registry_%s_utxo " ~
+            "WHERE utxo = ?", zone_name);
+
+        bool was_primary;
+
+        try
+            was_primary = this.db.execute(query_prev_type, Hash.init).empty;
+        catch (Exception)
+            was_primary = false;
+
+        if (this.type == ZoneType.primary)
+        {
+            if (!was_primary)
+            {
+                this.db.execute(
+                    format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
+                this.db.execute(
+                    format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
+            }
+
+            this.config.fromConfig(this.root);
+            this.updateSOA();
+        }
+        else if (this.type == ZoneType.secondary)
+        {
+            if (was_primary)
+            {
+                this.db.execute(
+                    format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
+                this.db.execute(
+                    format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
+            }
+
+            // DNS resolver is used to get SOA RR and performing AXFR
+            auto peer_addrs = this.config.query_servers.map!(
+                peer => Address("dns://" ~ peer)
+            ).array();
+            this.resolver = network.makeDNSResolver(peer_addrs);
+
+            // Since a secondary zone cannot transfer UTXO, sequence and signature
+            // fields of data from a primary, it redirects API calls to API of the
+            // configured primary
+            this.redirect_register = network.getRegistryClient(
+                this.config.redirect_register);
+
+            this.expire_timer = this.taskman.createTimer(&this.disable);
+
+            // Initialize timing fields with defaults in-case we couldn't reach
+            // any primary to get our initial SOA record
+            this.soa = SOA(Domain.init, Domain.init, 0, 540, 10, 6000, 120);
+            this.soa_update_timer = this.taskman.setTimer(0.seconds, &this.updateSOA);
+        }
+        else
+            return;
+
         // Initialize common fields
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
-
-        this.soa = (this.type == ZoneType.primary) ?
-            this.config.fromConfig(this.root)
-            : SOA.init;
-
-        this.updateSOA();
     }
 
     /***************************************************************************
@@ -850,15 +953,93 @@ private struct ZoneData
         Update the SOA RR of the zone
 
         Zone serial is set to current time when the zone is primary.
+        If zone is secondary, SOA RR is requested from a configured primary and
+        local SOA RR is updated accordingly. If new SOA RR has newer serial field
+        AXFR transfer is initiated. SOA RR update is performed periodically
+        according to the SOA RR's refresh field. SOA RR update period will be
+        changed to the SOA RR's retry field and zone will be disabled after
+        `EXPIRE` time when SOA RR request from primary fails.
+
+        See also RFC 1034 - Section 4.3.5
 
     ***************************************************************************/
 
     public void updateSOA () @trusted
     {
-        if (this.type != ZoneType.primary)
+        if (this.type == ZoneType.primary)
+        {
+            this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
             return;
+        }
 
-        this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
+        auto soa_answer = this.resolver.query(this.root.value, QTYPE.SOA);
+        if (soa_answer.length != 1 || soa_answer[0].type != TYPE.SOA)
+        {
+            this.log.warn("{}: Couldn't get SOA record, will retry in {} seconds",
+                this.root.value, this.soa.retry);
+
+            this.soa_update_timer.rearm(this.soa.retry.seconds, false);
+            this.expire_timer.rearm(this.soa.expire.seconds, false);
+
+            return;
+        }
+
+        SOA new_soa = soa_answer[0].rdata.soa;
+        if (new_soa.serial > this.soa.serial)
+        {
+            this.soa = new_soa;
+            this.axfrTransfer();
+        }
+        else
+            this.log.info("{}: Zone SOA is up-to-date", this.root.value);
+
+        this.soa_update_timer.rearm(this.soa.refresh.seconds, false);
+
+        this.expire_timer.stop();
+    }
+
+    /***************************************************************************
+
+        Disable the zone
+
+        A secondary zone is disabled when SOA serial cannot be checked for updates
+        after `EXPIRE` amount of time. Zone is disabled by cleaning up all RRs.
+        Thus, zone will return `NameError` to queries.
+
+    ***************************************************************************/
+
+    private void disable ()
+    {
+        // This will cause disabled zone to return NameError for queries
+        this.db.execute(this.query_axfr_cleanup);
+        this.log.warn("{}: Zone is disabled until one of primaries is reachable",
+            this.root.value);
+    }
+
+    /***************************************************************************
+
+        Perform AXFR zone transfer
+
+        A secondary server will transfer zone from primary when a zone update
+        is detected.
+
+    ***************************************************************************/
+
+    private void axfrTransfer ()
+    {
+        ResourceRecord[] axfr_answer = this.resolver.query(this.root.value, QTYPE.AXFR);
+
+        // We should answer with old Zone data until AXFR completes
+        // since Agora is single threaded, there is nothing to do
+        this.db.execute(this.query_axfr_cleanup);
+
+        foreach (ResourceRecord rr; axfr_answer)
+        {
+            if (rr.type == TYPE.SOA)
+                continue;
+
+            this.update(TypedPayload.make(rr));
+        }
     }
 
     /***************************************************************************
@@ -908,6 +1089,7 @@ private struct ZoneData
           `Header.RCode.Refused` is returned for the following conditions;
             - Query type is AXFR and query name is not matching with zone
             - Query type is not AXFR and query name is not owned by zone
+            - Requesting peer is not whitelisted to perform AXFR
 
           Check `doAXFR` (AXFR queries) or `getKeyDNSRecord` (other queries)
           for other returns.
@@ -1059,11 +1241,13 @@ private struct ZoneData
             && type != QTYPE.ALL && type != cast(QTYPE) node_type)
             return TypedPayload.init;
 
-        const ulong sequence = results.front["sequence"].as!ulong;
-        const Hash utxo = Hash.fromString(results.front["utxo"].as!string);
+        const ulong sequence = (this.type == ZoneType.primary) ?
+            results.front["sequence"].as!ulong : 0;
+        Hash utxo = (this.type == ZoneType.primary) ?
+            Hash.fromString(results.front["utxo"].as!string) : Hash.init;
+
         const auto ttl = results.front["ttl"].as!uint;
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
-
         const RegistryPayload payload =
         {
             data:
@@ -1124,16 +1308,19 @@ private struct ZoneData
         if (payload.payload.data.addresses.length == 0)
             return;
 
-        // Payload is equal to Zone's data, no need to update
-        if (this.get(payload.payload.data.public_key) == payload)
+        if (this.type == ZoneType.primary)
         {
-            log.info("{} sent same payload data, zone is not updated",
-                payload.payload.data.public_key);
-            return;
-        }
+            // Payload is equal to Zone's data, no need to update
+            if (this.get(payload.payload.data.public_key) == payload)
+            {
+                log.info("{} sent same payload data, zone is not updated",
+                    payload.payload.data.public_key);
+                return;
+            }
 
-        log.info("Registering addresses {}: {} for public key: {}", payload.type,
-            payload.payload.data.addresses, payload.payload.data.public_key);
+            log.info("Registering addresses {}: {} for public key: {}", payload.type,
+                payload.payload.data.addresses, payload.payload.data.public_key);
+        }
 
         db.execute(this.query_utxo_add,
             payload.payload.data.public_key,
@@ -1151,88 +1338,4 @@ private struct ZoneData
                 payload.payload.data.ttl);
         }
     }
-}
-
-unittest
-{
-    import std.algorithm;
-    import agora.consensus.Ledger;
-    import agora.utils.Test;
-    import agora.consensus.data.genesis.Test: genesis_validator_keys;
-    import agora.consensus.data.Transaction;
-    import agora.consensus.data.Enrollment;
-    import agora.consensus.data.UTXO;
-    import configy.Attributes : SetInfo;
-
-    NameRegistry registry;
-    scope ledger = new TestLedger(genesis_validator_keys[0], null, null,
-        (in Block block, bool changed) @safe {
-            registry.onAcceptedBlock(block, changed);
-        });
-
-    auto validator_zone = ZoneConfig(SetInfo!bool(true, true), SetInfo!string("ns1.test", true),
-        null, ZoneConfig.SOAConfig(SetInfo!string("test@test.local", true)));
-    registry = new NameRegistry(Domain.fromSafeString("test."),
-        RegistryConfig(true, "0.0.0.0", 53, ZoneConfig.init, validator_zone),
-        ledger, new ManagedDatabase(":memory:"));
-
-    static RegistryPayload makeTestPayload (in KeyPair pair)
-    {
-        auto result = RegistryPayload(
-            RegistryPayloadData(pair.address, [Address("agora://address")], 0)
-        );
-        result.signPayload(pair);
-        return result;
-    }
-
-    // Make sure it fails initially
-    auto payload = makeTestPayload(WK.Keys[0]);
-    payload.signPayload(WK.Keys[0]);
-    assert(payload.verifySignature(payload.data.public_key));
-    assert(payload.verifySignature(WK.Keys[0].address));
-
-    try
-    {
-        registry.postValidator(payload);
-        assert(0);
-    }
-    catch (Exception e)
-        assert(e.message == "Couldn't find an existing stake to match this key");
-
-    // Generate payment transactions to the first 8 well-known keypairs
-    auto txs = genesisSpendable().enumerate()
-        .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
-        .array;
-    txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
-    ledger.forceCreateBlock();
-    assert(ledger.height() == 1);
-
-    // Test a key that is not enrolled
-    auto nep = makeTestPayload(WK.Keys[1]);
-    registry.postValidator(nep);
-
-    // Now enroll and see if it works as validator too
-    auto enroll = Enrollment(
-        UTXO.getHash(txs[0].hashFull(), 0),
-        Hash.init,
-    );
-    enroll.enroll_sig = WK.Keys[0].sign(hashMulti(Height(2), enroll));
-    assert(ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[0].address,
-        Height(2), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
-
-    // externalize enrollment
-    ledger.forceCreateBlock();
-    assert(ledger.height() == 2);
-
-    try
-        registry.postValidator(payload);
-    catch (Exception e)
-        assert(0, e.message);
-
-    assert(RegistryPayload.init != registry.getValidator(WK.Keys[0].address));
-
-    ledger.forceCreateBlock();
-    assert(ledger.height() == 3);
-    // frozen UTXO is spent (slashed), entry should have been deleted
-    assert(RegistryPayload.init == registry.getValidator(WK.Keys[0].address));
 }
