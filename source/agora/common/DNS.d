@@ -681,7 +681,7 @@ public struct ResourceRecord
         }
 
         public void toString (scope void delegate(in char[]) @safe sink)
-        const scope @trusted
+            const scope @trusted
         {
             formattedWrite!"%u byte(s)"(sink, this.binary.length);
         }
