@@ -516,16 +516,16 @@ unittest
 /// Converts a `ZoneConfig` to an `SOA` record
 private SOA fromConfig (in ZoneConfig zone, Domain name, uint serial) @safe pure
 {
-    SOA soa;
-    soa.mname = Domain(zone.primary);
-    soa.rname = Domain(zone.soa.email.value.replace('@', '.'));
-    soa.serial = serial;
-    // Casts are safe as the values are validated during config parsing
-    soa.refresh = cast(int) zone.soa.refresh.total!"seconds";
-    soa.retry = cast(int) zone.soa.retry.total!"seconds";
-    soa.expire = cast(int) zone.soa.expire.total!"seconds";
-    soa.minimum = cast(uint) zone.soa.minimum.total!"seconds";
-    return soa;
+    return SOA(
+        // mname, rname
+        Domain(zone.primary), Domain(zone.soa.email.value.replace('@', '.')),
+        serial,
+        // Casts are safe as the values are validated during config parsing
+        cast(int) zone.soa.refresh.total!"seconds",
+        cast(int) zone.soa.retry.total!"seconds",
+        cast(int) zone.soa.expire.total!"seconds",
+        cast(uint) zone.soa.minimum.total!"seconds",
+    );
 }
 
 /// Internal registry data
