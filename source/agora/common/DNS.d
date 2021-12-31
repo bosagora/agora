@@ -762,6 +762,37 @@ public struct ResourceRecord
 
 unittest
 {
+    checkFromBinary!Message();
+
+    auto root = Domain(".");
+    assert(root.serializeFull() == [0]);
+
+    auto dlang = Domain("dlang.org.");
+    assert(dlang.serializeFull() == [ubyte(5), 'd', 'l', 'a', 'n', 'g', 3, 'o', 'r', 'g', 0 ]);
+
+    auto dlang2 = Domain("dlang.org"); // No trailing dot
+    assert(dlang.serializeFull() == dlang2.serializeFull());
+
+    auto lroot = root.byLabel();
+    assert(!lroot.empty);
+    assert(lroot.front.length == 0);
+    lroot.popFront();
+    assert(lroot.empty);
+
+    auto ldlang = dlang.byLabel();
+    assert(!ldlang.empty);
+    ldlang.popFront();
+    assert(!ldlang.empty);
+    assert(ldlang.front == "org");
+    ldlang.popFront();
+    assert(!ldlang.empty);
+    assert(ldlang.front == "dlang");
+    ldlang.popFront();
+    assert(ldlang.empty);
+}
+
+unittest
+{
     import std.socket : InternetAddress;
 
     string test_ip = "127.0.0.1";
@@ -1057,37 +1088,6 @@ public struct Domain
             });
         serializePart!ubyte(0, dg);
     }
-}
-
-unittest
-{
-    checkFromBinary!Message();
-
-    auto root = Domain(".");
-    assert(root.serializeFull() == [0]);
-
-    auto dlang = Domain("dlang.org.");
-    assert(dlang.serializeFull() == [ubyte(5), 'd', 'l', 'a', 'n', 'g', 3, 'o', 'r', 'g', 0 ]);
-
-    auto dlang2 = Domain("dlang.org"); // No trailing dot
-    assert(dlang.serializeFull() == dlang2.serializeFull());
-
-    auto lroot = root.byLabel();
-    assert(!lroot.empty);
-    assert(lroot.front.length == 0);
-    lroot.popFront();
-    assert(lroot.empty);
-
-    auto ldlang = dlang.byLabel();
-    assert(!ldlang.empty);
-    ldlang.popFront();
-    assert(!ldlang.empty);
-    assert(ldlang.front == "org");
-    ldlang.popFront();
-    assert(!ldlang.empty);
-    assert(ldlang.front == "dlang");
-    ldlang.popFront();
-    assert(ldlang.empty);
 }
 
 /// Context used while deserializing a DNS message
