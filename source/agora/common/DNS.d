@@ -665,17 +665,40 @@ public struct ResourceRecord
         /// The content of an SOA section
         public SOA soa;
 
-        public this (uint[] val) @safe
+        /***********************************************************************
+
+           Construct an instance of this union
+
+           Supported types are that of the `union`, plus a special overload
+           for `typeof(null)` (equivalent to `(ubyte[]).init`).
+
+        ***********************************************************************/
+
+        public this (inout(ubyte)[] val) inout @safe pure nothrow @nogc
+        {
+            this.binary = val;
+        }
+
+        /// Ditto
+        public this (inout typeof(null)) inout @safe pure nothrow @nogc
+        {
+            this.binary = null;
+        }
+
+        /// Ditto
+        public this (inout(uint)[] val) inout @safe pure nothrow @nogc
         {
             this.a = val;
         }
 
-        public this (Domain val) @safe
+        /// Ditto
+        public this (inout(Domain) val) inout @safe pure nothrow @nogc
         {
             this.name = val;
         }
 
-        public this (SOA val) @safe
+        /// Ditto
+        public this (inout(SOA) val) inout @safe pure nothrow @nogc
         {
             this.soa = val;
         }
