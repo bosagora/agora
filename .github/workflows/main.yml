@@ -104,7 +104,7 @@ jobs:
     - name: 'Load GeoIP from cache'
       id: cache-geoip
       if: runner.os != 'Windows'
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ${{ github.workspace }}/build/geoip/
         # Note: Cached data gets evicted after 7 days of being unused
