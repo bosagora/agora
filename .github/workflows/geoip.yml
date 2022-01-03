@@ -31,15 +31,15 @@ jobs:
         run: |
           echo "::set-output name=date::$(/bin/date -u '+%Y%m')"
 
-    - name: 'Lookup GeoIP in cache'
-      id: cache-geoip
-      uses: actions/cache@v2
-      with:
-        path: ${{ github.workspace }}/build/geoip/
-        # Note: Cached data gets evicted after 7 days of being unused
-        # In order to avoid being stuck with a very old MMDB,
-        # we use the month as an index to the cache.
-        key: cache-geoip-${{ steps.get-date.outputs.date }}
+      - name: 'Lookup GeoIP in cache'
+        id: cache-geoip
+        uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/build/geoip/
+          # Note: Cached data gets evicted after 7 days of being unused
+          # In order to avoid being stuck with a very old MMDB,
+          # we use the month as an index to the cache.
+          key: cache-geoip-${{ steps.get-date.outputs.date }}
 
       - name: 'Download GeoIP database'
         env:
