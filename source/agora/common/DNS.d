@@ -20,6 +20,7 @@
 module agora.common.DNS;
 
 import agora.common.Ensure;
+import agora.common.Types : Address;
 import agora.serialization.Serializer;
 
 import std.algorithm.iteration;
@@ -210,7 +211,7 @@ public struct URIRDATA
 
     /// This field holds the URI of the target (RFC 3986)
     /// Resolution of the URI is according to the definitions for the Scheme of the URI.
-    public string target;
+    public Address target;
 }
 
 /// https://datatracker.ietf.org/doc/html/rfc1035#section-4
@@ -616,6 +617,16 @@ public struct ResourceRecord
         return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, RDATA(ipv4));
     }
 
+    /// Make a record of URI type
+    public static ResourceRecord make (TYPE type : TYPE.URI) (
+        Domain name, uint ttl, Address uri, ushort prio = 0, ushort weight = 0)
+        @safe
+    {
+        return ResourceRecord(name, TYPE.URI, CLASS.IN, ttl, RDATA(URIRDATA(
+            prio, weight, uri
+        )));
+    }
+
     /// A domain name to which this resource record pertains.
     public Domain name;
 
@@ -665,6 +676,9 @@ public struct ResourceRecord
         /// The content of an SOA section
         public SOA soa;
 
+        /// An `URI` record data
+        public URIRDATA uri;
+
         /***********************************************************************
 
            Construct an instance of this union
@@ -703,6 +717,12 @@ public struct ResourceRecord
             this.soa = val;
         }
 
+        /// Ditto
+        public this (inout(URIRDATA) val) inout @safe pure nothrow @nogc
+        {
+            this.uri = val;
+        }
+
         public void toString (scope void delegate(in char[]) @safe sink)
             const scope @trusted
         {
@@ -739,6 +759,9 @@ public struct ResourceRecord
                 case TYPE.SOA:
                     tmp_data.soa = SOA.fromBinary!(SOA)(ctx);
                     break;
+                case TYPE.URI:
+                    tmp_data.uri = deserializeFull!(URIRDATA)(&ctx.read, ctx.options);
+                    break;
                 default:
                     tmp_data.binary = cast(ubyte[]) ctx.read(rdlength);
                     break;
@@ -771,6 +794,8 @@ public struct ResourceRecord
                     return this.rdata.name.serializeFull();
                 case TYPE.SOA:
                     return this.rdata.soa.serializeFull(CompactMode.No);
+                case TYPE.URI:
+                    return this.rdata.uri.serializeFull(CompactMode.No);
                 default:
                     return this.rdata.binary;
             }
@@ -823,17 +848,28 @@ unittest
     ips[0] = InternetAddress.parse(test_ip);
 
     ResourceRecord a_rr = ResourceRecord.make!(TYPE.A)(Domain("localhost"), 0, ips);
+
+    auto uri_target = Address("agora://test.local:1234");
+    ResourceRecord uri_rr = ResourceRecord.make!(TYPE.URI)(
+        Domain("_agora._tcp"), 0, uri_target
+    );
     Message msg;
     msg.answers ~= a_rr;
+    msg.answers ~= uri_rr;
     msg.fill(msg.header);
 
     ubyte[] serialized_msg = msg.serializeFull(CompactMode.No);
     Message deserialized_msg = serialized_msg.deserializeFull!(Message);
-    assert(deserialized_msg.answers.length == 1);
+    assert(deserialized_msg.answers.length == 2);
     ResourceRecord msg_a_rr = deserialized_msg.answers[0];
+    ResourceRecord msg_uri_rr = deserialized_msg.answers[1];
 
     assert(msg_a_rr.type == TYPE.A);
     assert(msg_a_rr.rdata.a[0] == ips[0]);
+    assert(msg_uri_rr.type == TYPE.URI);
+    assert(msg_uri_rr.rdata.uri.priority == 0);
+    assert(msg_uri_rr.rdata.uri.target.port == 1234);
+    assert(msg_uri_rr.rdata.uri.target == uri_target);
 }
 
 /// The OPT opcode is a special ResourceRecord with its own semantic
