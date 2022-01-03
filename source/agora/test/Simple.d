@@ -28,7 +28,11 @@ unittest
 {
     TestConf conf;
     conf.consensus.payout_period = 10;
+    simpleTest(conf);
+}
 
+public void simpleTest (TestConf conf)
+{
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
