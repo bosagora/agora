@@ -1035,12 +1035,13 @@ public struct Domain
             }();
             buffer[count + label.length] = '.';
 
-            // Only [a-z], [A-Z], [0-9], or "-" (dash)
+            // Only [a-z], [A-Z], [0-9], or "-" (dash), or "_" (underscore)
+            // "_" is to support service labels
             // https://datatracker.ietf.org/doc/html/rfc1034#section-3.5
             foreach (idx, char c; buffer[count .. count + label.length])
             {
                 ensure((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                    (c >= '0' && c <= '9') || c == '-',
+                    (c >= '0' && c <= '9') || c == '-' || (c == '_' && idx == 0),
                     "Invalid char '{}' in domain name at index {}", c, count + idx);
             }
             count += label.length + 1;
