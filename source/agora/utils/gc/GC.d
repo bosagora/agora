@@ -4206,6 +4206,12 @@ debug (LOGGING)
         private void log_malloc(void *p, size_t size) nothrow
         {
             //debug(PRINTF) printf("+log_malloc(p = %p, size = %zd)\n", p, size);
+            if (OPFAIL != current.find(p))
+            {
+                debug(PRINTF) printf("Memory allocation without free'ing at %p\n", p);
+                return;
+            }
+
             Log log;
 
             log.p = p;
