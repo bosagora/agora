@@ -2443,7 +2443,7 @@ struct Gcx
                         static foreach (w; 0 .. PageBits.length)
                             recoverPage = recoverPage && (~freebitsdata[w] == toFree[w]);
 
-                        bool hasFinalizer = false;
+                        bool hasFinalizer = true;
                         debug(COLLECT_PRINTF) // need output for each onject
                             hasFinalizer = true;
                         else debug(LOGGING)
