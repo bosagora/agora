@@ -196,8 +196,12 @@ public struct PublicKey
     unittest
     {
         immutable address = `boa1xrv266cegdthdc87uche9zvj8842shz3sdyvw0qecpgeykyv4ynssuz4lg0`;
+        immutable uAddress = `bOA1xrv266cegdthdc87uche9zvj8842shz3SDYvw0qecpgeykyv4ynssuz4lg0`;
         PublicKey pubkey = PublicKey.fromString(address);
+        PublicKey uPubkey = PublicKey.fromString(uAddress);
         assert(pubkey.toString() == address);
+        assert(uPubkey == pubkey);
+        assert(uPubkey.toString() == address);
         assertThrown(PublicKey.fromString(  // bad length
             "boa1xrv266cegdthdc87uche9zvj8842shz3sdyvw0qecpgeykyv4ynssuz4lg"));
         assertThrown(PublicKey.fromString(  // bad version byte

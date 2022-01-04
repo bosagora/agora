@@ -129,17 +129,12 @@ public DecodeResult decodeBech32 (in char[] str)
 {
     import std.conv;
 
-    bool lower = false, upper = false;
     for (size_t i = 0; i < str.length; ++i)
     {
         ubyte c = str[i];
-        if (c >= 'a' && c <= 'z') lower = true;
-        else if (c >= 'A' && c <= 'Z') upper = true;
-        else
-            ensure(c >= '!' && c <= '~',
-                    "Character '{X}' at pos {} is outside of valid char range", c, i);
+        ensure(c >= '!' && c <= '~',
+                "Character '{X}' at pos {} is outside of valid char range", c, i);
     }
-    ensure(lower ^ upper, "Bech32 does not allow mixed lower and upper cases");
 
     auto pos = lastIndexOf(str, '1');
     ensure(str.length <= 90 && pos != -1 && pos != 0 && pos + 7 <= str.length,
