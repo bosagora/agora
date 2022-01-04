@@ -548,7 +548,7 @@ public class NetworkClient
                 {
                     try
                     {
-                        this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
+                        scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
                             name, conn.address, idx + 1, this.max_retries);
                         return __traits(getMember, conn.api, name)(args);
                     }
