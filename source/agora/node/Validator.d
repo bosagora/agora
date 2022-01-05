@@ -181,7 +181,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private void rebuildQuorumConfig (ref QuorumConfig[NodeID]quorums,
+    private void rebuildQuorumConfig (ref QuorumConfig[NodeID] quorums,
         in Hash[] utxos, Height height) @safe
     {
         import std.algorithm;
