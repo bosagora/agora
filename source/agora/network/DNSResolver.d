@@ -48,11 +48,8 @@ shared static this ()
 }
 
 ///
-public final class DNSResolver
+public final class VibeDNSResolver : DNSResolver
 {
-    /// Logger instance
-    private Logger log;
-
     /// The list of base DNS resolver (e.g. read from resolv.conf)
     private PeerInfo[] resolvers;
 
@@ -68,8 +65,7 @@ public final class DNSResolver
 
     public this (const Address[] peers = DefaultDNS)
     {
-        this.log = Log.lookup(__MODULE__);
-        this.log.enableConsole();
+        super();
 
         this.resolvers.length = peers.length;
         // "Connect" to each of the resolvers
@@ -101,23 +97,11 @@ public final class DNSResolver
 
     ***************************************************************************/
 
-    public ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @trusted
+    public override ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @trusted
     {
-        Message msg;
-        msg.questions ~= Question(Domain.fromString(name), type, QCLASS.IN);
-
-        msg.header.ID = uniform!short;
-        // Don't do the whole recursion dance, assume our resolvers are recursive.
-        msg.header.RD = true;
-        // Default:
-        // QR set to 0 (query), OPCODE set to 0 (Query), AA set to false,
-        // TC set to false, RA set to false, Z set to 0, RCODE set to 0 (NoError)
-        msg.header.QDCOUNT = 1;
-        // Rest is set to 0
-        msg.additionals ~= OPTRR.init.record;
-        msg.header.ARCOUNT = 1;
-
         ubyte[16384] buffer;
+
+        auto msg = this.buildQuery(name, type);
         foreach (ref peer; this.resolvers)
         {
             auto bytes = msg.serializeFull;
@@ -142,6 +126,48 @@ public final class DNSResolver
                 return answer.answers;
         }
         return null;
+    }
+}
+
+///
+public abstract class DNSResolver
+{
+    /// Logger instance
+    protected Logger log;
+
+    /***************************************************************************
+
+        Instantiate a new object of this type
+
+    ***************************************************************************/
+
+    public this ()
+    {
+        this.log = Log.lookup(__MODULE__);
+        this.log.enableConsole();
+    }
+
+    ///
+    public abstract ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @trusted;
+
+    ///
+    public Message buildQuery (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
+    {
+        Message msg;
+        msg.questions ~= Question(Domain.fromString(name), type, QCLASS.IN);
+
+        msg.header.ID = uniform!short;
+        // Don't do the whole recursion dance, assume our resolvers are recursive.
+        msg.header.RD = true;
+        // Default:
+        // QR set to 0 (query), OPCODE set to 0 (Query), AA set to false,
+        // TC set to false, RA set to false, Z set to 0, RCODE set to 0 (NoError)
+        msg.header.QDCOUNT = 1;
+        // Rest is set to 0
+        msg.additionals ~= OPTRR.init.record;
+        msg.header.ARCOUNT = 1;
+
+        return msg;
     }
 
     /// Resolves an address
@@ -243,7 +269,7 @@ version (AgoraStandaloneDNSResolver)
 
         runTask(() @trusted nothrow {
             scope (failure) assert(0);
-            DNSResolver resolver = new DNSResolver();
+            DNSResolver resolver = new VibeDNSResolver();
 
             foreach (host; args[1 .. $])
             {
