@@ -593,10 +593,9 @@ private struct TypedPayload
 
     ***************************************************************************/
 
-    public static TypedPayload make (ResourceRecord rr,
-        PublicKey delegate(in char[]) const scope @safe pubKeyParser)
+    public static TypedPayload make (ResourceRecord rr)
     {
-        auto public_key = pubKeyParser(rr.name.value);
+        auto public_key = rr.name.value.extractPublicKey();
         assert(public_key != PublicKey.init,
             "PublicKey cannot be extracted from domain");
 
