@@ -740,11 +740,12 @@ public struct ResourceRecord
             deserializeFull!(TYPE)(&ctx.read, ctx.options),
             deserializeFull!(CLASS)(&ctx.read, ctx.options),
             deserializeFull!(uint)(&ctx.read, ctx.options),
+            T.RDATA(null),
         );
 
         auto rdlength = deserializeFull!(ushort)(&ctx.read, ctx.options);
 
-        ResourceRecord.RDATA tmp_data;
+        ResourceRecord.RDATA tmp_data = null;
         () @trusted
         {
             switch (tmp.type)
@@ -894,7 +895,8 @@ public struct OPTRR
 
     ***************************************************************************/
 
-    public ResourceRecord record = ResourceRecord(Domain.init, TYPE.OPT, cast(CLASS) 4096);
+    public ResourceRecord record = ResourceRecord(
+        Domain.init, TYPE.OPT, cast(CLASS) 4096, 0, ResourceRecord.RDATA(null));
 
     /// Requestor's UDP payload size
     public ushort payloadSize () scope const
