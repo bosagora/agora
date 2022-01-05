@@ -34,6 +34,7 @@ public T clone (T)(in T input)
 shared static this ()
 {
     registerCommonInternetSchema("agora", 2826);
+    registerCommonInternetSchema("dns", 53);
 }
 
 /// Represents a specific point in time, it should be changed to time_t
