@@ -920,6 +920,23 @@ public struct Domain
             this.value = cast(string) (v ~ '.');
     }
 
+    size_t toHash () const @safe pure nothrow
+    {
+        import std.ascii : toLower;
+        char[255] buffer;
+
+        foreach (ix, char c; this.value)
+            buffer[ix] = toLower(c);
+
+        return buffer.hashOf;
+    }
+
+    bool opEquals (in Domain other) const nothrow @safe
+    {
+        import std.uni : sicmp;
+        return (sicmp(other.value, value) == 0);
+    }
+
     /// Returns: A forward range allowing to iterate by label
     /// Iteration is done in reverse order from the string ordering,
     /// meaning for `bosagora.io.`, the initialized state is root (empty string)
