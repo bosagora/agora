@@ -58,6 +58,7 @@ import agora.stats.Server;
 import agora.stats.Tx;
 import agora.stats.Utils;
 import agora.stats.Validator;
+import agora.utils.Backoff;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 import agora.utils.Utility;
@@ -68,6 +69,7 @@ import vibe.http.common;
 
 import std.algorithm;
 import std.conv : to, text;
+import std.datetime.systime : StdClock = Clock, SysTime, unixTimeToStdTime;
 import std.exception;
 import std.file;
 import std.format;
@@ -213,16 +215,51 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected BlockExternalizedHandler[Address] block_handlers;
+    protected HandlerInfo!(BlockExternalizedHandler)[] block_handlers;
 
     /// Ditto
-    protected BlockHeaderUpdatedHandler[Address] block_header_handlers;
+    protected HandlerInfo!(BlockHeaderUpdatedHandler)[] block_header_handlers;
 
     /// Ditto
-    protected PreImageReceivedHandler[Address] preimage_handlers;
+    protected HandlerInfo!(PreImageReceivedHandler)[] preimage_handlers;
 
     /// Ditto
-    protected TransactionReceivedHandler[Address] transaction_handlers;
+    protected HandlerInfo!(TransactionReceivedHandler)[] transaction_handlers;
+
+    /// Contains informations about handlers
+    private static struct HandlerInfo (T)
+    {
+        /// The client itself
+        public T client;
+
+        /// Address corresponding to this client
+        public Address address;
+
+        /// Number of unsuccessful attempts
+        public uint attempts;
+
+        /// If set, the next time this handler should be tried
+        public SysTime disabledUntil;
+
+        ///
+        public void onCompletion (Backoff backoff) @safe nothrow
+        {
+            if (backoff is null) // success
+            {
+                this.attempts = 0;
+                this.disabledUntil = SysTime.init;
+            }
+            else
+            {
+                this.attempts++;
+                this.disabledUntil = StdClock.currTime() +
+                    backoff.getDelay(this.attempts).seconds();
+            }
+        }
+    }
+
+    /// Backoff algorithm
+    protected Backoff backoff;
 
     /// Name registry, if enabled for this node
     protected NameRegistry registry;
@@ -244,11 +281,12 @@ public class FullNode : API
 
     public this (Config config)
     {
-        // Not at global scope because it would conflict with our `Clock` type
-        import std.datetime.systime : Clock, SysTime, unixTimeToStdTime;
         import std.datetime.timezone: UTC;
 
         this.config = config;
+        // Return value will be interpreted as seconds, so our base is 10 seconds
+        // and a maximum wait time of 6 hours.
+        this.backoff = new Backoff(10, /* 6 hours */ 60 * 60 * 6);
         setHashMagic(this.config.node.chain_id);
         this.log = this.makeLogger();
         this.params = FullNode.makeConsensusParams(config);
@@ -285,7 +323,7 @@ public class FullNode : API
                 ? config.validator.key_pair.address.toString() : null,
             SysTime(unixTimeToStdTime(this.params.GenesisTimestamp), UTC()).toISOString(),
             // Use second precision to simplify aggregation
-            Clock.currTime!(ClockType.second)(UTC()).toISOString(),
+            StdClock.currTime!(ClockType.second)(UTC()).toISOString(),
         );
 
         this.registry = new NameRegistry(config.node.realm, config.registry,
@@ -393,7 +431,8 @@ public class FullNode : API
                 .each!(handler => handler.addresses
                     .each!((string address) {
                         auto url = Address(address);
-                        this.block_handlers[url] = this.network.getBlockExternalizedHandler(url);
+                        this.block_handlers ~= typeof(this.block_handlers[0])(
+                            this.network.getBlockExternalizedHandler(url), url);
                     }));
 
             // Make `BlockHeaderUpdatedHandler`s from config
@@ -401,7 +440,8 @@ public class FullNode : API
                 .each!(handler => handler.addresses
                     .each!((string address) {
                         auto url = Address(address);
-                        this.block_header_handlers[url] = this.network.getBlockHeaderUpdatedHandler(url);
+                        this.block_header_handlers ~= typeof(this.block_header_handlers[0])(
+                            this.network.getBlockHeaderUpdatedHandler(url), url);
                     }));
 
             // Make `PreImageReceivedHandler`s from config
@@ -409,7 +449,8 @@ public class FullNode : API
                 .each!(handler => handler.addresses
                     .each!((string address) {
                         auto url = Address(address);
-                        this.preimage_handlers[url] = this.network.getPreImageReceivedHandler(url);
+                        this.preimage_handlers ~= typeof(this.preimage_handlers[0])(
+                            this.network.getPreImageReceivedHandler(url), url);
                     }));
 
             // Make `TransactionReceivedHandler`s from config
@@ -417,7 +458,8 @@ public class FullNode : API
                 .each!(handler => handler.addresses
                     .each!((string address) {
                         auto url = Address(address);
-                        this.transaction_handlers[url] = this.network.getTransactionReceivedHandler(url);
+                        this.transaction_handlers ~= typeof(this.transaction_handlers[0])(
+                            this.network.getTransactionReceivedHandler(url), url);
                     }));
         }
 
@@ -1201,17 +1243,25 @@ public class FullNode : API
 
     private void pushBlock (const Block block) @trusted
     {
-        foreach (address, handler; this.block_handlers)
+        const now = StdClock.currTime();
+        foreach (index, ref handler; this.block_handlers)
         {
+            if (handler.disabledUntil > now)
+                continue;
+
             this.taskman.runTask({
+                // Work around potential DMD bug
+                const idx = index;
                 try
                 {
-                    handler.pushBlock(block);
+                    this.block_handlers[idx].client.pushBlock(block);
+                    this.block_handlers[idx].onCompletion(null);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending block height #{} to {} :{}",
-                        block.header.height, address, e);
+                        block.header.height, this.block_handlers[idx].address, e);
+                    this.block_handlers[idx].onCompletion(this.backoff);
                 }
             });
         }
@@ -1234,17 +1284,25 @@ public class FullNode : API
 
     protected void pushBlockHeader (const BlockHeader header) @trusted
     {
-        foreach (address, handler; this.block_header_handlers)
+        const now = StdClock.currTime();
+        foreach (index, ref handler; this.block_header_handlers)
         {
+            if (handler.disabledUntil > now)
+                continue;
+
             this.taskman.runTask({
+                // Work around potential DMD bug
+                const idx = index;
                 try
                 {
-                    handler.pushBlockHeader(header);
+                    this.block_header_handlers[idx].client.pushBlockHeader(header);
+                    this.block_header_handlers[idx].onCompletion(null);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending block header at height #{} to {} :{}",
-                        header.height, address, e);
+                        header.height, this.block_header_handlers[idx].address, e);
+                    this.block_header_handlers[idx].onCompletion(this.backoff);
                 }
             });
         }
@@ -1265,17 +1323,25 @@ public class FullNode : API
 
     protected void pushPreImage (const PreImageInfo pre_image) @trusted
     {
-        foreach (address, handler; this.preimage_handlers)
+        const now = StdClock.currTime();
+        foreach (index, ref handler; this.preimage_handlers)
         {
+            if (handler.disabledUntil > now)
+                continue;
+
             this.taskman.runTask({
+                // Work around potential DMD bug
+                const idx = index;
                 try
                 {
-                    handler.pushPreImage(pre_image);
+                    this.preimage_handlers[idx].client.pushPreImage(pre_image);
+                    this.preimage_handlers[idx].onCompletion(null);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending preImage (enroll_key: {}) to {} :{}",
-                        pre_image.utxo, address, e);
+                        pre_image.utxo, this.preimage_handlers[idx].address, e);
+                    this.preimage_handlers[idx].onCompletion(this.backoff);
                 }
             });
         }
@@ -1295,17 +1361,25 @@ public class FullNode : API
 
     protected void pushTransaction (const Transaction tx) @trusted
     {
-        foreach (address, handler; this.transaction_handlers)
+        const now = StdClock.currTime();
+        foreach (index, ref handler; this.transaction_handlers)
         {
+            if (handler.disabledUntil > now)
+                continue;
+
             this.taskman.runTask({
+                // Work around potential DMD bug
+                const idx = index;
                 try
                 {
-                    handler.pushTransaction(tx);
+                    this.transaction_handlers[idx].client.pushTransaction(tx);
+                    this.transaction_handlers[idx].onCompletion(null);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending transaction (tx hash: {}) to {} :{}",
-                        hashFull(tx), address, e);
+                        hashFull(tx), this.transaction_handlers[idx].address, e);
+                    this.transaction_handlers[idx].onCompletion(this.backoff);
                 }
             });
         }
