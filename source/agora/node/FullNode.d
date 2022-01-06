@@ -400,7 +400,7 @@ public class FullNode : API
     /// Helper for stats
     private void recordBlockStats (in Block block) @safe
     {
-        const new_count = this.enroll_man.validator_set.countActive(block.header.height + 1);
+        const new_count = this.ledger.validatorCount(block.header.height + 1);
         this.block_stats.agora_block_enrollments_gauge = new_count;
         this.block_stats.agora_block_txs_amount_total += getUnspentAmount(block.txs);
         this.block_stats.agora_block_txs_total += block.txs.length;
