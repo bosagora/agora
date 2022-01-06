@@ -25,8 +25,13 @@ import agora.consensus.protocol.Nominator;
 import agora.crypto.Hash;
 import agora.consensus.Ledger;
 
+import std.stdio;
+
 unittest
 {
+    writeln("+First unittest"); stdout.flush();
+    scope (exit) { writeln("-First unittest"); stdout.flush(); }
+
     TestConf conf;
     conf.consensus.quorum_threshold = 100;
     auto network = makeTestNetwork!TestAPIManager(conf);
@@ -77,6 +82,9 @@ unittest
 // They should not be able to enroll and no new block should be created.
 unittest
 {
+    writeln("+Second unittest"); stdout.flush();
+    scope (exit) { writeln("-Second unittest"); stdout.flush(); }
+
     import std.exception;
     import core.exception : AssertError;
 
@@ -151,7 +159,11 @@ unittest
 // create another enrollment request for the next block
 unittest
 {
+    writeln("+Third unittest"); stdout.flush();
+    scope (exit) { writeln("-Third unittest"); stdout.flush(); }
+
     import std.algorithm.mutation : reverse;
+
     static class SocialDistancingNominator : Nominator
     {
         mixin ForwardCtor!();
@@ -209,6 +221,9 @@ unittest
 // still manage to enroll when they are back online
 unittest
 {
+    writeln("+Fourth unittest"); stdout.flush();
+    scope (exit) { writeln("-Fourth unittest"); stdout.flush(); }
+
     TestConf conf;
     conf.consensus.quorum_threshold = 66;
     conf.node.max_retries = 2; // less retries as two are sleeping later
@@ -271,6 +286,9 @@ unittest
 // No validator will willingly re-enroll until the network is stuck
 unittest
 {
+    writeln("+Fifth unittest"); stdout.flush();
+    scope (exit) { writeln("-Fifth unittest"); stdout.flush(); }
+
     static class BatValidator : TestValidatorNode
     {
         mixin ForwardCtor!();
@@ -304,6 +322,9 @@ unittest
 // Make a validator recur enrollment in the middle of generating blocks
 unittest
 {
+    writeln("+Sixth unittest"); stdout.flush();
+    scope (exit) { writeln("-Sixth unittest"); stdout.flush(); }
+
     TestConf conf = {
         recurring_enrollment : false,
     };
