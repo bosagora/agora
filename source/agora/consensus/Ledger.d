@@ -388,8 +388,6 @@ public class Ledger
         This will add all of the block's outputs to the UTXO set, as well as
         any enrollments that may be present in the block to the validator set.
 
-        If not null call the `onAcceptedBlock` delegate.
-
         Params:
             block = the block to add
 
