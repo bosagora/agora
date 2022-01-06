@@ -597,29 +597,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Check whether the slashing data is valid.
-
-        Params:
-            height = height
-            data = consensus data
-            initial_missing_validators = missing validators at the beginning of
-               the nomination round
-            utxo_finder = UTXO finder with double spent protection
-
-        Returns:
-            the error message if validation failed, otherwise null
-
-    ***************************************************************************/
-
-    public string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators, scope UTXOFinder utxo_finder) @safe
-    {
-        return this.isInvalidPreimageRootReason(height, data.missing_validators,
-            initial_missing_validators, utxo_finder);
-    }
-
-    /***************************************************************************
-
         Check whether the block is valid.
 
         Params:
@@ -940,67 +917,6 @@ public class Ledger
             }).array;
 
         return this.last_block.makeNewBlock(txs, preimages, enrollments);
-    }
-
-    /***************************************************************************
-
-        Check if information for pre-images and slashed validators is valid
-
-        Params:
-            height = the height of proposed block
-            missing_validators = list of indices to the validator UTXO set
-                which have not revealed the preimage
-            missing_validators_higher_bound = missing validators at the beginning of
-               the nomination round
-            utxo_finder = UTXO finder with double spent protection
-
-        Returns:
-            `null` if the information is valid at the proposed height,
-            otherwise a string explaining the reason it is invalid.
-
-    ***************************************************************************/
-
-    private string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators, in uint[] missing_validators_higher_bound,
-        scope UTXOFinder utxo_finder) @safe
-    {
-        import std.algorithm.setops : setDifference;
-
-        auto validators = this.getValidators(height);
-        assert(validators.length <= uint.max);
-
-        uint[] missing_validators_lower_bound = validators.enumerate
-            .filter!(kv => kv.value.preimage.height < height)
-            .map!(kv => cast(uint) kv.index).array();
-
-        // NodeA will check the candidate from NodeB in the following way:
-        //
-        // Current missing validators in NodeA(=sorted_missing_validators_lower_bound) ⊆
-        // missing validators in the candidate from NodeB(=sorted_missing_validators) ⊆
-        // missing validators in NodeA before the nomination round started
-        // (=sorted_missing_validators_higher_bound)
-        //
-        // If both of those conditions true, then NodeA will accept the candidate.
-
-        auto sorted_missing_validators = missing_validators.dup().sort();
-        auto sorted_missing_validators_lower_bound = missing_validators_lower_bound.dup().sort();
-        auto sorted_missing_validators_higher_bound = missing_validators_higher_bound.dup().sort();
-
-        if (!setDifference(sorted_missing_validators_lower_bound, sorted_missing_validators).empty())
-            return format!("Lower bound violation - Missing validator mismatch %s is not a subset of %s")
-                (sorted_missing_validators_lower_bound, sorted_missing_validators);
-
-        if (!setDifference(sorted_missing_validators, sorted_missing_validators_higher_bound).empty())
-            return format!("Higher bound violation - Missing validator mismatch %s is not a subset of %s")
-                (sorted_missing_validators, sorted_missing_validators_higher_bound);
-
-        if (missing_validators.any!(idx => idx >= validators.length))
-            return "Slashing non existing index";
-        UTXO utxo;
-        if (missing_validators.any!(idx => !utxo_finder(validators[idx].utxo, utxo)))
-            return "Cannot slash a spent UTXO";
-
-        return null;
     }
 
     /// return the last paid out block before the current block
@@ -1555,6 +1471,90 @@ public class NodeLedger : Ledger
     {
         return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO,
             &this.getPenaltyDeposit, utxo_finder);
+    }
+
+    /***************************************************************************
+
+        Check whether the slashing data is valid.
+
+        Params:
+            height = height
+            data = consensus data
+            initial_missing_validators = missing validators at the beginning of
+               the nomination round
+            utxo_finder = UTXO finder with double spent protection
+
+        Returns:
+            the error message if validation failed, otherwise null
+
+    ***************************************************************************/
+
+    public string validateSlashingData (in Height height, in ConsensusData data,
+        in uint[] initial_missing_validators, scope UTXOFinder utxo_finder) @safe
+    {
+        return this.isInvalidPreimageRootReason(height, data.missing_validators,
+            initial_missing_validators, utxo_finder);
+    }
+
+    /***************************************************************************
+
+        Check if information for pre-images and slashed validators is valid
+
+        Params:
+            height = the height of proposed block
+            missing_validators = list of indices to the validator UTXO set
+                which have not revealed the preimage
+            missing_validators_higher_bound = missing validators at the beginning of
+               the nomination round
+            utxo_finder = UTXO finder with double spent protection
+
+        Returns:
+            `null` if the information is valid at the proposed height,
+            otherwise a string explaining the reason it is invalid.
+
+    ***************************************************************************/
+
+    private string isInvalidPreimageRootReason (in Height height,
+        in uint[] missing_validators, in uint[] missing_validators_higher_bound,
+        scope UTXOFinder utxo_finder) @safe
+    {
+        import std.algorithm.setops : setDifference;
+
+        auto validators = this.getValidators(height);
+        assert(validators.length <= uint.max);
+
+        uint[] missing_validators_lower_bound = validators.enumerate
+            .filter!(kv => kv.value.preimage.height < height)
+            .map!(kv => cast(uint) kv.index).array();
+
+        // NodeA will check the candidate from NodeB in the following way:
+        //
+        // Current missing validators in NodeA(=sorted_missing_validators_lower_bound) ⊆
+        // missing validators in the candidate from NodeB(=sorted_missing_validators) ⊆
+        // missing validators in NodeA before the nomination round started
+        // (=sorted_missing_validators_higher_bound)
+        //
+        // If both of those conditions true, then NodeA will accept the candidate.
+
+        auto sorted_missing_validators = missing_validators.dup().sort();
+        auto sorted_missing_validators_lower_bound = missing_validators_lower_bound.dup().sort();
+        auto sorted_missing_validators_higher_bound = missing_validators_higher_bound.dup().sort();
+
+        if (!setDifference(sorted_missing_validators_lower_bound, sorted_missing_validators).empty())
+            return format!("Lower bound violation - Missing validator mismatch %s is not a subset of %s")
+                (sorted_missing_validators_lower_bound, sorted_missing_validators);
+
+        if (!setDifference(sorted_missing_validators, sorted_missing_validators_higher_bound).empty())
+            return format!("Higher bound violation - Missing validator mismatch %s is not a subset of %s")
+                (sorted_missing_validators, sorted_missing_validators_higher_bound);
+
+        if (missing_validators.any!(idx => idx >= validators.length))
+            return "Slashing non existing index";
+        UTXO utxo;
+        if (missing_validators.any!(idx => !utxo_finder(validators[idx].utxo, utxo)))
+            return "Cannot slash a spent UTXO";
+
+        return null;
     }
 }
 
