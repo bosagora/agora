@@ -69,7 +69,7 @@ public class NameRegistry: NameRegistryAPI
     private Domain flash;
 
     ///
-    private Ledger ledger;
+    private NodeLedger ledger;
 
     ///
     private Height validator_info_height;
@@ -83,7 +83,7 @@ public class NameRegistry: NameRegistryAPI
     ];
 
     ///
-    public this (string realm, RegistryConfig config, Ledger ledger,
+    public this (string realm, RegistryConfig config, NodeLedger ledger,
         ManagedDatabase cache_db)
     {
         assert(realm.length > 0, "No 'realm' provided");
