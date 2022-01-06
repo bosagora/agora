@@ -383,6 +383,12 @@ public class Validator : FullNode, API
 
     protected override void acceptHeader (const(BlockHeader) header) @safe
     {
+        // First we must validate the header
+        if (auto err = this.ledger.validateBlockSignature(header))
+        {
+            log.trace("acceptHeader: Recieved header is not valid: {}", err);
+            return;
+        }
         // Add any missing signatures we know
         const updated_header = this.nominator.updateMultiSignature(header);
         this.ledger.updateBlockMultiSig(updated_header);
