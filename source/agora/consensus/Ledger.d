@@ -584,17 +584,6 @@ public class Ledger
         return this.params.SlashPenaltyAmount;
     }
 
-    /// Error message describing the reason of validation failure
-    public static enum InvalidConsensusDataReason : string
-    {
-        NotEnoughValidators = "Enrollment: Insufficient number of active validators",
-        MayBeValid = "May be valid",
-        TooManyMPVs = "More MPVs than active enrollments",
-        NoUTXO = "Couldn't find UTXO for one or more Enrollment",
-        NotInPool = "Transaction is not in the pool",
-
-    }
-
     /***************************************************************************
 
         Check whether the block is valid.
@@ -1005,6 +994,16 @@ public class Ledger
 /// The Ledger class held by a node
 public class NodeLedger : Ledger
 {
+    /// Error message describing the reason of validation failure
+    public static enum InvalidConsensusDataReason : string
+    {
+        NotEnoughValidators = "Enrollment: Insufficient number of active validators",
+        MayBeValid = "May be valid",
+        TooManyMPVs = "More MPVs than active enrollments",
+        NoUTXO = "Couldn't find UTXO for one or more Enrollment",
+        NotInPool = "Transaction is not in the pool",
+    }
+
     /// A delegate to be called when a block was externalized (unless `null`)
     protected void delegate (in Block, bool) @safe onAcceptedBlock;
 
