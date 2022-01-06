@@ -110,7 +110,11 @@ unittest
     iota(GenesisValidators).each!(i => network.enroll(iota(GenesisValidators), i));
 
     // check that the delayed validator has the enrollment of the outsider
-    auto gotten_enroll = network.clients[delayed_node].getEnrollment(enroll.utxo_key);
+    Enrollment gotten_enroll;
+    retryFor(() {
+        gotten_enroll = network.clients[delayed_node].getEnrollment(enroll.utxo_key);
+        return gotten_enroll !is Enrollment.init;
+        }(), 5.seconds);
     assert(gotten_enroll == enroll);
 
     // enable `catchupTask` for the delayed validator and clear filter
