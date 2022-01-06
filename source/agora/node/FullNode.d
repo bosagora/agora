@@ -121,7 +121,7 @@ public class FullNode : API
     protected TransactionPool pool;
 
     /// The Ledger is the main class driving consensus
-    protected Ledger ledger;
+    protected NodeLedger ledger;
 
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
@@ -945,7 +945,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected Ledger makeLedger ()
+    protected NodeLedger makeLedger ()
     {
         return new NodeLedger(params, this.engine, this.utxo_set, this.storage,
             this.enroll_man, this.pool, this.fee_man, &this.onAcceptedBlock);

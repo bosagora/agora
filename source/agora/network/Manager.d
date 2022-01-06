@@ -993,7 +993,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void getUnknownTXs (Ledger ledger) @safe nothrow
+    public void getUnknownTXs (NodeLedger ledger) @safe nothrow
     {
         auto unknown_txs = ledger.getUnknownTXHashes();
         log.trace("getUnknownTXs: detected {} unknown txs", unknown_txs.length);
@@ -1016,7 +1016,7 @@ public class NetworkManager
     }
 
     // Add the chunk of txs fetched from the other node
-    private size_t addTxs (Ledger ledger, Transaction[] txs) @safe nothrow
+    private size_t addTxs (NodeLedger ledger, Transaction[] txs) @safe nothrow
     {
         auto accepted = 0;
         txs.each!((tx)
