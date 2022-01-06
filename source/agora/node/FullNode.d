@@ -43,6 +43,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Client;
 import agora.network.Clock;
+import agora.network.DNSResolver;
 import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Config;
@@ -776,7 +777,8 @@ public class FullNode : API
 
     protected NetworkManager makeNetworkManager (ITaskManager taskman, Clock clock)
     {
-        return new NetworkManager(this.config, this.cacheDB, taskman, clock, this);
+        return new NetworkManager(this.config, this.cacheDB, taskman,
+            clock, this, this.makeDNSResolver());
     }
 
     protected TransactionRelayer makeTransactionRelayer ()
@@ -913,6 +915,20 @@ public class FullNode : API
     {
         return new EnrollmentManager(this.stateDB, this.cacheDB,
             this.config.validator, this.params);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a DNSResolver
+
+        Returns:
+            the dns resolver
+
+    ***************************************************************************/
+
+    protected DNSResolver makeDNSResolver ()
+    {
+        return new VibeDNSResolver();
     }
 
     /***************************************************************************

@@ -451,7 +451,8 @@ public class NetworkManager
     protected agora.api.FullNode.API owner_node;
 
     /// Ctor
-    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
+    public this (in Config config, ManagedDatabase cache, ITaskManager taskman,
+        Clock clock, agora.api.FullNode.API owner_node, DNSResolver resolver)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
@@ -464,6 +465,7 @@ public class NetworkManager
         this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
         this.owner_node = owner_node;
+        this.resolver = resolver;
 
         this.cacheDB.execute(
             "CREATE TABLE IF NOT EXISTS network_manager (" ~
