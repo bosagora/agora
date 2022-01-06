@@ -89,7 +89,7 @@ public class Ledger
     protected Reward rewards;
 
     /// Cache for Coinbase tx to be used during payout height
-    struct CachedCoinbase
+    protected struct CachedCoinbase
     {
         ///
         protected Height height;
@@ -971,7 +971,7 @@ public class Ledger
     version (unittest):
 
     /// Make sure the preimages are available when the block is validated
-    private void simulatePreimages (in Height height, uint[] skip_indexes = null) @safe
+    protected void simulatePreimages (in Height height, uint[] skip_indexes = null) @safe
     {
         auto validators = this.getValidators(height);
 
