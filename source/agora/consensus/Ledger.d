@@ -85,10 +85,6 @@ public class Ledger
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
-    /// If not null call this delegate
-    /// A block was externalized
-    protected void delegate (in Block, bool) @safe onAcceptedBlock;
-
     /// Parameters for consensus-critical constants
     protected immutable(ConsensusParams) params;
 
@@ -123,16 +119,13 @@ public class Ledger
             enroll_man = the enrollmentManager
             pool = the transaction pool
             fee_man = the FeeManager
-            onAcceptedBlock = optional delegate to call
-                              when a block was added to the ledger
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
         EnrollmentManager enroll_man, TransactionPool pool,
-        FeeManager fee_man,
-        void delegate (in Block, bool) @safe onAcceptedBlock = null)
+        FeeManager fee_man)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
@@ -141,7 +134,6 @@ public class Ledger
         this.storage = storage;
         this.enroll_man = enroll_man;
         this.pool = pool;
-        this.onAcceptedBlock = onAcceptedBlock;
         this.fee_man = fee_man;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
@@ -310,17 +302,8 @@ public class Ledger
             return fail_reason;
         }
 
-        const old_count = this.validatorCount(block.header.height);
-
         this.addValidatedBlock(block);
         this.storage.saveBlock(block);
-
-        const new_count = this.validatorCount(block.header.height + 1);
-        // there was a change in the active validator set
-        const bool validators_changed = block.header.enrollments.length > 0
-            || new_count != old_count;
-        if (this.onAcceptedBlock !is null)
-            this.onAcceptedBlock(block, validators_changed);
 
         return null;
     }
@@ -1485,6 +1468,61 @@ public class Ledger
     }
 }
 
+/// The Ledger class held by a node
+public class NodeLedger : Ledger
+{
+    /// A delegate to be called when a block was externalized (unless `null`)
+    protected void delegate (in Block, bool) @safe onAcceptedBlock;
+
+    /***************************************************************************
+
+        Constructor
+
+        Params:
+            params = the consensus-critical constants
+            engine = script execution engine
+            utxo_set = the set of unspent outputs
+            storage = the block storage
+            enroll_man = the enrollmentManager
+            pool = the transaction pool
+            fee_man = the FeeManager
+            onAcceptedBlock = optional delegate to call
+                              when a block was added to the ledger
+
+    ***************************************************************************/
+
+    public this (immutable(ConsensusParams) params,
+        Engine engine, UTXOSet utxo_set, IBlockStorage storage,
+        EnrollmentManager enroll_man, TransactionPool pool,
+        FeeManager fee_man,
+        void delegate (in Block, bool) @safe onAcceptedBlock)
+    {
+        super(params, engine, utxo_set, storage, enroll_man, pool, fee_man);
+        this.onAcceptedBlock = onAcceptedBlock;
+    }
+
+    /// See `Ledger.acceptBlock`
+    public override string acceptBlock (in Block block) @safe
+    {
+        const old_count = (this.onAcceptedBlock !is null) ?
+            this.validatorCount(block.header.height) : 0;
+
+        if (auto err = super.acceptBlock(block))
+            return err;
+
+        if (this.onAcceptedBlock !is null)
+        {
+            const new_count = this.validatorCount(block.header.height + 1);
+            // there was a change in the active validator set
+            const bool validators_changed = block.header.enrollments.length > 0
+                || new_count != old_count;
+            this.onAcceptedBlock(block, validators_changed);
+        }
+
+        return null;
+    }
+}
+
 /// This is the last block height that has had fees and rewards paid before the current block
 private Height lastPaidHeight(in Height height, uint payout_period) @safe @nogc nothrow pure
 {
@@ -1516,7 +1554,7 @@ unittest
 
 *******************************************************************************/
 
-public class ValidatingLedger : Ledger
+public class ValidatingLedger : NodeLedger
 {
     /// See parent class
     public this (immutable(ConsensusParams) params,

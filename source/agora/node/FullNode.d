@@ -947,7 +947,7 @@ public class FullNode : API
 
     protected Ledger makeLedger ()
     {
-        return new Ledger(params, this.engine, this.utxo_set, this.storage,
+        return new NodeLedger(params, this.engine, this.utxo_set, this.storage,
             this.enroll_man, this.pool, this.fee_man, &this.onAcceptedBlock);
     }
 
