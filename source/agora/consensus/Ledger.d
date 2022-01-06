@@ -69,46 +69,51 @@ public class Ledger
     protected Logger log;
 
     /// Script execution engine
-    private Engine engine;
+    protected Engine engine;
 
     /// data storage for all the blocks
-    private IBlockStorage storage;
+    protected IBlockStorage storage;
 
     /// Pool of transactions to pick from when generating blocks
-    private TransactionPool pool;
+    protected TransactionPool pool;
 
     /// TX Hashes Ledger encountered but dont have in the pool
-    private Set!Hash unknown_txs;
+    protected Set!Hash unknown_txs;
 
     /// The last block in the ledger
-    private Block last_block;
+    protected Block last_block;
 
     /// UTXO set
-    private UTXOCache utxo_set;
+    protected UTXOCache utxo_set;
 
     /// Enrollment manager
-    private EnrollmentManager enroll_man;
+    protected EnrollmentManager enroll_man;
 
     /// If not null call this delegate
     /// A block was externalized
-    private void delegate (in Block, bool) @safe onAcceptedBlock;
+    protected void delegate (in Block, bool) @safe onAcceptedBlock;
 
     /// Parameters for consensus-critical constants
-    private immutable(ConsensusParams) params;
+    protected immutable(ConsensusParams) params;
 
     /// The checker of transaction data payload
-    private FeeManager fee_man;
+    protected FeeManager fee_man;
 
     /// Block rewards calculator
-    private Reward rewards;
+    protected Reward rewards;
 
     /// Cache for Coinbase tx to be used during payout height
     struct CachedCoinbase
     {
-        private Height height;
-        private Transaction tx;
+        ///
+        protected Height height;
+
+        ///
+        protected Transaction tx;
     }
-    private CachedCoinbase cached_coinbase;
+
+    /// Ditto
+    protected CachedCoinbase cached_coinbase;
 
     /***************************************************************************
 
