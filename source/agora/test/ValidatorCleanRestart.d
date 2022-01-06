@@ -164,5 +164,5 @@ unittest
 
     // The new block has been inserted to the ledger with the approval
     // of the node_1, although node_2 was shutdown.
-    network.expectHeightAndPreImg(Height(4), network.blocks[0].header);
+    network.expectHeightAndPreImg(Height(4), network.blocks[0].header, 30.seconds);
 }
