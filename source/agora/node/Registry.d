@@ -439,12 +439,10 @@ public class NameRegistry: NameRegistryAPI
             return matches ? &matching_zone.answer_matches : &matching_zone.answer_owns;
 
         auto range = name.value.splitter('.');
-        if (range.empty || range.front.length < 1)
-            return null;
 
         const child = range.front;
         range.popFront();
-        if (range.empty)
+        if (child.length < 1 || range.front.length < 1)
             return null;
         // Slice past the dot, after making sure there is one (bosagora/agora#2551)
         const parentDomain = Domain.fromSafeString(name.value[child.length + 1 .. $]);
