@@ -709,17 +709,6 @@ public class EnrollmentManager
     {
         return this.enroll_pool.getEnrollment(enroll_hash);
     }
-
-    /***************************************************************************
-
-        Returns: A delegate to query past Enrollments
-
-    ***************************************************************************/
-
-    public EnrollmentFinder getEnrollmentFinder () @trusted nothrow
-    {
-        return &this.validator_set.findRecentEnrollment;
-    }
 }
 
 /// tests for member functions of EnrollmentManager
@@ -1131,7 +1120,7 @@ unittest
     auto utxos = utxo_set.getUTXOs(key_pair.address);
     Hash[] utxo_hashes = utxos.keys;
 
-    auto findEnrollment = man.getEnrollmentFinder();
+    auto findEnrollment = &man.validator_set.findRecentEnrollment;
 
     auto genesis_enroll = man.createEnrollment(utxo_hashes[0], Height(0));
     assert(man.addEnrollment(genesis_enroll, key_pair.address, Height(0),

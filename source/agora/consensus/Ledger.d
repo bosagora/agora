@@ -689,7 +689,8 @@ public class Ledger
         if (!this.peekUTXO(utxo, utxo_val) || utxo_val.output.type != OutputType.Freeze)
             return 0.coins;
         EnrollmentState last_enrollment;
-        if (this.enroll_man.getEnrollmentFinder()(utxo, last_enrollment) && last_enrollment.slashed_height != 0)
+        if (this.enroll_man.validator_set.findRecentEnrollment(utxo, last_enrollment) &&
+            last_enrollment.slashed_height != 0)
             return 0.coins;
         return this.params.SlashPenaltyAmount;
     }
@@ -831,7 +832,7 @@ public class Ledger
                 this.last_block.header.hashFull,
                 this.utxo_set.getUTXOFinder(),
                 &this.fee_man.check,
-                this.enroll_man.getEnrollmentFinder(),
+                &this.enroll_man.validator_set.findRecentEnrollment,
                 &this.getPenaltyDeposit,
                 block.header.validators.count))
             return reason;
