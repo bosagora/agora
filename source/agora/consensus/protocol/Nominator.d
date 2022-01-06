@@ -932,6 +932,13 @@ extern(D):
                 height, last_height);
             return;  // slot was already externalized or envelope is too new
         }
+        else if (!this.ledger.hasMajoritySignature(last_height))
+        {
+            log.trace("valueExternalized: Will not externalize envelope with slot id {} as we are " ~
+                "missing signagures for height {}", height, last_height);
+            return;
+        }
+
         ConsensusData data = void;
         try
             data = deserializeFull!ConsensusData(value[]);
