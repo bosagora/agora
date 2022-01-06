@@ -179,7 +179,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public ref const(Block) getLastBlock () const scope @safe @nogc nothrow pure
+    public ref const(Block) lastBlock () const scope @safe @nogc nothrow pure
     {
         return this.last_block;
     }
@@ -1097,7 +1097,7 @@ public class Ledger
 
         Returns:
           A newly created block based on the current block
-          (See `Ledger.getLastBlock()` and `Ledger.getBlockHeight()`)
+          (See `Ledger.lastBlock()` and `Ledger.getBlockHeight()`)
 
     ***************************************************************************/
 
@@ -2546,7 +2546,7 @@ unittest
     assert(ledger.acceptTransaction(freeze_tx) is null);
     ledger.forceCreateBlock(1, false);
 
-    Block block = ledger.getLastBlock().clone();
+    Block block = ledger.lastBlock().clone();
     assert(block.header.height == 1);
     assert(block.header.validators.setCount < block.header.validators.count);
     assert(!ledger.hasMajoritySignature(block.header.height));
