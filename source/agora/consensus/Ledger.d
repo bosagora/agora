@@ -76,8 +76,8 @@ public class Ledger
     /// UTXO set
     protected UTXOCache utxo_set;
 
-    /// Enrollment manager
-    protected EnrollmentManager enroll_man;
+    /// The object controlling the validator set
+    protected ValidatorSet validator_set;
 
     /// Parameters for consensus-critical constants
     protected immutable(ConsensusParams) params;
@@ -110,22 +110,21 @@ public class Ledger
             engine = script execution engine
             utxo_set = the set of unspent outputs
             storage = the block storage
-            enroll_man = the enrollmentManager
             fee_man = the FeeManager
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
-        EnrollmentManager enroll_man, FeeManager fee_man)
+        ValidatorSet validator_set, FeeManager fee_man)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
         this.engine = engine;
         this.utxo_set = utxo_set;
         this.storage = storage;
-        this.enroll_man = enroll_man;
         this.fee_man = fee_man;
+        this.validator_set = validator_set;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
 
@@ -143,7 +142,7 @@ public class Ledger
             || this.validatorCount(this.last_block.header.height + 1) == 0)
         {
             this.utxo_set.clear();
-            this.enroll_man.validator_set.removeAll();
+            this.validator_set.removeAll();
 
             // Calling `addValidatedBlock` will reset this value
             const HighestHeight = this.last_block.header.height;
@@ -220,7 +219,7 @@ public class Ledger
         // special-casing height == 0, we just return `null`.
         if (height == 0) return null;
 
-        auto result = this.enroll_man.validator_set.getValidators(height);
+        auto result = this.validator_set.getValidators(height);
         ensure(empty || result.length > 0,
                "Ledger.getValidators didn't find any validator at height {}", height);
         return result;
@@ -248,7 +247,7 @@ public class Ledger
 
     public size_t validatorCount (in Height height) scope @safe nothrow
     {
-        return this.enroll_man.validator_set.countActive(height);
+        return this.validator_set.countActive(height);
     }
 
     /***************************************************************************
@@ -265,7 +264,7 @@ public class Ledger
 
     public bool addPreimage (in PreImageInfo preimage) @safe nothrow
     {
-        return this.enroll_man.validator_set.addPreimage(preimage);
+        return this.validator_set.addPreimage(preimage);
     }
 
     /***************************************************************************
@@ -425,7 +424,7 @@ public class Ledger
 
             log.warn("Slashing validator {} at height {}: {} (UTXO: {})",
                      idx, header.height, validator, utxo_value);
-            this.enroll_man.validator_set.slashValidator(validator.utxo, header.height);
+            this.validator_set.slashValidator(validator.utxo, header.height);
         }
     }
 
@@ -457,16 +456,15 @@ public class Ledger
 
     protected void updateValidatorSet (in Block block) @safe
     {
-        PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
-        UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
         foreach (idx, ref enrollment; block.header.enrollments)
         {
             UTXO utxo;
             if (!this.utxo_set.peekUTXO(enrollment.utxo_key, utxo))
                 assert(0);
 
-            if (auto r = this.enroll_man.addValidator(enrollment, utxo.output.address,
-                block.header.height, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, utxos))
+            if (auto r = this.validator_set.add(block.header.height,
+                    &this.utxo_set.peekUTXO, &this.getPenaltyDeposit,
+                    enrollment, utxo.output.address))
             {
                 log.fatal("Error while adding a new validator: {}", r);
                 log.fatal("Enrollment #{}: {}", idx, enrollment);
@@ -581,8 +579,7 @@ public class Ledger
         if (!this.peekUTXO(utxo, utxo_val) || utxo_val.output.type != OutputType.Freeze)
             return 0.coins;
         EnrollmentState last_enrollment;
-        if (this.enroll_man.validator_set.findRecentEnrollment(utxo, last_enrollment) &&
-            last_enrollment.slashed_height != 0)
+        if (this.validator_set.findRecentEnrollment(utxo, last_enrollment) && last_enrollment.slashed_height != 0)
             return 0.coins;
         return this.params.SlashPenaltyAmount;
     }
@@ -647,7 +644,7 @@ public class Ledger
                 this.last_block.header.hashFull,
                 this.utxo_set.getUTXOFinder(),
                 &this.fee_man.check,
-                &this.enroll_man.validator_set.findRecentEnrollment,
+                &this.validator_set.findRecentEnrollment,
                 &this.getPenaltyDeposit,
                 block.header.validators.count))
             return reason;
@@ -1035,7 +1032,7 @@ public class Ledger
     {
         UTXO[Hash] utxos;
         Hash[] keys;
-        if (this.enroll_man.validator_set.getEnrolledUTXOs(height, keys))
+        if (this.validator_set.getEnrolledUTXOs(height, keys))
             foreach (key; keys)
             {
                 UTXO val;
@@ -1064,19 +1061,6 @@ public class Ledger
     public UTXOFinder getUTXOFinder () nothrow @trusted
     {
         return this.utxo_set.getUTXOFinder();
-    }
-
-    /***************************************************************************
-
-        Returns: A list of Enrollments that can be used for the next block
-
-    ***************************************************************************/
-
-    public Enrollment[] getCandidateEnrollments (in Height height,
-        scope UTXOFinder utxo_finder) @safe
-    {
-        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO,
-            &this.getPenaltyDeposit, utxo_finder);
     }
 
     version (unittest):
@@ -1114,6 +1098,9 @@ public class NodeLedger : Ledger
     /// Hashes of transactions the Ledger encountered but doesn't have in the pool
     protected Set!Hash unknown_txs;
 
+    /// Enrollment manager
+    protected EnrollmentManager enroll_man;
+
     /***************************************************************************
 
         Constructor
@@ -1142,7 +1129,8 @@ public class NodeLedger : Ledger
         // a SEGV if the pool wasn't set.
         this.onAcceptedBlock = onAcceptedBlock;
         this.pool = pool;
-        super(params, engine, utxo_set, storage, enroll_man, fee_man);
+        this.enroll_man = enroll_man;
+        super(params, engine, utxo_set, storage, enroll_man.validator_set, fee_man);
     }
 
     /// See `Ledger.acceptBlock`
@@ -1180,6 +1168,30 @@ public class NodeLedger : Ledger
     {
         super.updateUTXOSet(block);
         block.txs.each!(tx => this.pool.remove(tx));
+    }
+
+    /// See `Ledger.updateValidatorSet`
+    protected override void updateValidatorSet (in Block block) @safe
+    {
+        PublicKey pubkey = this.enroll_man.getEnrollmentPublicKey();
+        UTXO[Hash] utxos = this.utxo_set.getUTXOs(pubkey);
+
+        foreach (idx, ref enrollment; block.header.enrollments)
+        {
+            UTXO utxo;
+            if (!this.utxo_set.peekUTXO(enrollment.utxo_key, utxo))
+                assert(0);
+
+            if (auto r = this.enroll_man.addValidator(enrollment, utxo.output.address,
+                    block.header.height, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, utxos))
+            {
+                log.fatal("Error while adding a new validator: {}", r);
+                log.fatal("Enrollment #{}: {}", idx, enrollment);
+                log.fatal("Validated block: {}", block);
+                assert(0);
+            }
+            this.utxo_set.updateUTXOLock(enrollment.utxo_key, block.header.height + this.params.ValidatorCycle);
+        }
     }
 
     /***************************************************************************
@@ -1530,6 +1542,19 @@ public class NodeLedger : Ledger
                 this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
                 return rate;
             }).maxElement());
+    }
+
+    /***************************************************************************
+
+        Returns: A list of Enrollments that can be used for the next block
+
+    ***************************************************************************/
+
+    public Enrollment[] getCandidateEnrollments (in Height height,
+        scope UTXOFinder utxo_finder) @safe
+    {
+        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO,
+            &this.getPenaltyDeposit, utxo_finder);
     }
 }
 
@@ -2063,7 +2088,7 @@ unittest
             super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
-                new EnrollmentManager(stateDB, cacheDB, vconf, params),
+                new ValidatorSet(stateDB, params),
                 new FeeManager(stateDB, params));
         }
 
