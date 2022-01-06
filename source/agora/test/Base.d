@@ -27,6 +27,8 @@ import agora.api.Registry;
 import agora.api.Handlers;
 import agora.common.BanManager;
 import agora.common.BitMask;
+import agora.common.DNS;
+import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
@@ -48,6 +50,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Client;
 import agora.network.Clock;
+import agora.network.DNSResolver;
 import agora.network.Manager;
 import agora.node.BlockStorage;
 import agora.node.Config;
@@ -64,6 +67,7 @@ import scpd.types.Stellar_SCP;
 
 static import geod24.LocalRest;
 import geod24.Registry;
+import geod24.concurrency;
 
 import std.array;
 import std.exception;
@@ -2413,6 +2417,13 @@ public class NoGossipTransactionRelayer : TransactionRelayer
 /// Interface combining both the `TestAPI` and the `NameRegistryAPI` to expose both at once
 package interface FullRegistryAPI : TestAPI, NameRegistryAPI {}
 
+/// Mimics a DNS UDP Socket
+struct DNSQuery
+{
+    Message msg;
+    Channel!Message response_chan;
+}
+
 /// A node that implements `FullRegistryAPI`
 public class RegistryNode : TestFullNode, FullRegistryAPI
 {
@@ -2445,5 +2456,57 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
         @safe
     {
         return this.registry.postFlashNode(registry_payload, channel);
+    }
+}
+
+///
+public final class LocalRestDNSResolver : DNSResolver
+{
+    ///
+    Channel!DNSQuery dns_chan;
+
+    /***************************************************************************
+
+        Instantiate a new object of this type
+
+        Params:
+          dns_chan = Channel that DNS server listens to
+
+    ***************************************************************************/
+
+    public this (Channel!DNSQuery dns_chan)
+    {
+        super();
+        this.dns_chan = dns_chan;
+    }
+
+    /***************************************************************************
+
+        Returns the `ResourceRecord` matching `type` associated with `name`
+
+        This low-level function will query the registered resolvers for the
+        records matching `name`. `type` is an optional argument indicating what
+        kind of RR is expected. While it defaults to `ALL`, it is recommended
+        to provide a different value, as many servers might refuse to answer
+        for queries on which they are not authoritative.
+
+        Params:
+          name = The name to resolve
+          type = Type of reecord to query
+
+    ***************************************************************************/
+
+    public override ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @trusted
+    {
+        auto msg = this.buildQuery(name, type);
+
+        DNSQuery q = DNSQuery(msg, new Channel!Message());
+        ensure(this.dns_chan.write(q), "DNS write channel closed");
+        Message answer;
+        ensure(q.response_chan.read(answer, 5.seconds), "Failed to get DNS response");
+        log.trace("Got response from for '{}'({}): {}", name, type, answer);
+        if (answer.header.RCODE == Header.RCode.NoError)
+            return answer.answers;
+        return null;
     }
 }
