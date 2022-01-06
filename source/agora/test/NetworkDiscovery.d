@@ -33,7 +33,7 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNodeInfo().addresses.keys;
+        auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
         const expectedCount = network.nodes.count + 1; // include name registry
         assert(addresses.sort.uniq.count == expectedCount,
             format("Node %s has %d peers but expected %d: %s",
@@ -60,7 +60,7 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNodeInfo().addresses.keys;
+        auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
         // It can connect to between min of 9 and max of 6 validators + 4 fullnode + registry
         assert(addresses.sort.uniq.count >= 9 && addresses.sort.uniq.count <= 11,
                format("Node %s has %d peers: %s", key, addresses.length, addresses));
@@ -85,7 +85,7 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNodeInfo().addresses.keys;
+        auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
         const expectedCount = network.nodes.count + 1; // include name registry
         assert(addresses.sort.uniq.count == expectedCount,
                format("Node %s has %d peers but expected %d: %s",
@@ -151,6 +151,8 @@ unittest
     // All nodes should've banned impersonator_node
     foreach (node; network.nodes)
         if (node != impersonator_node)
-            retryFor(node.client.isBanned(Address("http://"~impersonator_node.address)), 1.seconds,
+            retryFor(
+                node.client.isBanned(Address("http://"~impersonator_node.address)) ||
+                node.client.isBanned(Address("agora://"~impersonator_node.address)) , 1.seconds,
                 format!"Node %s did not ban %s"(node.address, impersonator_node.address));
 }

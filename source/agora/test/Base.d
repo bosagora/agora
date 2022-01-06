@@ -2484,6 +2484,40 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     {
         return this.registry.postFlashNode(registry_payload, channel);
     }
+
+    ///
+    public override void start ()
+    {
+        super.start();
+        this.taskman.runTask(() {
+            try
+                runDNSServer(this.dns_chan);
+            catch (Exception e)
+                assert(0, e.msg);
+        });
+    }
+
+    ///
+    private void runDNSServer (Channel!DNSQuery channel)
+    {
+        scope (exit) channel.close();
+        while (true)
+        {
+            try
+            {
+                DNSQuery query;
+                assert(channel.read(query)); // should never be closed
+                this.registry.answerQuestions(
+                    query.msg, "peer.localrest",
+                    (in Message msg) @trusted { query.response_chan.write(msg.clone()); });
+            }
+            catch (Exception exc)
+            {
+                scope (failure) assert(0);
+                stderr.writeln("Exception thrown while handling query: ", exc);
+            }
+        }
+    }
 }
 
 ///
