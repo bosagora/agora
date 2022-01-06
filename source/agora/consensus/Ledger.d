@@ -39,7 +39,6 @@ import agora.consensus.state.UTXOSet;
 import agora.consensus.validation;
 import agora.crypto.Hash;
 import agora.crypto.Key;
-import agora.network.Clock;
 import agora.node.BlockStorage;
 import agora.script.Engine;
 import agora.script.Lock;
