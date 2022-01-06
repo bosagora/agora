@@ -113,6 +113,7 @@ private class ByzantineManager (ByzantineReason reason) : TestAPIManager
 unittest
 {
     TestConf conf;
+    conf.node.block_catchup_interval = 100.msecs; // force catchup
     conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadPreimage))(conf);
     network.start();
@@ -128,7 +129,7 @@ unittest
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1));
     // Make sure the client we will check is in sync with others (except for byzantine)
     network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
-    assertValidatorsBitmask(last_node.getAllBlocks()[1]);
+    nodes.drop(1).each!(node => assertValidatorsBitmask(node.getAllBlocks()[1]));
 }
 
 /// MultiSig test: One node signs with an invalid secretkey.
@@ -136,6 +137,7 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.node.block_catchup_interval = 100.msecs; // force catchup
     conf.consensus.quorum_threshold = 83;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSecretKey))(conf);
     network.start();
@@ -151,7 +153,7 @@ unittest
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1));
     // Make sure the client we will check is in sync with others (except for byzantine)
     network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
-    assertValidatorsBitmask(last_node.getAllBlocks()[1]);
+    nodes.drop(1).each!(node => assertValidatorsBitmask(node.getAllBlocks()[1]));
 }
 
 private void assertValidatorsBitmask (const Block block)
