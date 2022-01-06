@@ -53,8 +53,6 @@ import std.format;
 import std.range;
 import std.typecons : Nullable, nullable;
 
-import core.time : Duration, seconds;
-
 version (unittest)
 {
     import agora.consensus.data.genesis.Test: genesis_validator_keys;
