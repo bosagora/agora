@@ -1255,7 +1255,7 @@ extern(D):
                 {
                     Amount rate;
                     auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
-                    if (errormsg == Ledger.InvalidConsensusDataReason.NotInPool)
+                    if (errormsg == NodeLedger.InvalidConsensusDataReason.NotInPool)
                         continue; // most likely a CoinBase Transaction
                     else if (errormsg)
                         assert(0);

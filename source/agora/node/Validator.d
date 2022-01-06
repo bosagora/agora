@@ -715,7 +715,7 @@ public class Validator : FullNode, API
     {
         // Network needs Validators, see if we can enroll
         if (this.config.validator.recurring_enrollment &&
-            msg == Ledger.InvalidConsensusDataReason.NotEnoughValidators)
+            msg == NodeLedger.InvalidConsensusDataReason.NotEnoughValidators)
             this.checkAndEnroll(this.ledger.getBlockHeight());
     }
 }
