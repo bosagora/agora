@@ -429,7 +429,7 @@ extern(D):
     protected ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
         return this.params.GenesisTimestamp +
-            (ledger.getLastBlock().header.height + 1) * this.params.BlockInterval.total!"seconds";
+            (ledger.getBlockHeight() + 1) * this.params.BlockInterval.total!"seconds";
     }
 
     /***************************************************************************
@@ -481,7 +481,7 @@ extern(D):
         {
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
-                this.ledger.getBlockHeight(), this.ledger.getLastBlock().header.validators);
+                this.ledger.getBlockHeight(), this.ledger.lastBlock().header.validators);
             return;
         }
 
@@ -605,7 +605,7 @@ extern(D):
         if (this.nomination_timer is null)
             return;
 
-        const Block last_block = this.ledger.getLastBlock();
+        const Block last_block = this.ledger.lastBlock();
         // Don't use `height - tolerance` as it could underflow
         if (envelope.statement.slotIndex <= last_block.header.height)
         {
@@ -1339,7 +1339,7 @@ extern(D):
         const uint hash_N = 1;
         const uint hash_P = 2;
 
-        const seed = this.ledger.getLastBlock().header.hashFull();
+        const seed = this.ledger.lastBlock().header.hashFull();
         const Hash hash = hashMulti(slot_idx, prev[],
             is_priority ? hash_P : hash_N, round_num, node_id, seed);
 

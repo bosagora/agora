@@ -1912,7 +1912,7 @@ public class TestValidatorNode : Validator, TestAPI
         assert(this.enroll_man.getEnrolledUTXOs(height + 1, utxos) && utxos.length > 0);
         // See `Validator.rebuildQuorumConfig`
         const rand_seed = this.ledger.getBlockHeight() == height ?
-            this.ledger.getLastBlock().header.randomSeed() :
+            this.ledger.lastBlock().header.randomSeed() :
             this.ledger.getBlocksFrom(height).front.header.randomSeed();
         QuorumConfig[] quorums;
         foreach (idx, utxo; utxos)
