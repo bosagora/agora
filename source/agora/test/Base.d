@@ -1655,7 +1655,7 @@ private mixin template TestNodeMixin ()
     /// Get the active validator count for the current block height
     public override ulong countActive (in Height height)
     {
-        return this.enroll_man.validator_set.countActive(height);
+        return this.ledger.validatorCount(height);
     }
 
     /// Manually initiate a clock synchronization event
