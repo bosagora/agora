@@ -657,7 +657,7 @@ private struct TypedPayload
              */
             assert(this.payload.data.addresses.length == 1);
             return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.data.ttl,
-                Domain.fromSafeString(this.payload.data.addresses[0].host));
+                Domain.fromString(this.payload.data.addresses[0].host));
 
         case TYPE.A:
             // FIXME: Remove allocation
