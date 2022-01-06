@@ -648,7 +648,7 @@ public class TestAPIManager
     public auto validators ()
     {
         // This is a crude way to get validators, but it works
-        return this.nodes.filter!(n => n.address.startsWith("validator-")).map!(np => np.client);
+        return this.nodes.filter!(n => n.client.handshake(PublicKey.init).key != PublicKey.init).map!(n => n.client);
     }
 
     /// Registry holding the nodes
@@ -1298,6 +1298,12 @@ public class TestAPIManager
     public void ensureTxInPool (in Hash hash)
     {
         this.ensureTxInPool(iota(this.clients.length), hash);
+    }
+
+    /// Resolve a hostname
+    public auto resolve (Address addr)
+    {
+        return new LocalRestDNSResolver(this.dns_chan).resolve(addr);
     }
 }
 
@@ -2060,6 +2066,8 @@ public struct TestConf
 
         // Always set to true, cannot be overriden, but also set here for clarity
         testing: true,
+        // Unittest realm
+        realm: Domain.fromSafeString("unittest.bosagora.io."),
     };
 
     /// Base values for the `consensus` section
@@ -2241,7 +2249,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     Address validatorAddress (size_t idx, KeyPair key)
     {
-        return Address(format("http://Validator-%s.%s.localrest", idx, key.address));
+        return Address(format("agora://10.0.0.%s", idx));
     }
 
     Address fullNodeAddress (size_t idx)
