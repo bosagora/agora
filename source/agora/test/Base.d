@@ -619,6 +619,9 @@ public class TestAPIManager
     /// The name registry used in this network
     public NodePair dns;
 
+    /// The channel that the dns server listens to
+    public Channel!DNSQuery dns_chan;
+
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
@@ -872,7 +875,8 @@ public class TestAPIManager
     {
         auto time = new shared(TimePoint)(this.initial_time);
         auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.registry,
-            this.blocks, this.test_conf, time, eArgs, conf.node.timeout, file, line);
+            this.blocks, this.test_conf, time, this.dns_chan, eArgs,
+            conf.node.timeout, file, line);
 
         foreach (ref interf; conf.interfaces)
         {
@@ -904,9 +908,10 @@ public class TestAPIManager
         assert(conf.interfaces.length == 1);
 
         auto time = new shared(TimePoint)(this.initial_time);
+        this.dns_chan = new Channel!DNSQuery();
         auto cli = RemoteAPI!FullRegistryAPI.spawn!RegistryNode(
             conf, &this.registry, this.blocks, this.test_conf, time,
-            conf.node.timeout, file, line);
+            this.dns_chan, conf.node.timeout, file, line);
         auto casted = new RemoteAPI!(TestAPI)(cli.listener(), conf.node.timeout);
 
         this.dns = NodePair(conf.interfaces[0].address, casted, time);
@@ -1596,6 +1601,9 @@ private mixin template TestNodeMixin ()
     /// Blocks to preload into the memory storage
     private immutable(Block)[] blocks;
 
+    /// Channel that DNS server listens to
+    private Channel!DNSQuery dns_chan;
+
     ///
     public override void start ()
     {
@@ -1647,13 +1655,20 @@ private mixin template TestNodeMixin ()
         assert(taskman !is null);
         return new TestNetworkManager(
             this.config, this.cacheDB, taskman, clock, this,
-            this.config.interfaces[0].address, this.nregistry);
+            this.config.interfaces[0].address,
+            this.nregistry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
     protected override EnrollmentManager makeEnrollmentManager ()
     {
         return super.makeEnrollmentManager();
+    }
+
+    /// Returns an instance of a DNSResolver
+    protected override DNSResolver makeDNSResolver ()
+    {
+        return new LocalRestDNSResolver(this.dns_chan);
     }
 
     /// Get the active validator count for the current block height
@@ -1790,11 +1805,12 @@ public class TestFullNode : FullNode, TestAPI
 
     ///
     public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(TimePoint)* cur_time)
+        in TestConf test_conf, shared(TimePoint)* cur_time, Channel!DNSQuery dns_chan)
     {
         this.nregistry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
+        this.dns_chan = dns_chan;
 
         // Keep in sync with `TestValidator` ctor
         Log.root.level(atomicLoad(defaultLogLevel), true);
@@ -1861,11 +1877,12 @@ public class TestValidatorNode : Validator, TestAPI
 
     ///
     public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
-                 in TestConf test_conf, shared(TimePoint)* cur_time)
+                 in TestConf test_conf, shared(TimePoint)* cur_time, Channel!DNSQuery dns_chan)
     {
         this.nregistry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
+        this.dns_chan = dns_chan;
 
         // This is normally done by `agora.node.Runner`
         // By default all output is written to the appender
