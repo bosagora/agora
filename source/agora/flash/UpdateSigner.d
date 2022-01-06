@@ -71,9 +71,6 @@ public class UpdateSigner
     /// Task manager
     private ITaskManager taskman;
 
-    /// Retry delay algorithm
-    private Backoff backoff;
-
     /***************************************************************************
 
         Constructor
@@ -99,8 +96,6 @@ public class UpdateSigner
         this.engine = engine;
         this.taskman = taskman;
         this.db = db;
-        this.backoff = new Backoff(this.flash_conf.retry_multiplier,
-            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
         this.load();
     }
@@ -178,6 +173,13 @@ public class UpdateSigner
         this.db.execute(
             "REPLACE INTO channels (chan_id, update_signer) VALUES (?, ?)",
             this.conf.chan_id, this.serialize_buffer);
+    }
+
+    /// Shortcut for the retry algorithm
+    private uint backoff (uint attempts) @safe
+    {
+        return getDelay(attempts, this.flash_conf.retry_multiplier,
+            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
     }
 
     /***************************************************************************
@@ -327,7 +329,7 @@ public class UpdateSigner
         const settle_fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
         foreach (attempt; 0 .. uint.max)
         {
-            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            const WaitTime = this.backoff(attempt).msecs;
             if (Clock.currTime() + WaitTime >= settle_fail_time)
                 break;  // timeout
 
@@ -374,7 +376,7 @@ public class UpdateSigner
             + this.flash_conf.max_retry_time;
         foreach (attempt; 0 .. uint.max)
         {
-            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            const WaitTime = this.backoff(attempt).msecs;
             if (Clock.currTime() + WaitTime >= update_fail_time)
                 break;  // timeout
 

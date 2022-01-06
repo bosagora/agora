@@ -117,9 +117,6 @@ public class Channel
     private FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
         Address address = Address.init) getFlashClient;
 
-    /// Retry delay algorithm
-    private Backoff backoff;
-
     /// Called when a channel update has been completed.
     private alias GetFeeUTXOs = FeeUTXOs delegate (ulong tx_size);
     /// Ditto
@@ -179,8 +176,6 @@ public class Channel
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
         this.getFeeUTXOs = getFeeUTXOs;
-        this.backoff = new Backoff(this.flash_conf.retry_multiplier,
-            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
 
         this.dump();
     }
@@ -229,8 +224,6 @@ public class Channel
         this.onPaymentComplete = onPaymentComplete;
         this.onUpdateComplete = onUpdateComplete;
         this.getFeeUTXOs = getFeeUTXOs;
-        this.backoff = new Backoff(this.flash_conf.retry_multiplier,
-            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
     }
 
     /***************************************************************************
@@ -362,6 +355,13 @@ public class Channel
             else
                 *field = deserializeFull!Type(dg);
         }
+    }
+
+    /// Shortcut for the retry algorithm
+    private uint backoff (uint attempts) @safe
+    {
+        return getDelay(attempts, this.flash_conf.retry_multiplier,
+            this.flash_conf.max_retry_delay.total!"msecs".to!uint);
     }
 
     /***************************************************************************
@@ -928,7 +928,7 @@ LOuter: while (1)
         const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
         foreach (attempt; 0 .. uint.max)
         {
-            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            const WaitTime = this.backoff(attempt).msecs;
             if (Clock.currTime() + WaitTime >= fail_time)
                 break;  // timeout
 
@@ -1189,7 +1189,7 @@ LOuter: while (1)
         const fail_time = Clock.currTime() + this.flash_conf.max_retry_time;
         foreach (attempt; 0 .. uint.max)
         {
-            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            const WaitTime = this.backoff(attempt).msecs;
             if (Clock.currTime() + WaitTime >= fail_time)
                 break;  // timeout
             this.taskman.wait(WaitTime);
@@ -1776,7 +1776,7 @@ LOuter: while (1)
 
             foreach (attempt; 0 .. uint.max)
             {
-                const WaitTime = this.backoff.getDelay(attempt).msecs;
+                const WaitTime = this.backoff(attempt).msecs;
                 if (Clock.currTime() + WaitTime >= fail_time)
                 {
                     // timeout
@@ -1943,7 +1943,7 @@ LOuter: while (1)
 
         foreach (attempt; 0 .. uint.max)
         {
-            const WaitTime = this.backoff.getDelay(attempt).msecs;
+            const WaitTime = this.backoff(attempt).msecs;
             if (Clock.currTime() + WaitTime >= fail_time)
             {
                 // timeout
