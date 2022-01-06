@@ -477,17 +477,12 @@ extern(D):
             return;
         }
 
-        if (slot_idx > 1) // Genesis block is not signed
+        if (!this.ledger.hasMajoritySignature(this.ledger.getBlockHeight()))
         {
-            auto last_block = this.ledger.getLastBlock();
-            auto signed = last_block.header.validators;
-            if (signed.setCount <= signed.count() / 2)
-            {
-                this.log.trace(
-                    "checkNominate(): Require more than half signed last block, signed={}",
-                    signed);
-                return;
-            }
+            this.log.trace(
+                "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
+                this.ledger.getBlockHeight(), this.ledger.getLastBlock().header.validators);
+            return;
         }
 
         ConsensusData data;
