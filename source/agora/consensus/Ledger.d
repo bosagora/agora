@@ -70,12 +70,6 @@ public class Ledger
     /// data storage for all the blocks
     protected IBlockStorage storage;
 
-    /// Pool of transactions to pick from when generating blocks
-    protected TransactionPool pool;
-
-    /// TX Hashes Ledger encountered but dont have in the pool
-    protected Set!Hash unknown_txs;
-
     /// The last block in the ledger
     protected Block last_block;
 
@@ -117,15 +111,13 @@ public class Ledger
             utxo_set = the set of unspent outputs
             storage = the block storage
             enroll_man = the enrollmentManager
-            pool = the transaction pool
             fee_man = the FeeManager
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params,
         Engine engine, UTXOCache utxo_set, IBlockStorage storage,
-        EnrollmentManager enroll_man, TransactionPool pool,
-        FeeManager fee_man)
+        EnrollmentManager enroll_man, FeeManager fee_man)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
@@ -133,7 +125,6 @@ public class Ledger
         this.utxo_set = utxo_set;
         this.storage = storage;
         this.enroll_man = enroll_man;
-        this.pool = pool;
         this.fee_man = fee_man;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
@@ -329,64 +320,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Called when a new transaction is received.
-
-        If the transaction is accepted it will be added to
-        the transaction pool.
-
-        If the transaction is invalid, it's rejected and false is returned.
-
-        Params:
-            tx = the received transaction
-            double_spent_threshold_pct =
-                          See `Config.node.double_spent_threshold_pct`
-            min_fee_pct = See `Config.node.min_fee_pct`
-
-        Returns:
-            reason why invalid or null if the transaction is valid and was added
-            to the pool
-
-    ***************************************************************************/
-
-    public string acceptTransaction (in Transaction tx,
-        in ubyte double_spent_threshold_pct = 0,
-        in ushort min_fee_pct = 0) @safe
-    {
-        const Height expected_height = this.getBlockHeight() + 1;
-        auto tx_hash = hashFull(tx);
-
-        // If we were looking for this TX, stop
-        this.unknown_txs.remove(tx_hash);
-
-        if (tx.isCoinbase)
-            return "Coinbase transaction";
-        if (this.pool.hasTransactionHash(tx_hash))
-            return "Transaction already in the pool";
-
-        if (auto reason = tx.isInvalidReason(this.engine,
-                this.utxo_set.getUTXOFinder(),
-                expected_height, &this.fee_man.check,
-                &this.getPenaltyDeposit))
-            return reason;
-
-        auto min_fee = this.pool.getAverageFeeRate();
-        if (!min_fee.percentage(min_fee_pct))
-            assert(0);
-
-        Amount fee_rate;
-        if (auto err = this.fee_man.getTxFeeRate(tx, this.utxo_set.getUTXOFinder(),
-            &this.getPenaltyDeposit, fee_rate))
-            return err;
-        if (fee_rate < min_fee)
-            return "Fee rate is lower than this node's configured relative threshold (min_fee_pct)";
-        if (!this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
-            return "Double spend comes with a less-than-acceptable fee increase";
-
-        return this.pool.add(tx, fee_rate) ? null : "Rejected by storage";
-    }
-
-    /***************************************************************************
-
         Add a validated block to the Ledger.
 
         This will add all of the block's outputs to the UTXO set, as well as
@@ -397,7 +330,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    private void addValidatedBlock (in Block block) @safe
+    protected void addValidatedBlock (in Block block) @safe
     {
         log.info("Beginning externalization of block #{}", block.header.height);
         log.info("Transactions: {} - Enrollments: {}",
@@ -422,9 +355,6 @@ public class Ledger
             this.updateValidatorSet(block);
             ManagedDatabase.commitBatch();
         }
-
-        // Clear the unknown TXs every round (clear() is not @safe)
-        this.unknown_txs = Set!Hash.init;
 
         // if this was a block with fees payout
         if (block.header.height >= 2 * this.params.PayoutPeriod
@@ -514,9 +444,6 @@ public class Ledger
         // add the new UTXOs
         block.txs.each!(tx => this.utxo_set.updateUTXOCache(tx, height,
             this.params.CommonsBudgetAddress));
-
-        // remove the TXs from the Pool
-        block.txs.each!(tx => this.pool.remove(tx));
     }
 
     /***************************************************************************
@@ -548,48 +475,6 @@ public class Ledger
             }
             this.utxo_set.updateUTXOLock(enrollment.utxo_key, block.header.height + this.params.ValidatorCycle);
         }
-    }
-
-    /***************************************************************************
-
-        Checks whether the `tx` is an acceptable double spend transaction.
-
-        If `tx` is not a double spend transaction, then returns true.
-        If `tx` is a double spend transaction, and its fee is considerable higher
-        than the existing double spend transactions, then returns true.
-        Otherwise this function returns false.
-
-        Params:
-            tx = transaction
-            threshold_pct = percentage by which the fee of the new transaction has
-              to be higher, than the previously highest double spend transaction
-
-        Returns:
-            whether the `tx` is an acceptable double spend transaction
-
-    ***************************************************************************/
-
-    public bool isAcceptableDoubleSpent (in Transaction tx, ubyte threshold_pct) @safe
-    {
-
-        Amount rate;
-        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate).length)
-            return false;
-
-        // only consider a double spend transaction, if its fee is
-        // considerably higher than the current highest fee
-        auto fee_threshold = getDoubleSpentHighestFee(tx);
-
-        // if the fee_threshold is null, it means there won't be any double
-        // spend transactions, after this transaction is added to the pool
-        if (!fee_threshold.isNull())
-            fee_threshold.get().percentage(threshold_pct + 100);
-
-        if (!fee_threshold.isNull() &&
-            (!rate.isValid() || rate < fee_threshold.get()))
-            return false;
-
-        return true;
     }
 
     /***************************************************************************
@@ -711,83 +596,6 @@ public class Ledger
         NoUTXO = "Couldn't find UTXO for one or more Enrollment",
         NotInPool = "Transaction is not in the pool",
 
-    }
-
-    /***************************************************************************
-
-        Check whether the consensus data is valid.
-
-        Params:
-            data = consensus data
-            initial_missing_validators = missing validators at the beginning of
-               the nomination round
-
-        Returns:
-            the error message if validation failed, otherwise null
-
-    ***************************************************************************/
-
-    public string validateConsensusData (in ConsensusData data,
-        in uint[] initial_missing_validators) @trusted nothrow
-    {
-        const validating = this.getBlockHeight() + 1;
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
-
-        Transaction[] tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, tx_set, utxo_finder))
-            return fail_reason;
-
-        // av   == active validators (this block)
-        // avnb == active validators next block
-        // The consensus data is for the creation of the next block,
-        // so 'this block' means "current height + 1". While the ConsensusData
-        // does not contain information about what block we are validating,
-        // we assume that it's the block after the currently externalized one.
-        size_t av   = this.validatorCount(validating);
-        size_t avnb = this.validatorCount(validating + 1);
-
-        // First we make sure that we do not slash too many validators,
-        // as slashed validators cannot sign a block.
-        // If there are 6 validators, and we're slashing 5 of them,
-        // av = 6, missing_validators.length = 5, and `6 < 5 + 1` is still `true`.
-        if (av < (data.missing_validators.length + Enrollment.MinValidatorCount))
-            return InvalidConsensusDataReason.NotEnoughValidators;
-
-        // We're trying to slash more validators that there are next block
-        // FIXME: this check isn't 100% correct: we should check which validators
-        // we are slashing. It could be that our of 5 validators, 3 are expiring
-        // this round, and none of them have revealed their pre-image, in which
-        // case the 3 validators we slash should not block externalization.
-        if (avnb < data.missing_validators.length)
-            return InvalidConsensusDataReason.TooManyMPVs;
-        // FIXME: See above comment
-        avnb -= data.missing_validators.length;
-
-        // We need to make sure that we externalize a block that allows for the
-        // chain to make progress, otherwise we'll be stuck forever.
-        if ((avnb + data.enrolls.length) < Enrollment.MinValidatorCount)
-            return InvalidConsensusDataReason.NotEnoughValidators;
-
-        foreach (const ref enroll; data.enrolls)
-        {
-            UTXO utxo_value;
-            if (!this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value))
-                return InvalidConsensusDataReason.NoUTXO;
-            if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
-                enroll, utxo_value.output.address, validating, utxo_finder, &this.getPenaltyDeposit))
-                return fail_reason;
-        }
-
-        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators, utxo_finder))
-                return fail_reason;
-
-        catch (Exception exc)
-        {
-            log.error("Caught Exception while validating slashing data: {}", exc);
-            return "Internal error while validating slashing data";
-        }
-
-        return null;
     }
 
     /***************************************************************************
@@ -1139,180 +947,6 @@ public class Ledger
 
     /***************************************************************************
 
-        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
-
-    ***************************************************************************/
-
-    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
-    {
-        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
-    }
-
-    /***************************************************************************
-
-        Looks up transaction with hash `tx_hash`, then forwards to
-        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
-
-    ***************************************************************************/
-
-    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
-    {
-        auto tx = this.pool.getTransactionByHash(tx_hash);
-        if (tx == Transaction.init)
-            return InvalidConsensusDataReason.NotInPool;
-        return this.getTxFeeRate(tx, rate);
-    }
-
-    /***************************************************************************
-
-        Returns the highest fee among all the transactions which would be
-        considered as a double spent, if `tx` transaction was in the transaction
-        pool.
-
-        If adding `tx` to the transaction pool would not result in double spent
-        transaction, then the return value is Nullable!Amount().
-
-        Params:
-            tx = transaction
-
-        Returns:
-            the highest fee among all the transactions which would be
-            considered as a double spend, if `tx` transaction was in the
-            transaction pool.
-
-    ***************************************************************************/
-
-    public Nullable!Amount getDoubleSpentHighestFee (in Transaction tx) @safe
-    {
-        Set!Hash tx_hashes;
-        pool.gatherDoubleSpentTXs(tx, tx_hashes);
-
-        const(Transaction)[] txs;
-        foreach (const tx_hash; tx_hashes)
-        {
-            const tx_ret = this.pool.getTransactionByHash(tx_hash);
-            if (tx_ret != Transaction.init)
-                txs ~= tx_ret;
-        }
-
-        if (!txs.length)
-            return Nullable!Amount();
-
-        return nullable(txs.map!((tx)
-            {
-                Amount rate;
-                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
-                return rate;
-            }).maxElement());
-    }
-
-    /***************************************************************************
-
-        Get a transaction from pool by hash
-
-        Params:
-            tx = the transaction hash
-
-        Returns:
-            Transaction or Transaction.init
-
-    ***************************************************************************/
-
-    public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
-    {
-        return this.pool.getTransactionByHash(hash);
-    }
-
-    /***************************************************************************
-
-        Get the valid TX set that `data` is representing
-
-        Params:
-            data = consensus value
-            tx_set = buffer to write the found TXs
-            utxo_finder = UTXO finder with double spent protection
-
-        Returns:
-            `null` if node can build a valid TX set, a string explaining
-            the reason otherwise.
-
-    ***************************************************************************/
-
-    public string getValidTXSet (in ConsensusData data, ref Transaction[] tx_set,
-        scope UTXOFinder utxo_finder)
-        @safe nothrow
-    {
-        const expect_height = this.getBlockHeight() + 1;
-        bool[Hash] local_unknown_txs;
-
-        Amount tot_fee, tot_data_fee;
-        scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
-            const err = this.fee_man.check(tx, sum_unspent);
-            if (!err && !tx.isCoinbase)
-            {
-                tot_fee.add(sum_unspent);
-                tot_data_fee.add(
-                    this.fee_man.getDataFee(tx.payload.length));
-            }
-            return err;
-        };
-
-        foreach (const ref tx_hash; data.tx_set)
-        {
-            auto tx = this.pool.getTransactionByHash(tx_hash);
-            if (tx == Transaction.init)
-                local_unknown_txs[tx_hash] = true;
-            else if (auto fail_reason = tx.isInvalidReason(this.engine,
-                utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
-                return fail_reason;
-            else
-                tx_set ~= tx;
-        }
-
-        // This is payout block and we have at least two payout periods
-        if (expect_height >= 2 * this.params.PayoutPeriod
-            && expect_height % this.params.PayoutPeriod == 0)
-        {
-            auto coinbase_tx = this.getCoinbaseTX(expect_height);
-            auto coinbase_tx_hash = coinbase_tx.hashFull();
-            log.trace("getValidTXSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
-            assert(coinbase_tx.outputs.length > 0);
-
-            // Because CB TXs are never in the pool, they will always end up in
-            // local_unknown_txs.
-            if (local_unknown_txs.length == 0)
-                return "Missing Coinbase transaction";
-            if (!local_unknown_txs.remove(coinbase_tx_hash))
-                return "Missing matching Coinbase transaction"; // Coinbase tx is missing or different
-            tx_set ~= coinbase_tx;
-        }
-        if (local_unknown_txs.length > 0)
-        {
-            local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
-            log.warn("getValidTXSet: local_unknown_txs.length={}, unknown_txs.length={}",
-                local_unknown_txs.length, this.unknown_txs.length);
-            return InvalidConsensusDataReason.NotInPool;
-        }
-
-        return null;
-    }
-
-    /***************************************************************************
-
-        Get a set of TX Hashes that Ledger is missing
-
-        Returns:
-            set of TX Hashes that Ledger is missing
-
-    ***************************************************************************/
-
-    public Set!Hash getUnknownTXHashes () @safe nothrow
-    {
-        return this.unknown_txs;
-    }
-
-    /***************************************************************************
-
         Check if information for pre-images and slashed validators is valid
 
         Params:
@@ -1474,6 +1108,12 @@ public class NodeLedger : Ledger
     /// A delegate to be called when a block was externalized (unless `null`)
     protected void delegate (in Block, bool) @safe onAcceptedBlock;
 
+    /// Pool of transactions to pick from when generating blocks
+    protected TransactionPool pool;
+
+    /// Hashes of transactions the Ledger encountered but doesn't have in the pool
+    protected Set!Hash unknown_txs;
+
     /***************************************************************************
 
         Constructor
@@ -1497,8 +1137,12 @@ public class NodeLedger : Ledger
         FeeManager fee_man,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
-        super(params, engine, utxo_set, storage, enroll_man, pool, fee_man);
+        // Note: Those properties need to be set before calling the `super` ctor,
+        // as `Ledger`'s ctor will call `replayStoredBlock`, which would call
+        // a SEGV if the pool wasn't set.
         this.onAcceptedBlock = onAcceptedBlock;
+        this.pool = pool;
+        super(params, engine, utxo_set, storage, enroll_man, fee_man);
     }
 
     /// See `Ledger.acceptBlock`
@@ -1520,6 +1164,372 @@ public class NodeLedger : Ledger
         }
 
         return null;
+    }
+
+    /// See Ledger.addValidatedBlock`
+    protected override void addValidatedBlock (in Block block) @safe
+    {
+        super.addValidatedBlock(block);
+
+        // Clear the unknown TXs every round (clear() is not @safe)
+        this.unknown_txs = Set!Hash.init;
+    }
+
+    /// See `Ledger.updateUTXOSet`
+    protected override void updateUTXOSet (in Block block) @safe
+    {
+        super.updateUTXOSet(block);
+        block.txs.each!(tx => this.pool.remove(tx));
+    }
+
+    /***************************************************************************
+
+        Called when a new transaction is received.
+
+        If the transaction is accepted it will be added to
+        the transaction pool.
+
+        If the transaction is invalid, it's rejected and false is returned.
+
+        Params:
+            tx = the received transaction
+            double_spent_threshold_pct =
+                          See `Config.node.double_spent_threshold_pct`
+            min_fee_pct = See `Config.node.min_fee_pct`
+
+        Returns:
+            reason why invalid or null if the transaction is valid and was added
+            to the pool
+
+    ***************************************************************************/
+
+    public string acceptTransaction (in Transaction tx,
+        in ubyte double_spent_threshold_pct = 0,
+        in ushort min_fee_pct = 0) @safe
+    {
+        const Height expected_height = this.getBlockHeight() + 1;
+        auto tx_hash = hashFull(tx);
+
+        // If we were looking for this TX, stop
+        this.unknown_txs.remove(tx_hash);
+
+        if (tx.isCoinbase)
+            return "Coinbase transaction";
+        if (this.pool.hasTransactionHash(tx_hash))
+            return "Transaction already in the pool";
+
+        if (auto reason = tx.isInvalidReason(this.engine,
+                this.utxo_set.getUTXOFinder(),
+                expected_height, &this.fee_man.check,
+                &this.getPenaltyDeposit))
+            return reason;
+
+        auto min_fee = this.pool.getAverageFeeRate();
+        if (!min_fee.percentage(min_fee_pct))
+            assert(0);
+
+        Amount fee_rate;
+        if (auto err = this.fee_man.getTxFeeRate(tx, this.utxo_set.getUTXOFinder(),
+            &this.getPenaltyDeposit, fee_rate))
+            return err;
+        if (fee_rate < min_fee)
+            return "Fee rate is lower than this node's configured relative threshold (min_fee_pct)";
+        if (!this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
+            return "Double spend comes with a less-than-acceptable fee increase";
+
+        return this.pool.add(tx, fee_rate) ? null : "Rejected by storage";
+    }
+
+    /***************************************************************************
+
+        Get a transaction from pool by hash
+
+        Params:
+            tx = the transaction hash
+
+        Returns:
+            Transaction or Transaction.init
+
+    ***************************************************************************/
+
+    public Transaction getTransactionByHash (in Hash hash) @trusted nothrow
+    {
+        return this.pool.getTransactionByHash(hash);
+    }
+
+    /***************************************************************************
+
+        Get a set of TX Hashes that Ledger is missing
+
+        Returns:
+            set of TX Hashes that Ledger is missing
+
+    ***************************************************************************/
+
+    public Set!Hash getUnknownTXHashes () @safe nothrow
+    {
+        return this.unknown_txs;
+    }
+
+    /***************************************************************************
+
+        Get the valid TX set that `data` is representing
+
+        Params:
+            data = consensus value
+            tx_set = buffer to write the found TXs
+            utxo_finder = UTXO finder with double spent protection
+
+        Returns:
+            `null` if node can build a valid TX set, a string explaining
+            the reason otherwise.
+
+    ***************************************************************************/
+
+    public string getValidTXSet (in ConsensusData data, ref Transaction[] tx_set,
+        scope UTXOFinder utxo_finder)
+        @safe nothrow
+    {
+        const expect_height = this.getBlockHeight() + 1;
+        bool[Hash] local_unknown_txs;
+
+        Amount tot_fee, tot_data_fee;
+        scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
+            const err = this.fee_man.check(tx, sum_unspent);
+            if (!err && !tx.isCoinbase)
+            {
+                tot_fee.add(sum_unspent);
+                tot_data_fee.add(
+                    this.fee_man.getDataFee(tx.payload.length));
+            }
+            return err;
+        };
+
+        foreach (const ref tx_hash; data.tx_set)
+        {
+            auto tx = this.pool.getTransactionByHash(tx_hash);
+            if (tx == Transaction.init)
+                local_unknown_txs[tx_hash] = true;
+            else if (auto fail_reason = tx.isInvalidReason(this.engine,
+                utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
+                return fail_reason;
+            else
+                tx_set ~= tx;
+        }
+
+        // This is payout block and we have at least two payout periods
+        if (expect_height >= 2 * this.params.PayoutPeriod
+            && expect_height % this.params.PayoutPeriod == 0)
+        {
+            auto coinbase_tx = this.getCoinbaseTX(expect_height);
+            auto coinbase_tx_hash = coinbase_tx.hashFull();
+            log.trace("getValidTXSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
+            assert(coinbase_tx.outputs.length > 0);
+
+            // Because CB TXs are never in the pool, they will always end up in
+            // local_unknown_txs.
+            if (local_unknown_txs.length == 0)
+                return "Missing Coinbase transaction";
+            if (!local_unknown_txs.remove(coinbase_tx_hash))
+                return "Missing matching Coinbase transaction"; // Coinbase tx is missing or different
+            tx_set ~= coinbase_tx;
+        }
+        if (local_unknown_txs.length > 0)
+        {
+            local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
+            log.warn("getValidTXSet: local_unknown_txs.length={}, unknown_txs.length={}",
+                local_unknown_txs.length, this.unknown_txs.length);
+            return InvalidConsensusDataReason.NotInPool;
+        }
+
+        return null;
+    }
+
+    /***************************************************************************
+
+        Check whether the consensus data is valid.
+
+        Params:
+            data = consensus data
+            initial_missing_validators = missing validators at the beginning of
+               the nomination round
+
+        Returns:
+            the error message if validation failed, otherwise null
+
+    ***************************************************************************/
+
+    public string validateConsensusData (in ConsensusData data,
+        in uint[] initial_missing_validators) @trusted nothrow
+    {
+        const validating = this.getBlockHeight() + 1;
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
+
+        Transaction[] tx_set;
+        if (auto fail_reason = this.getValidTXSet(data, tx_set, utxo_finder))
+            return fail_reason;
+
+        // av   == active validators (this block)
+        // avnb == active validators next block
+        // The consensus data is for the creation of the next block,
+        // so 'this block' means "current height + 1". While the ConsensusData
+        // does not contain information about what block we are validating,
+        // we assume that it's the block after the currently externalized one.
+        size_t av   = this.validatorCount(validating);
+        size_t avnb = this.validatorCount(validating + 1);
+
+        // First we make sure that we do not slash too many validators,
+        // as slashed validators cannot sign a block.
+        // If there are 6 validators, and we're slashing 5 of them,
+        // av = 6, missing_validators.length = 5, and `6 < 5 + 1` is still `true`.
+        if (av < (data.missing_validators.length + Enrollment.MinValidatorCount))
+            return InvalidConsensusDataReason.NotEnoughValidators;
+
+        // We're trying to slash more validators that there are next block
+        // FIXME: this check isn't 100% correct: we should check which validators
+        // we are slashing. It could be that our of 5 validators, 3 are expiring
+        // this round, and none of them have revealed their pre-image, in which
+        // case the 3 validators we slash should not block externalization.
+        if (avnb < data.missing_validators.length)
+            return InvalidConsensusDataReason.TooManyMPVs;
+        // FIXME: See above comment
+        avnb -= data.missing_validators.length;
+
+        // We need to make sure that we externalize a block that allows for the
+        // chain to make progress, otherwise we'll be stuck forever.
+        if ((avnb + data.enrolls.length) < Enrollment.MinValidatorCount)
+            return InvalidConsensusDataReason.NotEnoughValidators;
+
+        foreach (const ref enroll; data.enrolls)
+        {
+            UTXO utxo_value;
+            if (!this.utxo_set.peekUTXO(enroll.utxo_key, utxo_value))
+                return InvalidConsensusDataReason.NoUTXO;
+            if (auto fail_reason = this.enroll_man.isInvalidCandidateReason(
+                enroll, utxo_value.output.address, validating, utxo_finder, &this.getPenaltyDeposit))
+                return fail_reason;
+        }
+
+        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators, utxo_finder))
+                return fail_reason;
+
+        catch (Exception exc)
+        {
+            log.error("Caught Exception while validating slashing data: {}", exc);
+            return "Internal error while validating slashing data";
+        }
+
+        return null;
+    }
+
+    /***************************************************************************
+
+        Checks whether the `tx` is an acceptable double spend transaction.
+
+        If `tx` is not a double spend transaction, then returns true.
+        If `tx` is a double spend transaction, and its fee is considerable higher
+        than the existing double spend transactions, then returns true.
+        Otherwise this function returns false.
+
+        Params:
+            tx = transaction
+            threshold_pct = percentage by which the fee of the new transaction has
+              to be higher, than the previously highest double spend transaction
+
+        Returns:
+            whether the `tx` is an acceptable double spend transaction
+
+    ***************************************************************************/
+
+    public bool isAcceptableDoubleSpent (in Transaction tx, ubyte threshold_pct) @safe
+    {
+        Amount rate;
+        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate).length)
+            return false;
+
+        // only consider a double spend transaction, if its fee is
+        // considerably higher than the current highest fee
+        auto fee_threshold = getDoubleSpentHighestFee(tx);
+
+        // if the fee_threshold is null, it means there won't be any double
+        // spend transactions, after this transaction is added to the pool
+        if (!fee_threshold.isNull())
+            fee_threshold.get().percentage(threshold_pct + 100);
+
+        if (!fee_threshold.isNull() &&
+            (!rate.isValid() || rate < fee_threshold.get()))
+            return false;
+
+        return true;
+    }
+
+    /***************************************************************************
+
+        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
+
+    ***************************************************************************/
+
+    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
+    {
+        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
+    }
+
+    /***************************************************************************
+
+        Looks up transaction with hash `tx_hash`, then forwards to
+        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
+
+    ***************************************************************************/
+
+    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
+    {
+        auto tx = this.pool.getTransactionByHash(tx_hash);
+        if (tx == Transaction.init)
+            return InvalidConsensusDataReason.NotInPool;
+        return this.getTxFeeRate(tx, rate);
+    }
+
+    /***************************************************************************
+
+        Returns the highest fee among all the transactions which would be
+        considered as a double spent, if `tx` transaction was in the transaction
+        pool.
+
+        If adding `tx` to the transaction pool would not result in double spent
+        transaction, then the return value is Nullable!Amount().
+
+        Params:
+            tx = transaction
+
+        Returns:
+            the highest fee among all the transactions which would be
+            considered as a double spend, if `tx` transaction was in the
+            transaction pool.
+
+    ***************************************************************************/
+
+    public Nullable!Amount getDoubleSpentHighestFee (in Transaction tx) @safe
+    {
+        Set!Hash tx_hashes;
+        pool.gatherDoubleSpentTXs(tx, tx_hashes);
+
+        const(Transaction)[] txs;
+        foreach (const tx_hash; tx_hashes)
+        {
+            const tx_ret = this.pool.getTransactionByHash(tx_hash);
+            if (tx_ret != Transaction.init)
+                txs ~= tx_ret;
+        }
+
+        if (!txs.length)
+            return Nullable!Amount();
+
+        return nullable(txs.map!((tx)
+            {
+                Amount rate;
+                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
+                return rate;
+            }).maxElement());
     }
 }
 
@@ -2054,7 +2064,6 @@ unittest
                 new UTXOSet(stateDB),
                 new MemBlockStorage(blocks),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
-                new TransactionPool(cacheDB),
                 new FeeManager(stateDB, params));
         }
 
