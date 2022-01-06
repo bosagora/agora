@@ -19,68 +19,56 @@ import libsodium.randombytes;
 
 import std.algorithm : min;
 
-/// Ditto
-public class Backoff
+/*******************************************************************************
+
+    Get the delay to apply before retrying
+
+    The unit is purposely left unspecified: Calling code can use `.seconds`,
+    `.msecs`, or whichever unit is deemed appropriate.
+
+    The algorithm is simply:
+    ```
+    sleep_time = random(0, min(max_delay, base * (2 ^^ attempt));
+    ```
+
+    Params:
+        RandomFunc = A function that takes a `uint` as an input and returns a
+                     value between `0` and the provided value, uniformly
+        attempt = the attempt number (can be 0, which will result in 0)
+        base    = The base multiplier
+        max_delay = Maximum possible delay this function may return
+
+    Returns:
+        the delay which should be used given the attempt number and the provided
+        base multiplier.
+
+*******************************************************************************/
+
+public uint getDelay (alias RandomFunc = getRandom)
+    (uint attempt, uint base, uint max_delay)
 {
-@safe @nogc nothrow:
+    // must clamp to 2 ^^ 32 - 1 as this is the highest uint32 we can use.
+    attempt = min(32, attempt);
+    const uint delay = min(max_delay,
+                           base * cast(uint)((ulong(2) ^^ attempt) - 1));
+    return RandomFunc(delay);
+}
 
-    /// sleep_ms = random(0, min(max_delay, base * (2 ^^ attempt))
-    private immutable uint base;
-    /// ditto
-    private immutable uint max_delay;
+/*******************************************************************************
 
-    /***************************************************************************
+    Call libsodium's `randombytes_uniform`
 
-        Initialize the base and max_delay.
+    Params:
+      value = the input value
 
-        Params:
-            base = the base multiplier
-            max_delay = maximum possible delay returned from `getDelay`
+    Returns:
+      A random value between [0, value], inclusive
 
-    ***************************************************************************/
+*******************************************************************************/
 
-    public this (uint base, uint max_delay)
-    {
-        assert(base > 0);
-        assert(max_delay > 0);
-        this.base = base;
-        this.max_delay = max_delay;
-    }
-
-    /***************************************************************************
-
-        Params:
-            attempt = the attempt number
-
-        Returns:
-            the delay in milliseconds which should be used given the attempt
-            number and the preconfigured base multiplier.
-
-    ***************************************************************************/
-
-    public uint getDelay (uint attempt)
-    {
-        // must clamp to 2 ^^ 32 - 1 as this is the highest uint32 we can use.
-        attempt = min(32, attempt);
-        const uint delay = min(this.max_delay, this.base *
-            cast(uint)((ulong(2) ^^ attempt) - 1));
-        return this.getRandom(delay);
-    }
-
-    /***************************************************************************
-
-        Params:
-            value = the input value
-
-        Returns:
-            a random value between [0, value], inclusive
-
-    ***************************************************************************/
-
-    protected uint getRandom (uint value)
-    {
-        return () @trusted { return randombytes_uniform(value); }();
-    }
+public uint getRandom (uint value) @safe nothrow @nogc
+{
+    return () @trusted { return randombytes_uniform(value); }();
 }
 
 ///
@@ -89,34 +77,22 @@ unittest
     import std.algorithm;
     import std.range;
 
-    /// adds a static Jitter (for testing)
-    static class DetermensiticBackoff : Backoff
+    /// Uses a static Jitter (for testing)
+    static uint deterministicRandom (uint value)
     {
-    @safe @nogc nothrow:
-        public this (uint base, uint max_delay)
-        {
-            super(base, max_delay);
-        }
-
-        protected override uint getRandom (uint value)
-        {
-            return value + 2;
-        }
+        return value + 2;
     }
+    alias testDelay = getDelay!deterministicRandom;
 
-    scope db_1 = new DetermensiticBackoff(5, 2000);
-    const del_1 = iota(0, 100).map!(attempt => db_1.getDelay(attempt)).array;
+    const del_1 = iota(0, 100).map!(attempt => testDelay(attempt, 5, 2000)).array;
     assert(del_1 == [2, 7, 17, 37, 77, 157, 317, 637, 1277, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002]);
 
-    scope db_2 = new DetermensiticBackoff(5, 4000);
-    const del_2 = iota(0, 100).map!(attempt => db_2.getDelay(attempt)).array;
+    const del_2 = iota(0, 100).map!(attempt => testDelay(attempt, 5, 4000)).array;
     assert(del_2 == [2, 7, 17, 37, 77, 157, 317, 637, 1277, 2557, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002]);
 
-    scope db_3 = new DetermensiticBackoff(20, 2000);
-    const del_3 = iota(0, 100).map!(attempt => db_3.getDelay(attempt)).array;
+    const del_3 = iota(0, 100).map!(attempt => testDelay(attempt, 20, 2000)).array;
     assert(del_3 == [2, 22, 62, 142, 302, 622, 1262, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002]);
 
-    scope db_4 = new DetermensiticBackoff(20, 4000);
-    const del_4 = iota(0, 100).map!(attempt => db_4.getDelay(attempt)).array;
+    const del_4 = iota(0, 100).map!(attempt => testDelay(attempt, 20, 4000)).array;
     assert(del_4 == [2, 22, 62, 142, 302, 622, 1262, 2542, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002, 4002]);
 }

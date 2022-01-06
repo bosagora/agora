@@ -239,9 +239,9 @@ public class FullNode : API
         public SysTime disabledUntil;
 
         ///
-        public void onCompletion (Backoff backoff) @safe nothrow
+        public void onCompletion (bool needBackoff) @safe nothrow
         {
-            if (backoff is null) // success
+            if (!needBackoff) // success
             {
                 this.attempts = 0;
                 this.disabledUntil = SysTime.init;
@@ -249,14 +249,13 @@ public class FullNode : API
             else
             {
                 this.attempts++;
+                // Return value will be interpreted as seconds, so our base is 10 seconds
+                // and a maximum wait time of 6 hours.
                 this.disabledUntil = StdClock.currTime() +
-                    backoff.getDelay(this.attempts).seconds();
+                    getDelay(this.attempts, 10, /* 6 hours */ 60 * 60 * 6).seconds();
             }
         }
     }
-
-    /// Backoff algorithm
-    protected Backoff backoff;
 
     /// Name registry, if enabled for this node
     protected NameRegistry registry;
@@ -281,9 +280,6 @@ public class FullNode : API
         import std.datetime.timezone: UTC;
 
         this.config = config;
-        // Return value will be interpreted as seconds, so our base is 10 seconds
-        // and a maximum wait time of 6 hours.
-        this.backoff = new Backoff(10, /* 6 hours */ 60 * 60 * 6);
         setHashMagic(this.config.node.chain_id);
         this.log = this.makeLogger();
         this.params = FullNode.makeConsensusParams(config);
@@ -1238,13 +1234,13 @@ public class FullNode : API
                 try
                 {
                     this.block_handlers[idx].client.pushBlock(block);
-                    this.block_handlers[idx].onCompletion(null);
+                    this.block_handlers[idx].onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending block height #{} to {} :{}",
                         block.header.height, this.block_handlers[idx].address, e);
-                    this.block_handlers[idx].onCompletion(this.backoff);
+                    this.block_handlers[idx].onCompletion(true);
                 }
             });
         }
@@ -1279,13 +1275,13 @@ public class FullNode : API
                 try
                 {
                     this.block_header_handlers[idx].client.pushBlockHeader(header);
-                    this.block_header_handlers[idx].onCompletion(null);
+                    this.block_header_handlers[idx].onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending block header at height #{} to {} :{}",
                         header.height, this.block_header_handlers[idx].address, e);
-                    this.block_header_handlers[idx].onCompletion(this.backoff);
+                    this.block_header_handlers[idx].onCompletion(true);
                 }
             });
         }
@@ -1318,13 +1314,13 @@ public class FullNode : API
                 try
                 {
                     this.preimage_handlers[idx].client.pushPreImage(pre_image);
-                    this.preimage_handlers[idx].onCompletion(null);
+                    this.preimage_handlers[idx].onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending preImage (enroll_key: {}) to {} :{}",
                         pre_image.utxo, this.preimage_handlers[idx].address, e);
-                    this.preimage_handlers[idx].onCompletion(this.backoff);
+                    this.preimage_handlers[idx].onCompletion(true);
                 }
             });
         }
@@ -1356,13 +1352,13 @@ public class FullNode : API
                 try
                 {
                     this.transaction_handlers[idx].client.pushTransaction(tx);
-                    this.transaction_handlers[idx].onCompletion(null);
+                    this.transaction_handlers[idx].onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending transaction (tx hash: {}) to {} :{}",
                         hashFull(tx), this.transaction_handlers[idx].address, e);
-                    this.transaction_handlers[idx].onCompletion(this.backoff);
+                    this.transaction_handlers[idx].onCompletion(true);
                 }
             });
         }
