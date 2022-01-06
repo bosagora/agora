@@ -48,7 +48,6 @@ import agora.utils.PrettyPrinter;
 
 import std.algorithm;
 import std.conv : to;
-import std.exception : assumeUnique, assumeWontThrow;
 import std.format;
 import std.range;
 import std.typecons : Nullable, nullable;
@@ -1348,14 +1347,12 @@ public class Ledger
         auto sorted_missing_validators_higher_bound = missing_validators_higher_bound.dup().sort();
 
         if (!setDifference(sorted_missing_validators_lower_bound, sorted_missing_validators).empty())
-            return "Lower bound violation - Missing validator mismatch " ~
-                assumeWontThrow(to!string(sorted_missing_validators_lower_bound)) ~
-                " is not a subset of " ~ assumeWontThrow(to!string(sorted_missing_validators));
+            return format!("Lower bound violation - Missing validator mismatch %s is not a subset of %s")
+                (sorted_missing_validators_lower_bound, sorted_missing_validators);
 
         if (!setDifference(sorted_missing_validators, sorted_missing_validators_higher_bound).empty())
-            return "Higher bound violation - Missing validator mismatch " ~
-                assumeWontThrow(to!string(sorted_missing_validators)) ~
-                " is not a subset of " ~ assumeWontThrow(to!string(sorted_missing_validators_higher_bound));
+            return format!("Higher bound violation - Missing validator mismatch %s is not a subset of %s")
+                (sorted_missing_validators, sorted_missing_validators_higher_bound);
 
         if (missing_validators.any!(idx => idx >= validators.length))
             return "Slashing non existing index";
@@ -1925,6 +1922,8 @@ version (unittest)
 private immutable(Block)[] genBlocksToIndex (
     size_t count, scope immutable(ConsensusParams) params)
 {
+    import std.exception : assumeUnique;
+
     const(Block)[] blocks = [ params.Genesis ];
     scope ledger = new TestLedger(genesis_validator_keys[0]);
     foreach (_; 0 .. count)
