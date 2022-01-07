@@ -17,6 +17,7 @@ module agora.node.Config;
 
 import agora.common.Amount;
 import agora.common.BanManager;
+import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.Types;
 import agora.config.Attributes;
@@ -287,53 +288,12 @@ public struct NodeConfig
     public @Optional Duration relay_tx_cache_exp;
 
     /// The realm to which this node belongs (a domain name)
-    public string realm = "coinnet.bosagora.io";
+    public immutable(Domain) realm = Domain.fromSafeString("coinnet.bosagora.io.");
 
     /// Validate this struct
     public void validate () const scope @safe
     {
-        static bool isDomainChar (dchar c) @safe pure nothrow @nogc
-        {
-            // Dot is handled by `splitter`
-            return isAlphaNum(c) || c == '-';
-        }
-
-        ensure(this.realm.length > 0, "node.realm cannot be empty");
-
-        auto rng = this.realm.splitter('.');
-        assert(!rng.empty);
-        ensure(rng.front.length > 0,
-            "node.realm ('{}')starts with a dot ('.'), which is not allowed. Remove it.",
-            this.realm);
-
-        do {
-            // It might be the empty label, in which case it needs to be last
-            if (rng.front.length == 0)
-            {
-                rng.popFront();
-                ensure(rng.empty,
-                    "node.realm ('{}') contains an empty label, which is not " ~
-                    "allowed. Remove the double dot.",
-                    this.realm);
-                break;
-            }
-            ensure(rng.front.length <= 63,
-                "node.realm ('{}') contains a label ('{}') which is longer " ~
-                "than 63 characters ({} characters), which is not allowed.",
-                this.realm, rng.front, rng.front.length);
-
-            ensure(rng.front.all!isDomainChar,
-                   "node.realm: label '{}' contains non-alpha characters. " ~
-                   "Only alphanumeric ('a' to 'z', 'A' to 'Z', '0' to '9') and dash ('-'_ are allowed.",
-                   rng.front);
-
-            ensure(rng.front[0] != '-',
-                   "node.realm: label '{}' cannot start with a dash", rng.front);
-            ensure(rng.front[$-1] != '-',
-                   "node.realm: label '{}' cannot end with a dash", rng.front);
-
-            rng.popFront();
-        } while (!rng.empty);
+        ensure(this.realm != Domain.fromSafeString("."), "node.realm cannot be empty");
     }
 }
 
