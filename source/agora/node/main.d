@@ -24,6 +24,7 @@ else:
 
 import agora.common.FileBasedLock;
 import agora.config.Config;
+import agora.config.Exceptions;
 import agora.node.admin.Setup;
 import agora.node.Config;
 import agora.node.FullNode;
@@ -136,10 +137,16 @@ private int main (string[] args)
     {
         try
             return Nullable!Config(parseConfigFile!Config(cmdln));
-        catch (Exception ex)
+        catch (ConfigException ex)
         {
             writefln("Failed to parse configuration file '%s'", cmdln.config_path);
-            writeln(ex);
+            writefln("%S", ex);
+            return Nullable!Config();
+        }
+        catch (Exception ex)
+        {
+            writefln("Failed to read configuration file '%s'", cmdln.config_path);
+            writeln(ex.message());
             return Nullable!Config();
         }
     }();
