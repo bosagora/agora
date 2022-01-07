@@ -87,8 +87,7 @@ public class Validator : FullNode, API
     {
         assert(config.validator.enabled);
         super(config);
-        this.quorum_params = QuorumParams(this.params.MaxQuorumNodes,
-            this.params.QuorumThreshold);
+        this.quorum_params = QuorumParams(this.params.QuorumThreshold);
 
         auto vledger = cast(ValidatingLedger) this.ledger;
         assert(vledger !is null);

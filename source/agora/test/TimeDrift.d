@@ -23,7 +23,6 @@ import agora.consensus.data.genesis.Test : GenesisBlock;
 unittest
 {
     TestConf conf;
-    conf.consensus.max_quorum_nodes = 5;
     conf.consensus.quorum_threshold = 100;
     conf.consensus.block_interval = 1.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
@@ -36,14 +35,6 @@ unittest
 
     // Make sure nodes have revealed their preimage for height 1
     network.waitForPreimages(GenesisBlock.header.enrollments, Height(1));
-
-    // sanity check for the generated quorum config
-    nodes.enumerate.each!((idx, node) =>
-        retryFor(node.getQuorumConfig().threshold == conf.consensus.max_quorum_nodes &&
-                node.getQuorumConfig().nodes.length == conf.consensus.max_quorum_nodes,
-            5.seconds,
-            format("Node #%s has invalid quorum config for test: %s",
-                idx, node.getQuorumConfig())));
 
     // Check the node local time
     void checkNodeLocalTime (ulong idx, ulong expected_height)

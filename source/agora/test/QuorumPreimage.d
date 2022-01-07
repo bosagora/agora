@@ -66,22 +66,22 @@ unittest
 
     enum quorums_1 = [
         // 0
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 1, 3, 4, 5]),
 
         // 1
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 1, 2, 3, 4]),
 
         // 2
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 2, 3, 4, 5]),
 
         // 3
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 1, 2, 3, 5]),
 
         // 4
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 1, 2, 4, 5]),
 
         // 5
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 2, 3, 4, 5]),
 
         QuorumConfig.init,
         QuorumConfig.init,
@@ -121,28 +121,28 @@ unittest
 
     enum quorums_2 = [
         // 0
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 6, 7]),
 
         // 1
-        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 6]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 2
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 3
-        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 6]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 4
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 5
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 6
-        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 6]),
+        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
 
         // 7
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 7]),
     ];
 
     static assert(quorums_1 != quorums_2);
@@ -170,28 +170,28 @@ unittest
     // which use a different preimage
     enum quorums_3 = [
         // 0
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 1
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 2
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 3
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 4
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 5
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
 
         // 6
-        QuorumConfig(6, [0, 1, 2, 3, 4, 5, 6]),
+        QuorumConfig(5, [1, 2, 3, 4, 5, 6]),
 
         // 7
-        QuorumConfig(6, [0, 1, 3, 4, 5, 6, 7]),
+        QuorumConfig(5, [0, 1, 4, 5, 6, 7]),
     ];
 
     static assert(quorums_2 != quorums_3);
