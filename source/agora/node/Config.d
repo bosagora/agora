@@ -141,11 +141,6 @@ public struct Config
 
         if (this.consensus.quorum_threshold < 1 || this.consensus.quorum_threshold > 100)
             throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
-
-        // Work around https://github.com/bosagora/config/issues/3
-        this.node.validate();
-        if (this.registry.enabled)
-            this.registry.validate();
     }
 }
 
