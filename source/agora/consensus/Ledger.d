@@ -916,7 +916,7 @@ public class Ledger
             return "Found Coinbase transaction in a non payout block";
 
         // Finally, validate the signatures
-        return this.validateBlockSignature(block);
+        return this.validateBlockSignature(block.header);
     }
 
     /***************************************************************************
@@ -961,16 +961,16 @@ public class Ledger
 
     ***************************************************************************/
 
-    private string validateBlockSignature (in Block block) @safe nothrow
+    public string validateBlockSignature (in BlockHeader header) @safe nothrow
     {
         import agora.crypto.ECC;
 
         Point sum_K;
         Scalar sum_s;
-        const Scalar challenge = hashFull(block);
+        const Scalar challenge = hashFull(header);
         ValidatorInfo[] validators;
         try
-            validators = this.getValidators(block.header.height);
+            validators = this.getValidators(header.height);
         catch (Exception exc)
         {
             this.log.error("Exception thrown by getActiveValidatorPublicKey while externalizing valid block: {}", exc);
@@ -978,25 +978,25 @@ public class Ledger
         }
 
         // Check that more than half have signed
-        if (!this.hasMajoritySignature(block.header))
-            if (auto fail_msg = this.handleNotSignedByMajority(block.header, validators))
+        if (!this.hasMajoritySignature(header))
+            if (auto fail_msg = this.handleNotSignedByMajority(header, validators))
                 return fail_msg;
 
-        log.trace("Checking signature, participants: {}/{}", block.header.validators.setCount, validators.length);
+        log.trace("Checking signature, participants: {}/{}", header.validators.setCount, validators.length);
         foreach (idx, validator; validators)
         {
             const K = validator.address;
             assert(K != PublicKey.init, "Could not find the public key associated with a validator");
 
-            if (!block.header.validators[idx])
+            if (!header.validators[idx])
             {
                 // This is not an error, we might just receive the signature later
                 log.trace("Block#{}: Validator {} (idx: {}) has not yet signed",
-                          block.header.height, K, idx);
+                          header.height, K, idx);
                 continue;
             }
 
-            const pi = block.header.preimages[idx];
+            const pi = header.preimages[idx];
             // TODO: Currently we consider that validators slashed at this height
             // can sign the block (e.g. they have a space in the bit field),
             // however without their pre-image they can't sign the block.
@@ -1010,16 +1010,16 @@ public class Ledger
         assert(sum_K != Point.init, "Block has validators but no signature");
 
         // If this doesn't match, the block is not self-consistent
-        if (sum_s != block.header.signature.s)
+        if (sum_s != header.signature.s)
         {
             log.error("Block#{}: Signature's `s` mismatch: Expected {}, got {}",
-                      block.header.height, sum_s, block.header.signature.s);
+                      header.height, sum_s, header.signature.s);
             return "Block: Invalid schnorr signature (s)";
         }
-        if (!BlockHeader.verify(sum_K, sum_s, block.header.signature.R, challenge))
+        if (!BlockHeader.verify(sum_K, sum_s, header.signature.R, challenge))
         {
-            log.error("Block#{}: Invalid signature: {}", block.header.height,
-                      block.header.signature);
+            log.error("Block#{}: Invalid signature: {}", header.height,
+                      header.signature);
             return "Block: Invalid signature";
         }
 
