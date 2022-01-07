@@ -1100,7 +1100,8 @@ extern(D):
             this.last_confirmed_height = Height(envelope.statement.slotIndex);
 
         SCPEnvelope env = cast()envelope;
-        log.trace("Emitting envelope: {}", scpPrettify(&envelope, &this.getQSet));
+        log.trace("Emitting envelope: {} to validators: {}", scpPrettify(&envelope, &this.getQSet),
+            this.network.validators().map!(v => v.key));
 
         try
         {

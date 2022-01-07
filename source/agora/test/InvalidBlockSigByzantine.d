@@ -114,7 +114,7 @@ unittest
 {
     TestConf conf;
     conf.node.block_catchup_interval = 100.msecs; // force catchup
-    conf.consensus.quorum_threshold = 83;
+    conf.consensus.quorum_threshold = 80;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadPreimage))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -122,7 +122,7 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
     auto last_node = nodes[$ - 1];
-    assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
+    assert(last_node.getQuorumConfig().threshold == 4); // quorum size is 5 so we need 4 nodes for slice
     auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.postTransaction(tx));
     // Trigger generation of block
@@ -138,7 +138,7 @@ unittest
 {
     TestConf conf;
     conf.node.block_catchup_interval = 100.msecs; // force catchup
-    conf.consensus.quorum_threshold = 83;
+    conf.consensus.quorum_threshold = 80;
     auto network = makeTestNetwork!(ByzantineManager!(ByzantineReason.BadSecretKey))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -146,7 +146,7 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
     auto last_node = nodes[$ - 1];
-    assert(last_node.getQuorumConfig().threshold == 5); // We should need 5 nodes
+    assert(last_node.getQuorumConfig().threshold == 4); // quorum size is 5 so we need 4 nodes for slice
     auto txes = genesisSpendable().takeExactly(1).map!(txb => txb.sign()).array();
     txes.each!(tx => last_node.postTransaction(tx));
     // Trigger generation of block

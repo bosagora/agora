@@ -114,6 +114,7 @@ unittest
 {
     TestConf conf;
     conf.node.block_catchup_interval = 100.msecs; // speed up catchup
+    conf.node.max_retries = 2; // we have sleeping nodes so waste less time
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -125,7 +126,8 @@ unittest
     auto node_1 = nodes[1];
     auto node_2 = nodes[2];
 
-    assert(node_1.getQuorumConfig().threshold == 5);
+    // 6 nodes has quorums of 5 nodes so quorum slice is 4
+    assert(node_1.getQuorumConfig().threshold == 4);
 
     // Create a block after the Genesis block
     network.generateBlocks(Height(1));
