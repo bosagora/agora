@@ -143,7 +143,7 @@ unittest
 unittest
 {
     TestConf conf;
-    conf.consensus.quorum_threshold = 66;
+    conf.consensus.quorum_threshold = 60; // quorum size will be 5 so we need to allow 3 / 5
     conf.node.max_retries = 2; // less retries as two are sleeping later
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
@@ -153,6 +153,8 @@ unittest
 
     auto nodes = network.clients;
     auto node_0 = nodes[0];
+
+    assert(node_0.getQuorumConfig().threshold == 3);
 
     // Get the genesis block, make sure it's the only block externalized
     auto blocks = node_0.getBlocksFrom(0, 2);

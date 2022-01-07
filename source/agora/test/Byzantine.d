@@ -198,7 +198,7 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 6); // We should need all 6 nodes
+    assert(node_1.getQuorumConfig().threshold == 5); // quorum slice is 5/5
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
@@ -208,7 +208,7 @@ unittest
 unittest
 {
     TestConf conf;
-    conf.consensus.quorum_threshold = 83;
+    conf.consensus.quorum_threshold = 80;
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 0))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -217,7 +217,7 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
+    assert(node_1.getQuorumConfig().threshold == 4); // quorum slice is 4/5
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
@@ -227,7 +227,7 @@ unittest
 unittest
 {
     TestConf conf;
-    conf.consensus.quorum_threshold = 83;
+    conf.consensus.quorum_threshold = 80;
     auto network = makeTestNetwork!(ByzantineManager!(true, 0, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -236,7 +236,7 @@ unittest
 
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
+    assert(node_1.getQuorumConfig().threshold == 4); // quorum slice is 4/5
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
@@ -260,7 +260,7 @@ private void waitForCount(size_t target_count, shared(size_t)* counter, string n
 unittest
 {
     TestConf conf;
-    conf.consensus.quorum_threshold = 66;
+    conf.consensus.quorum_threshold = 60;
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -268,7 +268,7 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 4); // We should need 4 nodes
+    assert(node_1.getQuorumConfig().threshold == 3); // 3 out of 5 nodes for each slice (so 2 can be byzantine)
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.postTransaction(tx));
     network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));
@@ -283,7 +283,7 @@ unittest
 unittest
 {
     TestConf conf;
-    conf.consensus.quorum_threshold = 83;
+    conf.consensus.quorum_threshold = 80;
     auto network = makeTestNetwork!(ByzantineManager!(true, 1, 1))(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -291,7 +291,7 @@ unittest
     network.waitForDiscovery();
     auto nodes = network.clients;
     auto node_1 = nodes[$ - 1];
-    assert(node_1.getQuorumConfig().threshold == 5); // We should need 5 nodes
+    assert(node_1.getQuorumConfig().threshold == 4); // 4 out of 5 nodes for each slice (so only 1 can be byzantine)
     auto txes = genesisSpendable().map!(txb => txb.sign()).array();
     txes.each!(tx => node_1.postTransaction(tx));
     network.waitForPreimages(network.blocks[0].header.enrollments, Height(6));

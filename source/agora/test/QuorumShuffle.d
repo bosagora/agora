@@ -28,7 +28,6 @@ unittest
 {
     TestConf conf;
     // makes it easier to test shuffle cycling
-    conf.consensus.max_quorum_nodes = 4;
     conf.consensus.quorum_shuffle_interval = 6;
     conf.node.max_listeners = 7;
     auto network = makeTestNetwork!TestAPIManager(conf);

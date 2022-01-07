@@ -112,7 +112,6 @@ unittest
 {
     TestConf conf;
     conf.node.test_validators = 4;
-    conf.consensus.max_quorum_nodes = 3; // Can be removed after dynamic quorums is merged
     conf.consensus.quorum_threshold = 66;
     conf.node.block_catchup_interval = 100.msecs; // speed up catchup
     conf.node.network_discovery_interval = 200.msecs; // speed up discovery
