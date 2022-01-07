@@ -79,9 +79,6 @@ public class Ledger
     /// The object controlling the validator set
     protected ValidatorSet validator_set;
 
-    /// Parameters for consensus-critical constants
-    protected immutable(ConsensusParams) params;
-
     /// The checker of transaction data payload
     protected FeeManager fee_man;
 
@@ -100,6 +97,20 @@ public class Ledger
 
     /// Ditto
     protected CachedCoinbase cached_coinbase;
+
+    /***************************************************************************
+
+        Consensus-critical constants used by this Ledger
+
+        Expose the `ConsensusParams` the `Ledger` is instantiated with.
+        In the main BOSAGORA network, this should be the default-constructed
+        consensus params. However, alternative network (such as TestNet) may
+        use a different set of parameters to achieve different outcome
+        (e.g. different externalization time or staking requirements).
+
+    ***************************************************************************/
+
+    public immutable(ConsensusParams) params;
 
     /***************************************************************************
 
