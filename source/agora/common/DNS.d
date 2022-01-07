@@ -978,6 +978,7 @@ public struct Domain
         @safe pure nothrow @nogc
     {
         assert(v.length > 0, "Domain instantiated with an empty value");
+        assert(v.length <= 255, "Domain names are limited to 255 characters");
         assert(v[$-1] == '.', "Domain instantiated with non-absolute name");
 
         size_t lastLabelIdx = 0;
@@ -988,6 +989,7 @@ public struct Domain
             // This assert is also present in `checkLabel` but the error message
             // is less precise.
             const chunk = v[lastLabelIdx .. idx];
+            assert(chunk.length > 0 || v.length == 1, "Domain contains an empty label");
             assert(chunk.length < 64,
                    "Domain instantiated with a label longer than 64 characters");
             auto errIdx = Domain.checkLabel(chunk);
@@ -1016,11 +1018,14 @@ public struct Domain
 
     public static inout(Domain) fromString (scope inout(char)[] v) @safe /* pure */
     {
-        ensure(v.length > 0, "Empty string passing to `Domain.fromString`");
+        ensure(v.length > 0, "Empty string passed to `Domain.fromString`");
 
         inout str = (inout x) @trusted {
             return cast(typeof(x)) ((x[$-1] == '.') ? x.dup : (x ~ '.'));
         }(v);
+
+        ensure(str.length <= 255,
+               "Domain names are limited to 255 characters, not {}", str.length);
 
         // This is a copy for `fromSafeString`, but uses exceptions
         size_t lastLabelIdx = 0;
@@ -1028,8 +1033,12 @@ public struct Domain
         {
             if (c != '.') continue;
             const chunk = str[lastLabelIdx .. idx];
+            ensure(chunk.length > 0 || str.length == 1,
+                   "Domain contains an empty label at index {} (total length: {})",
+                   idx, str.length);
             ensure(chunk.length < 64,
-                   "Domain instantiated with a label longer than 64 characters");
+                   "Domain instantiated with a label longer than 64 characters starting at index {}",
+                   idx);
             auto errIdx = Domain.checkLabel(chunk);
             ensure(errIdx == chunk.length,
                    "Label '{}' contains an invalid char at index {}: '{}'",
@@ -1152,7 +1161,7 @@ public struct Domain
                 continue;
             if (c >= '0' && c <= '9')
                 continue;
-            if (c == '-')
+            if (c == '-' && idx != 0 && idx != label.length - 1)
                 continue;
             return cast(ushort) idx;
         }
@@ -1282,6 +1291,69 @@ public struct Domain
             });
         serializePart!ubyte(0, dg);
     }
+}
+
+unittest
+{
+    import std.exception;
+
+    // Simple root domain check
+    assert(Domain.fromSafeString(".") == Domain.fromString("."));
+    // Case-insensitive comparison
+    assert(Domain.fromSafeString("bosagora.io.") == Domain.fromSafeString("BoSaGoRA.iO."));
+    // Case-insensitive hashing (otherwise AA don't work)
+    assert(Domain.fromSafeString("bosagora.io.").toHash() == Domain.fromString("BoSaGoRA.iO.").toHash());
+    // Things keep their case internally
+    assert(Domain.fromSafeString("BoSaGoRA.iO.").toString() == "BoSaGoRA.iO.");
+
+    // Make sure not everything is equal / hashes the same
+    assert(Domain.fromSafeString("bosagora.io.") != Domain.fromSafeString("dosagora.io."));
+    assert(Domain.fromSafeString("bosagora.io.").toHash() != Domain.fromSafeString("dosagora.io.").toHash());
+
+    // Slashes are acceptable as long as they are not at the beginning/end of a label
+    assert(Domain.fromString("hell-o.com") == Domain.fromSafeString("hell-o.com."));
+    // Underscores are acceptable as long as they are at the beginning of a label
+    assert(Domain.fromString("_hell-o.com") == Domain.fromSafeString("_hell-o.com."));
+
+    // Reject various malformed user input
+    assertThrown!Exception(Domain.fromString("hello..com"));
+    assertThrown!Exception(Domain.fromString("hello.com.."));
+    assertThrown!Exception(Domain.fromString(".."));
+    assertThrown!Exception(Domain.fromString("대한민국."));
+    assertThrown!Exception(Domain.fromString("대한민국."));
+    assertThrown!Exception(Domain.fromString(".hello.com"));
+    assertThrown!Exception(Domain.fromString("hello com"));
+    assertThrown!Exception(Domain.fromString("-hello.com"));
+    assertThrown!Exception(Domain.fromString("hello-.com"));
+    assertThrown!Exception(Domain.fromString("he_llo.com"));
+
+    // Label length check: 63 chars is okay, but >= 64 throws
+    assert(Domain.fromString("0123456789abcdef0123456789abcdef" ~
+                             "0123456789abcdef0123456789abcde.hello.com")
+           .toString().length == 63 + 10 + 1);
+    assertThrown!Exception(
+        Domain.fromString("0123456789abcdef0123456789abcdef" ~
+                          "0123456789abcdef0123456789abcdef.hello.com"));
+
+    // Domain length check: 255 chars is okay, more is just greedy
+    assert(Domain.fromString("0123456789abcdef0123456789abcde." ~ // 32
+                             "0123456789abcdef0123456789abcde." ~
+                             "0123456789abcdef0123456789abcde." ~
+                             "0123456789abcdef0123456789abcde." ~
+                             "0123456789abcdef0123456789abcde." ~
+                             "0123456789abcdef0123456789abcde." ~
+                             "0123456789abcdef0123456789abcde." ~
+                             "0123456789abcdef0123456789abcd.")
+           .toString().length == 255);
+    assertThrown!Exception(
+        Domain.fromString("0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde." ~
+                          "0123456789abcdef0123456789abcde")); // Final '.'
 }
 
 /// Context used while deserializing a DNS message
