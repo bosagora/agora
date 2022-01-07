@@ -138,20 +138,6 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
         output.formattedWrite!"[%s:%s] Assertion thrown during test: %s\n"
             (file, line, msg);
 
-        // Print stack trace starting from the failing line
-        scope trace = defaultTraceHandler(null);
-        bool findStart = false;
-        foreach (traceLine; trace)
-        {
-            if (!findStart)
-            {
-                if (traceLine.canFind("_d_assert"))
-                    findStart = true;
-                continue;
-            }
-            output.formattedWrite("%s\n", traceLine);
-        }
-
         // We only want to print the logs if we're in the main thread,
         // which means we are unittests non-`agora.test` modules.
         // Modules in `agora.test` use network tests and they will call `printLogs`
