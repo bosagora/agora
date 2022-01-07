@@ -181,7 +181,7 @@ public class NetworkManager
         /// Ditto, just behind a trampoline to avoid function-wide try/catch
         private void connect_canthrow ()
         {
-            auto client = this.outer.getNetworkClient(this.outer.taskman,
+            auto client = new NetworkClient(this.outer.taskman,
                 this.outer.banman, this.address,
                 this.api ? this.api :
                 this.outer.getClient(this.address,
@@ -1246,25 +1246,6 @@ public class NetworkManager
         settings.httpClientSettings.proxyURL = this.proxy_url;
 
         return new RestInterfaceClient!NameRegistryAPI(settings);
-    }
-
-    /***************************************************************************
-
-        Instantiates a networking client to be used with the given API instance.
-
-        Overridable in unittests.
-
-        Returns:
-            a NetworkClient
-
-    ***************************************************************************/
-
-    protected NetworkClient getNetworkClient (ITaskManager taskman,
-        BanManager banman, Address address, agora.api.Validator.API api,
-        Duration retry, size_t max_retries)
-    {
-        return new NetworkClient(taskman, banman, address, api, retry,
-            max_retries);
     }
 
     /***************************************************************************
