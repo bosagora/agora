@@ -2010,7 +2010,7 @@ unittest
 
     // Ensure that all previously-generated outputs are in the UTXO set
     {
-        auto findUTXO = ledger.utxo_set.getUTXOFinder();
+        auto findUTXO = ledger.getUTXOFinder();
         UTXO utxo;
         assert(
             blocks[$ - 1].txs.all!(
@@ -2142,8 +2142,8 @@ unittest
 
         ledger.throw_in_update_utxo = true;
         auto next_block = blocks[$ - 1];
-        assertThrown!Exception(ledger.addValidatedBlock(next_block));
-        assert(ledger.last_block == blocks[$ - 2]);  // not updated
+        assertThrown!Exception(assert(ledger.acceptBlock(next_block) is null));
+        assert(ledger.lastBlock() == blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
@@ -2166,12 +2166,12 @@ unittest
 
         ledger.throw_in_update_validators = true;
         auto next_block = blocks[$ - 1];
-        assertThrown!Exception(ledger.addValidatedBlock(next_block));
-        assert(ledger.last_block == blocks[$ - 2]);  // not updated
+        assertThrown!Exception(assert(ledger.acceptBlock(next_block) is null));
+        assert(ledger.lastBlock() == blocks[$ - 2]);  // not updated
         utxos = ledger.utxo_set.getUTXOs(WK.Keys.Genesis.address);
         assert(utxos.length == 8);
         utxos.each!(utxo => assert(utxo.unlock_height == params.ValidatorCycle));  // reverted
-        assert(ledger.getValidators(ledger.last_block.header.height).length == 6);
+        assert(ledger.getValidators(ledger.lastBlock().header.height).length == 6);
     }
 }
 
