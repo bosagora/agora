@@ -135,6 +135,9 @@ private int main (string[] args)
 
     Nullable!Config config = ()
     {
+        if (cmdln.config_path == "/dev/null")
+            return Nullable!Config(Config.init);
+
         try
             return Nullable!Config(parseConfigFile!Config(cmdln));
         catch (ConfigException ex)
