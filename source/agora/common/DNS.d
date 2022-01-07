@@ -953,6 +953,12 @@ public struct Domain
     @disable this () @safe pure nothrow @nogc;
     @disable this (inout(char)[]) inout @safe pure nothrow @nogc;
 
+    /// Returns: A canonical string representation of this Domain
+    public inout(const(char))[] toString () const inout scope @safe pure nothrow @nogc
+    {
+        return this.value;
+    }
+
     /***************************************************************************
 
         Construct an instance of a `Domain` from a previously validated string
