@@ -83,10 +83,9 @@ public class NameRegistry: NameRegistryAPI
     ];
 
     ///
-    public this (string realm, RegistryConfig config, NodeLedger ledger,
+    public this (Domain realm, RegistryConfig config, NodeLedger ledger,
         ManagedDatabase cache_db)
     {
-        assert(realm.length > 0, "No 'realm' provided");
         assert(ledger !is null);
         assert(cache_db !is null);
 
@@ -95,9 +94,9 @@ public class NameRegistry: NameRegistryAPI
 
         this.ledger = ledger;
 
-        this.realm = Domain.fromString(realm);
-        this.validators = Domain.fromString("validators." ~ realm);
-        this.flash = Domain.fromString("flash." ~ realm);
+        this.realm = realm;
+        this.validators = Domain.fromSafeString("validators." ~ realm.toString());
+        this.flash = Domain.fromSafeString("flash." ~ realm.toString());
 
 
         this.zones[this.realm] = ZoneData("realm", this.realm,
@@ -1080,7 +1079,8 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], null, null, (in Block block, bool changed) @safe {
         registry.onAcceptedBlock(block, changed);
     });
-    registry = new NameRegistry("test", RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
+    registry = new NameRegistry(Domain.fromSafeString("test."), RegistryConfig(true),
+                                ledger, new ManagedDatabase(":memory:"));
     // Generate payment transactions to the first 8 well-known keypairs
     auto txs = genesisSpendable().enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
