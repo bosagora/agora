@@ -1360,12 +1360,9 @@ public TYPE guessAddressType (in char[] address) @safe pure
 {
     import std.algorithm.searching : canFind;
 
-    // TODO: Implement support for IPv6 (need definitions in agora.common.DNS)
-    version (none)
-    {
-        if (address.canFind(':'))
-            return TYPE.AAAA;
-    }
+    if (address.canFind(':'))
+        return TYPE.AAAA;
+
     if (address.length > "255.255.255.255".length || address.length < "1.2.3.4".length)
         return TYPE.CNAME;
 
