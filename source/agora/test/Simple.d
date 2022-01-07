@@ -28,7 +28,6 @@ unittest
 {
     TestConf conf;
     conf.node.test_validators = 4;
-    conf.consensus.max_quorum_nodes = 3;
     simpleTest(conf);
 }
 

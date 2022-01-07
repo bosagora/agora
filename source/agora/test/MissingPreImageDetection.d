@@ -159,7 +159,7 @@ unittest
         recurring_enrollment : false,
     };
     // we have one node without pre-image and one giving false info
-    conf.consensus.quorum_threshold = 60;
+    conf.consensus.quorum_threshold = 60;   // 3 of 5 node quorum
     auto network = makeTestNetwork!BadNominatingAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -167,7 +167,7 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    assert(nodes[0].getQuorumConfig().threshold == 4); // We should need 4 nodes
+    assert(nodes[0].getQuorumConfig().threshold == 3); // Quorum slice is 3
     auto spendable = network.blocks[$ - 1].spendable().array;
 
     // discarded UTXOs (just to trigger block creation)

@@ -1583,7 +1583,7 @@ unittest
     import agora.consensus.PreImage;
 
     {
-        auto params = new immutable(ConsensusParams)(20, 7, 80, Amount(10));
+        auto params = new immutable(ConsensusParams)(20, 80, Amount(10));
         const(Block)[] blocks = [ GenesisBlock ];
         scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
@@ -1609,7 +1609,7 @@ unittest
     }
 
     {
-        auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins, 0); // 0 max size, thus force average fee check on every TX
+        auto params = new immutable(ConsensusParams)(20, 80, 0.coins, 0); // 0 max size, thus force average fee check on every TX
         const(Block)[] blocks = [ GenesisBlock ];
         scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
@@ -1780,7 +1780,7 @@ unittest
     import agora.consensus.data.genesis.Test;
 
     {
-        auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins, 1); // 1 KB Tx set size
+        auto params = new immutable(ConsensusParams)(20, 80, 0.coins, 1); // 1 KB Tx set size
         assert(params.MaxTxSetSize == 1);
         const(Block)[] blocks = [ GenesisBlock ];
         scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
@@ -1803,7 +1803,7 @@ unittest
     }
 
     {
-        auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins); // default Tx set size
+        auto params = new immutable(ConsensusParams)(20, 80, 0.coins); // default Tx set size
         const(Block)[] blocks = [ GenesisBlock ];
         scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
         ledger.simulatePreimages(Height(params.ValidatorCycle));

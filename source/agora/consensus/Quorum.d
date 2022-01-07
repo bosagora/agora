@@ -52,11 +52,33 @@ version (unittest)
 /// The quorum generator parameters which can be tweaked.
 public struct QuorumParams
 {
-    /// Maximum number of nodes to include in a quorum.
-    const MaxQuorumNodes = 7;
-
     /// Threshold percentage to use for the quorum configuration
     const uint QuorumThreshold = 80;
+}
+
+private ulong quorumSize (in ulong nodes) @safe nothrow
+{
+    // Assuming N = 3f + 1 where N = total nodes and f is max number of Byzantine / faulty tolerated
+    // Quorum size should be 2f + 1 to ensure overlap in at least f + 1 nodes
+    float f = (nodes - 1) / 3.0;
+    return cast(ulong) ceil(f * 2.0) + 1;
+}
+
+unittest
+{
+    assert(quorumSize(1) == 1);
+    assert(quorumSize(2) == 2);
+    assert(quorumSize(3) == 3);
+    assert(quorumSize(4) == 3);
+    assert(quorumSize(5) == 4);
+    assert(quorumSize(6) == 5);
+    assert(quorumSize(7) == 5);
+    assert(quorumSize(8) == 6);
+    assert(quorumSize(9) == 7);
+    assert(quorumSize(10) == 7);
+    assert(quorumSize(16) == 11);
+    assert(quorumSize(100) == 67);
+    assert(quorumSize(1000) == 667);
 }
 
 /*******************************************************************************
@@ -94,7 +116,7 @@ public QuorumConfig buildQuorumConfig (in NodeID key, in Hash[] utxo_keys,
     auto stake_amounts = stakes.map!(stake => stake.amount.integral);
 
     // +1 as we already added ourself
-    const MaxNodes = min(stakes.length + 1, params.MaxQuorumNodes);
+    const MaxNodes = quorumSize(utxo_keys.length);
     while (quorum.nodes.length < MaxNodes)
     {
         // dice() can only throw if the sum of stakes is zero
@@ -154,7 +176,7 @@ unittest
         hashFull(1), QuorumParams.init, 3);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    assert(countNodeInclusions(quorums, keys) == [4, 4, 4, 4]);
+    assertCounts(countNodeInclusions(quorums, keys), [4, 3, 2, 3]);
 }
 
 // 8 nodes with equal stakes (should show even distribution)
@@ -165,13 +187,13 @@ unittest
         hashFull(1), QuorumParams.init, 4);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys) == [8, 6, 8, 6, 7, 5, 8, 8]);
+    assertCounts(countNodeInclusions(quorums_1, keys), [7, 6, 8, 6, 4, 5, 7, 5]);
 
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
         hashFull(2), QuorumParams.init, 5);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys) == [7, 5, 7, 8, 8, 8, 7, 6]);
+    assertCounts(countNodeInclusions(quorums_2, keys), [6, 4, 6, 6, 7, 8, 6, 5]);
 }
 
 // 16 nodes with equal stakes (should show even distribution)
@@ -182,15 +204,13 @@ unittest
         hashFull(1), QuorumParams.init, 6);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys) ==
-        [7, 8, 7, 9, 9, 7, 8, 7, 8, 3, 7, 9, 4, 8, 6, 5]);
+     assertCounts(countNodeInclusions(quorums_1, keys), [11, 13, 9, 11, 12, 12, 12, 13, 11, 9, 10, 12, 10, 12, 11, 8]);
 
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
         hashFull(2), QuorumParams.init, 7);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys) ==
-        [8, 8, 5, 6, 7, 8, 8, 7, 6, 6, 7, 9, 9, 7, 7, 4]);
+    assertCounts(countNodeInclusions(quorums_2, keys), [13, 13, 10, 8, 9, 10, 13, 9, 12, 10, 10, 14, 14, 11, 11, 9]);
 }
 
 // 16 nodes with linearly ascending stakes (should show general increase from left to right in counts)
@@ -203,15 +223,13 @@ unittest
         QuorumParams.init, 8);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys) ==
-        [3, 3, 2, 4, 7, 6, 7, 9, 4, 8, 5, 9, 11, 13, 12, 9]);
+    assertCounts(countNodeInclusions(quorums_1, keys), [6, 6, 5, 10, 11, 12, 11, 12, 8, 11, 11, 15, 15, 16, 14, 13]);
 
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init, 9);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys) ==
-        [4, 2, 3, 4, 6, 9, 8, 9, 7, 8, 9, 9, 9, 7, 6, 12]);
+    assertCounts(countNodeInclusions(quorums_2, keys), [6, 5, 6, 7, 10, 14, 11, 14, 11, 12, 13, 14, 13, 13, 13, 14]);
 }
 
 // 16 nodes where two nodes own 66% of the stake (should show first and last heavily weighted)
@@ -226,7 +244,7 @@ unittest
     verifyQuorumsIntersect(quorums_1);
     auto count_1 = countNodeInclusions(quorums_1, keys);
     // If the buildQuorumConfig code is updated then the following list may need to be updated
-    assert(count_1 == [16, 6, 6, 6, 7, 5, 6, 7, 6, 5, 6, 6, 3, 6, 5, 16]);
+    assertCounts(count_1, [16, 7, 11, 11, 10, 13, 10, 12, 10, 10, 11, 10, 11, 10, 8, 16]);
     // The following checks that the nodes with a lot more at stake are included in almost all the quorums.
     assert(count_1[0] >= 14);
     assert(count_1[15] >= 14);
@@ -235,9 +253,9 @@ unittest
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
     auto count_2 = countNodeInclusions(quorums_2, keys);
-    assert(count_2 == [16, 8, 6, 5, 6, 9, 5, 5, 9, 3, 9, 5, 1, 4, 5, 16]);
     assert(count_2[0] >= 14);
     assert(count_2[15] >= 14);
+    assert(count_1 != count_2);
 }
 
 // 32 nodes where two nodes own 66% of the stake
@@ -249,18 +267,14 @@ unittest
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 12);
     verifyQuorumsSanity(quorums_1);
-    // verified to work but disabled because it runs slow with a
-    // non-max threshold (~20 seconds)
-    //verifyQuorumsIntersect(quorums_1);
+    verifyQuorumsIntersect(quorums_1);
     auto count_1 = countNodeInclusions(quorums_1, keys);
     assert(count_1[0] >= 30);
     assert(count_1[31] >= 30);
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init, 13);
     verifyQuorumsSanity(quorums_2);
-    // verified to work but disabled because it runs slow with a
-    // non-max threshold (~20 seconds)
-    //verifyQuorumsIntersect(quorums_2);
+    verifyQuorumsIntersect(quorums_2);
     auto count_2 = countNodeInclusions(quorums_2, keys);
     assert(count_2[0] >= 30);
     assert(count_2[31] >= 30);
@@ -276,18 +290,16 @@ unittest
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 14);
     verifyQuorumsSanity(quorums_1);
-    // verified to work but disabled because it runs slow with a
-    // non-max threshold (~20 minutes)
-    //verifyQuorumsIntersect(quorums_1);
+    // disabled and not verified to work because it runs too long
+    // verifyQuorumsIntersect(quorums_1);
     auto count_1 = countNodeInclusions(quorums_1, keys);
     assert(count_1[0] >= 60);
     assert(count_1[63] >= 60);
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init, 15);
     verifyQuorumsSanity(quorums_2);
-    // verified to work but disabled because it runs slow with a
-    // non-max threshold (~20 minutes)
-    //verifyQuorumsIntersect(quorums_2);
+    // disabled and not verified to work because it runs too long
+    // verifyQuorumsIntersect(quorums_2);
     auto count_2 = countNodeInclusions(quorums_2, keys);
     assert(count_2[0] >= 60);
     assert(count_2[63] >= 60);
@@ -303,56 +315,63 @@ unittest
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 16);
     verifyQuorumsSanity(quorums_1);
-    // not verified to work.
-    //verifyQuorumsIntersect(quorums_1);
+    // disabled and not verified to work because it runs too long
+    // verifyQuorumsIntersect(quorums_1);
     auto count_1 = countNodeInclusions(quorums_1, keys);
     assert(count_1[0] >= 120);
     assert(count_1[127] >= 120);
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
         QuorumParams.init, 17);
     verifyQuorumsSanity(quorums_2);
-    // not verified to work.
-    //verifyQuorumsIntersect(quorums_2);
+    // disabled and not verified to work because it runs too long
+    // verifyQuorumsIntersect(quorums_2);
     auto count_2 = countNodeInclusions(quorums_2, keys);
     assert(count_2[0] >= 120);
     assert(count_2[127] >= 120);
     assert(count_1 != count_2);
 }
 
-// using various different quorum parameter configurations
+// using different quorum threshold will not change the quorum selection
 unittest
 {
-    QuorumParams qp_1 = { MaxQuorumNodes : 4, QuorumThreshold : 80 };
+    QuorumParams qp_1 = { QuorumThreshold : 80 };
     auto keys = getKeys(10);
 
     auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
         hashFull(1), qp_1, 18);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    quorums_1.byValue.each!(qc => assert(qc.nodes.length <= 4));
-    quorums_1.byValue.each!(qc => assert(qc.threshold == 4));
-    assert(countNodeInclusions(quorums_1, keys) ==
-        [2, 4, 6, 4, 5, 4, 5, 2, 3, 5]);
+    quorums_1.byValue.each!(qc => assert(qc.nodes.length == 7));
+    quorums_1.byValue.each!(qc => assert(qc.threshold == 6));
+    auto count_1 = countNodeInclusions(quorums_1, keys);
+    assertCounts(count_1, [5, 8, 8, 8, 7, 7, 6, 8, 6, 7]);
 
-    QuorumParams qp_2 = { MaxQuorumNodes : 8, QuorumThreshold : 80 };
+    QuorumParams qp_2 = { QuorumThreshold : 60 };
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
         hashFull(1), qp_2, 19);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
     quorums_2.byValue.each!(qc => assert(qc.nodes.length <= 8));
-    quorums_2.byValue.each!(qc => assert(qc.threshold == 7));
-    assert(countNodeInclusions(quorums_2, keys) ==
-        [7, 9, 8, 9, 8, 7, 7, 10, 7, 8]);
+    quorums_2.byValue.each!(qc => assert(qc.threshold == 5));
+    assertCounts(countNodeInclusions(quorums_2, keys), count_1);
+}
 
-    QuorumParams qp_3 = { MaxQuorumNodes : 8, QuorumThreshold : 60 };
-    auto quorums_3 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
-        hashFull(1), qp_3, 20);
-    verifyQuorumsSanity(quorums_3);
-    verifyQuorumsIntersect(quorums_3);
-    quorums_3.byValue.each!(qc => assert(qc.nodes.length <= 8));
-    quorums_3.byValue.each!(qc => assert(qc.threshold == 5));
-    assert(countNodeInclusions(quorums_3, keys),
-        [7, 9, 8, 9, 8, 7, 7, 10, 7, 8]);
+version (unittest)
+void assertCounts (size_t[] actual_inclusions, size_t[] expected_inclusions, string file = __FILE__, int line = __LINE__)
+{
+    const printAllExpectations = false;
+    if (expected_inclusions != actual_inclusions)
+    {
+        auto msg = format!"[%s:%s] Failed as %s != %s"
+            (file, line, expected_inclusions, actual_inclusions);
+        if (printAllExpectations)
+        {
+            writeln(msg);
+            return;
+        }
+        writeln("To print all inclusion expectations set 'printAllExpectations = true' in assertCounts function");
+        assert(false, msg);
+    }
 }
 
 version (unittest)

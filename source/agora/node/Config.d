@@ -691,7 +691,6 @@ unittest
     immutable conf_example = `
 consensus:
     validator_cycle:           42
-    max_quorum_nodes:         420
     quorum_threshold:          96
     quorum_shuffle_interval:  210
     tx_payload_max_size:     2048
@@ -705,7 +704,6 @@ network:
 
     auto config = parseConfigString!Config(conf_example, "/dev/null");
     assert(config.consensus.validator_cycle == 42);
-    assert(config.consensus.max_quorum_nodes == 420);
     assert(config.consensus.quorum_threshold == 96);
     assert(config.consensus.quorum_shuffle_interval == 210);
     assert(config.consensus.tx_payload_max_size == 2048);
