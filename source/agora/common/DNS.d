@@ -722,15 +722,42 @@ public struct ResourceRecord
         {
             this.uri = val;
         }
-
-        public void toString (scope void delegate(in char[]) @safe sink)
-            const scope @trusted
-        {
-            formattedWrite!"%u byte(s)"(sink, this.binary.length);
-        }
     }
 
     public RDATA rdata;
+
+    /// Pretty-print the record
+    public void toString (scope void delegate(in char[]) @safe sink)
+        const scope @trusted
+    {
+        switch (this.type)
+        {
+        case TYPE.OPT:
+            formattedWrite!"OPT (payload: %s)"(
+                sink, cast(ushort) this.class_);
+            break;
+        case TYPE.A:
+            formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
+                sink, this.name, this.type, this.rdata.a);
+            break;
+        case TYPE.CNAME, TYPE.NS:
+            formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
+                sink, this.name, this.type, this.rdata.name);
+            break;
+        case TYPE.SOA:
+            formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
+                sink, this.name, this.type, this.rdata.soa);
+            break;
+        case TYPE.URI:
+            formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
+                sink, this.name, this.type, this.rdata.uri);
+            break;
+        default:
+            formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
+                sink, this.name, this.type, this.rdata.binary);
+            break;
+        }
+    }
 
     /// Support for network serialization
     public static T fromBinary (T) (scope ref DNSDeserializerContext ctx) @safe
