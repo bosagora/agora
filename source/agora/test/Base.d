@@ -2301,9 +2301,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp, eArgs);
 
-    foreach (ref conf; all_configs)
-        net.createNewNode(conf, file, line);
-
     import configy.Attributes : SetInfo;
     Config registry_config = {
       banman : ban_conf,
@@ -2328,6 +2325,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
       },
     };
     net.createNameRegistry(registry_config, file, line);
+
+    foreach (ref conf; all_configs)
+        net.createNewNode(conf, file, line);
 
     return net;
 }
