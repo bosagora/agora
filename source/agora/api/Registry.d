@@ -35,7 +35,7 @@ public struct RegistryPayloadData
     public ulong seq;
 
     /// TTL of the registry record
-    public uint ttl;
+    public uint ttl = 600;
 
     /// Compares payload data for equality, ignores `seq`
     /// and permutations of `addresses` are considered as equal, `ttl` is ignored
