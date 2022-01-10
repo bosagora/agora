@@ -56,8 +56,16 @@ public class NameRegistry: NameRegistryAPI
     ///
     protected RegistryConfig config;
 
+    /// Indexes for `zones`
+    private enum ZoneIndex
+    {
+        Realm = 0,
+        Validator = 1,
+        Flash = 2,
+    }
+
     /// Zones of the registry
-    private ZoneData[Domain] zones;
+    private ZoneData[ZoneIndex.max + 1] zones;
 
     /// The domain for `realm`
     private Domain realm;
@@ -98,13 +106,14 @@ public class NameRegistry: NameRegistryAPI
         this.validators = Domain.fromSafeString("validators." ~ realm.toString());
         this.flash = Domain.fromSafeString("flash." ~ realm.toString());
 
-
-        this.zones[this.realm] = ZoneData("realm", this.realm,
-            this.config.realm, cache_db, log);
-        this.zones[this.validators] = ZoneData("validator", this.validators,
-            this.config.validators, cache_db, log);
-        this.zones[this.flash] = ZoneData("flash",  this.flash,
-            this.config.flash, cache_db, log);
+        this.zones = [
+            ZoneData("realm", this.realm,
+                this.config.realm, cache_db, log),
+            ZoneData("validator", this.validators,
+                this.config.validators, cache_db, log),
+            ZoneData("flash",  this.flash,
+                this.config.flash, cache_db, log)
+        ];
 
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
     }
@@ -121,8 +130,8 @@ public class NameRegistry: NameRegistryAPI
     private void collectStats (Collector collector)
     {
         RegistryStats stats;
-        stats.registry_validator_record_count = this.zones[this.validators].count();
-        stats.registry_flash_record_count = this.zones[this.flash].count();
+        stats.registry_validator_record_count = this.zones[ZoneIndex.Validator].count();
+        stats.registry_flash_record_count = this.zones[ZoneIndex.Flash].count();
         collector.collect(stats);
     }
 
@@ -174,7 +183,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getValidator (PublicKey public_key)
     {
-        TypedPayload payload = this.zones[this.validators].get(public_key);
+        TypedPayload payload = this.zones[ZoneIndex.Validator].get(public_key);
         if (payload != TypedPayload.init)
         {
             log.trace("Successfull GET /validator: {} => {}", public_key, payload);
@@ -195,7 +204,7 @@ public class NameRegistry: NameRegistryAPI
 
     public auto validatorsAddresses ()
     {
-        return this.zones[this.validators].getAddresses();
+        return this.zones[ZoneIndex.Validator].getAddresses();
     }
 
     /***************************************************************************
@@ -217,9 +226,8 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postValidator (RegistryPayload registry_payload)
     {
-        auto validators_zone = this.validators in this.zones;
         TYPE payload_type = this.ensureValidPayload(registry_payload,
-            validators_zone.get(registry_payload.data.public_key));
+            this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
 
         // Last step is to check the state of the chain
         auto last_height = this.ledger.getBlockHeight() + 1;
@@ -238,7 +246,7 @@ public class NameRegistry: NameRegistryAPI
         auto stake = validator_info.empty ? enrollment.front.utxo_key : validator_info.front.utxo;
         assert(stake != Hash.init);
 
-        validators_zone.update(TypedPayload(payload_type, registry_payload, stake));
+        this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, registry_payload, stake));
     }
 
     /***************************************************************************
@@ -260,7 +268,7 @@ public class NameRegistry: NameRegistryAPI
 
     public override const(RegistryPayload) getFlashNode (PublicKey public_key)
     {
-        TypedPayload payload = this.zones[this.flash].get(public_key);
+        TypedPayload payload = this.zones[ZoneIndex.Flash].get(public_key);
         if (payload != TypedPayload.init)
         {
             log.trace("Successfull GET /flash_node: {} => {}", public_key, payload);
@@ -287,9 +295,8 @@ public class NameRegistry: NameRegistryAPI
 
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
-        auto flash_zone = this.flash in this.zones;
         TYPE payload_type = this.ensureValidPayload(registry_payload,
-            flash_zone.get(registry_payload.data.public_key));
+            this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
 
         auto range = this.ledger.getBlocksFrom(channel.height);
         ensure(!range.empty && isValidChannelOpen(channel.conf, range.front),
@@ -298,7 +305,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
-        flash_zone.update(TypedPayload(payload_type, registry_payload));
+        this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, registry_payload));
     }
 
     /***************************************************************************
@@ -438,9 +445,10 @@ public class NameRegistry: NameRegistryAPI
 
     auto findZone (Domain name, bool matches = true) @safe
     {
-        auto matching_zone = name in this.zones;
-        if (matching_zone)
-            return matches ? &matching_zone.answer_matches : &matching_zone.answer_owns;
+        foreach (i, const ref zone; this.zones)
+            if (zone.root == name)
+                return matches ?
+                    &this.zones[i].answer_matches : &this.zones[i].answer_owns;
 
         auto range = name.value.splitter('.');
 
@@ -466,10 +474,9 @@ public class NameRegistry: NameRegistryAPI
     public void onAcceptedBlock (in Block, bool)
         @safe
     {
-        auto validators_zone = this.validators in this.zones;
-        validators_zone.each!((TypedPayload tpayload) {
+        this.zones[ZoneIndex.Validator].each!((TypedPayload tpayload) {
             if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
-                validators_zone.remove(tpayload.payload.data.public_key);
+                this.zones[ZoneIndex.Validator].remove(tpayload.payload.data.public_key);
        });
     }
 }
