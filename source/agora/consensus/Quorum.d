@@ -514,23 +514,16 @@ private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
     NodeID[PublicKey] pk_to_id;
     foreach (idx, const ref amount; amounts.save.enumerate)
     {
-        Transaction tx = Transaction([ Output(amount, keys[idx], OutputType.Freeze) ]);
+        Output output = Output(amount, keys[idx], OutputType.Freeze);
 
         // simulating our own UTXO hashes to make the tests stable
-        Hash txhash = hashMulti(id, idx, amount);
-        foreach (size_t out_idx, ref output_; tx.outputs)
-        {
-            UTXO v = {
-                output: output_
-            };
-            storage[txhash] = v;
-            pk_to_id[keys[idx]] = idx;
-            id_to_pk[idx] = keys[idx];
-        }
+        Hash fake_hash = hashMulti(id, idx, amount);
+        storage[fake_hash] = UTXO(0, output);
+        pk_to_id[keys[idx]] = idx;
+        id_to_pk[idx] = keys[idx];
     }
 
-
-    Hash[] utxos = storage.keys;
+    Hash[] utxos = storage.keys; // AA keys which are the fake hashes
     foreach (idx, _; amounts.enumerate)
     {
         quorums[pk_to_id[keys[idx]]] = buildQuorumConfig(
