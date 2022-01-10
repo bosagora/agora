@@ -75,9 +75,6 @@ public final class VibeDNSResolver : DNSResolver
         {
             res.address = resolveHost(peers[idx].host);
             res.address.port = peers[idx].port;
-            res.connection = listenUDP(0, "0.0.0.0",
-                UDPListenOptions.reuseAddress | UDPListenOptions.reusePort);
-            res.connection.connect(res.address);
         }
     }
 
@@ -104,12 +101,16 @@ public final class VibeDNSResolver : DNSResolver
         auto msg = this.buildQuery(name, type);
         foreach (ref peer; this.resolvers)
         {
+            auto conn = listenUDP(0, "0.0.0.0",
+                UDPListenOptions.reuseAddress | UDPListenOptions.reusePort);
+            conn.connect(peer.address);
+
             auto bytes = msg.serializeFull;
             ubyte[] response;
             try
             {
-                peer.connection.send(bytes);
-                response = peer.connection.recv(5.seconds, buffer);
+                conn.send(bytes);
+                response = conn.recv(5.seconds, buffer);
             }
             catch (Exception exc)
             {
@@ -249,9 +250,6 @@ private struct PeerInfo
 
     /// Number of messages sent to this peer
     public size_t queries;
-
-    /// Re-usable UDP connection bound to that peer
-    public UDPConnection connection;
 }
 
 /// The 'default' DNS resolver if none is provided
