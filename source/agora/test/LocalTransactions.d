@@ -18,6 +18,7 @@ version (unittest):
 
 import agora.crypto.Hash;
 import agora.common.Set;
+import agora.consensus.Fee;
 import agora.consensus.Ledger;
 import agora.test.Base;
 import agora.utils.Log;
@@ -102,7 +103,7 @@ unittest
         {
             return new PickyLedger(this.params, this.engine,
                 this.utxo_set, this.storage, this.enroll_man, this.pool,
-                this.fee_man, &this.onAcceptedBlock);
+                new FeeManager(this.stateDB, this.params), &this.onAcceptedBlock);
         }
 
         public override TransactionResult postTransaction (in Transaction tx) @safe

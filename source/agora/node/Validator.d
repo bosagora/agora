@@ -25,6 +25,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.consensus.EnrollmentManager;
+import agora.consensus.Fee;
 import agora.consensus.protocol.Data;
 import agora.consensus.protocol.Nominator;
 import agora.consensus.Quorum;
@@ -482,7 +483,7 @@ public class Validator : FullNode, API
     {
         return new ValidatingLedger(this.params, this.engine,
             this.utxo_set, this.storage, this.enroll_man, this.pool,
-            this.fee_man, &this.onAcceptedBlock);
+            new FeeManager(this.stateDB, this.params), &this.onAcceptedBlock);
     }
 
     /***************************************************************************

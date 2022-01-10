@@ -126,9 +126,6 @@ public class FullNode : API
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
-    /// Fee manager
-    protected FeeManager fee_man;
-
     /// Set of unspent transaction outputs
     protected UTXOSet utxo_set;
 
@@ -293,7 +290,6 @@ public class FullNode : API
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
-        this.fee_man = this.makeFeeManager();
         this.taskman = this.makeTaskManager();
         this.clock = this.makeClock();
         this.network = this.makeNetworkManager(this.taskman, this.clock);
@@ -921,20 +917,6 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Returns an instance of a FeeManager
-
-        Returns:
-            the fee manager
-
-    ***************************************************************************/
-
-    protected FeeManager makeFeeManager ()
-    {
-        return new FeeManager(this.stateDB, this.params);
-    }
-
-    /***************************************************************************
-
         Returns an instance of a Ledger to be used for a `Fullnode`.
 
         It is overridden in `Validator` and also Test-suites can inject
@@ -948,7 +930,8 @@ public class FullNode : API
     protected NodeLedger makeLedger ()
     {
         return new NodeLedger(params, this.engine, this.utxo_set, this.storage,
-            this.enroll_man, this.pool, this.fee_man, &this.onAcceptedBlock);
+            this.enroll_man, this.pool, new FeeManager(this.stateDB, this.params),
+            &this.onAcceptedBlock);
     }
 
     /*+*************************************************************************
