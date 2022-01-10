@@ -193,7 +193,7 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    public Address[] getValidatorsAddresses ()
+    public auto validatorsAddresses ()
     {
         return this.zones[this.validators].getAddresses();
     }
@@ -1007,14 +1007,17 @@ private struct ZoneData
         return TypedPayload(node_type, payload, utxo);
     }
 
-    public Address[] getAddresses ()
+    /***************************************************************************
+
+        Returns:
+          A range of addresses contained in this zone
+
+    ***************************************************************************/
+
+    public auto getAddresses ()
     {
         auto results = this.db.execute(this.query_addresses_get);
-
-        if (results.empty)
-            return null;
-
-        return results.map!(r => Address(r["address"].as!string)).array;
+        return results.map!(r => Address(r["address"].as!string));
     }
 
     /***************************************************************************
