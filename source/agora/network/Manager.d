@@ -295,13 +295,18 @@ public class NetworkManager
     /// Registry client
     private NameRegistryAPI registry_client;
 
+    /// Ditto, but targets the local registry
+    private NameRegistry registry;
+
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
     protected agora.api.FullNode.API owner_node;
 
     /// Ctor
-    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
+    public this (in Config config, ManagedDatabase cache, ITaskManager taskman,
+                 Clock clock, agora.api.FullNode.API owner_node,
+                 NameRegistry registry)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
@@ -309,6 +314,7 @@ public class NetworkManager
         this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
+        this.registry = registry;
 
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
@@ -1084,7 +1090,60 @@ public class NetworkManager
         settings.httpClientSettings.readTimeout = this.config.node.timeout;
         settings.httpClientSettings.proxyURL = this.config.proxy.url;
 
-        return new RestInterfaceClient!NameRegistryAPI(settings);
+        auto remote =  new RestInterfaceClient!NameRegistryAPI(settings);
+
+        static final class CombinedClient : NameRegistryAPI
+        {
+            import agora.flash.api.FlashAPI;
+
+            /// The REST interface
+            private RestInterfaceClient!NameRegistryAPI remote;
+
+            /// The local registry
+            private NameRegistry local;
+
+            /// Constructor
+            public this (RestInterfaceClient!NameRegistryAPI remote, NameRegistry local)
+            {
+                this.remote = remote;
+                this.local = local;
+            }
+
+            ///
+            public override const(RegistryPayload) getValidator (PublicKey a1) @safe
+            {
+                auto r = this.local.getValidator(a1);
+                if (r !is RegistryPayload.init)
+                    return r;
+                auto r2 = this.remote.getValidator(a1);
+                if (r2 !is RegistryPayload.init)
+                    this.local.registerValidator(r2);
+                return r2;
+            }
+
+            ///
+            public override void postValidator (RegistryPayload a1) @safe
+            {
+                return this.remote.postValidator(a1);
+            }
+
+            ///
+            public override const(RegistryPayload) getFlashNode (PublicKey a1) @safe
+            {
+                auto r = this.local.getFlashNode(a1);
+                if (r !is RegistryPayload.init)
+                    return r;
+                return this.remote.getFlashNode(a1);
+            }
+
+            ///
+            public override void postFlashNode (RegistryPayload a1, KnownChannel a2) @safe
+            {
+                this.remote.postFlashNode(a1, a2);
+            }
+        }
+
+        return new CombinedClient(remote, this.registry);
     }
 
     /***************************************************************************

@@ -1681,6 +1681,7 @@ private mixin template TestNodeMixin ()
         assert(taskman !is null);
         return new TestNetworkManager(
             this.config, this.cacheDB, taskman, clock, this,
+            this.registry,
             this.config.interfaces[0].address,
             this.nregistry);
     }

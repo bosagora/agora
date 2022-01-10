@@ -281,11 +281,11 @@ public class FullNode : API
         this.cacheDB = this.makeCacheDB();
         this.taskman = this.makeTaskManager();
         this.clock = this.makeClock();
-        this.network = this.makeNetworkManager(this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
         this.pool = new TransactionPool(this.cacheDB, &getDoubleSpentSelector);
         this.enroll_man = this.makeEnrollmentManager();
         this.ledger = this.makeLedger();
+        this.network = this.makeNetworkManager(this.taskman, this.clock);
         // Note: Needs to be instantiated after `ledger` as it depends on it
         this.transaction_relayer = this.makeTransactionRelayer();
 
@@ -764,7 +764,8 @@ public class FullNode : API
 
     protected NetworkManager makeNetworkManager (ITaskManager taskman, Clock clock)
     {
-        return new NetworkManager(this.config, this.cacheDB, taskman, clock, this);
+        return new NetworkManager(this.config, this.cacheDB, taskman, clock,
+                                  this, this.registry);
     }
 
     protected TransactionRelayer makeTransactionRelayer ()
