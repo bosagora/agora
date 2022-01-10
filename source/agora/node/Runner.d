@@ -421,7 +421,8 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
         auto query = deserializeFull!Message(buffer[0 .. size]);
         registry.answerQuestions(
             query,
-            (in Message msg) @safe => msg.serializePart(writer, CompactMode.No));
+            (in Message msg) @safe => msg.serializePart(writer, CompactMode.No),
+            true);
 
         // Write the length at the begining
         assert(length >= 2);
