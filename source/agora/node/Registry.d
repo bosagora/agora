@@ -327,7 +327,7 @@ public class NameRegistry: NameRegistryAPI
     ***************************************************************************/
 
     public void answerQuestions (
-        in Message query, scope void delegate (in Message) @safe sender,
+        in Message query, string peer, scope void delegate (in Message) @safe sender,
         bool tcp = false)
         @safe
     {
@@ -411,7 +411,7 @@ public class NameRegistry: NameRegistryAPI
                 break;
             }
 
-            reply.header.RCODE = answer(q, reply);
+            reply.header.RCODE = answer(q, reply, peer);
 
             if (!tcp && reply.maxSerializedSize() > payloadSize)
             {
@@ -859,10 +859,12 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    public Header.RCode answer (bool matches, in Question q, ref Message reply) @safe
+    public Header.RCode answer (bool matches, in Question q, ref Message reply,
+        string peer) @safe
     {
         if (q.qtype == QTYPE.AXFR)
-            return matches ? this.doAXFR(reply) : Header.RCode.Refused;
+            return matches && this.config.allow_transfer.canFind(peer)
+                ? this.doAXFR(reply) : Header.RCode.Refused;
         else if (q.qtype == QTYPE.SOA)
         {
             if (matches)
@@ -886,15 +888,17 @@ private struct ZoneData
     }
 
     /// Ditto
-    public Header.RCode answer_matches (in Question q, ref Message reply) @safe
+    public Header.RCode answer_matches (in Question q, ref Message reply,
+        string peer) @safe
     {
-        return this.answer(true, q, reply);
+        return this.answer(true, q, reply, peer);
     }
 
     /// Ditto
-    public Header.RCode answer_owns (in Question q, ref Message reply) @safe
+    public Header.RCode answer_owns (in Question q, ref Message reply,
+        string peer) @safe
     {
-        return this.answer(false, q, reply);
+        return this.answer(false, q, reply, peer);
     }
 
     /***************************************************************************

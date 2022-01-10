@@ -319,7 +319,7 @@ private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry regis
             auto pack = udp.recv(buffer, ppeer);
             auto query = deserializeFull!Message(pack);
             registry.answerQuestions(
-                query,
+                query, peer.toAddressString,
                 (in Message msg) @safe => udp.send(msg.serializeFull(), ppeer));
 
         }
@@ -420,7 +420,7 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
 
         auto query = deserializeFull!Message(buffer[0 .. size]);
         registry.answerQuestions(
-            query,
+            query, conn.remoteAddress.toAddressString(),
             (in Message msg) @safe => msg.serializePart(writer, CompactMode.No),
             true);
 
