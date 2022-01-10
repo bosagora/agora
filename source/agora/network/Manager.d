@@ -765,7 +765,7 @@ public class NetworkManager
 
         try
         {
-            foreach (addr; registry.getValidatorsAddresses())
+            foreach (addr; registry.validatorsAddresses())
                 this.addAddress(addr);
         }
         catch (Exception ex)
