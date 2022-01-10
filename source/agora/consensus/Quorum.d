@@ -519,15 +519,14 @@ private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
         // simulating our own UTXO hashes to make the tests stable
         Hash fake_hash = hashMulti(id, idx, amount);
         storage[fake_hash] = UTXO(0, output);
-        pk_to_id[keys[idx]] = idx;
         id_to_pk[idx] = keys[idx];
     }
 
     Hash[] utxos = storage.keys; // AA keys which are the fake hashes
     foreach (idx, _; amounts.enumerate)
     {
-        quorums[pk_to_id[keys[idx]]] = buildQuorumConfig(
-            pk_to_id[keys[idx]], utxos, &storage.peekUTXO, rand_seed, params);
+        quorums[idx] = buildQuorumConfig(
+            idx, utxos, &storage.peekUTXO, rand_seed, params);
     }
 
     return quorums;
