@@ -79,7 +79,7 @@ public class NameRegistry: NameRegistryAPI
 
     /// Supported DNS query types
     private immutable QTYPE[] supported_query_types = [
-        QTYPE.A, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA, QTYPE.NS,
+        QTYPE.A, QTYPE.AAAA, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA, QTYPE.NS,
     ];
 
     ///
