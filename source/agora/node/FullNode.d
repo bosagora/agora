@@ -49,7 +49,6 @@ import agora.node.Config;
 import agora.node.Registry;
 import agora.consensus.Ledger;
 import agora.node.TransactionRelayer;
-import agora.script.Engine;
 import agora.serialization.Serializer;
 import agora.stats.App;
 import agora.stats.Block;
@@ -125,9 +124,6 @@ public class FullNode : API
 
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
-
-    /// Script execution engine
-    protected Engine engine;
 
     /// Transaction relayer
     protected TransactionRelayer transaction_relayer;
@@ -289,9 +285,6 @@ public class FullNode : API
         this.storage = this.makeBlockStorage();
         this.pool = this.makeTransactionPool();
         this.enroll_man = this.makeEnrollmentManager();
-        const ulong StackMaxTotalSize = 16_384;
-        const ulong StackMaxItemSize = 512;
-        this.engine = new Engine(StackMaxTotalSize, StackMaxItemSize);
         this.ledger = this.makeLedger();
         // Note: Needs to be instantiated after `ledger` as it depends on it
         this.transaction_relayer = this.makeTransactionRelayer();
@@ -502,18 +495,6 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Returns:
-            the existing instance of the execution engine
-
-    ***************************************************************************/
-
-    public Engine getEngine () @safe @nogc nothrow pure
-    {
-        return this.engine;
-    }
-
-    /***************************************************************************
-
         Periodically discovers new nodes in the network
 
     ***************************************************************************/
@@ -686,7 +667,6 @@ public class FullNode : API
             this.pool = null;
             this.ledger = null;
             this.enroll_man = null;
-            this.engine = null;
 
             // Finalized by `ManagedDatabase`
             this.storage = null;
@@ -911,7 +891,7 @@ public class FullNode : API
 
     protected NodeLedger makeLedger ()
     {
-        return new NodeLedger(params, this.stateDB, this.storage, this.engine,
+        return new NodeLedger(params, this.stateDB, this.storage,
             this.enroll_man, this.pool, &this.onAcceptedBlock);
     }
 

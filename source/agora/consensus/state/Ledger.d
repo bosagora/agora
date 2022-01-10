@@ -124,18 +124,18 @@ public class Ledger
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params, ManagedDatabase database,
-        IBlockStorage storage, Engine engine, ValidatorSet validator_set)
+        IBlockStorage storage, ValidatorSet validator_set)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
         this.stateDB = database;
         this.storage = storage;
-        this.engine = engine;
         this.utxo_set = new UTXOSet(database);
         this.fee_man = new FeeManager(database, params);
         this.validator_set = validator_set;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
+        this.engine = new Engine();
 
         // ensure latest checksum can be read
         this.last_block = this.storage.readLastBlock();

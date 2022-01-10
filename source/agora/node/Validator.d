@@ -483,7 +483,7 @@ public class Validator : FullNode, API
     protected override ValidatingLedger makeLedger ()
     {
         return new ValidatingLedger(this.params, this.stateDB, this.storage,
-            this.engine, this.enroll_man, this.pool, &this.onAcceptedBlock);
+            this.enroll_man, this.pool, &this.onAcceptedBlock);
     }
 
     /***************************************************************************
