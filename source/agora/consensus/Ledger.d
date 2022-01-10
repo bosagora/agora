@@ -228,7 +228,8 @@ public class NodeLedger : Ledger
         if (auto err = this.fee_man.getTxFeeRate(tx, this.utxo_set.getUTXOFinder(),
             &this.getPenaltyDeposit, fee_rate))
             return err;
-        if (fee_rate < min_fee)
+        const size_limit = this.params.MaxTxSetSize * 1024;
+        if (fee_rate < min_fee && this.pool.getPoolSize() >= size_limit) // If pool is sparsely populated, accept any fee.
             return "Fee rate is lower than this node's configured relative threshold (min_fee_pct)";
         if (!this.isAcceptableDoubleSpent(tx, double_spent_threshold_pct))
             return "Double spend comes with a less-than-acceptable fee increase";
@@ -1599,7 +1600,34 @@ unittest
     import agora.consensus.data.genesis.Test;
     import agora.consensus.PreImage;
 
-    auto params = new immutable(ConsensusParams)(20);
+    {
+    auto params = new immutable(ConsensusParams)(20, 7, 80, Amount(10));
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+
+    ushort min_fee_pct = 80;
+
+    auto no_fee_tx = genesisSpendable().front().refund(WK.Keys[0].address).feeRate(0.coins).sign();
+    assert(ledger.acceptTransaction(no_fee_tx, 0, min_fee_pct) !is null);
+
+    auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
+    assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct) is null);
+
+    // switch to a different input, even with low fees this should be accepted since pool is almost empty
+    auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
+    assert(ledger.acceptTransaction(different_tx, 0, min_fee_pct) is null);
+
+    // lower than average, but enough
+    auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
+    assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct) is null);
+
+    // overwrite the old TX
+    auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
+    assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
+    }
+
+    {
+    auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins, 0); // 0 max size, thus force average fee check on every TX
     const(Block)[] blocks = [ GenesisBlock ];
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
@@ -1619,6 +1647,7 @@ unittest
     // overwrite the old TX
     auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
     assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
+    }
 }
 
 unittest

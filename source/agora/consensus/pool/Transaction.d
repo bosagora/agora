@@ -477,6 +477,25 @@ public class TransactionPool
 
     /***************************************************************************
 
+        Returns:
+            Total size of the transactions in the pool in bytes
+
+    ***************************************************************************/
+
+    public size_t getPoolSize () @trusted nothrow
+    {
+        try
+        {
+            return this.db.execute("SELECT SUM(length(val)) FROM tx_pool").oneValue!size_t;
+        }
+        catch (Exception ex)
+            log.error("ManagedDatabase operation error on getTransactionByHash");
+
+        return 0;
+    }
+
+    /***************************************************************************
+
         Params:
             from = starting hash
 
@@ -935,6 +954,7 @@ unittest
     assert(pool.add(tx1, Amount(4)));
     assert(pool.add(tx2, Amount(12)));
 
+    assert(pool.getPoolSize() == tx1.serializeFull().length + tx2.serializeFull().length);
     assert(pool.getAverageFeeRate() == Amount(8));
 
     foreach (ref Hash hash, ref Transaction tx; pool)
@@ -944,4 +964,5 @@ unittest
 
     pool.remove(tx2);
     assert(pool.getAverageFeeRate() == Amount(4));
+    assert(pool.getPoolSize() == tx1.serializeFull().length);
 }
