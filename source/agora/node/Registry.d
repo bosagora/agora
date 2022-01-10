@@ -315,11 +315,13 @@ public class NameRegistry: NameRegistryAPI
           sender = A delegate that allows to send a `Message` to the client.
                    A server may send multiple `Message`s as a response to a
                    single query, e.g. when doing zone transfer.
+          tcp = True if DNS is accessed through TCP
 
     ***************************************************************************/
 
     public void answerQuestions (
-        in Message query, scope void delegate (in Message) @safe sender)
+        in Message query, scope void delegate (in Message) @safe sender,
+        bool tcp = false)
         @safe
     {
         Message reply;
@@ -331,37 +333,40 @@ public class NameRegistry: NameRegistryAPI
         // payloadSize must be treated to be at least 512. A payloadSize of 0
         // means no OPT record were found (there should be only one),
         // the requestor does not support EDNS0, and we should not include
-        // an OPT record in our answer.
+        // an OPT record in our answer. It is only applicable for UDP.
         ushort payloadSize;
-        foreach (const ref add; query.additionals)
+        if (!tcp)
         {
-            if (add.type == TYPE.OPT)
+            foreach (const ref add; query.additionals)
             {
-                // This is a second OPT record, which is illegal by spec and
-                // triggers a FORMERR
-                if (payloadSize > 0)
-                    goto BAILOUT;
-
-                scope opt = const(OPTRR)(add);
-                // 6.1.1: If an OPT record is present in a received request,
-                // compliant responders MUST include an OPT record in their
-                // respective responses.
-                OPTRR responseOPT;
-
-                if (opt.EDNSVersion() > 0)
+                if (add.type == TYPE.OPT)
                 {
-                    responseOPT.extendedRCODE = 1; // BADVERS
+                    // This is a second OPT record, which is illegal by spec and
+                    // triggers a FORMERR
+                    if (payloadSize > 0)
+                        goto BAILOUT;
+
+                    scope opt = const(OPTRR)(add);
+                    // 6.1.1: If an OPT record is present in a received request,
+                    // compliant responders MUST include an OPT record in their
+                    // respective responses.
+                    OPTRR responseOPT;
+
+                    if (opt.EDNSVersion() > 0)
+                    {
+                        responseOPT.extendedRCODE = 1; // BADVERS
+                        reply.additionals ~= responseOPT.record;
+                        goto BAILOUT;
+                    }
+                    // Ignore the DO bit for now
+                    payloadSize = min(opt.payloadSize(), ushort(512));
                     reply.additionals ~= responseOPT.record;
-                    goto BAILOUT;
                 }
-                // Ignore the DO bit for now
-                payloadSize = min(opt.payloadSize(), ushort(512));
-                reply.additionals ~= responseOPT.record;
             }
+            // No OPT record present, the client does not support EDNS
+            if (payloadSize == 0)
+                payloadSize = 512;
         }
-        // No OPT record present, the client does not support EDNS
-        if (payloadSize == 0)
-            payloadSize = 512;
 
         // Note: Since DNS has some fields which apply to the full response but
         // should actually be in `answers`, most resolvers will not ask unrelated
@@ -401,7 +406,7 @@ public class NameRegistry: NameRegistryAPI
 
             reply.header.RCODE = answer(q, reply);
 
-            if (reply.maxSerializedSize() > payloadSize)
+            if (!tcp && reply.maxSerializedSize() > payloadSize)
             {
                 reply.questions = reply.questions[0 .. $ - 1];
                 reply.answers = reply.answers[0 .. $ - 1];
