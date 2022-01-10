@@ -184,7 +184,7 @@ public abstract class DNSResolver
         catch (std.socket.SocketException) {}
 
         // We need to execute a query, and parse the resulting DNS record
-        auto results = this.query(address.host);
+        auto results = this.query(address.host, QTYPE.A);
         ensure(results.length > 0, "Could not resolve host name '{}' (address: '{}')",
                address.host, address);
 
