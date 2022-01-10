@@ -111,7 +111,7 @@ unittest
             // Dont accept any incoming TXs
             log.info("Picky node ignoring TX {}", tx);
 
-            return TransactionResult(TransactionResult.Status.Accepted); 
+            return TransactionResult(TransactionResult.Status.Accepted);
         }
     }
 
