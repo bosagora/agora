@@ -803,7 +803,7 @@ public struct ResourceRecord
                     foreach (_; 0 .. (rdlength / uint.sizeof))
                        tmp_data.a ~= deserializeFull!(uint)(&ctx.read, ctx.options);
                     break;
-                case TYPE.CNAME:
+                case TYPE.CNAME, TYPE.NS:
                     tmp_data.name = Domain.fromBinary!(Domain)(ctx);
                     break;
                 case TYPE.SOA:
