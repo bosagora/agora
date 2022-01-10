@@ -458,6 +458,8 @@ public struct RegistryConfig
 
         static void validateZone (string name, in ZoneConfig zone)
         {
+            import std.socket : parseAddress;
+
             // Those two fields must be both set or both unset
             ensure(zone.primary.set == zone.soa.email.set,
                    "registry.{}: Authoritative zones require both 'primary' and " ~
@@ -508,11 +510,35 @@ public struct RegistryConfig
 /// All `Duration` values are precise to the second
 public struct ZoneConfig
 {
+    /// IP address configuration type for `allow_transfer`
+    private struct IPAddress
+    {
+        /// Address
+        public string ip;
+
+        /// Validate `str` as IPv4 or IPv6 address
+        public static IPAddress fromString (string str) @safe
+        {
+            import agora.common.DNS : guessAddressType;
+            auto type = guessAddressType(str);
+            if (type != TYPE.A && type != TYPE.AAAA)
+                throw new Exception("Only IP address is expected");
+
+            return IPAddress(str);
+        }
+
+        ///
+        public alias ip this;
+    }
+
     /// Whether this server is authoritative
     public SetInfo!bool authoritative;
 
     /// CNAME of the primary server for this zone
     public SetInfo!string primary;
+
+    /// Servers that are allowed to do AXFR queries, applicable for authoritatives
+    public @Optional immutable IPAddress[] allow_transfer;
 
     /// SOA Configuration of the zone, required for master server
     /// All `Duration` values are precise to the second

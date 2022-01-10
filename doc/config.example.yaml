@@ -335,6 +335,14 @@ registry:
     # However, the typical naming convention would be to use `ns1.example.com`.
     primary: ns1.bosagora.io
 
+    # Whitelist for AXFR zone transfers
+    #
+    # Only IPs listed in this field will be allowed to initiate an AXFR zone
+    # transfer from this server. Server will not allow zone transfer to any
+    # requester if not configured.
+    allow_transfer:
+      - 127.0.0.1
+
     soa:
       # Email of the DNS server administrator
       # This field is required for authoritative servers.
