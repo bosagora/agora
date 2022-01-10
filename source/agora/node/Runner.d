@@ -28,6 +28,7 @@ import agora.node.FullNode;
 import agora.node.Registry;
 import agora.node.Validator;
 import agora.serialization.Serializer;
+import agora.script.Engine;
 import agora.utils.Log;
 
 import ocean.util.log.ILogger;
@@ -126,8 +127,7 @@ public Listeners runNode (Config config)
         log.trace("Started Flash node...");
         const params = FullNode.makeConsensusParams(config);
         auto flash = new FlashNode(config.flash,
-            config.node.data_dir, params.Genesis.hashFull(),
-            result.node.getEngine(),
+            config.node.data_dir, params.Genesis.hashFull(), new Engine(),
             result.node.getTaskManager(), &result.node.postTransaction,
             &result.node.getBlock, &result.node.getNetworkManager().getNameRegistryClient);
         router.registerRestInterface!FlashAPI(flash, settings);

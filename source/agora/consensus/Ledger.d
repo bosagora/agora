@@ -40,7 +40,6 @@ import agora.consensus.validation;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.node.BlockStorage;
-import agora.script.Engine;
 import agora.script.Lock;
 import agora.serialization.Serializer;
 import agora.utils.Log;
@@ -93,7 +92,6 @@ public class NodeLedger : Ledger
             params = the consensus-critical constants
             database = State database
             storage = the block storage
-            engine = script execution engine
             enroll_man = the enrollmentManager
             pool = the transaction pool
             onAcceptedBlock = optional delegate to call
@@ -103,7 +101,7 @@ public class NodeLedger : Ledger
 
     public this (immutable(ConsensusParams) params,
         ManagedDatabase database, IBlockStorage storage,
-        Engine engine, EnrollmentManager enroll_man, TransactionPool pool,
+        EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
         // Note: Those properties need to be set before calling the `super` ctor,
@@ -112,7 +110,7 @@ public class NodeLedger : Ledger
         this.onAcceptedBlock = onAcceptedBlock;
         this.pool = pool;
         this.enroll_man = enroll_man;
-        super(params, database, storage, engine, enroll_man.validator_set);
+        super(params, database, storage, enroll_man.validator_set);
     }
 
     /// See `Ledger.acceptBlock`
@@ -657,11 +655,10 @@ public class ValidatingLedger : NodeLedger
     /// See parent class
     public this (immutable(ConsensusParams) params,
         ManagedDatabase database, IBlockStorage storage,
-        Engine engine, EnrollmentManager enroll_man, TransactionPool pool,
+        EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
-        super(params, database, storage, engine, enroll_man, pool,
-            onAcceptedBlock);
+        super(params, database, storage, enroll_man, pool, onAcceptedBlock);
     }
 
     // dynamic array to keep track of blocks we are externalizing so can allow
@@ -934,7 +931,6 @@ version (unittest)
             super(params,
                 stateDB,
                 new MemBlockStorage(blocks),
-                new Engine(),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
                 onAcceptedBlock);
@@ -1152,7 +1148,6 @@ unittest
             super(params,
                 stateDB,
                 new MemBlockStorage(blocks),
-                new Engine(),
                 new ValidatorSet(stateDB, params));
         }
 
