@@ -363,6 +363,11 @@ public class NodeLedger : Ledger
         if (auto fail_reason = this.getValidTXSet(data, tx_set, utxo_finder))
             return fail_reason;
 
+        const tx_set_size = tx_set.map!(tx => tx.sizeInBytes()).sum();
+        const size_limit = this.params.MaxTxSetSize * 1024;
+        if (tx_set_size > size_limit)
+            return "TX set too big in size";
+
         // av   == active validators (this block)
         // avnb == active validators next block
         // The consensus data is for the creation of the next block,
@@ -703,7 +708,7 @@ public class ValidatingLedger : NodeLedger
 
     ***************************************************************************/
 
-    public void prepareNominatingSet (out ConsensusData data, ulong max_txs)
+    public void prepareNominatingSet (out ConsensusData data)
         @safe
     {
         const next_height = this.getBlockHeight() + 1;
@@ -711,7 +716,7 @@ public class ValidatingLedger : NodeLedger
         auto utxo_finder = this.utxo_set.getUTXOFinder();
         data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
         data.missing_validators = this.getCandidateMissingValidators(next_height, utxo_finder);
-        data.tx_set = this.getCandidateTransactions(next_height, max_txs, utxo_finder);
+        data.tx_set = this.getCandidateTransactions(next_height, utxo_finder);
         if (next_height >= 2 * this.params.PayoutPeriod
             && next_height % this.params.PayoutPeriod == 0)   // This is a Coinbase payout block
             {
@@ -767,11 +772,12 @@ public class ValidatingLedger : NodeLedger
 
     ***************************************************************************/
 
-    public Hash[] getCandidateTransactions (in Height height, ulong max_txs,
+    public Hash[] getCandidateTransactions (in Height height,
         scope UTXOFinder utxo_finder) @safe
     {
         Hash[] result;
         Amount tot_fee, tot_data_fee;
+        size_t size_budget = this.params.MaxTxSetSize * 1024; // cant overflow
 
         foreach (ref Hash hash, ref Transaction tx; this.pool)
         {
@@ -786,16 +792,17 @@ public class ValidatingLedger : NodeLedger
                 return err;
             };
 
+            auto size = tx.sizeInBytes();
             if (auto reason = tx.isInvalidReason(
                     this.engine, utxo_finder, height, checkAndAcc, &this.getPenaltyDeposit))
                 log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
-            else
-                result ~= hash;
-
-            if (result.length >= max_txs)
+            else if (size_budget >= size)
             {
-                break;
+                result ~= hash;
+                size_budget -= size;
             }
+            else
+                break;
         }
         result.sort();
         return result;
@@ -840,13 +847,12 @@ public class ValidatingLedger : NodeLedger
     }
 
     /// simulate block creation as if a nomination and externalize round completed
-    public void forceCreateBlock (ulong max_txs = Block.TxsInTestBlock, bool sign_all = true)
+    public void forceCreateBlock (bool sign_all = true)
     {
         const next_block = this.getBlockHeight() + 1;
         this.simulatePreimages(next_block);
         ConsensusData data;
-        this.prepareNominatingSet(data, max_txs);
-        assert(data.tx_set.length >= max_txs);
+        this.prepareNominatingSet(data);
 
         // If the user provided enrollments, do not re-enroll automatically
         // If they didn't, check to see if the next block needs them
@@ -871,33 +877,28 @@ public class ValidatingLedger : NodeLedger
     }
 
     /// Generate a new block by creating transactions, then calling `forceCreateBlock`
-    private Transaction[] makeTestBlock (
-        Transaction[] last_txs, ulong txs = Block.TxsInTestBlock)
+    private Transaction[] makeTestBlock (Transaction[] last_txs)
     {
-        assert(txs > 0);
-
         // Special case for genesis
         if (!last_txs.length)
         {
             assert(this.getBlockHeight() == 0);
 
-            last_txs = genesisSpendable().take(Block.TxsInTestBlock).enumerate()
+            last_txs = genesisSpendable().enumerate()
                 .map!(en => en.value.refund(WK.Keys.A.address).sign())
                 .array();
             last_txs.each!(tx => this.acceptTransaction(tx));
-            this.forceCreateBlock(txs);
+            this.forceCreateBlock();
             return last_txs;
         }
 
         last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
         last_txs.each!(tx => assert(this.acceptTransaction(tx) is null));
-        this.forceCreateBlock(txs);
+        this.forceCreateBlock();
         return last_txs;
     }
 }
 
-/// Note: these unittests historically assume a block always contains
-/// 8 transactions - hence the use of `TxsInTestBlock` appearing everywhere.
 version (unittest)
 {
     import agora.consensus.PreImage;
@@ -1316,7 +1317,7 @@ unittest
     // Generate a block to reuse transactions used for data storage
     txs = txs.enumerate()
         .map!(en => TxBuilder(en.value)
-              .refund(WK.Keys[Block.TxsInTestBlock + en.index].address)
+              .refund(WK.Keys[en.index].address)
               .sign())
               .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
@@ -1349,7 +1350,7 @@ unittest
     {
         auto new_txs = genTransactions(txs);
         new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
-        ledger.forceCreateBlock(Block.TxsInTestBlock);
+        ledger.forceCreateBlock();
         return new_txs;
     }
 
@@ -1435,7 +1436,7 @@ unittest
     ledger.simulatePreimages(Height(22), skip_indexes);
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data);
     assert(data.missing_validators.length == 2);
     assert(data.missing_validators == skip_indexes);
 
@@ -1454,7 +1455,7 @@ unittest
     temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data);
     assert(data.missing_validators.length == 0);
 }
 
@@ -1481,7 +1482,7 @@ unittest
     no_fee_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data);
 
     assert(ledger.validateConsensusData(data, skip_indexes) is null);
 
@@ -1541,7 +1542,7 @@ unittest
         total_fees += tx_set_fees;
 
         auto data = ConsensusData.init;
-        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+        ledger.prepareNominatingSet(data);
 
         // Do some Coinbase tests with the data tx_set
         if (height >= 2 * testPayoutPeriod && height % testPayoutPeriod == 0)
@@ -1555,7 +1556,7 @@ unittest
         }
 
         // Now externalize the block
-        ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+        ledger.prepareNominatingSet(data);
 
         total_fees += ledger.params.SlashPenaltyAmount * data.missing_validators.length;
         if (height % testPayoutPeriod == 0)
@@ -1631,7 +1632,7 @@ unittest
     assert(ledger.getPenaltyDeposit(GenesisBlock.header.enrollments[missing_validator].utxo_key) != 0.coins);
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data);
     assert(data.missing_validators.canFind(missing_validator));
     assert(ledger.externalize(data) is null);
     // slashed stake should not have penalty deposit
@@ -1666,13 +1667,13 @@ unittest
     KeyPair kp = WK.Keys.A;
     auto freeze_tx = genesisSpendable().front().refund(kp.address).sign(OutputType.Freeze);
     assert(ledger.acceptTransaction(freeze_tx) is null);
-    ledger.forceCreateBlock(1);
+    ledger.forceCreateBlock();
 
     auto melting_tx = TxBuilder(freeze_tx, 0).sign();
     assert(ledger.acceptTransaction(melting_tx) is null);
 
     ConsensusData data;
-    ledger.prepareNominatingSet(data, Block.TxsInTestBlock);
+    ledger.prepareNominatingSet(data);
     assert(data.tx_set.canFind(melting_tx.hashFull()));
     assert(ledger.validateConsensusData(data, []) is null);
 
@@ -1712,7 +1713,7 @@ unittest
     KeyPair kp = WK.Keys.A;
     auto freeze_tx = genesisSpendable().front().refund(kp.address).sign(OutputType.Freeze);
     assert(ledger.acceptTransaction(freeze_tx) is null);
-    ledger.forceCreateBlock(1, false);
+    ledger.forceCreateBlock(false);
 
     Block block = ledger.lastBlock().clone();
     assert(block.header.height == 1);
@@ -1735,7 +1736,7 @@ unittest
     }
 
     // should be able to create a new block after previous height receives majority signatures
-    ledger.forceCreateBlock(0);
+    ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 2);
 }
 
@@ -1762,7 +1763,53 @@ unittest
         Height(5), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
 
     while (ledger.getBlockHeight() != Height(5))
-        ledger.forceCreateBlock(0);
+        ledger.forceCreateBlock();
     assert(ledger.lastBlock.header.height == Height(5));
     assert(ledger.lastBlock.header.enrollments.canFind(enrollment));
+}
+
+// Test max TX size is respected while validating and nominating values
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    {
+        auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins, 1); // 1 KB Tx set size
+        assert(params.MaxTxSetSize == 1);
+        const(Block)[] blocks = [ GenesisBlock ];
+        scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+        ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+        // Generate payment transactions to the first 8 well-known keypairs
+        auto txs = genesisSpendable().enumerate()
+            .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+            .array;
+        auto total_size = txs.map!(tx => tx.sizeInBytes()).sum();
+        assert(total_size > params.MaxTxSetSize * 1024);
+        txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
+
+        ConsensusData data;
+        txs.each!(tx => data.tx_set ~= tx.hashFull);
+        assert(ledger.validateConsensusData(data, null) == "TX set too big in size");
+
+        ledger.forceCreateBlock();
+        assert(ledger.lastBlock().txs.length < txs.length);
+    }
+
+    {
+        auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins); // default Tx set size
+        const(Block)[] blocks = [ GenesisBlock ];
+        scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+        ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+        // Generate payment transactions to the first 8 well-known keypairs
+        auto txs = genesisSpendable().enumerate()
+            .map!(en => en.value.refund(WK.Keys[en.index].address).sign())
+            .array;
+        auto total_size = txs.map!(tx => tx.sizeInBytes()).sum();
+        assert(total_size < params.MaxTxSetSize * 1024);
+        txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
+        ledger.forceCreateBlock();
+        assert(ledger.lastBlock().txs.length >= txs.length);
+    }
 }

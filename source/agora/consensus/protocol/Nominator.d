@@ -402,7 +402,7 @@ extern(D):
 
     protected bool prepareNominatingSet (out ConsensusData data) @safe
     {
-        this.ledger.prepareNominatingSet(data, MaxTransactionsPerBlock);
+        this.ledger.prepareNominatingSet(data);
 
         // check whether the consensus data is valid before nominating it.
         if (auto msg = this.ledger.validateConsensusData(data, data.missing_validators))

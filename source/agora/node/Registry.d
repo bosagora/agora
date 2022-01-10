@@ -1149,11 +1149,11 @@ unittest
         assert(0, e.message);
 
     // externalize enrollment
-    ledger.forceCreateBlock(0);
+    ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 2);
     assert(RegistryPayload.init != registry.getValidator(WK.Keys[0].address));
 
-    ledger.forceCreateBlock(0);
+    ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 3);
     // frozen UTXO is spent (slashed), entry should have been deleted
     assert(RegistryPayload.init == registry.getValidator(WK.Keys[0].address));

@@ -231,14 +231,6 @@ unittest
 
 public struct Block
 {
-    // some unittests still assume a block contains 8 txs. Once they're fixed
-    // this constant should be removed.
-    version (unittest)
-    {
-        /// number of transactions that constitutes a block
-        public enum TxsInTestBlock = 8;
-    }
-
     ///
     public BlockHeader header;
 

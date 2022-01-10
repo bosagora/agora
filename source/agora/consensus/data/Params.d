@@ -70,6 +70,7 @@ public immutable class ConsensusParams
     mixin ROProperty!("PayoutPeriod", "payout_period");
     mixin ROProperty!("GenesisTimestamp", "genesis_timestamp");
     mixin ROProperty!("MinFee", "min_fee");
+    mixin ROProperty!("MaxTxSetSize", "max_tx_set_size_kbs");
 
     /***************************************************************************
 
@@ -94,7 +95,7 @@ public immutable class ConsensusParams
     /// Default for unittest, uses the test genesis block
     version (unittest) public this (
         uint validator_cycle = 20, uint max_quorum_nodes = 7,
-        uint quorum_threshold = 80, Amount min_fee = 0)
+        uint quorum_threshold = 80, Amount min_fee = 0, uint max_tx_set_size_kbs = 1024)
     {
         import agora.consensus.data.genesis.Test : GenesisBlock;
         import agora.utils.WellKnownKeys;
@@ -103,6 +104,7 @@ public immutable class ConsensusParams
             max_quorum_nodes: max_quorum_nodes,
             quorum_threshold: quorum_threshold,
             min_fee: min_fee,
+            max_tx_set_size_kbs: max_tx_set_size_kbs,
         };
         this(GenesisBlock, CommonsBudget.address, config);
     }
@@ -146,6 +148,9 @@ public struct ConsensusConfig
 
     /// How often a block should be created
     public Duration block_interval = 10.minutes;
+
+    /// Max TX set size in KBs
+    public uint max_tx_set_size_kbs = 1024;
 }
 
 /// Inserts properties functions aliasing `ConsensusConfig`
