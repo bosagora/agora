@@ -199,8 +199,8 @@ public abstract class DNSResolver
             {
                 ensure(res.name.value.length > 0,
                        "Found a CNAME to the root domain (empty) while resolving '{}'", address);
-                log.trace("Address '{}': Found CNAME '{}'", address, res.name);
-                address.host = cast(string) res.name.value;
+                log.trace("Address '{}': Found CNAME '{}'", address, res.rdata.name);
+                address.host = cast(string) res.rdata.name.toString();
                 return this.resolve(address);
             }
 
