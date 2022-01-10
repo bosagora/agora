@@ -124,87 +124,87 @@ public QuorumConfig buildQuorumConfig (in NodeID key, in Hash[] utxo_keys,
 unittest
 {
     auto keys = getKeys(1);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums = buildTestQuorums(Amount.MinFreezeAmount.only, keys,
-        hashFull(1), QuorumParams.init, 0, utxo_to_key);
+        hashFull(1), QuorumParams.init, 0, id_to_pk);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    assert(countNodeInclusions(quorums, keys, utxo_to_key) == [1]);
+    assert(countNodeInclusions(quorums, keys, id_to_pk) == [1]);
 }
 
 // 2 nodes
 unittest
 {
     auto keys = getKeys(2);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(2), keys,
-        hashFull(1), QuorumParams.init, 1, utxo_to_key);
+        hashFull(1), QuorumParams.init, 1, id_to_pk);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    assert(countNodeInclusions(quorums, keys, utxo_to_key) == [2, 2]);
+    assert(countNodeInclusions(quorums, keys, id_to_pk) == [2, 2]);
 }
 
 // 3 nodes with equal stakes
 unittest
 {
     auto keys = getKeys(3);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(3), keys,
-        hashFull(1), QuorumParams.init, 2, utxo_to_key);
+        hashFull(1), QuorumParams.init, 2, id_to_pk);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    assert(countNodeInclusions(quorums, keys, utxo_to_key) == [3, 3, 3]);
+    assert(countNodeInclusions(quorums, keys, id_to_pk) == [3, 3, 3]);
 }
 
 // 4 nodes with equal stakes
 unittest
 {
     auto keys = getKeys(4);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums = buildTestQuorums(Amount.MinFreezeAmount.repeat(4), keys,
-        hashFull(1), QuorumParams.init, 3, utxo_to_key);
+        hashFull(1), QuorumParams.init, 3, id_to_pk);
     verifyQuorumsSanity(quorums);
     verifyQuorumsIntersect(quorums);
-    assert(countNodeInclusions(quorums, keys, utxo_to_key) == [4, 4, 4, 4]);
+    assert(countNodeInclusions(quorums, keys, id_to_pk) == [4, 4, 4, 4]);
 }
 
 // 8 nodes with equal stakes
 unittest
 {
     auto keys = getKeys(8);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
-        hashFull(1), QuorumParams.init, 4, utxo_to_key);
+        hashFull(1), QuorumParams.init, 4, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) == [8, 6, 8, 6, 7, 5, 8, 8]);
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) == [8, 6, 8, 6, 7, 5, 8, 8]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(8), keys,
-        hashFull(2), QuorumParams.init, 5, utxo_to_key_2);
+        hashFull(2), QuorumParams.init, 5, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) == [7, 5, 7, 8, 8, 8, 7, 6]);
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) == [7, 5, 7, 8, 8, 8, 7, 6]);
 }
 
 // 16 nodes with equal stakes
 unittest
 {
     auto keys = getKeys(16);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
-        hashFull(1), QuorumParams.init, 6, utxo_to_key);
+        hashFull(1), QuorumParams.init, 6, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [7, 8, 7, 9, 9, 7, 8, 7, 8, 3, 7, 9, 4, 8, 6, 5]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(16), keys,
-        hashFull(2), QuorumParams.init, 7, utxo_to_key_2);
+        hashFull(2), QuorumParams.init, 7, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [8, 8, 5, 6, 7, 8, 8, 7, 6, 6, 7, 9, 9, 7, 7, 4]);
 }
 
@@ -214,20 +214,20 @@ unittest
     auto amounts = iota(16)
         .map!(idx => Amount(400000000000uL + (100000000000uL * idx)));
     auto keys = getKeys(16);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
-        QuorumParams.init, 8, utxo_to_key);
+        QuorumParams.init, 8, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [3, 2, 5, 8, 9, 10, 9, 8, 14, 4, 5, 6, 11, 10, 5, 3]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
-        QuorumParams.init, 9, utxo_to_key_2);
+        QuorumParams.init, 9, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [4, 9, 5, 9, 5, 9, 9, 9, 11, 2, 2, 8, 9, 7, 7, 7]);
 }
 
@@ -237,20 +237,20 @@ unittest
     auto keys = getKeys(16);
     auto amounts = Amount(400000000000uL).repeat(16).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 14);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
-        QuorumParams.init, 10, utxo_to_key);
+        QuorumParams.init, 10, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [7, 5, 6, 6, 5, 6, 7, 7, 5, 6, 5, 7, 2, 6, 16, 16]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
-        QuorumParams.init, 11, utxo_to_key_2);
+        QuorumParams.init, 11, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [9, 4, 16, 8, 16, 5, 7, 5, 5, 11, 3, 7, 6, 2, 3, 5]);
 }
 
@@ -260,25 +260,25 @@ unittest
     auto keys = getKeys(32);
     auto amounts = Amount(400000000000uL).repeat(32).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 30);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
-        QuorumParams.init, 12, utxo_to_key);
+        QuorumParams.init, 12, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 seconds)
     //verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [6, 7, 8, 5, 5, 4, 7, 5, 5, 7, 6, 5, 4, 3, 7, 6, 6, 5, 5, 32, 3, 6, 32,
             6, 6, 4, 6, 4, 4, 4, 5, 6]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
-        QuorumParams.init, 13, utxo_to_key_2);
+        QuorumParams.init, 13, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 seconds)
     //verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [9, 5, 30, 7, 6, 7, 7, 8, 6, 7, 7, 6, 4, 2, 2, 4, 5, 9, 5, 6, 7, 2, 5, 5,
             6, 2, 5, 5, 5, 2, 31, 7]);
 }
@@ -289,26 +289,26 @@ unittest
     auto keys = getKeys(64);
     auto amounts = Amount(400000000000uL).repeat(64).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 62);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
-        QuorumParams.init, 14, utxo_to_key);
+        QuorumParams.init, 14, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 minutes)
     //verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [6, 4, 8, 6, 2, 2, 7, 2, 3, 3, 4, 4, 5, 4, 3, 3, 6, 4, 6, 5, 10, 2, 63,
         3, 4, 4, 6, 8, 7, 6, 4, 5, 6, 3, 7, 2, 4, 62, 4, 11, 5, 6, 11, 2, 6, 7,
         5, 8, 8, 5, 5, 4, 11, 3, 3, 6, 7, 7, 7, 7, 5, 4, 5, 3]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
-        QuorumParams.init, 15, utxo_to_key_2);
+        QuorumParams.init, 15, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     // verified to work but disabled because it runs slow with a
     // non-max threshold (~20 minutes)
     //verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [6, 4, 9, 3, 5, 9, 5, 10, 5, 6, 5, 4, 3, 7, 5, 4, 7, 5, 2, 3, 3, 6, 8, 8,
         5, 5, 4, 4, 4, 4, 5, 7, 3, 2, 4, 4, 4, 5, 4, 3, 11, 5, 9, 63, 7, 6, 5, 9,
         4, 5, 3, 8, 2, 61, 5, 6, 4, 4, 4, 1, 7, 8, 5, 7]);
@@ -320,13 +320,13 @@ unittest
     auto keys = getKeys(128);
     auto amounts = Amount(400000000000uL).repeat(128).array;
     amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 126);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
-        QuorumParams.init, 16, utxo_to_key);
+        QuorumParams.init, 16, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     // not verified to work.
     //verifyQuorumsIntersect(quorums_1);
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [4, 6, 5, 5, 7, 8, 5, 6, 7, 4, 5, 5, 5, 3, 5, 1, 7, 5, 7, 6, 5, 5, 3,
         7, 7, 5, 2, 125, 3, 2, 4, 5, 2, 5, 5, 6, 3, 3, 7, 8, 4, 3, 7, 1, 2, 4,
         4, 5, 2, 5, 3, 4, 3, 4, 7, 3, 5, 8, 3, 7, 4, 6, 123, 7, 5, 6, 13, 2, 9,
@@ -334,13 +334,13 @@ unittest
         5, 5, 8, 3, 6, 6, 10, 8, 3, 3, 6, 5, 1, 7, 6, 9, 5, 3, 9, 5, 5, 8, 7, 3,
         4, 3, 3, 3, 4, 10, 6, 9, 3, 6, 5]);
 
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(amounts, keys, hashFull(2),
-        QuorumParams.init, 17, utxo_to_key_2);
+        QuorumParams.init, 17, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     // not verified to work.
     //verifyQuorumsIntersect(quorums_2);
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [4, 6, 4, 9, 3, 3, 6, 5, 2, 5, 4, 6, 11, 7, 8, 5, 5, 3, 3, 5, 3, 3, 3, 4,
         4, 5, 3, 1, 8, 6, 9, 6, 7, 3, 2, 5, 6, 3, 7, 4, 125, 4, 7, 7, 5, 7, 5, 8,
         125, 5, 9, 6, 5, 4, 6, 4, 8, 4, 5, 8, 6, 5, 4, 8, 8, 5, 4, 8, 5, 8, 4, 3,
@@ -354,36 +354,36 @@ unittest
 {
     QuorumParams qp_1 = { MaxQuorumNodes : 4, QuorumThreshold : 80 };
     auto keys = getKeys(10);
-    PublicKey[NodeID] utxo_to_key;
+    PublicKey[NodeID] id_to_pk;
     auto quorums_1 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
-        hashFull(1), qp_1, 18, utxo_to_key);
+        hashFull(1), qp_1, 18, id_to_pk);
     verifyQuorumsSanity(quorums_1);
     verifyQuorumsIntersect(quorums_1);
     quorums_1.byValue.each!(qc => assert(qc.nodes.length <= 4));
     quorums_1.byValue.each!(qc => assert(qc.threshold == 4));
-    assert(countNodeInclusions(quorums_1, keys, utxo_to_key) ==
+    assert(countNodeInclusions(quorums_1, keys, id_to_pk) ==
         [2, 4, 6, 4, 5, 4, 5, 2, 3, 5]);
 
     QuorumParams qp_2 = { MaxQuorumNodes : 8, QuorumThreshold : 80 };
-    PublicKey[NodeID] utxo_to_key_2;
+    PublicKey[NodeID] id_to_pk_2;
     auto quorums_2 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
-        hashFull(1), qp_2, 19, utxo_to_key_2);
+        hashFull(1), qp_2, 19, id_to_pk_2);
     verifyQuorumsSanity(quorums_2);
     verifyQuorumsIntersect(quorums_2);
     quorums_2.byValue.each!(qc => assert(qc.nodes.length <= 8));
     quorums_2.byValue.each!(qc => assert(qc.threshold == 7));
-    assert(countNodeInclusions(quorums_2, keys, utxo_to_key_2) ==
+    assert(countNodeInclusions(quorums_2, keys, id_to_pk_2) ==
         [7, 9, 8, 9, 8, 7, 7, 10, 7, 8]);
 
     QuorumParams qp_3 = { MaxQuorumNodes : 8, QuorumThreshold : 60 };
-    PublicKey[NodeID] utxo_to_key_3;
+    PublicKey[NodeID] id_to_pk_3;
     auto quorums_3 = buildTestQuorums(Amount.MinFreezeAmount.repeat(10), keys,
-        hashFull(1), qp_3, 20, utxo_to_key_3);
+        hashFull(1), qp_3, 20, id_to_pk_3);
     verifyQuorumsSanity(quorums_3);
     verifyQuorumsIntersect(quorums_3);
     quorums_3.byValue.each!(qc => assert(qc.nodes.length <= 8));
     quorums_3.byValue.each!(qc => assert(qc.threshold == 5));
-    assert(countNodeInclusions(quorums_3, keys, utxo_to_key_3),
+    assert(countNodeInclusions(quorums_3, keys, id_to_pk_3),
         [7, 9, 8, 9, 8, 7, 7, 10, 7, 8]);
 }
 
@@ -506,12 +506,12 @@ private NodeStake[] buildStakesDescending (const ref NodeID filter,
 version (unittest)
 private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
     const(PublicKey)[] keys, const auto ref Hash rand_seed,
-    const auto ref QuorumParams params, int id, out PublicKey[NodeID] utxo_to_key)
+    const auto ref QuorumParams params, int id, out PublicKey[NodeID] id_to_pk)
 {
     assert(amounts.length == keys.length);
     QuorumConfig[NodeID] quorums;
     TestUTXOSet storage = new TestUTXOSet;
-    NodeID[PublicKey] key_to_utxo;
+    NodeID[PublicKey] pk_to_id;
     foreach (idx, const ref amount; amounts.save.enumerate)
     {
         Transaction tx = Transaction([ Output(amount, keys[idx], OutputType.Freeze) ]);
@@ -524,8 +524,8 @@ private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
                 output: output_
             };
             storage[txhash] = v;
-            key_to_utxo[keys[idx]] = idx;
-            utxo_to_key[idx] = keys[idx];
+            pk_to_id[keys[idx]] = idx;
+            id_to_pk[idx] = keys[idx];
         }
     }
 
@@ -533,8 +533,8 @@ private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
     Hash[] utxos = storage.keys;
     foreach (idx, _; amounts.enumerate)
     {
-        quorums[key_to_utxo[keys[idx]]] = buildQuorumConfig(
-            key_to_utxo[keys[idx]], utxos, &storage.peekUTXO, rand_seed, params);
+        quorums[pk_to_id[keys[idx]]] = buildQuorumConfig(
+            pk_to_id[keys[idx]], utxos, &storage.peekUTXO, rand_seed, params);
     }
 
     return quorums;
@@ -559,12 +559,12 @@ private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
 
 version (unittest)
 private size_t[] countNodeInclusions (QuorumConfig[NodeID] quorums,
-    in PublicKey[] keys, ref PublicKey[NodeID] utxo_to_key)
+    in PublicKey[] keys, ref PublicKey[NodeID] id_to_pk)
 {
     size_t[const(PublicKey)] counts;
 
     foreach (_, const ref qc; quorums)
-        qc.nodes.each!(node => counts[utxo_to_key[node]]++);
+        qc.nodes.each!(node => counts[id_to_pk[node]]++);
 
     size_t[] results;
     foreach (key; keys)
