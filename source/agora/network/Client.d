@@ -24,6 +24,8 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.ValidatorBlockSig;
 import agora.crypto.Key;
+import agora.network.DNSResolver;
+static import agora.utils.Utility;
 import scpd.types.Stellar_SCP;
 
 import agora.utils.Log;
@@ -113,6 +115,9 @@ public class NetworkClient
         /// Address of the node we're interacting with (for logging)
         public Address address;
 
+        /// Resolved address
+        public Address resolved_address;
+
         /// API client to the node
         private API api;
     }
@@ -149,34 +154,68 @@ public class NetworkClient
     /// Gossip delay
     private enum GossipDelay = 10.msecs;
 
+    ///
+    private DNSResolver resolver;
+
+    ///
+    API delegate (Address url) getClient;
+
     /***************************************************************************
 
         Constructor.
 
         Params:
-            taskman = used for creating new tasks
-            banman = ban manager
             address = used for logging and querying by external code
             api = the API to issue the requests with
+            taskman = used for creating new tasks
+            banman = ban manager
             retry = the amout to wait between retrying failed requests
             max_retries = max number of times a failed request should be retried
 
     ***************************************************************************/
 
-    public this (ITaskManager taskman, BanManager banman, Address address,
-        API api, Duration retry, size_t max_retries)
+    public this (Address address, ITaskManager taskman, BanManager banman,
+        API delegate (Address url) getClient, Duration retry, size_t max_retries,
+        DNSResolver resolver)
+    {
+        this(taskman, banman, getClient, retry, max_retries, resolver);
+        this.exception = new Exception(
+            format("Request failure to %s after %s attempts", address,
+                max_retries));
+        agora.utils.Utility.retry!
+        ({
+            auto resolved_address = this.resolver.resolve(address);
+            this.connections ~= ConnectionInfo(address,
+                resolved_address, this.getClient(resolved_address));
+            return true;
+        },
+        )(this.taskman, this.max_retries, this.retry_delay, "Cannot resolve client addr");
+    }
+
+    /// Ditto
+    public this (API api, ITaskManager taskman, BanManager banman,
+        API delegate (Address url) getClient, Duration retry, size_t max_retries,
+        DNSResolver resolver)
+    {
+        this(taskman, banman, getClient, retry, max_retries, resolver);
+        this.exception = new Exception(
+            format("Request failure to uknown peer after %s attempts", max_retries));
+        this.connections ~= ConnectionInfo(Address.init, Address.init, api);
+    }
+
+    private this (ITaskManager taskman, BanManager banman,
+        API delegate (Address url) getClient, Duration retry, size_t max_retries,
+        DNSResolver resolver)
     {
         // By default, use the module, but if we can identify a validator,
         // this logger will be replaced with a more specialized one.
         this.log = Log.lookup(__MODULE__);
         this.taskman = taskman;
         this.banman = banman;
-        this.connections ~= ConnectionInfo(address, api);
         this.retry_delay = retry;
         this.max_retries = max_retries;
-        this.exception = new Exception(
-            format("Request failure to %s after %s attempts", address,
-                max_retries));
+        this.resolver = resolver;
+        this.getClient = getClient;
         // Create and stop timer immediately
         this.gossip_timer = this.taskman.setTimer(GossipDelay, &this.gossipTask, Periodic.No);
         this.gossip_timer.stop();

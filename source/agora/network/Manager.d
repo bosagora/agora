@@ -130,18 +130,18 @@ public class NetworkManager
             bool delegate (in Address address) onFailedRequest)
             @safe pure nothrow @nogc
         {
-            this(address, null, onHandshakeComplete, onFailedRequest);
+            this.address = address;
+            this.onHandshakeComplete = onHandshakeComplete;
+            this.onFailedRequest = onFailedRequest;
         }
 
-        public this (Address address, agora.api.Validator.API api,
+        public this (agora.api.Validator.API api,
             void delegate (scope ref NodeConnInfo node) onHandshakeComplete,
             bool delegate (in Address address) onFailedRequest)
             @safe pure nothrow @nogc
         {
-            this.address = address;
+            this(Address.init, onHandshakeComplete, onFailedRequest);
             this.api = api;
-            this.onHandshakeComplete = onHandshakeComplete;
-            this.onFailedRequest = onFailedRequest;
         }
 
         /***********************************************************************
@@ -181,13 +181,13 @@ public class NetworkManager
         /// Ditto, just behind a trampoline to avoid function-wide try/catch
         private void connect_canthrow ()
         {
-            auto client = new NetworkClient(this.outer.taskman,
-                this.outer.banman, this.address,
-                this.api ? this.api :
-                this.outer.getClient(this.address,
+            auto client = new NetworkClient(this.address,
+                this.outer.taskman, this.outer.banman,
+                address => this.outer.getClient(address,
                     this.outer.node_config.timeout),
                 this.outer.node_config.retry_delay,
-                this.outer.node_config.max_retries);
+                this.outer.node_config.max_retries,
+                this.outer.resolver);
 
             PublicKey key;
             Hash utxo;
@@ -714,42 +714,21 @@ public class NetworkManager
             "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
             required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
 
-        if (this.registry_client !is null)
+        foreach (utxo; last_known_validator_utxos.byValue)
         {
-            foreach (utxo; last_known_validator_utxos.byValue)
+            auto key = utxo.output.address;
+            // Do not query the registry about ourself
+            if (key == this.validator_config.key_pair.address)
+                continue;
+
+            scope peer_hostname = key.toString() ~ ".validators." ~ this.node_config.realm.toString();
+            try
             {
-                auto key = utxo.output.address;
-                // Do not query the registry about ourself
-                if (key == this.validator_config.key_pair.address)
-                    continue;
-
-                taskman.runTask
-                ({
-                    // https://github.com/bosagora/agora/issues/2197
-                    const ckey = key;
-                    retry!
-                    ({
-                        auto payload = this.registry_client.getValidator(ckey);
-                        if (payload == RegistryPayload.init)
-                        {
-                            log.warn("Could not find mapping in registry for key {}", ckey);
-                            return false;
-                        }
-
-                        if (payload.data.public_key != ckey)
-                        {
-                            log.error("Registry answered with the wrong key: {} => {}",
-                                      ckey, payload);
-                            return false;
-                        }
-
-                        foreach (addr; payload.data.addresses)
-                            this.addAddress(addr);
-                        return true;
-                    },
-                    )(taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
-                });
+                this.addAddress(Address("http://" ~ peer_hostname));
+                this.addAddress(Address("agora://" ~ peer_hostname));
             }
+            catch (Exception e)
+                assert(0);
         }
 
         // actually just runs it once, but we need the scheduler to run first
@@ -768,15 +747,6 @@ public class NetworkManager
 
             return true;
         }
-
-        try
-        {
-            foreach (addr; registry.getValidatorsAddresses())
-                this.addAddress(addr);
-        }
-        catch (Exception ex)
-            log.info("Cannot fetch validator addresses from our registry {}",
-                ex);
 
         while (this.todo_addresses.length)
         {
@@ -1372,8 +1342,7 @@ public class NetworkManager
     ///
     public void discoverFromClient (agora.api.Validator.API api) @trusted nothrow
     {
-        new ConnectionTask(Address.init, api, &onHandshakeComplete,
-                           (in Address _) { return false; }).start();
+        new ConnectionTask(api, &onHandshakeComplete, (in Address _) { return false; }).start();
     }
 }
 
