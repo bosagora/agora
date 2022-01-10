@@ -49,6 +49,7 @@ import agora.utils.InetUtils;
 import agora.utils.Log;
 import agora.utils.Utility;
 
+import vibe.http.client;
 import vibe.http.common;
 import vibe.web.rest;
 import vibe.inet.url;
@@ -1198,7 +1199,6 @@ public class NetworkManager
 
         if (url.schema.startsWith("http"))
         {
-            import vibe.http.client;
             auto settings = new RestInterfaceSettings;
             settings.baseURL = url;
             settings.httpClientSettings = new HTTPClientSettings;
@@ -1230,7 +1230,6 @@ public class NetworkManager
 
     public NameRegistryAPI getNameRegistryClient (string address, Duration timeout)
     {
-        import vibe.http.client;
         if (address == string.init)
             return null;
         auto settings = new RestInterfaceSettings();
@@ -1344,8 +1343,6 @@ public class NetworkManager
 
     private RestInterfaceSettings getRestInterfaceSettings (Address address)
     {
-        import vibe.http.client;
-
         auto settings = new RestInterfaceSettings;
         settings.baseURL = address;
         settings.httpClientSettings = new HTTPClientSettings;
