@@ -62,7 +62,14 @@ public class NetworkClient
             Transaction tx;
             SCPEnvelope envelope;
             ValidatorBlockSig block_sig;
-            Enrollment enrollment;
+
+            struct PostEnrollmentData
+            {
+                Enrollment enrollment;
+                Height avail_height;
+            }
+            PostEnrollmentData enrollment;
+
             PreImageInfo preimage;
         }
 
@@ -84,10 +91,10 @@ public class NetworkClient
             this.block_sig = sig;
         }
 
-        this (Enrollment enr) nothrow
+        this (Enrollment enr, Height avail_height) nothrow
         {
             this.type = GossipType.Enrollment;
-            this.enrollment = enr;
+            this.enrollment = PostEnrollmentData(enr, avail_height);
         }
 
         this (PreImageInfo preimage) nothrow
@@ -215,7 +222,8 @@ public class NetworkClient
             break;
 
         case Enrollment:
-            this.attemptRequest!(API.postEnrollment, Throw.No)(event.enrollment);
+            this.attemptRequest!(API.postEnrollment, Throw.No)(event.enrollment.enrollment,
+                event.enrollment.avail_height);
             break;
 
         case Preimage:
@@ -404,12 +412,13 @@ public class NetworkClient
 
         Params:
             enroll = the enrollment data to send
+            avail_height = Height we target to externalize the enrollment
 
     ***************************************************************************/
 
-    public void sendEnrollment (Enrollment enroll) @trusted nothrow
+    public void sendEnrollment (Enrollment enroll, Height avail_height) @trusted nothrow
     {
-        this.gossip_queue.insertBack(GossipEvent(enroll));
+        this.gossip_queue.insertBack(GossipEvent(enroll, avail_height));
         this.gossip_timer.rearm(GossipDelay, Periodic.No);
     }
 

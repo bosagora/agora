@@ -53,8 +53,8 @@ private class SameKeyValidator : TestValidatorNode
         assert(unused_utxo != Hash.init);
 
         const new_enroll =
-            this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight());
-        this.postEnrollment(new_enroll);
+            this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight() + 1);
+        this.postEnrollment(new_enroll, this.ledger.getBlockHeight() + 1);
 
         return new_enroll;
     }
@@ -129,7 +129,7 @@ unittest
     assert(b20.header.enrollments.length == 5);
 
     // Now we retry re-enrolling the first validator with the new UTXO
-    nodes[0].postEnrollment(new_enroll);
+    nodes[0].postEnrollment(new_enroll, Height(21));
     nodes.each!(node =>
         retryFor(node.getEnrollment(new_enroll.utxo_key) == new_enroll, 5.seconds));
 
