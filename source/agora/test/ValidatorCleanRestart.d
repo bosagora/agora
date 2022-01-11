@@ -107,62 +107,46 @@ version(none) unittest
 
 /// Situation: A validator is stopped and wiped clean after the block height
 ///     is 1, and then, two blocks are inserted into the ledger. After the
-///     validator restarts, another new block is in the middle of a consensus.
+///     validator restarts, another new block is added but node_1 is sleeping.
 /// Expectation: The new block is inserted into the ledger because the validator
 ///     has started to validate immediately.
 unittest
 {
-    TestConf conf = { full_nodes: 1 };
-    conf.consensus.quorum_threshold = 75;
+    TestConf conf;
+    conf.node.block_catchup_interval = 100.msecs; // speed up catchup
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    // node_1 and node_2 are the validators
+    // node_1 and node_2 are validators
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
-    auto node_2 = nodes[1];
+    auto node_1 = nodes[1];
+    auto node_2 = nodes[2];
 
-    // Create a block from the Genesis block
-    auto txs = genesisSpendable().map!(txb => txb.sign()).array();
-    txs.each!(tx => node_1.postTransaction(tx));
-    network.expectHeightAndPreImg(Height(1));
+    assert(node_1.getQuorumConfig().threshold == 5);
 
-    // node_1 restarts and becomes unresponsive
-    network.restart(node_1);
-    node_1.ctrl.sleep(5.seconds);
+    // Create a block after the Genesis block
+    network.generateBlocks(Height(1));
+
+    // node_2 restarts and becomes unresponsive
+    network.restart(node_2);
+    node_2.ctrl.sleep(1.hours, true);
 
     // Make 2 blocks
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_2.postTransaction(tx));
-    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(2));
-    network.expectHeight(iota(1, nodes.length), Height(2));
+    network.generateBlocks(only(0, 1, 3, 4, 5), Height(3));
 
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_2.postTransaction(tx));
-    network.expectHeightAndPreImg(iota(1,nodes.length), Height(3));
+    // Wake up node_2
+    node_2.ctrl.sleep(0.seconds);
 
-    // Wait for node_1 to wake up
-    node_1.ctrl.withTimeout(10.seconds,
-        (scope TestAPI api) {
-            api.getPublicKey();
-        }
-    );
+    // node_1 is sleeping
+    node_1.ctrl.sleep(1.hours, true);
 
-    network.expectHeightAndPreImg(Height(3));
+    // wait till node_2 catches up
+    network.assertSameBlocks(only(0, 2, 3, 4, 5), Height(3));
 
-    // The node_2 restart and is disabled to respond, which means that
-    // the node_2 will be slashed soon.
-    network.restart(node_2);
-    node_2.ctrl.sleep(5.seconds);
-
-    // A new block is in the middle of a consensus.
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
-    txs.each!(tx => node_1.postTransaction(tx));
-
-    // The new block has been inserted to the ledger with the approval
-    // of the node_1, although node_2 was shutdown.
-    network.expectHeightAndPreImg(Height(4));
+    // A new block is still inserted into the ledger with the approval
+    // of node_2, although node_1 was sleeping.
+    network.generateBlocks(only(0, 2, 3, 4, 5), Height(4));
 }
