@@ -1322,41 +1322,6 @@ extern(D):
             timeout.msecs, { callCPPDelegate(callback); });
     }
 
-    /***************************************************************************
-
-        Used by the nomination protocol to randomize the order of messages
-        between nodes.
-
-        Params:
-            slot_idx = the slot index we're currently reaching consensus for.
-            prev = the previous data set for the provided slot index.
-            is_priority = the flag to check that this call is for priority.
-            round_num = the nomination round
-            node_id = the id of the node for which this computation is being made
-
-        Returns:
-            the 8-byte hash
-
-    ***************************************************************************/
-
-    public override uint64_t computeHashNode (uint64_t slot_idx,
-        ref const(Value) prev, bool is_priority, int32_t round_num,
-        ref const(NodeID) node_id) nothrow
-    {
-        const uint hash_N = 1;
-        const uint hash_P = 2;
-
-        const seed = this.ledger.lastBlock().header.hashFull();
-        const Hash hash = hashMulti(slot_idx, prev[],
-            is_priority ? hash_P : hash_N, round_num, node_id, seed);
-
-        uint64_t res = 0;
-        for (size_t i = 0; i < res.sizeof; i++)
-            res = (res << 8) | hash[][i];
-
-        return res;
-    }
-
     // `getHashOf` computes the hash for the given vector of byte vector
     override StellarHash getHashOf (ref vector!Value vals) const nothrow
     {
