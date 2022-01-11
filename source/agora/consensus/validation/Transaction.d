@@ -908,7 +908,7 @@ unittest
     // create the payment transaction.
     Transaction paymentTx = Transaction(
         [Input(Hash.init)],
-        [Output(Amount(80_000L * 10_000_000L), key_pair.address)]
+        [Output(80_000.coins, key_pair.address)]
     );
     storage.put(paymentTx);
     Hash payment_utxo = UTXO.getHash(paymentTx.hashFull(), 0);
@@ -916,7 +916,7 @@ unittest
     // create the frozen transaction.
     Transaction frozenTx = Transaction(
         [Input(Hash.init)],
-        [Output(Amount(80_000L * 10_000_000L), key_pair.address, OutputType.Freeze)]
+        [Output(80_000.coins, key_pair.address, OutputType.Freeze)]
     );
     storage.put(frozenTx);
     Hash frozen_utxo = UTXO.getHash(frozenTx.hashFull(), 0);
@@ -948,7 +948,7 @@ unittest
         [Input(payment_utxo)],
         [
             Output(large_data_fee, payload_checker.params.CommonsBudgetAddress),
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+            Output(40_000.coins, key_pair.address)
         ].sort.array,
         large_data,
     );
@@ -997,7 +997,7 @@ unittest
     dataTx = Transaction(
         [Input(frozen_utxo)],
         [
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)
+            Output(40_000.coins, key_pair.address)
         ],
         normal_data,
     );
@@ -1014,7 +1014,7 @@ unittest
     dataTx = Transaction(
         [Input(payment_utxo)],
         [
-            Output(Amount(40_000L * 10_000_000L), key_pair.address, OutputType.Freeze)
+            Output(40_000.coins, key_pair.address, OutputType.Freeze)
         ],
         normal_data,
     );

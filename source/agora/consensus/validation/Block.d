@@ -469,7 +469,7 @@ unittest
     // create a transaction with data payload and enough fee
     Transaction dataTx = Transaction(null,
         [ Output(normal_data_fee, fee_man.params.CommonsBudgetAddress),
-            Output(Amount(40_000L * 10_000_000L), key_pair.address)].sort.array,
+            Output(40_000.coins, key_pair.address)].sort.array,
         normal_data,
     );
 

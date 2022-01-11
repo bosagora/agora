@@ -453,12 +453,12 @@ unittest
 
     auto tx_hash = Transaction(
     [
-        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze),
-        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE3.address, OutputType.Freeze),
-        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE4.address, OutputType.Freeze),
-        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE5.address, OutputType.Freeze),
-        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE6.address, OutputType.Freeze),
-        Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE7.address, OutputType.Freeze),
+        Output(2_000_000.coins, WK.Keys.NODE2.address, OutputType.Freeze),
+        Output(2_000_000.coins, WK.Keys.NODE3.address, OutputType.Freeze),
+        Output(2_000_000.coins, WK.Keys.NODE4.address, OutputType.Freeze),
+        Output(2_000_000.coins, WK.Keys.NODE5.address, OutputType.Freeze),
+        Output(2_000_000.coins, WK.Keys.NODE6.address, OutputType.Freeze),
+        Output(2_000_000.coins, WK.Keys.NODE7.address, OutputType.Freeze),
     ]).hashFull();
 
     const(ConsensusData) cd =
