@@ -116,8 +116,15 @@ public struct ConsensusConfig
 {
     import configy.Attributes;
 
-    /// Time at which the Genesis block was created
-    public TimePoint genesis_timestamp = 1609_459_200; // 2021-01-01:00:00:00 GMT
+    /***************************************************************************
+
+        The timestamp at which Genesis was mined
+
+        Used as the basis for all time calculations in the chain.
+        Defaults to 2021-01-01:00:00:00 GMT.
+
+    ***************************************************************************/
+    public TimePoint genesis_timestamp = 1609_459_200;
 
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
