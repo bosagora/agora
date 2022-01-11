@@ -786,7 +786,7 @@ unittest
     auto fee_man = new FeeManager();
 
     Transaction freeze_tx = Transaction(
-        [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze) ]);
+        [ Output(2_000_000.coins, WK.Keys.NODE2.address, OutputType.Freeze) ]);
 
     auto utxo_set = new TestUTXOSet;
     utxo_set.put(freeze_tx);
@@ -844,7 +844,7 @@ unittest
     auto fee_man = new FeeManager();
 
     Transaction freeze_tx = Transaction(
-        [ Output(Amount(2_000_000L * 10_000_000L), WK.Keys.NODE2.address, OutputType.Freeze) ]);
+        [ Output(2_000_000.coins, WK.Keys.NODE2.address, OutputType.Freeze) ]);
 
     assert(fee_man.check(freeze_tx, 1_000.coins) !is null);
     assert(fee_man.check(freeze_tx, 11_000.coins) is null);

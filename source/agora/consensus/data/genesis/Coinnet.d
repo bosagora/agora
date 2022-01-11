@@ -104,23 +104,23 @@ private immutable Transaction[] GenesisTransactions =
     [
         Transaction(
             [
-                Output(Amount(2_000_000L * 10_000_000L), NODE2_ADDRESS, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), NODE3_ADDRESS, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), NODE4_ADDRESS, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), NODE5_ADDRESS, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), NODE6_ADDRESS, OutputType.Freeze),
-                Output(Amount(2_000_000L * 10_000_000L), NODE7_ADDRESS, OutputType.Freeze),
+                Output(2_000_000.coins, NODE2_ADDRESS, OutputType.Freeze),
+                Output(2_000_000.coins, NODE3_ADDRESS, OutputType.Freeze),
+                Output(2_000_000.coins, NODE4_ADDRESS, OutputType.Freeze),
+                Output(2_000_000.coins, NODE5_ADDRESS, OutputType.Freeze),
+                Output(2_000_000.coins, NODE6_ADDRESS, OutputType.Freeze),
+                Output(2_000_000.coins, NODE7_ADDRESS, OutputType.Freeze),
             ]),
         Transaction(
             [
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
-                Output(Amount(54_750_000L * 10_000_000L), GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
+                Output(54_750_000.coins, GenesisOutputAddress),
             ]),
     ];
 

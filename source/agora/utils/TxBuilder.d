@@ -789,7 +789,7 @@ unittest
 unittest
 {
     auto fee_rate = Amount(900);    // Using higher than min fee rate
-    const freezeAmount = Amount(50_000L * 10_000_000L);
+    const freezeAmount = 50_000.coins;
     const result = TxBuilder(GenesisBlock.payments.front)
         .feeRate(fee_rate)
         .draw(freezeAmount, WK.Keys.byRange.map!(k => k.address).takeExactly(1))

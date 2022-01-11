@@ -559,14 +559,14 @@ unittest
 
     Transaction tx = Transaction(
         [
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey),
-            Output(Amount(62_500_000L * 10_000_000L), pubkey)
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey),
+            Output(62_500_000.coins, pubkey)
         ]);
 
     auto validators = typeof(BlockHeader.validators)(6);
