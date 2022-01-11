@@ -325,10 +325,11 @@ public interface API
 
         Params:
             enroll = the Enrollment object, the information about an validator
+            avail_height = Height that requesting node intends to to be enrolled
 
     ***************************************************************************/
 
-    public void postEnrollment (in Enrollment enroll);
+    public void postEnrollment (in Enrollment enroll, in Height avail_height);
 
     /***************************************************************************
 

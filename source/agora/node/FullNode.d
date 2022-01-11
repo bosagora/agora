@@ -1056,9 +1056,16 @@ public class FullNode : API
     }
 
     /// POST /enrollment
-    public override void postEnrollment (in Enrollment enroll) @safe
+    public override void postEnrollment (in Enrollment enroll, in Height avail_height) @safe
     {
         this.recordReq("postEnrollment");
+
+        // Ignore enrollments targeting a previous Height
+        if (avail_height <= this.ledger.getBlockHeight())
+        {
+            log.trace("Ignoring enrollment {} targeting a previous Height {}", prettify(enroll), avail_height);
+            return;
+        }
 
         UTXO utxo;
         Output found_output;
@@ -1127,10 +1134,10 @@ public class FullNode : API
 
         const utxo_address = utxo.output.address;
         if (this.enroll_man.addEnrollment(enroll, utxo_address,
-            this.ledger.getBlockHeight() + 1, utxo_finder, getPenaltyDeposit))
+            avail_height, utxo_finder, getPenaltyDeposit))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
-            this.network.peers.each!(p => p.client.sendEnrollment(enroll));
+            this.network.peers.each!(p => p.client.sendEnrollment(enroll, avail_height));
         }
     }
 

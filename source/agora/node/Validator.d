@@ -682,7 +682,7 @@ public class Validator : FullNode, API
         log.trace("checkAndEnroll: Sending Enrollment for enrolling {} at height {} (to validate blocks {} to {})",
             this.enroll_man.getEnrollmentPublicKey(), avail_height, avail_height + 1, avail_height + this.params.ValidatorCycle);
         this.enroll_man.enroll_pool.addValidated(enrollment, avail_height);
-        this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
+        this.network.peers.each!(p => p.client.sendEnrollment(enrollment, avail_height));
         return enrollment;
     }
 
