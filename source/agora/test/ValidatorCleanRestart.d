@@ -20,6 +20,8 @@ import agora.api.FullNode;
 import agora.crypto.Key;
 import agora.test.Base;
 
+import core.thread : Thread;
+
 /// Situation: One set of Validators(set A) which enrolled in the Genesis
 ///     block are all expired at the latest block height. And the other
 ///     set of Validators(set B) are already enrolled and all validators.
@@ -28,13 +30,17 @@ import agora.test.Base;
 ///     process of set B have finished, a new block is being nominated,
 ///     and a consensus round for the new block is being made.
 /// Expectation: The new block is approved and inserted into the ledger.
-version(none) unittest
+unittest
 {
     TestConf conf = {
-        timeout : 10.seconds,
         outsider_validators : 3,
         recurring_enrollment : false
     };
+    conf.node.block_catchup_interval = 100.msecs; // speed up block catchup
+    conf.node.network_discovery_interval = 200.msecs; // speed up discovery
+    conf.node.retry_delay = 250.msecs;
+    conf.node.max_retries = 2; // We shutdown some nodes so let's try less times
+    const allValidators = GenesisValidators + conf.outsider_validators;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -48,24 +54,18 @@ version(none) unittest
     // generate 18 blocks, 2 short of the enrollments expiring.
     network.generateBlocks(Height(GenesisValidatorCycle - 2));
 
-    const keys = set_b.map!(node => node.getPublicKey()).array;
-
-    Amount expected = Amount.MinFreezeAmount;
-    assert(expected.mul(keys.length));
-    auto utxos = nodes[0].getSpendables(expected);
-
     // Block 19 we add the freeze utxos for set_b validators
-    // prepare frozen outputs for outsider validators to enroll
-    TxBuilder txb = TxBuilder(WK.Keys.AAA.address); // Refund
-    utxos.each!(pair => txb.attach(pair.utxo.output, pair.hash));
-    auto to_send = txb.draw(Amount.MinFreezeAmount, keys).sign(OutputType.Freeze);
-    set_a.each!(n => n.postTransaction(to_send));
+    network.postAndEnsureTxInPool(iota(GenesisValidators),
+        network.freezeUTXO(iota(GenesisValidators, allValidators)));
 
-    // wait for other nodes to get to same block height
-    network.assertSameBlocks(Height(GenesisValidatorCycle - 1));
+    network.generateBlocks(Height(GenesisValidatorCycle - 1), true);
+
+    // make sure outsiders are up to date
+    network.expectHeight(iota(GenesisValidators, allValidators),
+        Height(GenesisValidatorCycle - 1));
 
     // Now we enroll the set B validators.
-    set_b.enumerate.each!((idx, _) => network.enroll(GenesisValidators + idx));
+    iota(GenesisValidators, allValidators).each!(i => network.enroll(i));
 
     // Block 20, After this the Genesis block enrolled validators will be expired.
     network.generateBlocks(Height(GenesisValidatorCycle));
@@ -77,11 +77,12 @@ version(none) unittest
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
     set_b.each!(node => network.restart(node));
-    network.expectHeight(Height(GenesisValidatorCycle));
+
+    network.expectHeight(iota(GenesisValidators, allValidators), Height(GenesisValidatorCycle));
 
     // Sanity check
     nodes.enumerate.each!((idx, node) =>
-        retryFor(node.countActive(Height(GenesisValidatorCycle + 1)) == conf.outsider_validators, 3.seconds,
+        retryFor(node.countActive(Height(GenesisValidatorCycle + 1)) == conf.outsider_validators, 5.seconds,
             format("Node %s has validator count %s. Expected: %s",
                 idx, node.countActive(Height(GenesisValidatorCycle + 1)), conf.outsider_validators)));
 
@@ -91,17 +92,22 @@ version(none) unittest
             5.seconds));
 
     // Check if the validators in the set B have all the addresses for
-    // current validators and previous validators except themselves.
-    set_b.each!(node =>
-        retryFor(node.getNodeInfo().addresses.length ==
-            GenesisValidators + conf.outsider_validators,
-            5.seconds));
+    // current validators and previous validators.
+    set_b.enumerate.each!((idx, node) =>
+        retryFor(node.getNodeInfo().addresses.length == allValidators,
+            10.seconds,
+            format("Node %s has addresses %s which is not expected count of %s",
+            idx + 5, node.getNodeInfo().addresses, allValidators)));
 
     // Make all the validators of the set A disable to respond
-    set_a.each!(node => node.ctrl.sleep(6.seconds, true));
+    set_a.each!(node => node.ctrl.shutdown);
+
+    // give time for the outsiders to be added as validators before sending tx for next block
+    // as catchup for missing txs only occurs after nomination has started
+    Thread.sleep(conf.node.network_discovery_interval);
 
     // Block 21 with the new validators in the set B
-    network.generateBlocks(iota(GenesisValidators, cast(size_t) nodes.length),
+    network.generateBlocks(iota(GenesisValidators, allValidators),
         Height(GenesisValidatorCycle + 1));
 }
 
@@ -114,6 +120,7 @@ unittest
 {
     TestConf conf;
     conf.node.block_catchup_interval = 100.msecs; // speed up catchup
+    conf.node.network_discovery_interval = 200.msecs; // speed up discovery
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
