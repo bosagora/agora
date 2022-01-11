@@ -185,10 +185,6 @@ public struct NodeConfig
     static assert(!hasUnsharedAliasing!(typeof(this)),
         "Type must be shareable accross threads");
 
-    /// If set, a commons budget address to use
-    /// in place of the built-in commons budget address as defined by CoinNet
-    public @Optional PublicKey commons_budget_address;
-
     /// If set to true will run in testing mode and use different
     /// genesis block (agora.consensus.data.genesis.Test)
     /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
@@ -618,7 +614,6 @@ unittest
     immutable conf_example = `
 node:
   data_dir: .cache
-  commons_budget_address: boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s
 network:
  - "something"
 `;
@@ -626,7 +621,6 @@ network:
     assert(config.node.min_listeners == 2);
     assert(config.node.max_listeners == 10);
     assert(config.node.data_dir == ".cache");
-    assert(config.node.commons_budget_address.toString() == "boa1xrzwvvw6l6d9k84ansqgs9yrtsetpv44wfn8zm9a7lehuej3ssskxth867s");
 }
 
 ///
