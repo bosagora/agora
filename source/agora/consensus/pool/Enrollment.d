@@ -421,9 +421,9 @@ unittest
     Enrollment[] ordered_enrollments = enrollments.dup;
     ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
     foreach (ordered_enroll; ordered_enrollments)
-        assert(pool.add(ordered_enroll, Height(1),
+        assert(pool.add(ordered_enroll, Height(params.ValidatorCycle),
                         &storage.peekUTXO, &findEnrollment, &getPenaltyDeposit));
-    enrolls = pool.getEnrollments(Height(1));
+    enrolls = pool.getEnrollments(Height(params.ValidatorCycle));
     assert(enrolls.length == 3);
     assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
 }

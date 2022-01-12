@@ -84,7 +84,7 @@ public string isInvalidReason (in Enrollment enrollment,
     if (!address.isValid())
         return "Enrollment: Address is not a valid point on Curve25519";
 
-    if (!verify(address, enrollment.enroll_sig, enrollment))
+    if (!verify(address, enrollment.enroll_sig, hashMulti(height, enrollment)))
         return "Enrollment: signature verification failed";
 
     if (utxo_set_value.output.value.integral() < Amount.MinFreezeAmount.integral())
@@ -178,21 +178,21 @@ unittest
     Enrollment enroll1;
     enroll1.utxo_key = utxo_hash1;
     enroll1.commitment = hashFull(Scalar.random());
-    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
+    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, hashMulti(Height(0), enroll1));
 
     Pair node_key_pair_2 = Pair.fromScalar(key_pairs[1].secret);
 
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.commitment = hashFull(Scalar.random());
-    enroll2.enroll_sig = sign(node_key_pair_2, signature_noise, enroll2);
+    enroll2.enroll_sig = sign(node_key_pair_2, signature_noise, hashMulti(Height(0), enroll2));
 
     Pair node_key_pair_3 = Pair.fromScalar(key_pairs[2].secret);
 
     Enrollment enroll3;
     enroll3.utxo_key = utxo_hash3;
     enroll3.commitment = hashFull(Scalar.random());
-    enroll3.enroll_sig = sign(node_key_pair_3, signature_noise, enroll3);
+    enroll3.enroll_sig = sign(node_key_pair_3, signature_noise, hashMulti(Height(0), enroll3));
 
     // Make pair with non matching scalar and point
     Pair node_key_pair_invalid = Pair(node_key_pair_2.v, node_key_pair_3.V);
@@ -200,7 +200,7 @@ unittest
     Enrollment enroll4;
     enroll4.utxo_key = utxo_hash4;
     enroll4.commitment = hashFull(Scalar.random());
-    enroll4.enroll_sig = sign(node_key_pair_invalid, signature_noise, enroll4);
+    enroll4.enroll_sig = sign(node_key_pair_invalid, signature_noise, hashMulti(Height(0), enroll4));
 
     assert(!enroll1.isValid(utxoFinder, Height(0),
                                     &validator_set.findRecentEnrollment,
@@ -249,7 +249,7 @@ unittest
 
     enroll1.utxo_key = utxo_hash1;
     enroll1.commitment = cycle[Height(0)];
-    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
+    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, hashMulti(Height(0), enroll1));
 
     assert(validator_set.add(Height(0), utxoPeek, getPenaltyDeposit, enroll1,
                                                 key_pairs[0].address) is null);
@@ -260,7 +260,7 @@ unittest
     foreach (offset; [-1, +1, 0])
     {
         enroll1.commitment = cycle[Height(params.ValidatorCycle + offset)];
-        enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, enroll1);
+        enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, hashMulti(Height(params.ValidatorCycle), enroll1));
         assert((offset == 0) == (validator_set.add(Height(params.ValidatorCycle),
                             utxoPeek, getPenaltyDeposit, enroll1, key_pairs[0].address) is null));
     }

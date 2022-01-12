@@ -128,6 +128,7 @@ unittest
     auto b20 = nodes[0].getBlocksFrom(20, 2)[0];
     assert(b20.header.enrollments.length == 5);
 
+    new_enroll = nodes[0].setRecurringEnrollment(true);
     // Now we retry re-enrolling the first validator with the new UTXO
     nodes[0].postEnrollment(new_enroll, Height(21));
     nodes.each!(node =>

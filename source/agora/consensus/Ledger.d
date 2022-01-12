@@ -1743,3 +1743,31 @@ unittest
     ledger.forceCreateBlock(0);
     assert(ledger.getBlockHeight() == 2);
 }
+
+// test enrollment sigs and request for a future height
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    auto params = new immutable(ConsensusParams)();
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+    ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+    KeyPair kp = WK.Keys.NODE10;
+    assert(GenesisBlock.txs[1].outputs[1].address == WK.Keys.NODE10.address);
+    auto stake = UTXO.getHash(GenesisBlock.txs[1].hashFull, 1);
+
+    auto enrollment = EnrollmentManager.makeEnrollment(stake, kp, Height(5), 20);
+    // wrong height, rejected
+    assert(!ledger.enrollment_manager.addEnrollment(enrollment, kp.address,
+        Height(4), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
+
+    assert(ledger.enrollment_manager.addEnrollment(enrollment, kp.address,
+        Height(5), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
+
+    while (ledger.getBlockHeight() != Height(5))
+        ledger.forceCreateBlock(0);
+    assert(ledger.lastBlock.header.height == Height(5));
+    assert(ledger.lastBlock.header.enrollments.canFind(enrollment));
+}

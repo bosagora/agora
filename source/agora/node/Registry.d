@@ -1128,7 +1128,7 @@ unittest
         UTXO.getHash(txs[0].hashFull(), 0),
         Hash.init,
     );
-    enroll.enroll_sig = WK.Keys[0].sign(enroll);
+    enroll.enroll_sig = WK.Keys[0].sign(hashMulti(Height(2), enroll));
     assert(ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[0].address,
         Height(2), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
 

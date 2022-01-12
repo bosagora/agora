@@ -326,7 +326,7 @@ public class EnrollmentManager
         const seed = this.cycle[height];
         const enroll = makeEnrollment(
             utxo, this.key_pair, seed,
-            this.cycle.index);
+            height, this.cycle.index);
 
         return enroll;
     }
@@ -350,6 +350,7 @@ public class EnrollmentManager
             utxo = `Hash` of a frozen UTXO value that can be used for enrollment
             key  = `KeyPair` that controls the `utxo`
             seed = commitment to use
+            height = height that we want the enrollment to be externalized
             offset = The number of times this private key has enrolled before.
                      If `seed` is provided, this parameter is non-optional.
 
@@ -359,7 +360,7 @@ public class EnrollmentManager
     ***************************************************************************/
 
     public static Enrollment makeEnrollment (
-        in Hash utxo, in KeyPair key, in Hash seed, ulong offset = 0)
+        in Hash utxo, in KeyPair key, in Hash seed, Height height, ulong offset = 0)
         @safe nothrow @nogc
     {
         Enrollment result = {
@@ -371,7 +372,7 @@ public class EnrollmentManager
         const Pair noise = Pair.fromScalar(Scalar(hashMulti(key.secret, "consensus.signature.noise", offset)));
 
         // We're done, sign & return
-        result.enroll_sig = Pair(key.secret, key.address).sign(noise, result);
+        result.enroll_sig = Pair(key.secret, key.address).sign(noise, hashMulti(height, result));
         return result;
     }
 
@@ -386,7 +387,7 @@ public class EnrollmentManager
         catch (Exception e) assert(0, "No pregenerated cycle seed");
         // Generate the random seed to use
         auto cycle = PreImageCycle(cycle_seed, seed_pos);
-        return makeEnrollment(utxo, key, cycle[height]);
+        return makeEnrollment(utxo, key, cycle[height], height);
     }
 
     /***************************************************************************
@@ -796,16 +797,14 @@ unittest
     assert(man.validator_set.countActive(EnrollAt9 + 1) == 0);
     assert(man.validator_set.getEnrolledHeight(EnrollAt9, utxo_hash) == ulong.max);
     // Add removed enrollment to the pool with the new height
-    assert(man.addEnrollment(
-            EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], EnrollAt9, params.ValidatorCycle),
-            pairs[1].address, EnrollAt9, &utxo_set.peekUTXO, getPenaltyDeposit));
+    auto enroll = EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], EnrollAt9, params.ValidatorCycle);
+    assert(man.addEnrollment(enroll, pairs[1].address, EnrollAt9, &utxo_set.peekUTXO, getPenaltyDeposit));
     // The expired enrollments in the pool from height 1 are cleared on this next call
     // to get enrollments at a higher height. We do have an enrollment at height 9
     assert(man.getEnrollments(EnrollAt9, &utxo_set.peekUTXO, getPenaltyDeposit).length == 1);
-    assert(man.addValidator(
-               ordered_enrollments[1], pairs[0].address, EnrollAt9, &utxo_set.peekUTXO, getPenaltyDeposit, utxos)
+    assert(man.addValidator(enroll, pairs[1].address, EnrollAt9, &utxo_set.peekUTXO, getPenaltyDeposit, utxos)
            is null);
-    assert(man.validator_set.getEnrolledHeight(EnrollAt9 + 1, ordered_enrollments[1].utxo_key) == EnrollAt9);
+    assert(man.validator_set.getEnrolledHeight(EnrollAt9 + 1, enroll.utxo_key) == EnrollAt9);
     // One Enrollment was moved to validator set
     assert(man.validator_set.countActive(EnrollAt9 + 1) == 1);
     // Check last block of cycle is still active
@@ -819,48 +818,42 @@ unittest
 
     // clear up all validators
     man.validator_set.removeAll();
+    ordered_enrollments.length = 0;
 
-    // Adding enrollments in reverse order of utxo order to show it still works
-    const EnrollAt10 = Height(10);
-    ordered_enrollments.sort!("a.utxo_key > b.utxo_key");
-    foreach (idx, ordered_enroll; ordered_enrollments)
-        assert(man.addEnrollment(ordered_enroll, pairs[idx].address, EnrollAt10,
-            &utxo_set.peekUTXO, getPenaltyDeposit));
-    enrolls = man.getEnrollments(EnrollAt10, &utxo_set.peekUTXO, getPenaltyDeposit);
-    assert(enrolls.length == 3);
-    assert(enrolls.isStrictlyMonotonic!("a.utxo_key < b.utxo_key"));
-
+    enroll = EnrollmentManager.makeEnrollment(utxo_hashes[0], pairs[0], Height(10), params.ValidatorCycle);
     // A validator is enrolled at the height of 10.
     PreImageInfo preimage;
-    assert(man.addValidator(ordered_enrollments[0], WK.Keys[0].address, EnrollAt10,
+    assert(man.addValidator(enroll, WK.Keys[0].address, Height(10),
             &utxo_set.peekUTXO, getPenaltyDeposit, utxos) is null);
-    assert(man.getNextPreimage(preimage, EnrollAt10));
-    assert(preimage.height >= EnrollAt10);
+    assert(man.getNextPreimage(preimage, Height(10)));
+    assert(preimage.height >= Height(10));
     assert(preimage.hash == man.cycle[preimage.height]);
 
     // test for getting validators' UTXO keys
     Hash[] keys;
 
+    enroll = EnrollmentManager.makeEnrollment(utxo_hashes[1], pairs[1], Height(11), params.ValidatorCycle);
     // validator A with the `utxo_hash` and the enrolled height of 10.
     // validator B with the 'utxo_hash2' and the enrolled height of 11.
     // validator C with the 'utxo_hash3' and no enrolled height.
-    assert(man.addValidator(ordered_enrollments[1], WK.Keys[1].address, Height(11),
+    assert(man.addValidator(enroll, WK.Keys[1].address, Height(11),
             &utxo_set.peekUTXO, getPenaltyDeposit, utxos) is null);
     assert(man.validator_set.countActive(Height(12)) == 2);
     assert(man.validator_set.getEnrolledUTXOs(Height(12), keys));
     assert(keys.length == 2);
 
+    enroll = EnrollmentManager.makeEnrollment(utxo_hashes[2], pairs[2], Height(12), params.ValidatorCycle);
     // set an enrolled height for validator C
     // set the block height to 1019, which means validator B is expired.
     // there is only one validator in the middle of 1020th block being made.
     assert(man.addValidator(
-               ordered_enrollments[2], WK.Keys[2].address, Height(12),
+               enroll, WK.Keys[2].address, Height(12),
                &utxo_set.peekUTXO, getPenaltyDeposit, utxos)
            is null);
     assert(man.validator_set.countActive(Height(params.ValidatorCycle + 12)) == 1);
     assert(man.validator_set.getEnrolledUTXOs(Height(params.ValidatorCycle + 12), keys));
     assert(keys.length == 1);
-    assert(keys[0] == ordered_enrollments[2].utxo_key);
+    assert(keys[0] == enroll.utxo_key);
 }
 
 /// tests for `ValidatorSet.countActive
@@ -898,41 +891,37 @@ unittest
 
     Height height = Height(2);
 
-    Enrollment[] enrollments;
-    foreach (idx, kp; pairs[0 .. 3])
-    {
-        enrollments ~= EnrollmentManager.makeEnrollment(
-            utxo_hashes[idx], kp, height, params.ValidatorCycle);
-    }
-
+    auto enroll = EnrollmentManager.makeEnrollment(utxo_hashes[0], WK.Keys[0], height, params.ValidatorCycle);
     // create and add the first Enrollment object
-    assert(man.addEnrollment(enrollments[0], WK.Keys[0].address, height,
+    assert(man.addEnrollment(enroll, WK.Keys[0].address, height,
             utxo_set.getUTXOFinder(), getPenaltyDeposit));
     assert(man.validator_set.countActive(height + 1) == 0);  // not active yet
 
-    assert(man.addValidator(enrollments[0], WK.Keys[0].address, height, &utxo_set.peekUTXO,
+    assert(man.addValidator(enroll, WK.Keys[0].address, height, &utxo_set.peekUTXO,
         getPenaltyDeposit, utxos) is null);
     assert(man.validator_set.countActive(height + 1) == 1);  // updated
 
     height = 3;
+    enroll = EnrollmentManager.makeEnrollment(utxo_hashes[1], WK.Keys[1], height, params.ValidatorCycle);
 
     // create and add the second Enrollment object
-    assert(man.addEnrollment(enrollments[1], WK.Keys[1].address, height,
+    assert(man.addEnrollment(enroll, WK.Keys[1].address, height,
             utxo_set.getUTXOFinder(), getPenaltyDeposit));
     assert(man.validator_set.countActive(height + 1) == 1);  // not active yet
 
-    assert(man.addValidator(enrollments[1], WK.Keys[1].address, height, &utxo_set.peekUTXO,
+    assert(man.addValidator(enroll, WK.Keys[1].address, height, &utxo_set.peekUTXO,
         getPenaltyDeposit, utxos) is null);
     assert(man.validator_set.countActive(height + 1) == 2);  // updated
 
     height = 4;
+    enroll = EnrollmentManager.makeEnrollment(utxo_hashes[2], WK.Keys[2], height, params.ValidatorCycle);
 
     // create and add the third Enrollment object
-    assert(man.addEnrollment(enrollments[2], WK.Keys[2].address, height,
+    assert(man.addEnrollment(enroll, WK.Keys[2].address, height,
             utxo_set.getUTXOFinder(), getPenaltyDeposit));
     assert(man.validator_set.countActive(height + 1) == 2);  // not active yet
 
-    assert(man.addValidator(enrollments[2], WK.Keys[2].address, height, &utxo_set.peekUTXO,
+    assert(man.addValidator(enroll, WK.Keys[2].address, height, &utxo_set.peekUTXO,
         getPenaltyDeposit, utxos) is null);
     assert(man.validator_set.countActive(height + 1) == 3);  // updated
 
