@@ -72,32 +72,11 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    Transaction[] txs;
-
-    void createAndExpectNewBlock (Height new_height)
-    {
-        // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().map!(txb => txb.sign())
-            .array();
-
-        // send it to one node
-        txs.each!(tx => node_0.postTransaction(tx));
-
-        network.expectHeightAndPreImg(new_height, blocks[0].header);
-
-        // add next block
-        blocks ~= node_0.getBlocksFrom(new_height, 1);
-    }
-
-    // create GenesisValidatorCycle - 1 blocks
-    foreach (block_idx; 1 .. GenesisValidatorCycle)
-    {
-        createAndExpectNewBlock(Height(block_idx));
-    }
+    network.generateBlocks(Height(GenesisValidatorCycle - 1), true);
 
     // Try creating one last block, should fail
-    assertThrown!AssertError(createAndExpectNewBlock(
-        Height(GenesisValidatorCycle)));
+    assertThrown!AssertError(
+        network.generateBlocks(Height(GenesisValidatorCycle), true));
 }
 
 // Not all validators can enroll at the same height again. They should enroll
@@ -151,7 +130,7 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    network.generateBlocks(Height(GenesisValidatorCycle + 2));
+    network.generateBlocks(Height(GenesisValidatorCycle + 2), true);
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 2));
     auto last_enrolls = blocks.retro.take(3).map!(block => block.header.enrollments.length);
@@ -183,14 +162,14 @@ unittest
     auto node_5 = nodes[5];
 
     // Approach end of the cycle
-    network.generateBlocks(Height(GenesisValidatorCycle - 3));
+    network.generateBlocks(Height(GenesisValidatorCycle - 3), true);
 
     // Make 2 nodes sleep for longer than test can possibly run
     node_4.ctrl.sleep(1.hours, true);
     node_5.ctrl.sleep(1.hours, true);
 
     network.generateBlocks(iota(4),
-        Height(GenesisValidatorCycle - 1));
+        Height(GenesisValidatorCycle - 1), true);
 
     // Wake up node #4 right before cycle ends
     node_4.ctrl.sleep(0.seconds);
@@ -199,7 +178,7 @@ unittest
         Height(GenesisValidatorCycle - 1), network.blocks[0].header);
 
     network.generateBlocks(iota(5), // nodes #0 .. #4
-        Height(GenesisValidatorCycle));
+        Height(GenesisValidatorCycle), true);
 
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls1 = blocks[$ - 1].header.enrollments.length;
@@ -213,7 +192,7 @@ unittest
     network.expectHeightAndPreImg(only(5), Height(GenesisValidatorCycle));
 
     network.generateBlocks(iota(GenesisValidators),
-        Height(GenesisValidatorCycle + 1));
+        Height(GenesisValidatorCycle + 1), true);
 
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     auto enrolls2 = blocks[$ - 1].header.enrollments.length;
@@ -252,7 +231,7 @@ unittest
 
     // Even if configured to not re-enroll, BatValidator should enroll if there
     // are not enough validators
-    network.generateBlocks(Height(GenesisValidatorCycle + 1));
+    network.generateBlocks(Height(GenesisValidatorCycle + 1), true);
 }
 
 // Make a validator recur enrollment in the middle of generating blocks
@@ -268,7 +247,7 @@ unittest
     network.waitForDiscovery();
 
     // generate 19 blocks
-    network.generateBlocks(Height(GenesisValidatorCycle - 1));
+    network.generateBlocks(Height(GenesisValidatorCycle - 1), true);
 
     // set the recurring enrollment option to true and check in enrollment pools
     network.validators.each!((node)
@@ -278,7 +257,7 @@ unittest
         network.validators.each!(n =>
             retryFor(n.getEnrollment(enroll.utxo_key) == enroll, 5.seconds));
     });
-    network.generateBlocks(Height(GenesisValidatorCycle));
+    network.generateBlocks(Height(GenesisValidatorCycle), true);
     const b20 = network.clients[0].getBlocksFrom(GenesisValidatorCycle, 1)[0];
     assert(b20.header.enrollments.length == 6);
 }
