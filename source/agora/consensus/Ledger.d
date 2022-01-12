@@ -379,7 +379,11 @@ public class NodeLedger : Ledger
         // If there are 6 validators, and we're slashing 5 of them,
         // av = 6, missing_validators.length = 5, and `6 < 5 + 1` is still `true`.
         if (av < (data.missing_validators.length + Enrollment.MinValidatorCount))
+        {
+            log.dbg("validateConsensusData: Active validators:{} < {}",
+                av, data.missing_validators.length + Enrollment.MinValidatorCount);
             return InvalidConsensusDataReason.NotEnoughValidators;
+        }
 
         // We're trying to slash more validators that there are next block
         // FIXME: this check isn't 100% correct: we should check which validators
@@ -387,14 +391,23 @@ public class NodeLedger : Ledger
         // this round, and none of them have revealed their pre-image, in which
         // case the 3 validators we slash should not block externalization.
         if (avnb < data.missing_validators.length)
+        {
+            log.dbg("validateConsensusData: Active validators next block:{} < {}",
+                avnb, data.missing_validators.length);
             return InvalidConsensusDataReason.TooManyMPVs;
+        }
+
         // FIXME: See above comment
         avnb -= data.missing_validators.length;
 
         // We need to make sure that we externalize a block that allows for the
         // chain to make progress, otherwise we'll be stuck forever.
         if ((avnb + data.enrolls.length) < Enrollment.MinValidatorCount)
+        {
+            log.dbg("validateConsensusData: Active validators next block:{} + enrolls:{} < {}",
+                avnb, data.enrolls.length, data.missing_validators.length + Enrollment.MinValidatorCount);
             return InvalidConsensusDataReason.NotEnoughValidators;
+        }
 
         foreach (const ref enroll; data.enrolls)
         {
