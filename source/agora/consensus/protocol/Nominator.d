@@ -1349,6 +1349,7 @@ extern(D):
         const header = this.ledger.lastBlock().header;
         log.dbg("Nominator.computeHashNode: slot_idx={}, ledger height={}",
             slot_idx, header.height);
+        assert(header.height + 1 == slot_idx);
         const seed = header.hashFull();
         const Hash hash = hashMulti(slot_idx, prev[],
             is_priority ? hash_P : hash_N, round_num, node_id, seed);
