@@ -25,52 +25,6 @@ import agora.consensus.protocol.Nominator;
 import agora.crypto.Hash;
 import agora.consensus.Ledger;
 
-unittest
-{
-    TestConf conf;
-    conf.consensus.quorum_threshold = 100;
-    auto network = makeTestNetwork!TestAPIManager(conf);
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery();
-
-    auto nodes = network.clients;
-    auto node_0 = nodes[0];
-
-    // Get the genesis block, make sure it's the only block externalized
-    auto blocks = node_0.getBlocksFrom(0, 2);
-    assert(blocks.length == 1);
-
-    Transaction[] txs;
-
-    void createAndExpectNewBlock (Height new_height)
-    {
-        // create enough tx's for a single block
-        txs = blocks[new_height - 1].spendable().map!(txb => txb.sign()).array();
-
-        // send it to one node
-        txs.each!(tx => node_0.postTransaction(tx));
-
-        network.expectHeightAndPreImg(new_height, blocks[0].header);
-
-        // add next block
-        blocks ~= node_0.getBlocksFrom(new_height, 1);
-    }
-
-    // create GenesisValidatorCycle - 1 blocks
-    foreach (block_idx; 1 .. GenesisValidatorCycle)
-    {
-        createAndExpectNewBlock(Height(block_idx));
-    }
-
-    // Create one last block
-    // if Validators don't re-enroll, this would fail
-    createAndExpectNewBlock(Height(GenesisValidatorCycle));
-    // Check if all validators in genesis are enrolled again
-    assert(blocks[blocks.length - 1].header.enrollments.length == blocks[0].header.enrollments.length);
-}
-
 // Recurring enrollment with wrong `commitment`
 // When nodes reach the end of their validation cycle, they will try to
 // re-enroll with the same commitment in the GenesisBlock (ie. Height(0))
