@@ -364,6 +364,7 @@ public class Validator : FullNode, API
 
     protected override string acceptBlock (in Block block) @trusted
     {
+        log.dbg("Validator.acceptBlock: height = {}", block.header.height);
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
@@ -659,7 +660,11 @@ public class Validator : FullNode, API
 
         if (enroll_key == Hash.init &&
             (enroll_key = this.getFrozenUTXO()) == Hash.init)
-            return Enrollment.init; // Not enrolled and no frozen UTXO
+            {
+                log.dbg("checkAndEnroll: No frozen UTXO for validator {}",
+                    this.config.validator.key_pair.address);
+                return Enrollment.init; // Not enrolled and no frozen UTXO
+            }
 
         const enrolled = this.enroll_man.validator_set.getEnrolledHeight(next_height, enroll_key);
 
@@ -668,9 +673,13 @@ public class Validator : FullNode, API
                                 next_height : enrolled + this.params.ValidatorCycle;
 
         if (avail_height > height + 2) // We are near the end of the cycle
+        {
+            log.dbg("checkAndEnroll: avail_height: {} is too soon for current height: {} for validator {}",
+                avail_height, height, this.config.validator.key_pair.address);
             return Enrollment.init;
+        }
         const enrollment = this.enroll_man.createEnrollment(enroll_key, avail_height);
-        log.trace("Sending Enrollment for enrolling {} at height {} (to validate blocks {} to {})",
+        log.trace("checkAndEnroll: Sending Enrollment for enrolling {} at height {} (to validate blocks {} to {})",
             this.enroll_man.getEnrollmentPublicKey(), avail_height, avail_height + 1, avail_height + this.params.ValidatorCycle);
         this.enroll_man.enroll_pool.addValidated(enrollment, avail_height);
         this.network.peers.each!(p => p.client.sendEnrollment(enrollment));

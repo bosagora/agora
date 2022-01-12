@@ -622,19 +622,27 @@ public class FullNode : API
     protected string acceptBlock (in Block block) @trusted
     {
         auto old_validators = this.ledger.getValidators(this.ledger.getBlockHeight());
+        log.dbg("Fullnode.acceptBlock: height = {}", block.header.height);
+        log.dbg("Fullnode.acceptBlock: old_validators = {}", old_validators);
         // Attempt to add block to the ledger (it may be there by other means)
         if (auto fail_msg = this.ledger.acceptBlock(block))
+        {
+            log.dbg("Fullnode.acceptBlock: failed to add block to ledger: {}", fail_msg);
             return fail_msg;
+        }
 
         this.recordBlockStats(block);
 
         auto validators = this.ledger.getValidators(block.header.height);
+        log.dbg("Fullnode.acceptBlock: validators = {}", validators);
         auto expired = setDifference(
             old_validators.map!(vi => vi.utxo),
             validators.map!(vi => vi.utxo));
 
+        log.dbg("Fullnode.acceptBlock: unwhitelist = {}", expired);
         expired.each!(utxo => this.network.unwhitelist(utxo));
         // Just whitelist them all to be sure, no need for `setDifference`
+        log.dbg("Fullnode.acceptBlock: whitelist = {}", validators.map!(v => v.utxo));
         validators.each!(validator => this.network.whitelist(validator.utxo));
 
         // We return if height in ledger is reached for this block to prevent fetching again
