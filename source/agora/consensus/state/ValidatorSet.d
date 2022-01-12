@@ -665,7 +665,6 @@ unittest
     Enrollment[] ordered_enrollments;
     ordered_enrollments ~= enroll;
     ordered_enrollments ~= enroll2;
-    ordered_enrollments ~= enroll3;
     /// PreImageCache for the first enrollment
     auto cache = PreImageCycle(WK.Keys[0].secret, set.params.ValidatorCycle);
 
@@ -675,7 +674,7 @@ unittest
         assert(set.add(FirstEnrollHeight, storage.getUTXOFinder(),
             getPenaltyDeposit, ordered_enroll, WK.Keys[i].address) is null);
     set.getEnrolledUTXOs(FirstEnrollHeight + 1, keys);
-    assert(keys.length == 3);
+    assert(keys.length == 2);
     assert(keys.isStrictlyMonotonic!("a < b"));
 
     // test for adding and getting preimage
@@ -691,12 +690,12 @@ unittest
     assert(set.getPreimage(utxos[0]) == preimage_11);
 
     // test for clear up expired validators
-    enroll = EnrollmentManager.makeEnrollment(utxos[3], WK.Keys[3], SecondEnrollHeight, params.ValidatorCycle);
-    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[3].address) is null);
+    enroll = EnrollmentManager.makeEnrollment(utxos[2], WK.Keys[2], SecondEnrollHeight, params.ValidatorCycle);
+    assert(set.add(SecondEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[2].address) is null);
     keys.length = 0;
     assert(set.getEnrolledUTXOs(Height(set.params.ValidatorCycle + 8), keys));
     assert(keys.length == 1);
-    assert(keys[0] == utxos[3]);
+    assert(keys[0] == utxos[2]);
 
     // add enrollment at the genesis block:
     // validates blocks [1 .. ValidatorCycle] inclusively

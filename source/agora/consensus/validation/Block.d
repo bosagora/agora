@@ -829,14 +829,14 @@ unittest
     enroll1.utxo_key = utxo_hash1;
     enroll1.commitment = hashFull(Scalar.random());
     enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
-        signature_noise.v, enroll1);
+        signature_noise.v, hashMulti(block2.header.height + 1, enroll1));
 
     auto utxo_hash2 = UTXO.getHash(hashFull(txs_2[1]), 0);
     Enrollment enroll2;
     enroll2.utxo_key = utxo_hash2;
     enroll2.commitment = hashFull(Scalar.random());
     enroll2.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
-        signature_noise.v, enroll2);
+        signature_noise.v, hashMulti(block2.header.height + 1, enroll2));
 
     Enrollment[] enrollments;
     enrollments ~= enroll1;
@@ -967,7 +967,7 @@ unittest
         enroll1.utxo_key = utxo_hash1;
         enroll1.commitment = hashFull(Scalar.random());
         enroll1.enroll_sig = sign(node_key_pair.v, node_key_pair.V, signature_noise.V,
-            signature_noise.v, enroll1);
+            signature_noise.v, hashMulti(block2.header.height + 1, enroll1));
 
         Enrollment[] enrollments;
         enrollments ~= enroll1;

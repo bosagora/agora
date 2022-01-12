@@ -445,12 +445,12 @@ private struct BlockHeaderFmt
 @safe unittest
 {
     static immutable GenesisHStr = `Height: 0, Prev: 0x0000...0000, Root: 0x0923...3f72, Enrollments: [
-{ utxo: 0x0666...89a4, seed: 0x12f7...7ab3, sig: 0x6d7a...9cf2 }
-{ utxo: 0x2b1f...7495, seed: 0x6594...00a0, sig: 0xa669...254f }
-{ utxo: 0x6bce...116a, seed: 0x3c4e...94f0, sig: 0x221c...a1d7 }
-{ utxo: 0x84da...3493, seed: 0x2ef9...c3b3, sig: 0x8ff3...1e28 }
-{ utxo: 0x94b7...7177, seed: 0xbdb4...00c2, sig: 0x7702...f199 }
-{ utxo: 0xa3c2...b4e1, seed: 0x5666...d6c3, sig: 0x0c71...5fd1 }]
+{ utxo: 0x0666...89a4, seed: 0x12f7...7ab3, sig: 0x6d7a...50b4 }
+{ utxo: 0x2b1f...7495, seed: 0x6594...00a0, sig: 0xa669...4133 }
+{ utxo: 0x6bce...116a, seed: 0x3c4e...94f0, sig: 0x221c...4f8c }
+{ utxo: 0x84da...3493, seed: 0x2ef9...c3b3, sig: 0x8ff3...bead }
+{ utxo: 0x94b7...7177, seed: 0xbdb4...00c2, sig: 0x7702...ef12 }
+{ utxo: 0xa3c2...b4e1, seed: 0x5666...d6c3, sig: 0x0c71...4028 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Pre-images: []`;
@@ -487,12 +487,12 @@ private struct BlockFmt
 @safe unittest
 {
     static immutable ResultStr = "Height: 0, Prev: 0x0000...0000, Root: 0x0923...3f72, Enrollments: [
-{ utxo: 0x0666...89a4, seed: 0x12f7...7ab3, sig: 0x6d7a...9cf2 }
-{ utxo: 0x2b1f...7495, seed: 0x6594...00a0, sig: 0xa669...254f }
-{ utxo: 0x6bce...116a, seed: 0x3c4e...94f0, sig: 0x221c...a1d7 }
-{ utxo: 0x84da...3493, seed: 0x2ef9...c3b3, sig: 0x8ff3...1e28 }
-{ utxo: 0x94b7...7177, seed: 0xbdb4...00c2, sig: 0x7702...f199 }
-{ utxo: 0xa3c2...b4e1, seed: 0x5666...d6c3, sig: 0x0c71...5fd1 }]
+{ utxo: 0x0666...89a4, seed: 0x12f7...7ab3, sig: 0x6d7a...50b4 }
+{ utxo: 0x2b1f...7495, seed: 0x6594...00a0, sig: 0xa669...4133 }
+{ utxo: 0x6bce...116a, seed: 0x3c4e...94f0, sig: 0x221c...4f8c }
+{ utxo: 0x84da...3493, seed: 0x2ef9...c3b3, sig: 0x8ff3...bead }
+{ utxo: 0x94b7...7177, seed: 0xbdb4...00c2, sig: 0x7702...ef12 }
+{ utxo: 0xa3c2...b4e1, seed: 0x5666...d6c3, sig: 0x0c71...4028 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Pre-images: [],
@@ -545,12 +545,12 @@ private struct RangeFmt (R)
     static immutable ResultStr = `
 ====================================================
 Height: 0, Prev: 0x0000...0000, Root: 0x0923...3f72, Enrollments: [
-{ utxo: 0x0666...89a4, seed: 0x12f7...7ab3, sig: 0x6d7a...9cf2 }
-{ utxo: 0x2b1f...7495, seed: 0x6594...00a0, sig: 0xa669...254f }
-{ utxo: 0x6bce...116a, seed: 0x3c4e...94f0, sig: 0x221c...a1d7 }
-{ utxo: 0x84da...3493, seed: 0x2ef9...c3b3, sig: 0x8ff3...1e28 }
-{ utxo: 0x94b7...7177, seed: 0xbdb4...00c2, sig: 0x7702...f199 }
-{ utxo: 0xa3c2...b4e1, seed: 0x5666...d6c3, sig: 0x0c71...5fd1 }]
+{ utxo: 0x0666...89a4, seed: 0x12f7...7ab3, sig: 0x6d7a...50b4 }
+{ utxo: 0x2b1f...7495, seed: 0x6594...00a0, sig: 0xa669...4133 }
+{ utxo: 0x6bce...116a, seed: 0x3c4e...94f0, sig: 0x221c...4f8c }
+{ utxo: 0x84da...3493, seed: 0x2ef9...c3b3, sig: 0x8ff3...bead }
+{ utxo: 0x94b7...7177, seed: 0xbdb4...00c2, sig: 0x7702...ef12 }
+{ utxo: 0xa3c2...b4e1, seed: 0x5666...d6c3, sig: 0x0c71...4028 }]
 Signature: 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
 Validators: 0/0 !(),
 Pre-images: [],
