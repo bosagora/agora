@@ -825,8 +825,7 @@ public class NetworkManager
         return !this.banman.isBanned(address) &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
-            (existing_peer.empty || // either does not exist or a validator with no stake
-                (existing_peer.front.isValidator() && existing_peer.front.utxo == Hash.init));
+            existing_peer.empty;
     }
 
     /// Received new set of addresses, put them in the todo address list
