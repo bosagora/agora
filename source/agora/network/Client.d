@@ -153,6 +153,9 @@ public class NetworkClient
     /// Logger uniquely identifying this client
     private Logger log;
 
+    /// The identity associated with this node - may be empty
+    private Identity identity_;
+
     /// Gossip delay
     private enum GossipDelay = 10.msecs;
 
@@ -267,18 +270,48 @@ public class NetworkClient
 
     /***************************************************************************
 
-        Change this client's logger to make it easier to identify peers and
-        selectively enable or disable logging
+        Set/get the node's identity
+
+        The identity of a node can be accessed through the `identity` property.
+        The logger is also changed to make it easier  to identify peers
+        and selectively enable or disable logging.
+
+        Identity has two components: public key and UTXO. Because nodes
+        are configured with their public key, a node can have a public key but
+        no UTXO (no stake yet), and later gain one.
+        To account for this case, `setIdentity` can be called twice: Once with
+        just a public key and the UTXO being `Hash.init`, and a second time
+        with the same `PublicKey` but a non-init UTXO.
 
         Params:
-          key = Public key of this peer
+          utxo = UTXO used as collateral by this peer
+          key  = Public key of this peer
 
     ***************************************************************************/
 
-    public void setIdentity (in PublicKey key)
+    public void setIdentity (in Hash utxo, in PublicKey key)
     {
+        if (this.identity.key !is PublicKey.init)
+        {
+            assert(this.identity.key is key);
+            assert(this.identity.utxo is Hash.init);
+            assert(utxo !is Hash.init);
+        }
+        else
+            assert(this.identity.utxo is Hash.init);
+
+        this.identity_ = Identity(key, utxo);
         this.log = Log.lookup(format("%s.%s", __MODULE__, key));
-        this.log.info("Peer identity established");
+        this.log.info("Peer identity established (UTXO: {}, Key: {})", utxo, key);
+    }
+
+    /// Get the identity of this node. Full nodes return `Identity.init`.
+    public Identity identity () const scope @safe pure nothrow @nogc
+    {
+        // Need to return a new instance as `MAC` is a dynamic array,
+        // hence it disables `const` to mutable conversion for `Identity`,
+        // but we never store `MAC`.
+        return Identity(this.identity_.key, this.identity_.utxo);
     }
 
     /***************************************************************************
