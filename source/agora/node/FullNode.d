@@ -600,7 +600,7 @@ public class FullNode : API
             // so just skip older heights
             if (block.header.height <= this.ledger.getBlockHeight())
                 continue;
-            else if (auto fail_msg = this.ledger.acceptBlock(block))
+            else if (auto fail_msg = this.acceptBlock(block))
             {
                 log.trace("addBlocks failed during periodic catchup: {}", fail_msg);
                 break;
@@ -621,8 +621,8 @@ public class FullNode : API
 
     protected string acceptBlock (in Block block) @trusted
     {
-        auto old_validators = this.ledger.getValidators(this.ledger.getBlockHeight());
         log.dbg("Fullnode.acceptBlock: height = {}", block.header.height);
+        auto old_validators = this.ledger.getValidators(block.header.height);
         log.dbg("Fullnode.acceptBlock: old_validators = {}", old_validators);
         // Attempt to add block to the ledger (it may be there by other means)
         if (auto fail_msg = this.ledger.acceptBlock(block))
@@ -633,7 +633,7 @@ public class FullNode : API
 
         this.recordBlockStats(block);
 
-        auto validators = this.ledger.getValidators(block.header.height);
+        auto validators = this.ledger.getValidators(block.header.height + 1);
         log.dbg("Fullnode.acceptBlock: validators = {}", validators);
         auto expired = setDifference(
             old_validators.map!(vi => vi.utxo),
