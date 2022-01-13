@@ -161,15 +161,25 @@ public class NetworkClient
             banman = ban manager
             retry = the amout to wait between retrying failed requests
             max_retries = max number of times a failed request should be retried
+            utxo = The UTXO this client is to be bound to - key also needs to be
+                   provided if this field is.
+            key = The public key matching `utxo`.
 
     ***************************************************************************/
 
     public this (ITaskManager taskman, BanManager banman,
-                 Duration retry, size_t max_retries)
+                 Duration retry, size_t max_retries,
+                 in Hash utxo, in PublicKey key)
     {
-        // By default, use the module, but if we can identify a validator,
-        // this logger will be replaced with a more specialized one.
-        this.log = Log.lookup(__MODULE__);
+        assert((utxo is Hash.init) == (key is PublicKey.init),
+            "Both `utxo` and `key` or neither needs to be provided to NetworkClient");
+
+        this.identity_ = Identity(key, utxo);
+        if (identity)
+            this.log = Log.lookup(format("%s.%s", __MODULE__, key));
+        else // Might be replaced via a call to `setIdentity`
+            this.log = Log.lookup(__MODULE__);
+
         this.taskman = taskman;
         this.banman = banman;
         this.retry_delay = retry;

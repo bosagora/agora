@@ -480,8 +480,8 @@ public class NetworkManager
             if (existing_peers.empty())
             {
                 client = new NetworkClient(this.taskman, this.banman,
-                    this.node_config.retry_delay, this.node_config.max_retries);
-                client.setIdentity(utxo, key);
+                    this.node_config.retry_delay, this.node_config.max_retries,
+                    utxo, key);
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
                          address, utxo, key);
                 this.required_peers.remove(utxo);
@@ -507,7 +507,8 @@ public class NetworkManager
                 return;
             }
             client = new NetworkClient(this.taskman, this.banman,
-                this.node_config.retry_delay, this.node_config.max_retries);
+                this.node_config.retry_delay, this.node_config.max_retries,
+                Hash.init, PublicKey.init);
             this.peers.insertBack(client);
             this.discovery_task.add(client);
         }
