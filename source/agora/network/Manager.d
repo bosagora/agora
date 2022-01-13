@@ -465,55 +465,63 @@ public class NetworkManager
         in Address address, agora.api.Validator.API api,
         in Hash utxo, in PublicKey key)
     {
-        auto client = new NetworkClient(this.taskman, this.banman,
-            this.node_config.retry_delay, this.node_config.max_retries);
-        if (!client.merge(address, api))
-            assert(0);
-        if (utxo !is Hash.init)
-            client.setIdentity(utxo, key);
+        log.dbg("onHandshakeComplete: {} (UTXO: {}, Key: {})", address, utxo, key);
 
-        log.dbg("onHandshakeComplete: addresses: {}", client.addresses());
-        client.connections.each!(conn => this.connection_tasks.remove(address));
-        if (this.tryMerge(client))
+        this.connection_tasks.remove(address);
+
+        Identity id = Identity(key, utxo);
+        NetworkClient client;
+
+        if (id)
         {
-            this.required_peers.remove(utxo);
-            return;
-        }
-        if (this.peerLimitReached())
-            return;
-
-        if (!client.connections.any!(conn => address == Address.init))
-        {
-            this.peers.insertBack(client);
-            this.discovery_task.add(client);
-
-            if (client.identity)
+            // We have an identified connection, try to find an existing client
+            auto existing_peers = this.peers[].find!(p => p.identity == id);
+            // No existing connection, instantiate a new client for it
+            if (existing_peers.empty())
             {
+                client = new NetworkClient(this.taskman, this.banman,
+                    this.node_config.retry_delay, this.node_config.max_retries);
+                client.setIdentity(utxo, key);
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
-                         client.addresses(), utxo, key);
+                         address, utxo, key);
                 this.required_peers.remove(utxo);
+                this.peers.insertBack(client);
+                this.discovery_task.add(client);
             }
             else
-                log.info("Found new FullNode: {}", client.addresses());
+            {
+                client = existing_peers.front();
+                existing_peers.popFront();
+                assert(existing_peers.empty(),
+                       format!("Duplicate connection exist in peer list for %s: %s - %s")
+                       (id, client.connections, existing_peers.map!(p => p.connections)));
+                this.required_peers.remove(utxo);
+            }
         }
-        else // unidentified connection that we can not merge, just use it for a single shot of address discovery
+        else
         {
+            log.info("Found new FullNode: {}", address);
+            if (this.peerLimitReached())
+            {
+                log.info("Dropping connection as peer limit has been reached");
+                return;
+            }
+            client = new NetworkClient(this.taskman, this.banman,
+                this.node_config.retry_delay, this.node_config.max_retries);
+            this.peers.insertBack(client);
+            this.discovery_task.add(client);
+        }
+
+        if (!client.merge(address, api))
+            assert(0);
+
+        if (address is Address.init)
+        {
+            // unidentified connection that we can not merge, just use it for a single shot of address discovery
             log.dbg("onHandshakeComplete: an unidentified connection was included");
             auto node_info = client.getNodeInfo();
             this.addAddresses(node_info.addresses);
         }
-    }
-
-    ///
-    private bool tryMerge (scope ref NetworkClient node)
-    {
-        auto existing_peers = this.peers[].find!(p => p.identity == node.identity);
-        if (!node.identity || existing_peers.empty())
-            return false;
-
-        assert(node.connections.length == 1);
-        existing_peers.front().merge(node.connections[0].tupleof);
-        return true;
     }
 
     /***************************************************************************
