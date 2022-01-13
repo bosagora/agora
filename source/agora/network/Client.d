@@ -114,7 +114,7 @@ public class NetworkClient
         public Address address;
 
         /// API client to the node
-        private API api;
+        public API api;
     }
 
     /// Caller's retry delay
@@ -600,31 +600,30 @@ public class NetworkClient
     }
 
     /// Merge connections of incoming client to this
-    public bool merge (scope ref NetworkClient incoming)
+    public bool merge (in Address address, API api)
     {
         import std.range;
-        assert(incoming.connections.length == 1);
 
-        if (this.tryMergeRPC(incoming))
+        if (this.tryMergeRPC(address, api))
             return true;
 
-        if (incoming.connections[0].address != Address.init)
+        if (address != Address.init)
         {
-            this.connections ~= incoming.connections[0];
+            this.connections ~= ConnectionInfo(address, api);
             return true;
         }
         return false;
     }
 
     /// Try to merge an incoming RPC connection to an existing one if possible
-    public bool tryMergeRPC (scope ref NetworkClient incoming)
+    public bool tryMergeRPC (in Address address, API api)
     {
         import std.typecons;
         import agora.network.RPC;
 
         alias ValidatorClient = RPCClient!(agora.api.Validator.API);
 
-        auto incoming_peer = cast(ValidatorClient) incoming.connections[0].api;
+        auto incoming_peer = cast(ValidatorClient) api;
         if (incoming_peer is null)
             return false;
 
