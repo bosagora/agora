@@ -101,7 +101,9 @@ public class NetworkManager
 
         /// Called when we've connected and determined if this is
         /// a FullNode / Validator
-        private void delegate (scope ref NodeConnInfo) onHandshakeComplete;
+        public alias OnHandshakeComplete = void delegate (scope ref NodeConnInfo);
+        /// Ditto
+        private OnHandshakeComplete onHandshakeComplete;
 
         /// Called when a request to a node fails.
         /// The delegate should return true if we should continue trying
@@ -125,7 +127,7 @@ public class NetworkManager
         ***********************************************************************/
 
         public this (Address address,
-            void delegate (scope ref NodeConnInfo node) onHandshakeComplete,
+            OnHandshakeComplete onHandshakeComplete,
             bool delegate (in Address address) onFailedRequest)
             @safe pure nothrow @nogc
         {
@@ -133,7 +135,7 @@ public class NetworkManager
         }
 
         public this (Address address, agora.api.Validator.API api,
-            void delegate (scope ref NodeConnInfo node) onHandshakeComplete,
+            OnHandshakeComplete onHandshakeComplete,
             bool delegate (in Address address) onFailedRequest)
             @safe pure nothrow @nogc
         {
