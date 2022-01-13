@@ -126,9 +126,6 @@ public class FullNode : API
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
-    /// Set of unspent transaction outputs
-    protected UTXOSet utxo_set;
-
     /// Script execution engine
     protected Engine engine;
 
@@ -290,7 +287,6 @@ public class FullNode : API
         this.clock = this.makeClock();
         this.network = this.makeNetworkManager(this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
-        this.utxo_set = this.makeUTXOSet();
         this.pool = this.makeTransactionPool();
         this.enroll_man = this.makeEnrollmentManager();
         const ulong StackMaxTotalSize = 16_384;
@@ -690,7 +686,6 @@ public class FullNode : API
             this.pool = null;
             this.ledger = null;
             this.enroll_man = null;
-            this.utxo_set = null;
             this.engine = null;
 
             // Finalized by `ManagedDatabase`
@@ -871,23 +866,6 @@ public class FullNode : API
 
     /***************************************************************************
 
-        Returns an instance of a UTXOSet
-
-        Unittest code may override this method to provide a Utxo set
-        that doesn't do any I/O.
-
-        Returns:
-            the UTXOSet instance
-
-    ***************************************************************************/
-
-    protected UTXOSet makeUTXOSet ()
-    {
-        return new UTXOSet(this.stateDB);
-    }
-
-    /***************************************************************************
-
         Returns an instance of an `IBlockStorage`
 
         `IBlockStorage` is the object that handles the long-term storage
@@ -933,9 +911,8 @@ public class FullNode : API
 
     protected NodeLedger makeLedger ()
     {
-        return new NodeLedger(params, this.engine, this.utxo_set, this.storage,
-            this.enroll_man, this.pool, new FeeManager(this.stateDB, this.params),
-            &this.onAcceptedBlock);
+        return new NodeLedger(params, this.stateDB, this.storage, this.engine,
+            this.enroll_man, this.pool, &this.onAcceptedBlock);
     }
 
     /*+*************************************************************************
@@ -1067,7 +1044,7 @@ public class FullNode : API
         Output found_output;
         scope UTXOFinder utxo_finder;
         scope GetPenaltyDeposit getPenaltyDeposit;
-        if (this.utxo_set.peekUTXO(enroll.utxo_key, utxo))
+        if (this.ledger.peekUTXO(enroll.utxo_key, utxo))
         {
             utxo_finder = (in Hash hash, out UTXO found_utxo)
             {

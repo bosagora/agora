@@ -62,6 +62,9 @@ public class Ledger
     /// Script execution engine
     protected Engine engine;
 
+    /// The database in which the Ledger state is stored
+    protected ManagedDatabase stateDB;
+
     /// data storage for all the blocks
     protected IBlockStorage storage;
 
@@ -113,23 +116,23 @@ public class Ledger
 
         Params:
             params = the consensus-critical constants
-            engine = script execution engine
-            utxo_set = the set of unspent outputs
+            database = State database
             storage = the block storage
-            fee_man = the FeeManager
+            engine = script execution engine
+            validator_set = object managing the set of validators
 
     ***************************************************************************/
 
-    public this (immutable(ConsensusParams) params,
-        Engine engine, UTXOCache utxo_set, IBlockStorage storage,
-        ValidatorSet validator_set, FeeManager fee_man)
+    public this (immutable(ConsensusParams) params, ManagedDatabase database,
+        IBlockStorage storage, Engine engine, ValidatorSet validator_set)
     {
         this.log = Logger(__MODULE__);
         this.params = params;
-        this.engine = engine;
-        this.utxo_set = utxo_set;
+        this.stateDB = database;
         this.storage = storage;
-        this.fee_man = fee_man;
+        this.engine = engine;
+        this.utxo_set = new UTXOSet(database);
+        this.fee_man = new FeeManager(database, params);
         this.validator_set = validator_set;
         this.storage.load(params.Genesis);
         this.rewards = new Reward(this.params.PayoutPeriod, this.params.BlockInterval);
@@ -254,6 +257,12 @@ public class Ledger
     public size_t validatorCount (in Height height) scope @safe nothrow
     {
         return this.validator_set.countActive(height);
+    }
+
+    /// Expose the `UTXOCache` used by this Ledger
+    public UTXOCache utxos () return @safe pure nothrow @nogc
+    {
+        return this.utxo_set;
     }
 
     /***************************************************************************

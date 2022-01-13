@@ -28,7 +28,7 @@ private class SameKeyValidator : TestValidatorNode
     public override Enrollment setRecurringEnrollment (bool doIt)
     {
         Hash[] utxo_hashes;
-        auto utxos = this.utxo_set.getUTXOs(
+        auto utxos = this.ledger.utxos.getUTXOs(
             this.config.validator.key_pair.address);
         foreach (key, utxo; utxos)
         {
