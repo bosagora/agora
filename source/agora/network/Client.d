@@ -153,6 +153,9 @@ public class NetworkClient
     /// Logger uniquely identifying this client
     private Logger log;
 
+    /// The identity associated with this node - may be empty
+    private Identity identity_;
+
     /// Gossip delay
     private enum GossipDelay = 10.msecs;
 
@@ -243,18 +246,34 @@ public class NetworkClient
 
     /***************************************************************************
 
-        Change this client's logger to make it easier to identify peers and
-        selectively enable or disable logging
+        Set/get the node's identity
+
+        The identity of a node can be accessed through the `identity` property.
+        Once an identity is set, it cannot be changed.
+        When the identity is set, the logger is also changed to make it easier
+        to identify peers and selectively enable or disable logging.
 
         Params:
-          key = Public key of this peer
+          utxo = UTXO used as collateral by this peer
+          key  = Public key of this peer
 
     ***************************************************************************/
 
-    public void setIdentity (in PublicKey key)
+    public void setIdentity (in Hash utxo, in PublicKey key)
     {
+        assert(!this.identity);
+        this.identity_ = Identity(key, utxo);
         this.log = Log.lookup(format("%s.%s", __MODULE__, key));
-        this.log.info("Peer identity established");
+        this.log.info("Peer identity established (UTXO: {})", utxo);
+    }
+
+    /// Get the identity of this node. Full nodes return `Identity.init`.
+    public Identity identity () const scope @safe pure nothrow @nogc
+    {
+        // Need to return a new instance as `MAC` is a dynamic array,
+        // hence it disables `const` to mutable conversion for `Identity`,
+        // but we never store `MAC`.
+        return Identity(this.identity_.key, this.identity_.utxo);
     }
 
     /***************************************************************************
