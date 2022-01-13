@@ -101,9 +101,8 @@ unittest
 
         protected override ValidatingLedger makeLedger ()
         {
-            return new PickyLedger(this.params, this.engine,
-                this.utxo_set, this.storage, this.enroll_man, this.pool,
-                new FeeManager(this.stateDB, this.params), &this.onAcceptedBlock);
+            return new PickyLedger(this.params, this.stateDB, this.storage,
+                this.engine, this.enroll_man, this.pool, &this.onAcceptedBlock);
         }
 
         public override TransactionResult postTransaction (in Transaction tx) @safe

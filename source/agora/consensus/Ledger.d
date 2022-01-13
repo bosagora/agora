@@ -91,21 +91,19 @@ public class NodeLedger : Ledger
 
         Params:
             params = the consensus-critical constants
-            engine = script execution engine
-            utxo_set = the set of unspent outputs
+            database = State database
             storage = the block storage
+            engine = script execution engine
             enroll_man = the enrollmentManager
             pool = the transaction pool
-            fee_man = the FeeManager
             onAcceptedBlock = optional delegate to call
                               when a block was added to the ledger
 
     ***************************************************************************/
 
     public this (immutable(ConsensusParams) params,
-        Engine engine, UTXOSet utxo_set, IBlockStorage storage,
-        EnrollmentManager enroll_man, TransactionPool pool,
-        FeeManager fee_man,
+        ManagedDatabase database, IBlockStorage storage,
+        Engine engine, EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
         // Note: Those properties need to be set before calling the `super` ctor,
@@ -114,7 +112,7 @@ public class NodeLedger : Ledger
         this.onAcceptedBlock = onAcceptedBlock;
         this.pool = pool;
         this.enroll_man = enroll_man;
-        super(params, engine, utxo_set, storage, enroll_man.validator_set, fee_man);
+        super(params, database, storage, engine, enroll_man.validator_set);
     }
 
     /// See `Ledger.acceptBlock`
@@ -652,12 +650,11 @@ public class ValidatingLedger : NodeLedger
 {
     /// See parent class
     public this (immutable(ConsensusParams) params,
-        Engine engine, UTXOSet utxo_set, IBlockStorage storage,
-        EnrollmentManager enroll_man, TransactionPool pool,
-        FeeManager fee_man,
+        ManagedDatabase database, IBlockStorage storage,
+        Engine engine, EnrollmentManager enroll_man, TransactionPool pool,
         void delegate (in Block, bool) @safe onAcceptedBlock)
     {
-        super(params, engine, utxo_set, storage, enroll_man, pool, fee_man,
+        super(params, database, storage, engine, enroll_man, pool,
             onAcceptedBlock);
     }
 
@@ -933,12 +930,11 @@ version (unittest)
             auto stateDB = new ManagedDatabase(":memory:");
             auto cacheDB = new ManagedDatabase(":memory:");
             super(params,
-                new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
-                new UTXOSet(stateDB),
+                stateDB,
                 new MemBlockStorage(blocks),
+                new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
-                new FeeManager(stateDB, params),
                 onAcceptedBlock);
         }
 
@@ -1154,13 +1150,12 @@ unittest
         public this (KeyPair kp, const(Block)[] blocks, immutable(ConsensusParams) params)
         {
             auto stateDB = new ManagedDatabase(":memory:");
-            auto cacheDB = new ManagedDatabase(":memory:");
             ValidatorConfig vconf = ValidatorConfig(true, kp);
-            super(params, new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
-                new UTXOSet(stateDB),
+            super(params,
+                stateDB,
                 new MemBlockStorage(blocks),
-                new ValidatorSet(stateDB, params),
-                new FeeManager(stateDB, params));
+                new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
+                new ValidatorSet(stateDB, params));
         }
 
         ///

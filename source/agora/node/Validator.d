@@ -135,7 +135,7 @@ public class Validator : FullNode, API
         this.required_peer_utxos = typeof(this.required_peer_utxos).init;
 
         // we're not enrolled and don't care about quorum sets
-        if (!this.enroll_man.isEnrolled(height + 1, &this.utxo_set.peekUTXO))
+        if (!this.enroll_man.isEnrolled(height + 1, &this.ledger.peekUTXO))
         {
             this.nominator.stopNominatingTimer();
             this.qc = QuorumConfig.init;
@@ -163,7 +163,7 @@ public class Validator : FullNode, API
         this.qc = quorums[node_id];
         this.nominator.setQuorumConfig(node_id, quorums);
         buildRequiredKeys(this_utxo, this.qc, utxo_keys,
-            &this.utxo_set.peekUTXO, this.required_peer_utxos);
+            &this.ledger.peekUTXO, this.required_peer_utxos);
 
         if (this.started)
             this.nominator.startNominatingTimer();
@@ -198,7 +198,7 @@ public class Validator : FullNode, API
         {
             const idx = utxos.countUntil(utxo);
             quorums[idx] = buildQuorumConfig(idx, utxos,
-                this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
+                this.ledger.getUTXOFinder(), rand_seed, this.quorum_params);
         }
     }
 
@@ -226,7 +226,7 @@ public class Validator : FullNode, API
             this.config.validator.preimage_catchup_interval,
             &this.preImageCatchupTask, Periodic.Yes);
 
-        if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.utxo_set.peekUTXO))
+        if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.ledger.peekUTXO))
             this.nominator.startNominatingTimer();
         if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.getBlockHeight());
@@ -261,7 +261,7 @@ public class Validator : FullNode, API
         // with queries
         const next_height = this.ledger.getBlockHeight() + 1;
 
-        if (!this.enroll_man.isEnrolled(next_height, &this.utxo_set.peekUTXO))
+        if (!this.enroll_man.isEnrolled(next_height, &this.ledger.peekUTXO))
             return;
 
         // Currently using this hack as we know we hold a ValidatingLedger,
@@ -482,9 +482,8 @@ public class Validator : FullNode, API
 
     protected override ValidatingLedger makeLedger ()
     {
-        return new ValidatingLedger(this.params, this.engine,
-            this.utxo_set, this.storage, this.enroll_man, this.pool,
-            new FeeManager(this.stateDB, this.params), &this.onAcceptedBlock);
+        return new ValidatingLedger(this.params, this.stateDB, this.storage,
+            this.engine, this.enroll_man, this.pool, &this.onAcceptedBlock);
     }
 
     /***************************************************************************
@@ -554,7 +553,7 @@ public class Validator : FullNode, API
         if (validators_changed || need_shuffle)
         {
             // Try to register immediately if we are a validator for the next cycle
-            if (this.enroll_man.isEnrolled(block.header.height + 1, &this.utxo_set.peekUTXO))
+            if (this.enroll_man.isEnrolled(block.header.height + 1, &this.ledger.peekUTXO))
                 this.network.onRegisterName();
             this.regenerateQuorums(block.header.height);
         }
@@ -656,7 +655,7 @@ public class Validator : FullNode, API
     {
         auto next_height = height + 1;
         Hash enroll_key = this.enroll_man.getEnrolledUTXO(height,
-            this.utxo_set.getUTXOFinder());
+            this.ledger.getUTXOFinder());
 
         if (enroll_key == Hash.init &&
             (enroll_key = this.getFrozenUTXO()) == Hash.init)
@@ -698,7 +697,7 @@ public class Validator : FullNode, API
     private Hash getFrozenUTXO () @safe nothrow
     {
         const pub_key = this.config.validator.key_pair.address;
-        foreach (utxo; this.utxo_set.getUTXOs(pub_key).byKeyValue)
+        foreach (utxo; this.ledger.utxos.getUTXOs(pub_key).byKeyValue)
         {
             if (utxo.value.output.type == OutputType.Freeze &&
                 utxo.value.output.value.integral() >= Amount.MinFreezeAmount.integral() &&

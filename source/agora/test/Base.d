@@ -1706,7 +1706,7 @@ private mixin template TestNodeMixin ()
     {
         UTXOPair[] result;
         Amount accumulated;
-        foreach (const ref Hash key, const ref UTXO value; this.utxo_set)
+        foreach (const ref Hash key, const ref UTXO value; this.ledger.utxos)
         {
             if (value.output.type == output_type && !this.pool.spending(key))
             {
@@ -1722,7 +1722,7 @@ private mixin template TestNodeMixin ()
     ///
     public override UTXOPair[] getUTXOs (PublicKey owner)
     {
-        return this.utxo_set.getUTXOs(owner).byKeyValue
+        return this.ledger.utxos.getUTXOs(owner).byKeyValue
             .map!((pair) => UTXOPair(pair.key, pair.value)).array;
     }
 
@@ -1730,7 +1730,7 @@ private mixin template TestNodeMixin ()
     public override UTXO getUTXO (Hash hash)
     {
         UTXO result;
-        if (!this.utxo_set.peekUTXO(hash, result))
+        if (!this.ledger.peekUTXO(hash, result))
             throw new Exception(format("UTXO not found: %s", hash));
         return result;
     }
@@ -1918,9 +1918,9 @@ public class TestValidatorNode : Validator, TestAPI
         foreach (idx, utxo; utxos)
         {
             UTXO utxo_value;
-            this.utxo_set.peekUTXO(utxo, utxo_value);
+            this.ledger.peekUTXO(utxo, utxo_value);
             quorums ~= buildQuorumConfig(idx, utxos,
-                this.utxo_set.getUTXOFinder(), rand_seed, this.quorum_params);
+                this.ledger.getUTXOFinder(), rand_seed, this.quorum_params);
         }
         return quorums;
     }
