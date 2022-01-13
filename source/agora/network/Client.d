@@ -156,27 +156,23 @@ public class NetworkClient
         Params:
             taskman = used for creating new tasks
             banman = ban manager
-            address = used for logging and querying by external code
-            api = the API to issue the requests with
             retry = the amout to wait between retrying failed requests
             max_retries = max number of times a failed request should be retried
 
     ***************************************************************************/
 
-    public this (ITaskManager taskman, BanManager banman, Address address,
-        API api, Duration retry, size_t max_retries)
+    public this (ITaskManager taskman, BanManager banman,
+                 Duration retry, size_t max_retries)
     {
         // By default, use the module, but if we can identify a validator,
         // this logger will be replaced with a more specialized one.
         this.log = Log.lookup(__MODULE__);
         this.taskman = taskman;
         this.banman = banman;
-        this.connections ~= ConnectionInfo(address, api);
         this.retry_delay = retry;
         this.max_retries = max_retries;
         this.exception = new Exception(
-            format("Request failure to %s after %s attempts", address,
-                max_retries));
+            format("Request failure after %s attempts", max_retries));
         // Create and stop timer immediately
         this.gossip_timer = this.taskman.setTimer(GossipDelay, &this.gossipTask, Periodic.No);
         this.gossip_timer.stop();
