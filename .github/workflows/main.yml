@@ -26,14 +26,14 @@ jobs:
         ## See https://github.com/ldc-developers/ldc/issues/3702
         # os: [ ubuntu-20.04, macOS-11, windows-2019 ]
         os: [ ubuntu-20.04, macOS-11]
-        dc: [ ldc-1.28.0 ]
+        dc: [ ldc-1.28.1 ]
         # Define job-specific parameters
         include:
           # By default, don't generate artifacts nor run extra checks for push
           - { artifacts: false, run_extra_checks: false }
           # Only generate when the latest ldc is used
           # IMPORTANT: Update this when the compiler support is changed!
-          - { dc: ldc-1.28.0, artifacts: true, run_extra_checks: true }
+          - { dc: ldc-1.28.1, artifacts: true, run_extra_checks: true }
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
