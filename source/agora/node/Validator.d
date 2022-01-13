@@ -290,7 +290,7 @@ public class Validator : FullNode, API
                  next_height, missing);
 
         auto query = this.network.peers[]
-            .map!(peer => peer.client.getPreimages(missing));
+            .map!(peer => peer.getPreimages(missing));
 
         foreach (preimages; query)
         {
@@ -619,7 +619,7 @@ public class Validator : FullNode, API
             this.ledger.getBlockHeight()))
         {
             this.ledger.addPreimage(preimage);
-            this.network.peers.each!(p => p.client.sendPreimage(preimage));
+            this.network.peers.each!(p => p.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }
     }
@@ -673,7 +673,7 @@ public class Validator : FullNode, API
         log.trace("Sending Enrollment for enrolling {} at height {} (to validate blocks {} to {})",
             this.enroll_man.getEnrollmentPublicKey(), avail_height, avail_height + 1, avail_height + this.params.ValidatorCycle);
         this.enroll_man.enroll_pool.addValidated(enrollment, avail_height);
-        this.network.peers.each!(p => p.client.sendEnrollment(enrollment));
+        this.network.peers.each!(p => p.sendEnrollment(enrollment));
         return enrollment;
     }
 

@@ -55,8 +55,6 @@ import core.time;
 private alias SinkT = void delegate(scope const(char)[] v);
 ///
 private alias SafeSinkT = void delegate(scope const(char)[] v) @safe;
-///
-private alias NodeConnInfo = NetworkManager.NodeConnInfo;
 
 /// Returns the fee rate for a transaction (total fees / tx size)
 public alias GetFeeRateDg = string delegate(in Transaction tx, out Amount rate) @safe nothrow;
@@ -99,7 +97,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     private immutable Config config;
 
     ///
-    private DList!NodeConnInfo* clients;
+    private DList!NetworkClient* clients;
 
     ///
     private ITaskManager taskman;
@@ -146,7 +144,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
 
     ***************************************************************************/
 
-    public this (TransactionPool pool, immutable Config config, DList!NodeConnInfo* clients,
+    public this (TransactionPool pool, immutable Config config, DList!NetworkClient* clients,
           ITaskManager taskman, Clock clock, GetFeeRateDg getTxFeeRate, bool start_timers = true)
     {
         this.pool = pool;
@@ -219,8 +217,8 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     /// Sends an array of transactions ordered by fee to known network clients.
     public void relayTransactions () @safe nothrow
     {
-        if ((*this.clients)[].canFind!(client => client.isValidator()))
-            this.getRelayTransactions().each!(tx => (*this.clients).each!(node_info => node_info.client.sendTransaction(tx)));
+        if ((*this.clients)[].canFind!(client => !!client.identity))
+            this.getRelayTransactions().each!(tx => (*this.clients).each!(node => node.sendTransaction(tx)));
     }
 
     /// Cleans expired entries from the internal datastructures.
@@ -372,7 +370,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         auto cacheDB = new ManagedDatabase(":memory:");
         immutable params = new immutable(ConsensusParams)();
         auto fee_man = new FeeManager(stateDB, params);
-        auto noclients = new DList!NodeConnInfo();
+        auto noclients = new DList!NetworkClient();
         GetFeeRateDg wrapper = (in Transaction tx, out Amount rate)
         {
             return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, getPenaltyDeposit, rate);

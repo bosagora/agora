@@ -1099,7 +1099,7 @@ extern(D):
             assert(0, ex.to!string);
         }
 
-        this.network.validators().each!(v => v.client.sendEnvelope(env));
+        this.network.validators().each!(v => v.sendEnvelope(env));
     }
 
     /***************************************************************************
