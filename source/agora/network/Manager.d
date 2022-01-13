@@ -73,10 +73,16 @@ public class NetworkManager
     public static struct NodeConnInfo
     {
         /// Hash of the output used as collateral, only set if the node is a Validator
-        Hash utxo;
+        public Hash utxo () const scope @safe pure nothrow @nogc
+        {
+            return this.client.identity.utxo;
+        }
 
         /// PublicKey of the node. TODO: Remove and just use utxo.
-        PublicKey key;
+        public PublicKey key () const scope @safe pure nothrow @nogc
+        {
+            return this.client.identity.key;
+        }
 
         /// Client
         NetworkClient client;
@@ -84,7 +90,7 @@ public class NetworkManager
         ///
         public bool isValidator () const scope @safe pure nothrow @nogc
         {
-            return this.key != PublicKey.init;
+            return !!this.client.identity;
         }
     }
 
@@ -489,11 +495,9 @@ public class NetworkManager
         if (!client.merge(address, api))
             assert(0);
         if (utxo !is Hash.init)
-            client.setIdentity(key);
+            client.setIdentity(utxo, key);
 
         NodeConnInfo node = {
-            key : key,
-            utxo: utxo,
             client : client
         };
 
@@ -537,7 +541,6 @@ public class NetworkManager
             return false;
 
         assert(node.client.connections.length == 1);
-        existing_peers.front().utxo = node.utxo;
         existing_peers.front().client.merge(node.client.connections[0].tupleof);
         return true;
     }
