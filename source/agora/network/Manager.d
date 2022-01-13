@@ -102,7 +102,8 @@ public class NetworkManager
 
         /// Called when we've connected and determined if this is
         /// a FullNode / Validator
-        public alias OnHandshakeComplete = void delegate (scope ref NodeConnInfo);
+        public alias OnHandshakeComplete = void delegate (
+            in Address, agora.api.Validator.API, in Hash, in PublicKey);
         /// Ditto
         private OnHandshakeComplete onHandshakeComplete;
 
@@ -241,19 +242,7 @@ public class NetworkManager
                 }
             }
 
-            auto client = new NetworkClient(this.outer.taskman,
-                this.outer.banman, this.outer.config.node.retry_delay,
-                this.outer.config.node.max_retries);
-            if (!client.merge(this.address, this.api))
-                assert(0);
-
-            NodeConnInfo node = {
-                key : key,
-                utxo: utxo,
-                client : client
-            };
-
-            this.onHandshakeComplete(node);
+            this.onHandshakeComplete(this.address, this.api, utxo, key);
         }
     }
 
@@ -326,36 +315,49 @@ public class NetworkManager
     }
 
     /// Called after a node's handshake is complete
-    private void onHandshakeComplete (scope ref NodeConnInfo node)
+    private void onHandshakeComplete (
+        in Address address, agora.api.Validator.API api,
+        in Hash utxo, in PublicKey key)
     {
-        log.dbg("onHandshakeComplete: addresses: {}", node.client.addresses());
-        node.client.connections.each!(conn => this.connection_tasks.remove(conn.address));
+        auto client = new NetworkClient(this.taskman, this.banman,
+            this.config.node.retry_delay, this.config.node.max_retries);
+        if (!client.merge(address, api))
+            assert(0);
+
+        NodeConnInfo node = {
+            key : key,
+            utxo: utxo,
+            client : client
+        };
+
+        log.dbg("onHandshakeComplete: addresses: {}", client.addresses());
+        client.connections.each!(conn => this.connection_tasks.remove(address));
         if (this.tryMerge(node))
         {
-            this.required_peers.remove(node.utxo);
+            this.required_peers.remove(utxo);
             return;
         }
         if (this.peerLimitReached())
             return;
 
-        if (!node.client.connections.any!(conn => conn.address == Address.init))
+        if (!client.connections.any!(conn => address == Address.init))
         {
             this.peers.insertBack(node);
 
             if (node.isValidator())
             {
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
-                         node.client.addresses(), node.utxo, node.key);
-                this.required_peers.remove(node.utxo);
-                node.client.setIdentity(node.key);
+                         client.addresses(), utxo, key);
+                this.required_peers.remove(utxo);
+                client.setIdentity(key);
             }
             else
-                log.info("Found new FullNode: {}", node.client.addresses());
+                log.info("Found new FullNode: {}", client.addresses());
         }
         else // unidentified connection that we can not merge, just use it for a single shot of address discovery
         {
             log.dbg("onHandshakeComplete: an unidentified connection was included");
-            auto node_info = node.client.getNodeInfo();
+            auto node_info = client.getNodeInfo();
             this.addAddresses(node_info.addresses);
         }
     }
