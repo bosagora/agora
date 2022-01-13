@@ -243,9 +243,10 @@ public class NetworkManager
             }
 
             auto client = new NetworkClient(this.outer.taskman,
-                this.outer.banman, this.address, this.api,
-                this.outer.node_config.retry_delay,
+                this.outer.banman, this.outer.node_config.retry_delay,
                 this.outer.node_config.max_retries);
+            if (!client.merge(this.address, this.api))
+                assert(0);
             if (is_validator)
                 client.setIdentity(key);
 
