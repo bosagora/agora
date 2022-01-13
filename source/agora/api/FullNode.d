@@ -49,13 +49,19 @@ public struct NodeInfo
 public struct Identity
 {
     /// Public Key of the node
-    PublicKey key;
+    public PublicKey key;
 
     /// UTXO that is used as collateral
-    Hash utxo;
+    public Hash utxo;
 
     /// MAC
-    ubyte[] mac;
+    public ubyte[] mac;
+
+    /// Whether or not this is in the `init` state (meaning a full node)
+    public bool opCast (T : bool) () const scope @safe pure nothrow @nogc
+    {
+        return this !is Identity.init;
+    }
 }
 
 /*******************************************************************************
