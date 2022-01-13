@@ -533,8 +533,9 @@ public class NetworkManager
         if (!node.isValidator() || existing_peers.empty())
             return false;
 
+        assert(node.client.connections.length == 1);
         existing_peers.front().utxo = node.utxo;
-        existing_peers.front().client.merge(node.client);
+        existing_peers.front().client.merge(node.client.connections[0].tupleof);
         return true;
     }
 
