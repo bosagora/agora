@@ -33,11 +33,90 @@ import vibe.core.connectionpool;
 import vibe.core.sync;
 import vibe.http.server : RejectConnectionPredicate;
 
+import std.conv : to;
+import std.socket : Address, AddressFamily, parseAddress;
 import std.traits;
 import core.stdc.stdio;
 import core.time;
 
 mixin AddLogger!();
+
+struct ProxyProtocol
+{
+    /// Protocol v2 signature
+    private immutable ubyte[12] v2_signature = [
+        13, 10, 13, 10, 0, 13, 10, 81, 85, 73, 84, 10
+    ];
+
+    /// Source address
+    Address src;
+
+    /// Destination address
+    Address dst;
+
+    ///
+    public this (TCPConnection stream) @trusted
+    {
+        ubyte[108] buffer;
+
+        stream.read(buffer[0 .. 12]); // Read signature
+
+        ensure(buffer[0 .. 12] != v2_signature,
+            "Proxy Protocol v2 is not yet supported");
+
+        // Read into buffer starting from `last_ix` until `ch`
+        uint readUntil (uint last_ix, char ch)
+        {
+            uint inner_ix = last_ix;
+            ubyte[1] mb = ['\0'];
+
+            while (cast(char) mb[0] != ch)
+            {
+                stream.read(mb);
+                buffer[inner_ix] = mb[0];
+                inner_ix++;
+            }
+
+            return inner_ix;
+        }
+
+        auto protocol = cast(char[])(buffer[0 .. 6]);
+        ensure(protocol == "PROXY ",
+            "Unexpected protocol identifier {}", protocol);
+
+        auto inet = cast(char[])(buffer[6 .. 11]);
+
+        uint last_ix = 11; // Signature was already read
+        uint next_ix = 0;
+
+        if (inet == "TCP4 " || inet == "TCP6 ")
+        {
+            next_ix = readUntil(12, ' '); // Starting from 12 due to signature
+            auto srcaddr = cast(char[])(buffer[last_ix .. next_ix-1]);
+
+            last_ix = next_ix;
+            next_ix = readUntil(last_ix, ' ');
+            auto dstaddr = cast(char[])(buffer[last_ix .. next_ix-1]);
+
+            last_ix = next_ix;
+            next_ix = readUntil(last_ix, ' ');
+            auto srcport = cast(char[])(buffer[last_ix .. next_ix-1]);
+
+            last_ix = next_ix;
+            next_ix = readUntil(last_ix, '\n');
+            ensure ('\r' == buffer[next_ix - 2], "Invalid protocol message");
+            auto dstport = cast(char[])(buffer[last_ix .. next_ix-2]);
+
+            this.src = parseAddress(srcaddr, to!ushort(srcport));
+            this.dst = parseAddress(dstaddr, to!ushort(dstport));
+        }
+        else
+        { // Consume protocol header for UNKNOWN
+            next_ix = readUntil(12, '\n');
+            ensure('\r' == buffer[next_ix - 2], "Invalid protocol message");
+        }
+    }
+}
 
 /// Ditto
 public class RPCClient (API) : API
