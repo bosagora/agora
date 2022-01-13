@@ -180,13 +180,9 @@ public class NetworkManager
         /// Ditto, just behind a trampoline to avoid function-wide try/catch
         private void connect_canthrow ()
         {
-            auto client = new NetworkClient(this.outer.taskman,
-                this.outer.banman, this.address,
-                this.api ? this.api :
-                this.outer.getClient(this.address,
-                    this.outer.node_config.timeout),
-                this.outer.node_config.retry_delay,
-                this.outer.node_config.max_retries);
+            if (this.api is null)
+                this.api = this.outer.getClient(
+                    this.address, this.outer.node_config.timeout);
 
             PublicKey key;
             Hash utxo;
@@ -198,7 +194,7 @@ public class NetworkManager
                     import libsodium.crypto_auth;
 
                     const ephemeral_kp = KeyPair.random();
-                    auto id = client.handshake(ephemeral_kp.address);
+                    auto id = this.api.handshake(ephemeral_kp.address);
 
                     // No identity, either a full node or not enrolled
                     if (id.key == PublicKey.init)
@@ -218,7 +214,6 @@ public class NetworkManager
 
                     utxo = id.utxo;
                     key = id.key;
-                    client.setIdentity(id.key);
                     break;
                 }
                 catch (Exception ex)
@@ -244,6 +239,13 @@ public class NetworkManager
                     return;
                 }
             }
+
+            auto client = new NetworkClient(this.outer.taskman,
+                this.outer.banman, this.address, this.api,
+                this.outer.node_config.retry_delay,
+                this.outer.node_config.max_retries);
+            if (is_validator)
+                client.setIdentity(key);
 
             NodeConnInfo node = {
                 key : key,
