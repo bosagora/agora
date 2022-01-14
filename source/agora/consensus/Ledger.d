@@ -1601,52 +1601,52 @@ unittest
     import agora.consensus.PreImage;
 
     {
-    auto params = new immutable(ConsensusParams)(20, 7, 80, Amount(10));
-    const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+        auto params = new immutable(ConsensusParams)(20, 7, 80, Amount(10));
+        const(Block)[] blocks = [ GenesisBlock ];
+        scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
-    ushort min_fee_pct = 80;
+        ushort min_fee_pct = 80;
 
-    auto no_fee_tx = genesisSpendable().front().refund(WK.Keys[0].address).feeRate(0.coins).sign();
-    assert(ledger.acceptTransaction(no_fee_tx, 0, min_fee_pct) !is null);
+        auto no_fee_tx = genesisSpendable().front().refund(WK.Keys[0].address).feeRate(0.coins).sign();
+        assert(ledger.acceptTransaction(no_fee_tx, 0, min_fee_pct) !is null);
 
-    auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
-    assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct) is null);
+        auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
+        assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct) is null);
 
-    // switch to a different input, even with low fees this should be accepted since pool is almost empty
-    auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
-    assert(ledger.acceptTransaction(different_tx, 0, min_fee_pct) is null);
+        // switch to a different input, even with low fees this should be accepted since pool is almost empty
+        auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
+        assert(ledger.acceptTransaction(different_tx, 0, min_fee_pct) is null);
 
-    // lower than average, but enough
-    auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
-    assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct) is null);
+        // lower than average, but enough
+        auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
+        assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct) is null);
 
-    // overwrite the old TX
-    auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
-    assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
+        // overwrite the old TX
+        auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
+        assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
     }
 
     {
-    auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins, 0); // 0 max size, thus force average fee check on every TX
-    const(Block)[] blocks = [ GenesisBlock ];
-    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+        auto params = new immutable(ConsensusParams)(20, 7, 80, 0.coins, 0); // 0 max size, thus force average fee check on every TX
+        const(Block)[] blocks = [ GenesisBlock ];
+        scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
 
-    ushort min_fee_pct = 80;
+        ushort min_fee_pct = 80;
 
-    auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
-    assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct) is null);
+        auto average_tx = genesisSpendable().front().refund(WK.Keys[0].address).deduct(10.coins).sign();
+        assert(ledger.acceptTransaction(average_tx, 0, min_fee_pct) is null);
 
-    // switch to a different input, with low fees this should be rejected because of average of fees in the pool
-    auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
-    assert(ledger.acceptTransaction(different_tx, 0, min_fee_pct) !is null);
+        // switch to a different input, with low fees this should be rejected because of average of fees in the pool
+        auto different_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(1.coins).sign();
+        assert(ledger.acceptTransaction(different_tx, 0, min_fee_pct) !is null);
 
-    // lower than average, but enough
-    auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
-    assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct) is null);
+        // lower than average, but enough
+        auto enough_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(9.coins).sign();
+        assert(ledger.acceptTransaction(enough_fee_tx, 0, min_fee_pct) is null);
 
-    // overwrite the old TX
-    auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
-    assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
+        // overwrite the old TX
+        auto high_fee_tx = genesisSpendable().dropOne().front().refund(WK.Keys[0].address).deduct(11.coins).sign();
+        assert(ledger.acceptTransaction(high_fee_tx, 0, min_fee_pct) is null);
     }
 }
 
