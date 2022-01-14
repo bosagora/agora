@@ -76,6 +76,13 @@ public struct Address
         }();
     }
 
+    /// Forward to `URL.fromString` but is recognized by the config parser
+    public static Address fromString (string str) @safe
+    {
+        auto url = URL(str);
+        return Address(url);
+    }
+
     public alias inner this;
 }
 

@@ -324,7 +324,7 @@ public struct ValidatorConfig
     public size_t max_preimage_reveal = 6;
 
     // Network addresses that will be registered with the public key
-    public @Optional immutable string[] addresses_to_register;
+    public @Optional immutable Address[] addresses_to_register;
 
     // Registry address
     public @Optional string registry_address;
