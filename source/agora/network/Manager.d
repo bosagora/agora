@@ -869,9 +869,7 @@ public class NetworkManager
     /// register network addresses into the name registry
     public void onRegisterName () @safe
     {
-        const(Address)[] addresses = this.validator_config.addresses_to_register.map!(
-            addr => Address(addr)
-        ).array;
+        const(Address)[] addresses = this.validator_config.addresses_to_register;
         if (!addresses.length)
             addresses = InetUtils.getPublicIPs().map!(
                 ip => Address("agora://"~ip)

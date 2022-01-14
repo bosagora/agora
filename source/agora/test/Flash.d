@@ -379,7 +379,7 @@ public class FlashNodeFactory : TestAPIManager
             max_retry_delay : 100.msecs,
             listener_address : ListenerAddress,
             registry_address : "http://name.registry",
-            addresses_to_register : ["http://"~to!string(kp.address)],
+            addresses_to_register : [ Address("http://"~to!string(kp.address)) ],
             key_pair : kp,
         };
         return this.createFlashNode!FlashNodeImpl(kp, conf, storage, file, line);
@@ -1036,7 +1036,7 @@ unittest
         max_retry_time : 4.seconds,
         max_retry_delay : 100.msecs,
         registry_address : "http://name.registry",
-        addresses_to_register : ["http://"~to!string(WK.Keys.A.address)],
+        addresses_to_register : [ Address("http://"~to!string(WK.Keys.A.address)) ],
         key_pair : WK.Keys.A
     };
 
@@ -1535,7 +1535,7 @@ unittest
         max_settle_time : 100,
         max_retry_delay : 100.msecs,
         registry_address : "http://name.registry",
-        addresses_to_register : ["http://"~to!string(WK.Keys.C.address)],
+        addresses_to_register : [ Address("http://"~to!string(WK.Keys.C.address)) ],
         listener_address : network.ListenerAddress,
         key_pair : WK.Keys.C
     };
@@ -1739,7 +1739,7 @@ unittest
         max_retry_time : 4.seconds,
         max_retry_delay : 10.msecs,
         registry_address : "http://name.registry",
-        addresses_to_register : ["http://"~to!string(WK.Keys.A.address)],
+        addresses_to_register : [ Address("http://"~to!string(WK.Keys.A.address)) ],
         key_pair : WK.Keys.A
     };
 

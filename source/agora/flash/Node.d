@@ -283,9 +283,7 @@ public class FlashNode : FlashControlAPI
                 data:
                 {
                     public_key : pair.key,
-                    addresses : this.conf.addresses_to_register.map!(
-                        addr => Address(addr)
-                    ).array,
+                    addresses : this.conf.addresses_to_register,
                     seq : time(null)
                 }
             };

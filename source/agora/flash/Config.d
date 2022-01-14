@@ -38,7 +38,7 @@ public struct FlashConfig
 
     // Network addresses that will be registered with the associated managed
     // public keys
-    public immutable string[] addresses_to_register;
+    public immutable Address[] addresses_to_register;
 
     /// Timeout for requests
     public Duration timeout = 10.seconds;
