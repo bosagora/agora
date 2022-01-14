@@ -28,23 +28,10 @@ consensus:
 
 validator:
   enabled: false
-  registry_address: https://v0.bosagora.io/
+  registry_address: https://ns1.bosagora.io/
 
 registry:
   enabled: true
-  flash:
-    email: github@bosagora.io
-  validators:
-    email: github@bosagora.io
-
-# Note: You may want to comment some of those to selectively test
-network:
-  - https://v2.bosagora.io/
-  - https://v3.bosagora.io/
-  - https://v4.bosagora.io/
-  - https://v5.bosagora.io/
-  - https://v6.bosagora.io/
-  - https://v7.bosagora.io/
 
 logging:
   root:

@@ -140,7 +140,10 @@ jobs:
 
     - name: Test example configuration file
       if: matrix.run_extra_checks && runner.os != 'Windows'
-      run: ./build/agora -c doc/config.example.yaml --config-check
+      run: |
+        ./build/agora -c doc/config.example.yaml --config-check
+        ./build/agora -c devel/config-fullnode.yaml --config-check
+        ./build/agora -c devel/config-single.yaml --config-check
 
     - name: Check vtable offset
       if: matrix.run_extra_checks && runner.os != 'Windows'
