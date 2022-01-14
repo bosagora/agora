@@ -19,7 +19,7 @@ RUN if [ -z ${AGORA_STANDALONE+x} ]; then dub build --skip-registry=all --compil
 # Runner
 # Uses edge as we need the same `ldc-runtime` as the LDC that compiled Agora,
 # and `bosagora/agora-builder:latest` uses edge.
-FROM alpine:edge
+FROM alpine:3.15
 # The following makes debugging Agora much easier on server
 # Since it's a tiny configuration file read by GDB at init, it won't affect release build
 COPY devel/dotgdbinit /root/.gdbinit
