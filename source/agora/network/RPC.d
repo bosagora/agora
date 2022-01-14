@@ -31,6 +31,7 @@ import ocean.text.convert.Formatter;
 import vibe.core.net;
 import vibe.core.connectionpool;
 import vibe.core.sync;
+import vibe.http.server : RejectConnectionPredicate;
 
 import std.traits;
 import core.stdc.stdio;
@@ -384,13 +385,23 @@ private class RPCConnection
       impl = The object that will handle the call
       address = The address to bind to (netmask, e.g. `0.0.0.0` for all)
       port = The port to bind to
+      isBannedDg = Delegate for checking if sending peer is banned
 
 *******************************************************************************/
 
 public TCPListener listenRPC (API) (API impl, string address, ushort port,
-    Duration timeout, void delegate (agora.api.Validator.API api) @safe nothrow discoverFromClient)
+    Duration timeout, void delegate (agora.api.Validator.API api) @safe nothrow discoverFromClient,
+    RejectConnectionPredicate isBannedDg)
 {
     auto callback = (TCPConnection stream) @safe nothrow {
+        if (isBannedDg(stream.remoteAddress))
+        {
+            try log.trace("RPC connection discarded, peer is banned {}",
+                stream.remoteAddress.toAddressString());
+            catch (Exception e) {}
+            return;
+        }
+
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
         try
