@@ -537,6 +537,8 @@ public void getCycleSeed (in KeyPair pair, in uint validator_cycle, out Hash see
         seed = Hash(`0x6917a265e852182cf7a309378905ccc23a9f05967c1acec3854a9a54ebc59e75a3beea61443d04de90866595b8c710e89734f2d5bfa1a215461380eeb5db6c4a`);
     else if (pair == NODE7)
         seed = Hash(`0xa656589184be1055d12e60821ccf933023665db1903892b5814c6bbcc0e3bcd47067b6c4a6a2241c1f8e174bf417dc11edf03715ab9c50c7923500cf987fc717`);
+    else if (pair == NODE10)
+        seed = Hash(`0xfe425761e0aee608ca3fbad5a358bb19d0e29758257849ec002f38390cf37e118c2868410f29ff71b3e5e377b8f7b5b42b10411e171526d368b3c4257d46bdd3`);
     else if (pair == A)
         seed = Hash(`0xf552fa1caf80d22b3d5b6307b83ccd664065d099c5f830fab6886c0808815f724abc032ee31c2efa2d382077f56f38b6b841027a5392a9f47137176e1cf383d3`);
     else if (pair == C)
