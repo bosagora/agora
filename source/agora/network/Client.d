@@ -261,7 +261,10 @@ public class NetworkClient
 
     public void setIdentity (in Hash utxo, in PublicKey key)
     {
-        assert(!this.identity);
+        assert(!this.identity, "Cannot `setIdentity` twice");
+        assert(utxo !is Hash.init);
+        assert(key.isValid());
+
         this.identity_ = Identity(key, utxo);
         this.log = Log.lookup(format("%s.%s", __MODULE__, key));
         this.log.info("Peer identity established (UTXO: {})", utxo);
