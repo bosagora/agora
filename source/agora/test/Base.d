@@ -2009,6 +2009,12 @@ public struct TestConf
     /// Matches the eponymous field in the `validator` section.
     public Duration preimage_catchup_interval = 1.seconds;
 
+    // How often we should check for pre-images to reveal
+    public Duration preimage_reveal_interval = 1.seconds;
+
+    // How far in the future (in unit of blocks) pre-images can be revealed
+    public size_t max_preimage_reveal = 6;
+
     /// max failed requests before a node is banned
     /// Matches the eponymous field in the `banman` section.
     public size_t max_failed_requests = 100;
@@ -2172,8 +2178,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             registry_address : "http://name.registry",
             recurring_enrollment : test_conf.recurring_enrollment,
             name_registration_interval : 10.seconds,
-            preimage_reveal_interval : 1.seconds,  // check revealing frequently
+            preimage_reveal_interval : test_conf.preimage_reveal_interval,
             nomination_interval: 100.msecs,
+            max_preimage_reveal: test_conf.max_preimage_reveal,
             preimage_catchup_interval: test_conf.preimage_catchup_interval,
             cycle_seed : cycle_seed,
             cycle_seed_height : cycle_seed_height,
