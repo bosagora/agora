@@ -1102,7 +1102,7 @@ public class FullNode : API
     }
 
     /// POST /preimage
-    public override void postPreimage (in PreImageInfo preimage) @safe
+    public override Height postPreimage (in PreImageInfo preimage) @safe
     {
         this.recordReq("postPreimage");
         log.trace("Received Preimage: {}", prettify(preimage));
@@ -1113,6 +1113,8 @@ public class FullNode : API
             this.network.peers.each!(p => p.client.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }
+
+        return this.enroll_man.getValidatorPreimage(preimage.utxo).height;
     }
 
     /// GET: /preimages

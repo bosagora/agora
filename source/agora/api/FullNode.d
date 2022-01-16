@@ -312,9 +312,12 @@ public interface API
         Params:
             preimage = a PreImageInfo object which contains a hash and a height
 
+        Returns:
+            the height of the pre-image that is currently stored
+
     ***************************************************************************/
 
-    public void postPreimage (in PreImageInfo preimage);
+    public Height postPreimage (in PreImageInfo preimage);
 
     /***************************************************************************
 

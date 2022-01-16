@@ -156,6 +156,9 @@ public class NetworkClient
     /// Gossip delay
     private enum GossipDelay = 10.msecs;
 
+    /// Heights of last gossiped pre-images for staked UTXOs
+    private Height[Hash] last_preimages;
+
     /***************************************************************************
 
         Constructor.
@@ -227,7 +230,28 @@ public class NetworkClient
             break;
 
         case Preimage:
-            this.attemptRequest!(API.postPreimage, Throw.No)(event.preimage);
+            // Clean up the `last_preimages` periodically
+            // Note: It clears `last_preimages` everyday based on the CoinNet.
+            if (event.preimage.height % Height(144) == 0)
+                this.last_preimages.clear();
+
+            // We do not post the preimage if it is already posted in order to
+            // prevent calls of `postPreimage` from flooding
+            Height last_height;
+            try
+            {
+                last_height = this.last_preimages.get(event.preimage.utxo, Height(0));
+            }
+            catch (Exception e)
+            {
+                log.trace("Exception caught while calling on last_preimages: ", e.msg);
+            }
+            if (event.preimage.height > last_height)
+            {
+                auto height = this.attemptRequest!(API.postPreimage, Throw.No)(event.preimage);
+                if (height >= event.preimage.height)
+                    this.last_preimages[event.preimage.utxo] = event.preimage.height;
+            }
             break;
 
         default:
