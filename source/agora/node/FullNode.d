@@ -283,7 +283,7 @@ public class FullNode : API
         this.clock = this.makeClock();
         this.network = this.makeNetworkManager(this.taskman, this.clock);
         this.storage = this.makeBlockStorage();
-        this.pool = this.makeTransactionPool();
+        this.pool = new TransactionPool(this.cacheDB, &getDoubleSpentSelector);
         this.enroll_man = this.makeEnrollmentManager();
         this.ledger = this.makeLedger();
         // Note: Needs to be instantiated after `ledger` as it depends on it
@@ -800,23 +800,6 @@ public class FullNode : API
             (out long time_offset) { return true; },
             (Duration duration, void delegate() cb) nothrow @trusted
                 { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
-    }
-
-    /***************************************************************************
-
-        Returns an instance of a TransactionPool
-
-        Subclasses can override this method and return
-        a TransactionPool backed by an in-memory SQLite database.
-
-        Returns:
-            the transaction pool
-
-    ***************************************************************************/
-
-    protected TransactionPool makeTransactionPool ()
-    {
-        return new TransactionPool(this.cacheDB, &getDoubleSpentSelector);
     }
 
     /***************************************************************************
