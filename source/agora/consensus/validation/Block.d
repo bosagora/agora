@@ -277,17 +277,10 @@ public string isGenesisBlockInvalidReason (in Block block) nothrow @safe
     return null;
 }
 
-version (unittest)
-{
-    // sensible defaults
-    private const TestStackMaxTotalSize = 16_384;
-    private const TestStackMaxItemSize = 512;
-}
-
 /// Genesis block validation fail test
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     import agora.serialization.Serializer;
 
     Block block = GenesisBlock.serializeFull.deserializeFull!Block;
@@ -568,7 +561,7 @@ unittest
     import std.algorithm;
     import std.range;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope utxos = new TestUTXOSet();
     scope findUTXO = &utxos.peekUTXO;
 
@@ -748,7 +741,7 @@ unittest
     import std.algorithm;
     import std.range;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope utxo_set = new TestUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
@@ -869,7 +862,7 @@ unittest
     import std.algorithm;
     import std.range;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope utxo_set = new TestUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 

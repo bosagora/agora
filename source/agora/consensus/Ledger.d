@@ -934,7 +934,7 @@ version (unittest)
             super(params,
                 stateDB,
                 new MemBlockStorage(blocks),
-                new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
+                new Engine(),
                 new EnrollmentManager(stateDB, cacheDB, vconf, params),
                 new TransactionPool(cacheDB),
                 onAcceptedBlock);
@@ -966,10 +966,6 @@ version (unittest)
             super.simulatePreimages(height, skip_indexes);
         }
     }
-
-    // sensible defaults
-    private const TestStackMaxTotalSize = 16_384;
-    private const TestStackMaxItemSize = 512;
 }
 
 ///
@@ -1156,7 +1152,7 @@ unittest
             super(params,
                 stateDB,
                 new MemBlockStorage(blocks),
-                new Engine(TestStackMaxTotalSize, TestStackMaxItemSize),
+                new Engine(),
                 new ValidatorSet(stateDB, params));
         }
 
