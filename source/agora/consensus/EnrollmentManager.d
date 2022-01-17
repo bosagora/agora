@@ -725,12 +725,6 @@ unittest
     // create and add the first Enrollment object
     auto utxo_hash = utxo_hashes[0];
 
-    // The UTXO belongs to key_pair but we sign with genesis key pair and check it fails
-    Enrollment fail_enroll =
-        EnrollmentManager.makeEnrollment(utxo_hash, gen_key_pair, EnrollAt1, params.ValidatorCycle);
-    assert(!man.addEnrollment(fail_enroll, gen_key_pair.address, EnrollAt1,
-            utxo_set.getUTXOFinder(), getPenaltyDeposit));
-
     Enrollment[] enrolls_before = man.getEnrollments(EnrollAt1, &utxo_set.peekUTXO, getPenaltyDeposit);
     assert(enrolls_before.length == 0);
 
