@@ -353,7 +353,7 @@ unittest
     import std.algorithm;
 
     auto params = new immutable(ConsensusParams)();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     scope pool = new EnrollmentPool(new ManagedDatabase(":memory:"));
     KeyPair key_pair = WK.Keys.A;
     Enrollment[] enrollments;

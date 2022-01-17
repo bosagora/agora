@@ -127,7 +127,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     private bool start_timers;
 
     ///
-    version (unittest) public TestUTXOSet utxo_set;
+    version (unittest) public MemoryUTXOSet utxo_set;
 
 
     /***************************************************************************
@@ -362,7 +362,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         import agora.consensus.Fee;
         import agora.consensus.data.Params;
 
-        this.utxo_set = new TestUTXOSet();
+        this.utxo_set = new MemoryUTXOSet();
         auto getPenaltyDeposit = (Hash utxo)
         {
             UTXO val;

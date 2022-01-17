@@ -913,7 +913,7 @@ unittest
     import agora.consensus.Fee;
     import agora.consensus.state.UTXOSet;
 
-    auto utxo_set = new TestUTXOSet();
+    auto utxo_set = new MemoryUTXOSet();
     auto getPenaltyDeposit = (Hash utxo)
     {
         UTXO val;

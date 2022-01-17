@@ -687,7 +687,7 @@ unittest
     import std.algorithm;
     import std.range;
 
-    scope utxo_set = new TestUTXOSet;
+    scope utxo_set = new MemoryUTXOSet;
     auto getPenaltyDeposit = (Hash utxo)
     {
         UTXO val;
@@ -824,7 +824,7 @@ unittest
     import agora.consensus.data.Transaction;
     import std.range;
 
-    scope utxo_set = new TestUTXOSet;
+    scope utxo_set = new MemoryUTXOSet;
     Hash[] utxo_hashes;
     auto getPenaltyDeposit = (Hash utxo)
     {
@@ -991,7 +991,7 @@ unittest
 {
     import agora.consensus.data.Transaction;
 
-    auto utxo_set = new TestUTXOSet;
+    auto utxo_set = new MemoryUTXOSet;
     genesisSpendable()
         .map!(txb => txb.refund(WK.Keys.A.address).sign(OutputType.Freeze))
         .each!(tx => utxo_set.put(tx));
@@ -1011,7 +1011,7 @@ unittest
     import agora.consensus.data.Transaction;
     import std.algorithm;
 
-    scope utxo_set = new TestUTXOSet;
+    scope utxo_set = new MemoryUTXOSet;
     auto getPenaltyDeposit = (Hash utxo)
     {
         UTXO val;
@@ -1131,7 +1131,7 @@ unittest
     import std.range;
 
     Hash[] utxos;
-    auto utxo_set = new TestUTXOSet;
+    auto utxo_set = new MemoryUTXOSet;
     auto getPenaltyDeposit = (Hash utxo)
     {
         UTXO val;

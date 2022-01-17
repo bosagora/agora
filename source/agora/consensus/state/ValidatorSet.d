@@ -611,7 +611,7 @@ unittest
     import std.range;
 
     const FirstEnrollHeight = Height(1);
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     auto getPenaltyDeposit = (Hash utxo)
     {
         UTXO val;

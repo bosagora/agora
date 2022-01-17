@@ -596,7 +596,7 @@ public class FeeManager
         import agora.consensus.data.genesis.Test;
 
         auto man = new FeeManager();
-        auto utxoset = new TestUTXOSet();
+        auto utxoset = new MemoryUTXOSet();
         auto getPenaltyDeposit = (Hash utxo)
         {
             UTXO val;
@@ -714,7 +714,7 @@ public class FeeManager
         import std.stdio;
 
         auto man = new FeeManager();
-        auto utxoset = new TestUTXOSet();
+        auto utxoset = new MemoryUTXOSet();
         auto getPenaltyDeposit = (Hash utxo)
         {
             UTXO val;
@@ -788,7 +788,7 @@ unittest
     Transaction freeze_tx = Transaction(
         [ Output(2_000_000.coins, WK.Keys.NODE2.address, OutputType.Freeze) ]);
 
-    auto utxo_set = new TestUTXOSet;
+    auto utxo_set = new MemoryUTXOSet;
     utxo_set.put(freeze_tx);
     auto getPenaltyDeposit = (Hash utxo)
     {
