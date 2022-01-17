@@ -1140,8 +1140,7 @@ public class FullNode : API
     }
 
     /// GET: /preimages_from
-    public override PreImageInfo[] getPreimagesFrom (ulong start_height)
-        @safe nothrow
+    public override PreImageInfo[] getPreimagesFrom (ulong start_height) @safe
     {
         this.recordReq("preimages_range");
 
