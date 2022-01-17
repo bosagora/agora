@@ -226,17 +226,10 @@ public bool isValid (in Transaction tx, Engine engine, scope UTXOFinder findUTXO
     return isInvalidReason(tx, engine, findUTXO, height, checkFee, getPenaltyDeposit) is null;
 }
 
-version (unittest)
-{
-    // sensible defaults
-    private const TestStackMaxTotalSize = 16_384;
-    private const TestStackMaxItemSize = 512;
-}
-
 /// verify transaction data
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -286,7 +279,7 @@ unittest
 /// negative output amounts disallowed
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     KeyPair[] key_pairs = [KeyPair.random(), KeyPair.random()];
     Transaction tx_1 = Transaction([ Output(Amount(1000), key_pairs[0].address) ]);
     Hash tx_1_hash = hashFull(tx_1);
@@ -322,7 +315,7 @@ unittest
 /// of the previous transaction to create and validate the input.
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
 
     immutable(KeyPair)[] key_pairs;
@@ -383,7 +376,7 @@ unittest
 /// verify transactions associated with freezing
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -548,7 +541,7 @@ unittest
 /// ---------------------------------------------------------------------------
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
@@ -697,7 +690,7 @@ unittest
     import std.string;
     import std.algorithm.searching;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
@@ -737,7 +730,7 @@ unittest
 /// test for transaction having combined inputs
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -778,7 +771,7 @@ unittest
 /// test for unknown transaction output type
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     Transaction[Hash] storage;
     OutputType unknown_type = cast(OutputType)100; // picking value beyond enum range
     KeyPair key_pair = KeyPair.random;
@@ -801,7 +794,7 @@ unittest
 /// test for checking input overflow for Payment and Freeze type transactions
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -856,7 +849,7 @@ unittest
 /// test for checking output overflow for Payment type transaction
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
@@ -899,7 +892,7 @@ unittest
 unittest
 {
     scope storage = new TestUTXOSet;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     KeyPair key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
@@ -1030,7 +1023,7 @@ unittest
 {
     scope storage = new TestUTXOSet;
     scope utxoFinder = storage.getUTXOFinder();
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
@@ -1063,7 +1056,7 @@ unittest
 /// transaction-level absolute time lock
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
@@ -1103,7 +1096,7 @@ unittest
     import std.traits : EnumMembers;
     import agora.script.Opcodes;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
@@ -1134,7 +1127,7 @@ unittest
 {
     import std.stdio;
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     scope storage = new TestUTXOSet;
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;

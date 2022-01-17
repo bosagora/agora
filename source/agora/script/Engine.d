@@ -75,7 +75,8 @@ public class Engine
 
     ***************************************************************************/
 
-    public this (ulong StackMaxTotalSize, ulong StackMaxItemSize)
+    public this (ulong StackMaxTotalSize = 16_384, ulong StackMaxItemSize = 512)
+        @safe pure nothrow @nogc
     {
         assert(StackMaxItemSize > 0 && StackMaxTotalSize >= StackMaxItemSize);
         this.StackMaxTotalSize = StackMaxTotalSize;
@@ -1143,13 +1144,6 @@ public Hash getSequenceChallenge (in Transaction tx, in ulong sequence,
     return hashMulti(tx.getChallenge(sig_hash, input_idx, output_idx), sequence);
 }
 
-version (unittest)
-{
-    // sensible defaults
-    private const TestStackMaxTotalSize = 16_384;
-    private const TestStackMaxItemSize = 512;
-}
-
 /// Helper routine to sign a whole msg (SigHash.All)
 version (unittest)
 public SigPair signTx (in KeyPair kp, in Transaction tx) nothrow @safe /*@nogc*/
@@ -1161,7 +1155,7 @@ public SigPair signTx (in KeyPair kp, in Transaction tx) nothrow @safe /*@nogc*/
 // OP.DUP
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.Script, [OP.DUP]), Unlock.init, Transaction.init,
             Input.init) ==
@@ -1181,7 +1175,7 @@ unittest
 // OP.HASH
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.Script, [OP.HASH]), Unlock.init, Transaction.init,
             Input.init) ==
@@ -1201,7 +1195,7 @@ unittest
 // OP.CHECK_EQUAL
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
     assert(engine.execute(
         Lock(LockType.Script, [OP.CHECK_EQUAL]), Unlock.init, tx, Input.init) ==
@@ -1225,7 +1219,7 @@ unittest
 // OP.VERIFY_EQUAL
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
     assert(engine.execute(
         Lock(LockType.Script, [OP.VERIFY_EQUAL]), Unlock.init, tx, Input.init) ==
@@ -1249,7 +1243,7 @@ unittest
 // OP.CHECK_SIG
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
     assert(engine.execute(
         Lock(LockType.Script, [OP.CHECK_SIG]), Unlock.init, tx, Input.init) ==
@@ -1298,7 +1292,7 @@ unittest
 // OP.VERIFY_SIG
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
     assert(engine.execute(
         Lock(LockType.Script, [OP.VERIFY_SIG]), Unlock.init, tx, Input.init) ==
@@ -1353,7 +1347,7 @@ unittest
 // OP.CHECK_MULTI_SIG / OP.VERIFY_MULTI_SIG
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
     assert(engine.execute(
         Lock(LockType.Script, [OP.CHECK_MULTI_SIG]), Unlock.init, tx, Input.init) ==
@@ -1650,7 +1644,7 @@ unittest
     //   <new_seq>
     //   <sig>
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const Transaction tx = Transaction([Input.init], [Output.init]);
     assert(engine.execute(
         Lock(LockType.Script, [OP.CHECK_SEQ_SIG]), Unlock.init, tx, tx.inputs[0]) ==
@@ -1812,7 +1806,7 @@ unittest
     const height_10 = nativeToLittleEndian(ulong(10));
     const height_11 = nativeToLittleEndian(ulong(11));
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const Transaction tx_10 = Transaction([Input.init], [Output.init], Height(10));
     const Transaction tx_11 = Transaction([Input.init], [Output.init], Height(11));
     assert(engine.execute(
@@ -1860,7 +1854,7 @@ unittest
     const age_11 = nativeToLittleEndian(uint(11));
     const age_overflow = nativeToLittleEndian(ulong.max);
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const Input input_10 = Input(Hash.init, 0, 10 /* unlock_age */);
     const Input input_11 = Input(Hash.init, 0, 11 /* unlock_age */);
     assert(engine.execute(
@@ -1907,7 +1901,7 @@ unittest
     const tx = Transaction([Input.init], [Output.init]);
     const sig = signTx(kp, tx);
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.Key, kp.address[]), Unlock(sig[]), tx, Input.init) ==
         null);
@@ -1947,7 +1941,7 @@ unittest
     const kp2 = KeyPair.random();
     const sig2 = signTx(kp2, tx);  // valid sig, but for a different key-pair
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.KeyHash, key_hash[]), Unlock(sig[] ~ kp.address[]), tx, Input.init)
         is null);
@@ -1998,7 +1992,7 @@ unittest
     const Script lock = createLockP2PKH(key_hash);
     const Script unlock = createUnlockP2PKH(sig.signature, sig.sig_hash, kp.address);
 
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.Script, lock[]), Unlock(unlock[]), tx, Input.init)
         is null);
@@ -2017,7 +2011,8 @@ unittest
         "VERIFY_EQUAL operation failed");
 
     // native script stack overflow test
-    scope small = new Engine(TestStackMaxItemSize * 2, TestStackMaxItemSize);
+    const TestStackMaxItemSize = 512; // Default is 16_384
+    scope small = new Engine(TestStackMaxItemSize * 2);
     assert(small.execute(
         Lock(LockType.Script, lock[]),
         Unlock(
@@ -2041,7 +2036,7 @@ unittest
     // lock is: <redeem hash>
     // unlock is: <push(sig)> <redeem>
     // redeem is: check sig against the key embedded in the redeem script
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock([ubyte(65)] ~ sig[] ~ toPushOpcode(redeem[])),
@@ -2062,7 +2057,8 @@ unittest
         Unlock(null),
         tx, Input.init) ==
         "LockType.Redeem requires unlock script to push a redeem script to the stack");
-    scope small = new Engine(TestStackMaxItemSize * 2, TestStackMaxItemSize);
+    const TestStackMaxItemSize = 512;
+    scope small = new Engine(TestStackMaxItemSize * 2);
     assert(small.execute(
         Lock(LockType.Redeem, redeem_hash[]),
         Unlock(ubyte(42).repeat(TestStackMaxItemSize * 2).array.toPushOpcode()),
@@ -2127,7 +2123,7 @@ unittest
     Script unlock = createUnlockP2PKH(sig.signature, sig.sig_hash, kp.address);
 
     const invalid_script = makeScript([255]);
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     assert(engine.execute(
         Lock(LockType.Script, lock[]), Unlock(unlock[]), tx, Input.init)
         is null);
@@ -2147,7 +2143,7 @@ unittest
 unittest
 {
     import std.algorithm;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
     const StackMaxItemSize = 512;
     assert(engine.execute(
@@ -2156,17 +2152,15 @@ unittest
         is null);
 
     assert(engine.execute(
-        Lock(LockType.Script, ubyte(42).repeat(TestStackMaxItemSize + 1)
+        Lock(LockType.Script, ubyte(42).repeat(StackMaxItemSize + 1)
             .array.toPushOpcode()
             ~ [ubyte(OP.TRUE)]),
         Unlock.init, tx, Input.init) ==
         "PUSH_DATA_2 opcode payload size is not within StackMaxItemSize limits");
 
-    const MaxItemPush = ubyte(42).repeat(TestStackMaxItemSize).array
+    const MaxItemPush = ubyte(42).repeat(StackMaxItemSize).array
         .toPushOpcode();
-    const MaxPushes = TestStackMaxTotalSize / TestStackMaxItemSize;
-    // strict power of two to make the tests easy to write
-    assert(TestStackMaxTotalSize % TestStackMaxItemSize == 0);
+    const MaxPushes = 16_384 / 512;
 
     // overflow with PUSH_DATA_1
     scope tiny = new Engine(120, 77);
@@ -2231,7 +2225,7 @@ unittest
 
     assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes - 1).joiner.array
-            ~ [ubyte(1), ubyte(1)].repeat(TestStackMaxItemSize).joiner.array
+            ~ [ubyte(1), ubyte(1)].repeat(StackMaxItemSize).joiner.array
             ~ ubyte(OP.HASH) ~ [ubyte(OP.TRUE)]),
         Unlock.init, tx, Input.init) ==
         "Stack overflow while executing HASH");
@@ -2260,7 +2254,7 @@ unittest
 // IF, NOT_IF, ELSE, END_IF conditional logic
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const tx = Transaction([Input.init], [Output.init]);
 
     // IF true => execute if branch
@@ -2394,7 +2388,7 @@ unittest
 // SigHash.NoInput / SigHash.All
 unittest
 {
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
     const input_1 = Input(hashFull(1));
     const input_2 = Input(hashFull(2));
     auto tx_1 = Transaction([input_1], [Output.init], Height(0));

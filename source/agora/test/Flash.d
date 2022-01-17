@@ -141,9 +141,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     {
         this.registry = registry;
         const genesis_hash = hashFull(GenesisBlock);
-        const TestStackMaxTotalSize = 16_384;
-        const TestStackMaxItemSize = 512;
-        auto engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+        auto engine = new Engine();
         this.allow_publish = true;
 
         this.agora_node = this.getAgoraClient(agora_address, timeout);

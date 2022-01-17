@@ -545,9 +545,7 @@ unittest
     auto recv_kp = Pair.random();
     auto lock_height = Height(100);
 
-    const TestStackMaxTotalSize = 16_384;
-    const TestStackMaxItemSize = 512;
-    scope engine = new Engine(TestStackMaxTotalSize, TestStackMaxItemSize);
+    scope engine = new Engine();
 
     auto lock_script = createLockHTLC(hash, lock_height, send_kp.V, recv_kp.V);
 
