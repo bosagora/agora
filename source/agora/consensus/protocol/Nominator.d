@@ -532,7 +532,8 @@ extern(D):
 
     protected void nominate (ulong slot_idx, in ConsensusData next) @trusted
     {
-        log.info("{}(): Proposing tx set for slot {}", __FUNCTION__, slot_idx);
+        log.info("{}(): Proposing tx set for slot {}, ledger is at height {}",
+            __FUNCTION__, slot_idx, this.ledger.lastBlock().header.height);
 
         auto next_value = next.serializeFull().toVec();
         auto next_dup = duplicate_value(&next_value);
@@ -1347,9 +1348,7 @@ extern(D):
         const uint hash_P = 2;
 
         const header = this.ledger.lastBlock().header;
-        log.dbg("Nominator.computeHashNode: slot_idx={}, ledger height={}",
-            slot_idx, header.height);
-        assert(header.height + 1 == slot_idx);
+        assert(header.height + 1 == slot_idx); // Not sure if this should ever happen
         const seed = header.hashFull();
         const Hash hash = hashMulti(slot_idx, prev[],
             is_priority ? hash_P : hash_N, round_num, node_id, seed);
