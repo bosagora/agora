@@ -127,8 +127,11 @@ public extern (C++) class Nominator : SCPDriver
     /// Enrollment manager
     public EnrollmentManager enroll_man;
 
+    /// hash of previous block
+    private Hash prev_value_hash;
+
     /// Used as "prev_value" when nominating
-    private const Value empty_value;
+    private Value prev_value;
 
     /// User configured nomination frequency
     private const Duration nomination_interval;
@@ -184,7 +187,6 @@ extern(D):
         this.params = params;
         this.clock = clock;
         this.network = network;
-        this.empty_value = ConsensusData.init.serializeFull().toVec();
         this.kp = key_pair;
         this.taskman = taskman;
         this.ledger = ledger;
@@ -496,8 +498,6 @@ extern(D):
         log.info("Nominating {} at {}", data.prettify, cur_time);
         this.is_nominating = true;
 
-        // note: we are not passing the previous tx set as we don't really
-        // need it at this point (might later be necessary for chain upgrades)
         this.nominate(slot_idx, data);
     }
 
@@ -535,11 +535,19 @@ extern(D):
         log.info("{}(): Proposing tx set for slot {}, ledger is at height {}",
             __FUNCTION__, slot_idx, this.ledger.lastBlock().header.height);
 
+        const lastBlockHash = this.ledger.lastBlock.hashFull();
+        if (prev_value_hash != lastBlockHash)
+        {
+            // Use hash of previous block as the previous slot value for randomizing
+            prev_value = lastBlockHash.serializeFull().toVec();
+            prev_value_hash = lastBlockHash;
+        }
+
         auto next_value = next.serializeFull().toVec();
         auto next_dup = duplicate_value(&next_value);
         auto nextval = this.wrapValue(next_dup);
 
-        if (this.scp.nominate(slot_idx, nextval, this.empty_value))
+        if (this.scp.nominate(slot_idx, nextval, prev_value))
         {
             log.info("{}(): Tx set triggered new nomination", __FUNCTION__);
         }
@@ -1321,43 +1329,6 @@ extern(D):
             return;
         this.active_timers[type] = this.taskman.setTimer(
             timeout.msecs, { callCPPDelegate(callback); });
-    }
-
-    /***************************************************************************
-
-        Used by the nomination protocol to randomize the order of messages
-        between nodes.
-
-        Params:
-            slot_idx = the slot index we're currently reaching consensus for.
-            prev = the previous data set for the provided slot index.
-            is_priority = the flag to check that this call is for priority.
-            round_num = the nomination round
-            node_id = the id of the node for which this computation is being made
-
-        Returns:
-            the 8-byte hash
-
-    ***************************************************************************/
-
-    public override uint64_t computeHashNode (uint64_t slot_idx,
-        ref const(Value) prev, bool is_priority, int32_t round_num,
-        ref const(NodeID) node_id) nothrow
-    {
-        const uint hash_N = 1;
-        const uint hash_P = 2;
-
-        const header = this.ledger.lastBlock().header;
-        assert(header.height + 1 == slot_idx); // Not sure if this should ever happen
-        const seed = header.hashFull();
-        const Hash hash = hashMulti(slot_idx, prev[],
-            is_priority ? hash_P : hash_N, round_num, node_id, seed);
-
-        uint64_t res = 0;
-        for (size_t i = 0; i < res.sizeof; i++)
-            res = (res << 8) | hash[][i];
-
-        return res;
     }
 
     // `getHashOf` computes the hash for the given vector of byte vector
