@@ -57,7 +57,7 @@ version (unittest)
     import agora.utils.Test;
 }
 /// Expose the base Ledger class
-public import agora.consensus.state.Ledger : Ledger;
+public import agora.consensus.state.Ledger : UTXOTracker, Ledger;
 
 /// The Ledger class held by a node
 public class NodeLedger : Ledger
@@ -80,6 +80,9 @@ public class NodeLedger : Ledger
 
     /// Hashes of transactions the Ledger encountered but doesn't have in the pool
     protected Set!Hash unknown_txs;
+
+    /// The list of frozen UTXOs known to this Ledger
+    protected UTXOTracker frozen_utxos;
 
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
@@ -110,7 +113,12 @@ public class NodeLedger : Ledger
         this.onAcceptedBlock = onAcceptedBlock;
         this.pool = pool;
         this.enroll_man = enroll_man;
+        this.frozen_utxos = new FrozenUTXOTracker(this);
         super(params, database, storage, enroll_man.validator_set);
+
+        // Rebuild tracker frozen UTXO set
+        foreach (const ref Hash hash, const ref UTXO utxo; this.utxo_set)
+            this.frozen_utxos.externalize(hash, utxo.output);
     }
 
     /// See `Ledger.acceptBlock`
@@ -147,6 +155,7 @@ public class NodeLedger : Ledger
     protected override void updateUTXOSet (in Block block) @safe
     {
         super.updateUTXOSet(block);
+        this.frozen_utxos.externalize(block);
         block.txs.each!(tx => this.pool.remove(tx));
     }
 
@@ -262,6 +271,20 @@ public class NodeLedger : Ledger
     public Set!Hash getUnknownTXHashes () @safe nothrow
     {
         return this.unknown_txs;
+    }
+
+    /***************************************************************************
+
+        Get a set of all the stakes currently active at this height
+
+        Returns:
+            A set of stakes
+
+    ***************************************************************************/
+
+    public Set!(UTXOTracker.Tracked) getStakes () @safe nothrow @nogc pure
+    {
+        return this.frozen_utxos.data();
     }
 
     /***************************************************************************
@@ -894,6 +917,25 @@ public class ValidatingLedger : NodeLedger
         last_txs.each!(tx => assert(this.acceptTransaction(tx) is null));
         this.forceCreateBlock();
         return last_txs;
+    }
+}
+
+/// A class that tracks frozen UTXOs
+private final class FrozenUTXOTracker : UTXOTracker
+{
+    /// Ledger instance
+    private Ledger ledger;
+
+    /// Constructor
+    public this (Ledger ledger) @safe pure nothrow @nogc
+    {
+        this.ledger = ledger;
+    }
+
+    ///
+    public override bool include (in Hash hash, in Output utxo) scope @safe
+    {
+        return this.ledger.isStake(hash, utxo);
     }
 }
 
