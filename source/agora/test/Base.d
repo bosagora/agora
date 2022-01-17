@@ -2384,7 +2384,7 @@ public class NoPreImageVN : TestValidatorNode
     }
 
     /// GET: /preimages
-    public override PreImageInfo[] getPreimagesFrom (ulong start_height) @safe nothrow
+    public override PreImageInfo[] getPreimagesFrom (ulong start_height) @safe
     {
         if (atomicLoad(*this.reveal_preimage))
             return super.getPreimagesFrom(start_height);

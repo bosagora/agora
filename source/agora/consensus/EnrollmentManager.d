@@ -590,20 +590,13 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Hash getCommitment () @trusted nothrow
+    public Hash getCommitment () @trusted
     {
-        try
-        {
-            auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                "WHERE key = ?", "commitment");
+        auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
+            "WHERE key = ?", "commitment");
 
-            if (!results.empty)
-                return Hash(results.oneValue!(string));
-        }
-        catch (Exception ex)
-        {
-            log.warn("ManagedDatabase operation error: {}", ex.msg);
-        }
+        if (!results.empty)
+            return Hash(results.oneValue!(string));
 
         return Hash.init;
     }
@@ -643,20 +636,13 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public Hash getEnrollmentKey () @trusted nothrow
+    public Hash getEnrollmentKey () @trusted
     {
-        try
-        {
-            auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
-                "WHERE key = ?", "utxo");
+        auto results = this.db.execute("SELECT val FROM node_enroll_data " ~
+            "WHERE key = ?", "utxo");
 
-            if (!results.empty)
-                return Hash(results.oneValue!(string));
-        }
-        catch (Exception ex)
-        {
-            log.warn("ManagedDatabase operation error: {}", ex.msg);
-        }
+        if (!results.empty)
+            return Hash(results.oneValue!(string));
 
         return Hash.init;
     }
