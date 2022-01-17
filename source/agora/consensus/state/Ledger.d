@@ -174,7 +174,12 @@ public class Ledger
 
     /***************************************************************************
 
-        Returns the last block in the `Ledger`
+        Returns a reference to the last block in the `Ledger`
+
+        The last block is made available mostly for convenience. In general,
+        users should rely on the various other functions which provide a view
+        of the UTXO set and the validator sets, the two main output of the
+        consensus process.
 
         Returns:
             last block in the `Ledger`
@@ -187,6 +192,12 @@ public class Ledger
     }
 
     /***************************************************************************
+
+        Returns the height at which this `Ledger` is currently at
+
+        The value returned by this method will only ever increase or stall,
+        and shall never decrease. If the need arrive to compare `Ledger` state,
+        use `ledger.lastBlock().hashFull()`.
 
         Returns:
             The highest block height known to this Ledger
@@ -269,7 +280,21 @@ public class Ledger
         return this.validator_set.countActive(height);
     }
 
-    /// Expose the `UTXOCache` used by this Ledger
+    /***************************************************************************
+
+        Expose an object that interacts with the UTXO set
+
+        The UTXO set is the main output of the consensus protocol: it contains
+        all outstanding balances in the network, and as a consequence
+        may be large. Consequently, the returned `UTXOCache` allows to interact
+        with it in an efficient manner, for example allowing to iterate over
+        the whole set without allocating it as an array.
+
+        Returns:
+          An object implementing the `UTXOCache` interface
+
+    ***************************************************************************/
+
     public UTXOCache utxos () return @safe pure nothrow @nogc
     {
         return this.utxo_set;
@@ -277,13 +302,21 @@ public class Ledger
 
     /***************************************************************************
 
-        Add a pre-image information to a validator data
+        Add a pre-image information to the validator data
+
+        The `Ledger` keeps track of "pre-image", which are hashes that
+        validators need to periodically reveal in order to avoid getting
+        financially penalized (slashed).
+
+        Two Ledgers at the same height may have different knowledge
+        of pre-images, however they have the same knowledge of pre-images
+        at the height they are at.
 
         Params:
             preimage = the pre-image information to add
 
         Returns:
-            true if the pre-image information has been added to the validator
+            true if the pre-image information has been accepted by the Ledger
 
     ***************************************************************************/
 
@@ -294,9 +327,12 @@ public class Ledger
 
     /***************************************************************************
 
-        Add a block to the ledger.
+        Attempt to add a block to the `Ledger`.
 
-        If the block fails verification, it is not added to the ledger.
+        The block should have a majority of signature to be added,
+        and will then be validated (via `validateBlock`) before being
+        externalized. If validation failes, the reason will be returned,
+        and the `Ledger` will not be modifed.
 
         Params:
             block = the block to add
@@ -356,6 +392,9 @@ public class Ledger
         This will add all of the block's outputs to the UTXO set, as well as
         any enrollments that may be present in the block to the validator set.
 
+        This internal method can be overriden in derived class to catch `Block`
+        externalization event.
+
         Params:
             block = the block to add
 
@@ -402,6 +441,9 @@ public class Ledger
     /***************************************************************************
 
         Update the ledger state from a block which was read from storage
+
+        Called from the constructor with the content of the disk storage in
+        case the validator set or UTXO set is invalid.
 
         Params:
             block = block to update the state from
