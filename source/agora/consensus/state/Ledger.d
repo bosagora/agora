@@ -587,6 +587,19 @@ public class Ledger
         }
     }
 
+    /// Returns: Whether the `utxo` can be used as a stake for a validator
+    public bool isStake (in Hash hash, in Output utxo) scope @safe
+    {
+        if (utxo.type != OutputType.Freeze)
+            return false;
+        if (utxo.value < Amount.MinFreezeAmount)
+            return false;
+        EnrollmentState last_enrollment;
+        if (this.validator_set.findRecentEnrollment(hash, last_enrollment))
+            return last_enrollment.slashed_height == 0;
+        return true;
+    }
+
     ///
     public Amount getPenaltyDeposit (Hash utxo) @safe nothrow
     {
@@ -1026,4 +1039,82 @@ unittest
         tuple(6,3), tuple(7,3), tuple(8,3), // test before second is externalized
         tuple(9,6), tuple(10,6)).each!( // last we test after second
         (height, expected) => assert(lastPaidHeight(Height(height), paymentPeriod) == expected));
+}
+
+/*******************************************************************************
+
+    Tracks a set of UTXO according to an inclusion criteria
+
+    An abstract base class that can be used to track UTXOs,
+    e.g. to track UTXOs belonging to a set of keys, or matching a certain value.
+
+*******************************************************************************/
+
+public abstract class UTXOTracker
+{
+    import agora.common.Set;
+    import std.typecons;
+
+    /// Type of data we keep track of
+    public struct Tracked
+    {
+        /// Hash of the UTXO
+        public Hash hash;
+
+        /// Output itself
+        public Output output;
+
+        /// Used by Set
+        public hash_t toHash () const scope @trusted pure nothrow @nogc
+        {
+            return *(cast(hash_t*) this.hash[].ptr);
+        }
+
+        /// Ditto
+        public bool opEquals (in Tracked other) const scope @safe pure nothrow @nogc
+        {
+            return this.hash == other.hash;
+        }
+
+        public int opCmp (in Tracked other) const scope @safe pure nothrow @nogc
+        {
+            return this.hash.opCmp(other.hash);
+        }
+    }
+
+    /// The underlying data
+    protected Set!Tracked data_;
+
+    /// Returns: The currently tracked set
+    /// Note: Should be `const` but `Set` can't iterate on `const` delegates
+    public Set!Tracked data () scope @safe pure nothrow @nogc
+    {
+        return this.data_;
+    }
+
+    /// Implement this as the inclusion criteria
+    public abstract bool include (in Hash hash, in Output utxo) scope @safe;
+
+    /// Process all transactions in this `Block`
+    public void externalize (in Block block) @safe
+    {
+        block.txs.each!((in tx) => this.externalize(tx));
+    }
+
+    /// Process all inputs and outputs in this `Transaction`
+    public void externalize (in Transaction tx) @safe
+    {
+        tx.inputs.each!((in inp) => this.data_.remove(Tracked(inp.utxo)));
+        const txHash = tx.hashFull();
+        tx.outputs.enumerate
+            .map!((in tup) => tuple(UTXO.getHash(txHash, tup.index), tup.value))
+            .each!((in hash, in utxo) => this.externalize(hash, utxo));
+    }
+
+    /// Process a single `Output`
+    public void externalize (in Hash hash, in Output output) @safe
+    {
+        if (this.include(hash, output))
+            this.data_.put(Tracked(hash, output));
+    }
 }

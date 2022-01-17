@@ -697,12 +697,10 @@ public class Validator : FullNode, API
     private Hash getFrozenUTXO () @safe nothrow
     {
         const pub_key = this.config.validator.key_pair.address;
-        foreach (utxo; this.ledger.utxos.getUTXOs(pub_key).byKeyValue)
+        foreach (tracked; this.ledger.getStakes())
         {
-            if (utxo.value.output.type == OutputType.Freeze &&
-                utxo.value.output.value.integral() >= Amount.MinFreezeAmount.integral() &&
-                this.ledger.getPenaltyDeposit(utxo.key) > 0.coins)
-                return utxo.key;
+            if (pub_key is tracked.output.address())
+                return tracked.hash;
         }
 
         return Hash.init;
