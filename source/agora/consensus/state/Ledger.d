@@ -564,7 +564,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Transaction getCoinbaseTX (in Height height) nothrow @safe
+    protected Transaction getCoinbaseTX (in Height height) nothrow @safe
     {
         assert(height >= 2 * this.params.PayoutPeriod);
 
