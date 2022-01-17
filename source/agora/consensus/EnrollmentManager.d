@@ -678,24 +678,6 @@ public class EnrollmentManager
     {
         this.enroll_key = Hash.init;
     }
-
-    /***************************************************************************
-
-        Get the enrollment with the key
-
-        Params:
-            enroll_hash = key for the enrollment which has the frozen UTXO
-
-        Returns:
-            Return an `Enrollment` if the enrollment is found, otherwise
-                `Enrollment.init`
-
-    ***************************************************************************/
-
-    public Enrollment getEnrollment (in Hash enroll_hash) @trusted
-    {
-        return this.enroll_pool.getEnrollment(enroll_hash);
-    }
 }
 
 /// tests for member functions of EnrollmentManager
@@ -767,7 +749,7 @@ unittest
 
     // get a stored Enrollment object
     Enrollment stored_enroll;
-    assert((stored_enroll = man.getEnrollment(utxo_hashes[1])) !=
+    assert((stored_enroll = man.enroll_pool.getEnrollment(utxo_hashes[1])) !=
         Enrollment.init);
     assert(stored_enroll == ordered_enrollments[1]);
 
@@ -776,7 +758,7 @@ unittest
     assert(man.enroll_pool.count() == 2);
 
     // test for getEnrollment with removed enrollment
-    assert(man.getEnrollment(utxo_hashes[1]) == Enrollment.init);
+    assert(man.enroll_pool.getEnrollment(utxo_hashes[1]) == Enrollment.init);
 
     // test for enrollment block height update
     const EnrollAt9 = Height(9);

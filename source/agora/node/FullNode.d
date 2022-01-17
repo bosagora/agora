@@ -1081,7 +1081,7 @@ public class FullNode : API
     public override Enrollment getEnrollment (in Hash enroll_hash) @safe
     {
         this.recordReq("getEnrollment");
-        return this.enroll_man.getEnrollment(enroll_hash);
+        return this.enroll_man.enroll_pool.getEnrollment(enroll_hash);
     }
 
     /// POST /preimage

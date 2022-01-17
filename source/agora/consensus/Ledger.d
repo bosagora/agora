@@ -1447,7 +1447,7 @@ unittest
 
     foreach (idx, hash; utxos)
     {
-        Enrollment stored_enroll = ledger.enrollment_manager.getEnrollment(hash);
+        Enrollment stored_enroll = ledger.enrollment_manager.enroll_pool.getEnrollment(hash);
         assert(stored_enroll == enrollments[idx]);
     }
 
