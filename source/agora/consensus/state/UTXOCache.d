@@ -30,7 +30,7 @@ public alias UTXOFinder = bool delegate (in Hash utxo, out UTXO) nothrow @safe;
 /*******************************************************************************
 
     UTXOCache is the the base class of a UTXO storage.
-    It is inherited by UTXOSet and TestUTXOSet.
+    It is inherited by UTXOSet and MemoryUTXOSet.
 
 *******************************************************************************/
 
@@ -253,7 +253,7 @@ abstract class UTXOCache
 
 *******************************************************************************/
 
-public class TestUTXOSet : UTXOCache
+public class MemoryUTXOSet : UTXOCache
 {
     /// UTXO cache backed by an AA
     public UTXO[Hash] storage;

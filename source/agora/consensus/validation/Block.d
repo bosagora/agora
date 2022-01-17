@@ -135,7 +135,7 @@ public string isInvalidReason (in Block block, Engine engine, Height prev_height
     /// FIXME: Use a proper type and sensible memory allocation pattern
     version (all)
     {
-        scope extraSet = new TestUTXOSet();
+        scope extraSet = new MemoryUTXOSet();
         foreach (const ref tx; block.txs)
             extraSet.put(tx);
         scope extraFinder = extraSet.getUTXOFinder();
@@ -562,7 +562,7 @@ unittest
     import std.range;
 
     scope engine = new Engine();
-    scope utxos = new TestUTXOSet();
+    scope utxos = new MemoryUTXOSet();
     scope findUTXO = &utxos.peekUTXO;
 
     scope fee_man = new FeeManager();
@@ -742,7 +742,8 @@ unittest
     import std.range;
 
     scope engine = new Engine();
-    scope utxo_set = new TestUTXOSet();
+    scope utxo_set = new MemoryUTXOSet();
+
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
     scope fee_man = new FeeManager();
@@ -863,7 +864,7 @@ unittest
     import std.range;
 
     scope engine = new Engine();
-    scope utxo_set = new TestUTXOSet();
+    scope utxo_set = new MemoryUTXOSet();
     UTXOFinder findUTXO = utxo_set.getUTXOFinder();
 
     scope fee_man = new FeeManager();

@@ -230,7 +230,7 @@ public bool isValid (in Transaction tx, Engine engine, scope UTXOFinder findUTXO
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     scope payload_checker = new FeeManager();
@@ -287,7 +287,7 @@ unittest
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     storage.put(tx_1);
 
     // Creates the second transaction.
@@ -316,7 +316,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
 
     immutable(KeyPair)[] key_pairs;
     key_pairs ~= KeyPair.random();
@@ -377,7 +377,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet();
+    scope storage = new MemoryUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     scope payload_checker = new FeeManager();
@@ -542,7 +542,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random, KeyPair.random, KeyPair.random];
 
     scope payload_checker = new FeeManager();
@@ -691,7 +691,7 @@ unittest
     import std.algorithm.searching;
 
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
@@ -731,7 +731,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
     scope payload_checker = new FeeManager();
@@ -795,7 +795,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet();
+    scope storage = new MemoryUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
     scope payload_checker = new FeeManager();
@@ -850,7 +850,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet();
+    scope storage = new MemoryUTXOSet();
     KeyPair[] key_pairs = [KeyPair.random, KeyPair.random];
 
     scope payload_checker = new FeeManager();
@@ -891,8 +891,8 @@ unittest
 /// test for transaction to store data
 unittest
 {
-    scope storage = new TestUTXOSet;
     scope engine = new Engine();
+    scope storage = new MemoryUTXOSet;
     KeyPair key_pair = KeyPair.random;
 
     scope payload_checker = new FeeManager();
@@ -1021,7 +1021,7 @@ unittest
 
 unittest
 {
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     scope utxoFinder = storage.getUTXOFinder();
     scope engine = new Engine();
     const key_pair = KeyPair.random;
@@ -1057,7 +1057,7 @@ unittest
 unittest
 {
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
@@ -1097,7 +1097,7 @@ unittest
     import agora.script.Opcodes;
 
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
 
@@ -1128,7 +1128,7 @@ unittest
     import std.stdio;
 
     scope engine = new Engine();
-    scope storage = new TestUTXOSet;
+    scope storage = new MemoryUTXOSet;
     scope payload_checker = new FeeManager();
     scope checker = &payload_checker.check;
     auto getPenaltyDeposit = (Hash utxo)

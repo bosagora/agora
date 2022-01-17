@@ -485,7 +485,7 @@ private QuorumConfig[NodeID] buildTestQuorums (Range)(Range amounts,
 {
     assert(amounts.length == keys.length);
     QuorumConfig[NodeID] quorums;
-    TestUTXOSet storage = new TestUTXOSet;
+    auto storage = new MemoryUTXOSet;
     NodeID[PublicKey] pk_to_id;
     Hash[] utxos;
     foreach (idx, const ref amount; amounts.save.enumerate)
