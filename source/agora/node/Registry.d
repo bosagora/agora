@@ -236,17 +236,25 @@ public class NameRegistry: NameRegistryAPI
             this.validator_info = this.ledger.getValidators(last_height);
             this.validator_info_height = last_height;
         }
-        UTXO utxo;
-        auto validator_info = this.validator_info
-            .find!(info => info.address == registry_payload.data.public_key);
-        auto enrollment = this.ledger.getCandidateEnrollments(last_height, &this.ledger.peekUTXO)
-                .find!(enroll => this.ledger.peekUTXO(enroll.utxo_key, utxo)
-                    && (utxo.output.address == registry_payload.data.public_key));
-        ensure(!validator_info.empty || !enrollment.empty, "Not an enrolled validator");
-        auto stake = validator_info.empty ? enrollment.front.utxo_key : validator_info.front.utxo;
-        assert(stake != Hash.init);
+        const stake = this.getStake(registry_payload.data.public_key);
+        ensure(stake !is Hash.init, "Couldn't find an existing stake to match this key");
 
         this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, registry_payload, stake));
+    }
+
+    /// Get the stake for which a validator is registering
+    private Hash getStake (in PublicKey public_key) @safe
+    {
+        auto validator_info = this.validator_info
+            .find!(info => info.address == public_key);
+        if (!validator_info.empty)
+            return validator_info.front.utxo;
+
+        foreach (st; this.ledger.getStakes())
+            if (public_key == st.output.address())
+                return st.hash;
+
+        return Hash.init;
     }
 
     /***************************************************************************
@@ -1111,11 +1119,36 @@ unittest
     import agora.consensus.data.UTXO;
 
     NameRegistry registry;
-    scope ledger = new TestLedger(genesis_validator_keys[0], null, null, (in Block block, bool changed) @safe {
-        registry.onAcceptedBlock(block, changed);
-    });
-    registry = new NameRegistry(Domain.fromSafeString("test."), RegistryConfig(true),
-                                ledger, new ManagedDatabase(":memory:"));
+    scope ledger = new TestLedger(genesis_validator_keys[0], null, null,
+        (in Block block, bool changed) @safe {
+            registry.onAcceptedBlock(block, changed);
+        });
+    registry = new NameRegistry(Domain.fromSafeString("test."),
+        RegistryConfig(true), ledger, new ManagedDatabase(":memory:"));
+
+    static RegistryPayload makeTestPayload (in KeyPair pair)
+    {
+        auto result = RegistryPayload(
+            RegistryPayloadData(pair.address, [Address("agora://address")], 0)
+        );
+        result.signPayload(pair);
+        return result;
+    }
+
+    // Make sure it fails initially
+    auto payload = makeTestPayload(WK.Keys[0]);
+    payload.signPayload(WK.Keys[0]);
+    assert(payload.verifySignature(payload.data.public_key));
+    assert(payload.verifySignature(WK.Keys[0].address));
+
+    try
+    {
+        registry.postValidator(payload);
+        assert(0);
+    }
+    catch (Exception e)
+        assert(e.message == "Couldn't find an existing stake to match this key");
+
     // Generate payment transactions to the first 8 well-known keypairs
     auto txs = genesisSpendable().enumerate()
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign(OutputType.Freeze))
@@ -1124,17 +1157,11 @@ unittest
     ledger.forceCreateBlock();
     assert(ledger.getBlockHeight() == 1);
 
-    auto payload = RegistryPayload(RegistryPayloadData(WK.Keys[0].address, [Address("agora://address")], 0));
-    payload.signPayload(WK.Keys[0]);
+    // Test a key that is not enrolled
+    auto nep = makeTestPayload(WK.Keys[1]);
+    registry.postValidator(nep);
 
-    try
-    {
-        registry.postValidator(payload);
-        assert(0);
-    }
-    catch (Exception e)
-        assert(e.message == "Not an enrolled validator");
-
+    // Now enroll and see if it works as validator too
     auto enroll = Enrollment(
         UTXO.getHash(txs[0].hashFull(), 0),
         Hash.init,
@@ -1143,14 +1170,15 @@ unittest
     assert(ledger.enrollment_manager.addEnrollment(enroll, WK.Keys[0].address,
         Height(2), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
 
+    // externalize enrollment
+    ledger.forceCreateBlock();
+    assert(ledger.getBlockHeight() == 2);
+
     try
         registry.postValidator(payload);
     catch (Exception e)
         assert(0, e.message);
 
-    // externalize enrollment
-    ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 2);
     assert(RegistryPayload.init != registry.getValidator(WK.Keys[0].address));
 
     ledger.forceCreateBlock();
