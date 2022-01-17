@@ -82,6 +82,9 @@ public class Validator : FullNode, API
     /// but LocalScheduler is not instantiated yet.
     private bool started;
 
+    /// The identity we present on `handshake`
+    private Identity identity;
+
     /// Ctor
     public this (Config config)
     {
@@ -101,7 +104,12 @@ public class Validator : FullNode, API
         // does not call `onAcceptedBlock`.
         PreImageInfo self;
         if (this.enroll_man.getNextPreimage(self, this.ledger.height()))
+        {
             this.ledger.addPreimage(self);
+            this.setIdentity(self.utxo);
+        }
+        else
+            this.setIdentity(this.getFrozenUTXO());
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
@@ -334,9 +342,7 @@ public class Validator : FullNode, API
 
         this.recordReq("public_key");
 
-        auto enroll_key = this.enroll_man.getEnrollmentKey();
-        Identity id = Identity(this.config.validator.key_pair.address,
-            enroll_key == Hash.init ? this.getFrozenUTXO() : enroll_key);
+        Identity id = Identity(this.identity.key, this.identity.utxo);
         if (key == PublicKey.init)
             return id;
 
@@ -657,13 +663,27 @@ public class Validator : FullNode, API
         Hash enroll_key = this.enroll_man.getEnrolledUTXO(height,
             this.ledger.getUTXOFinder());
 
-        if (enroll_key == Hash.init &&
-            (enroll_key = this.getFrozenUTXO()) == Hash.init)
+        if (enroll_key == Hash.init)
+        {
+            enroll_key = this.getFrozenUTXO();
+            if (enroll_key == Hash.init)
             {
                 log.dbg("checkAndEnroll: No frozen UTXO for validator {}",
                     this.config.validator.key_pair.address);
                 return Enrollment.init; // Not enrolled and no frozen UTXO
             }
+
+            if (this.identity.utxo != enroll_key)
+                this.setIdentity(enroll_key);
+        }
+        // We're enrolled but not aware of it, perhaps a restart, although
+        // the ctor should have caught this.
+        else if (this.identity.utxo is Hash.init)
+            this.setIdentity(enroll_key);
+        // Something fishy is happening, keep the same identity
+        else if (enroll_key != this.identity.utxo)
+            log.error("Identity differs from enrolled UTXO: {} (id) - {} (enrolled)",
+                      enroll_key, this.identity.utxo);
 
         const enrolled = this.enroll_man.validator_set.getEnrolledHeight(next_height, enroll_key);
 
@@ -704,6 +724,29 @@ public class Validator : FullNode, API
         }
 
         return Hash.init;
+    }
+
+    /***************************************************************************
+
+        Set the `Identity` we use while communicating with other nodes
+
+        The identity is derived from the stake, hence it is set once when
+        the stake appears, and could be changed if the stake is slashed
+        and another one appears.
+
+        Params:
+          utxo = The UTXO hash of the stake we are tracking
+
+    ***************************************************************************/
+
+    private void setIdentity (in Hash utxo) @safe
+    {
+        if (this.identity.utxo is Hash.init)
+            log.info("Node identity initialized to {}", utxo);
+        else
+            log.warn("Node identity changed from {} to {}", this.identity.utxo, utxo);
+
+        this.identity = Identity(this.config.validator.key_pair.address, utxo);
     }
 
     /***************************************************************************
