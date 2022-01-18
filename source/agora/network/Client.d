@@ -543,18 +543,18 @@ public class NetworkClient
         enum name = __traits(identifier, endpoint);
         alias T = ReturnType!(__traits(getMember, API, name));
 
-        foreach (idx; 0 .. this.max_retries)
+        foreach (idx; 1 .. this.max_retries + 1)
         {
             foreach (conn; this.connections)
             {
                 log.dbg("Client.attemptRequest '{}' to {}: {}/{}",
-                    name, conn.address, idx + 1, this.max_retries);
+                    name, conn.address, idx, this.max_retries);
                 if (!this.banman.isBanned(conn.address))
                 {
                     try
                     {
                         scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
-                            name, conn.address, idx + 1, this.max_retries);
+                            name, conn.address, idx, this.max_retries);
                         return __traits(getMember, conn.api, name)(args);
                     }
                     catch (Exception ex)
@@ -571,7 +571,7 @@ public class NetworkClient
                         try
                         {
                             this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED ({})",
-                                name, conn.address, idx +1, this.max_retries, ex.message);
+                                name, conn.address, idx, this.max_retries, ex.message);
                         }
                         catch (Exception ex)
                         {
@@ -581,14 +581,15 @@ public class NetworkClient
                     }
                 }
             }
-            if (idx + 1 < this.max_retries) // wait after each failure except last
+            if (idx < this.max_retries) // wait after each failure except last
             {
-                log.dbg("Client.attemptRequest '{}' to all {} connections {}/{} FAILED - wait {} before retry",
-                    name, this.connections.length, idx + 1, this.max_retries, this.retry_delay);
+                log.dbg("Client.attemptRequest '{}' to addresses {} attempt {}/{} FAILED - wait {} before retry",
+                    name, this.connections.map!(c => c.address), idx, this.max_retries, this.retry_delay);
                 this.taskman.wait(this.retry_delay);
             }
         }
-        log.info("Client.attemptRequest '{}' to all {} connections FAILED after {} retries", name, this.connections.length, this.max_retries);
+        log.info("Client.attemptRequest '{}' to addresses {} FAILED after {} attempts",
+            name, this.connections.map!(c => c.address), this.max_retries);
 
         // request considered failed after max retries reached
         foreach (const ref conn; this.connections)
