@@ -2167,8 +2167,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
+    const registryCount = 1;
     const TotalNodes = test_conf.node.test_validators + test_conf.full_nodes +
-        test_conf.outsider_validators + /* Registry */ 1;
+        test_conf.outsider_validators + registryCount;
 
     ConsensusConfig makeConsensusConfig ()
     {
@@ -2191,10 +2192,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     {
         NodeConfig conf = test_conf.node;
         conf.testing = true;
+        const selfCount = 1;
         if (conf.min_listeners == size_t.max)
-            conf.min_listeners = (test_conf.node.test_validators + test_conf.full_nodes) - 1;
+            conf.min_listeners = (test_conf.node.test_validators + test_conf.full_nodes) - selfCount;
         if (conf.max_listeners == size_t.max)
-            conf.max_listeners = TotalNodes - 1;
+            conf.max_listeners = TotalNodes - selfCount;
         return conf;
     }
 
