@@ -113,7 +113,11 @@ version(none) unittest
 unittest
 {
     TestConf conf;
-    conf.node.block_catchup_interval = 100.msecs; // speed up catchup
+    conf.node.block_catchup_interval = 250.msecs; // speed up catchup
+    conf.node.limit_test_validators = 4;
+    conf.consensus.max_quorum_nodes = 4;
+    conf.consensus.quorum_threshold = 75;
+    conf.node.max_retries = 3;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -125,8 +129,6 @@ unittest
     auto node_1 = nodes[1];
     auto node_2 = nodes[2];
 
-    assert(node_1.getQuorumConfig().threshold == 5);
-
     // Create a block after the Genesis block
     network.generateBlocks(Height(1));
 
@@ -135,18 +137,18 @@ unittest
     node_2.ctrl.sleep(1.hours, true);
 
     // Make 2 blocks
-    network.generateBlocks(only(0, 1, 3, 4, 5), Height(3));
+    network.generateBlocks(only(0, 1, 3), Height(3));
 
     // Wake up node_2
     node_2.ctrl.sleep(0.seconds);
 
+    // wait till node_2 catches up
+    network.assertSameBlocks(only(0, 2, 3), Height(3));
+
     // node_1 is sleeping
     node_1.ctrl.sleep(1.hours, true);
 
-    // wait till node_2 catches up
-    network.assertSameBlocks(only(0, 2, 3, 4, 5), Height(3));
-
     // A new block is still inserted into the ledger with the approval
     // of node_2, although node_1 was sleeping.
-    network.generateBlocks(only(0, 2, 3, 4, 5), Height(4));
+    network.generateBlocks(only(0, 2, 3), Height(4));
 }
