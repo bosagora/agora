@@ -13,6 +13,7 @@ on: [push, pull_request]
 jobs:
   doc:
     name: Build and upload documentation
+    if: github.repository == 'bosagora/agora'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
