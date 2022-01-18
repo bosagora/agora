@@ -114,6 +114,7 @@ unittest
 {
     TestConf conf;
     conf.node.block_catchup_interval = 100.msecs; // speed up catchup
+    conf.consensus.max_quorum_nodes = 5;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -125,7 +126,7 @@ unittest
     auto node_1 = nodes[1];
     auto node_2 = nodes[2];
 
-    assert(node_1.getQuorumConfig().threshold == 5);
+    assert(node_1.getQuorumConfig().threshold == 4);
 
     // Create a block after the Genesis block
     network.generateBlocks(Height(1));
