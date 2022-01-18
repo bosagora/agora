@@ -15,7 +15,10 @@ dub build -b unittest-cov -c unittest --skip-registry=all --compiler=${DC}
 # Run this after unit tests have proven to compile ok
 ${DC} -i -run ./tests/runner.d ${DC} -cov
 
+# Run a single test at a time to prevent resource issues and also see which test failed
 export dchatty=true
 export dsinglethreaded=true
-# Run a single test at a time to prevent resource issues and also see which test failed
-./build/agora-unittests || ./build/agora-unittests
+# Our unittests sometimes locks up - It might be a localrest bug
+# The Github workflow timeout is set to 60m, but that accounts for the second run
+# if the first one fails.
+timeout -v --preserve-status -s SEGV 35m ./build/agora-unittests || timeout -v --preserve-status -s SEGV 35m ./build/agora-unittests
