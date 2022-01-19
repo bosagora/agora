@@ -14,6 +14,7 @@
 module agora.common.Types;
 
 import agora.common.Amount;
+import agora.common.Ensure : ensure;
 import agora.crypto.ECC;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
@@ -23,6 +24,8 @@ import agora.serialization.Serializer;
 import vibe.inet.url;
 
 import geod24.bitblob;
+
+import std.algorithm.comparison : among;
 
 /// Clone any type via the serializer
 public T clone (T)(in T input)
@@ -52,6 +55,9 @@ public struct Address
 
     public this (URL url)
     {
+        ensure(url.schema.among("agora", "http", "https", "dns") != 0,
+            "Address schema '{}' is not supported", url.schema);
+
         this.inner = url;
         this.inner.normalize(true);
     }
