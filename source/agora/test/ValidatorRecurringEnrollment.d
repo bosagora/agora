@@ -214,7 +214,7 @@ unittest
             // Unlike the regular validator, dont check the config. BatValidator
             // always answers a cry for help.
             if (msg == NodeLedger.InvalidConsensusDataReason.NotEnoughValidators)
-                this.checkAndEnroll(this.ledger.getBlockHeight());
+                this.checkAndEnroll(this.ledger.height());
         }
     }
 

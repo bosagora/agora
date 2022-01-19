@@ -1880,7 +1880,7 @@ public class TestValidatorNode : Validator, TestAPI
     {
         this.config.validator.recurring_enrollment = doIt;
         if (this.config.validator.recurring_enrollment)
-            return this.checkAndEnroll(this.ledger.getBlockHeight());
+            return this.checkAndEnroll(this.ledger.height());
 
         return Enrollment.init;
     }
@@ -1911,7 +1911,7 @@ public class TestValidatorNode : Validator, TestAPI
         // We add one to height as we are interested in active validators in next block
         assert(this.enroll_man.getEnrolledUTXOs(height + 1, utxos) && utxos.length > 0);
         // See `Validator.rebuildQuorumConfig`
-        const rand_seed = this.ledger.getBlockHeight() == height ?
+        const rand_seed = this.ledger.height() == height ?
             this.ledger.lastBlock().header.randomSeed() :
             this.ledger.getBlocksFrom(height).front.header.randomSeed();
         QuorumConfig[] quorums;

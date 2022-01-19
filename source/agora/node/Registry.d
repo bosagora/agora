@@ -230,7 +230,7 @@ public class NameRegistry: NameRegistryAPI
             this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
 
         // Last step is to check the state of the chain
-        auto last_height = this.ledger.getBlockHeight() + 1;
+        auto last_height = this.ledger.height() + 1;
         if (last_height > this.validator_info_height || this.validator_info.length == 0)
         {
             this.validator_info = this.ledger.getValidators(last_height);
@@ -1155,7 +1155,7 @@ unittest
         .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 1);
+    assert(ledger.height() == 1);
 
     // Test a key that is not enrolled
     auto nep = makeTestPayload(WK.Keys[1]);
@@ -1172,7 +1172,7 @@ unittest
 
     // externalize enrollment
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 2);
+    assert(ledger.height() == 2);
 
     try
         registry.postValidator(payload);
@@ -1182,7 +1182,7 @@ unittest
     assert(RegistryPayload.init != registry.getValidator(WK.Keys[0].address));
 
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 3);
+    assert(ledger.height() == 3);
     // frozen UTXO is spent (slashed), entry should have been deleted
     assert(RegistryPayload.init == registry.getValidator(WK.Keys[0].address));
 }

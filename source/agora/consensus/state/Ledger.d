@@ -204,7 +204,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Height getBlockHeight () const scope @safe @nogc nothrow pure
+    public Height height () const scope @safe @nogc nothrow pure
     {
         return this.last_block.header.height;
     }
@@ -228,7 +228,7 @@ public class Ledger
         Params:
           height = Height at which to query the validator set.
                    Accurate results are only guaranteed for
-                   `height <= this.getBlockHeight() + 1`.
+                   `height <= this.height() + 1`.
           empty = Whether to allow an empty return value.
                   By default, this function will throw if there is no validators
                   at `height`. If `true` is passed, it will not.
@@ -268,7 +268,7 @@ public class Ledger
         Params:
           height = Height at which to query the validator set.
                    Accurate results are only guaranteed for
-                   `height <= this.getBlockHeight() + 1`.
+                   `height <= this.height() + 1`.
 
         Returns:
           Number of active validators at `height`.
@@ -351,7 +351,7 @@ public class Ledger
                 ? null
                 : "Trying to externalize a different block for the latest height";
 
-        if (!this.hasMajoritySignature(this.getBlockHeight()))
+        if (!this.hasMajoritySignature(this.height()))
             return "Previous height does not have majority signature";
 
         if (auto fail_reason = this.validateBlock(block))
@@ -916,7 +916,7 @@ public class Ledger
     /// Ditto
     public bool hasMajoritySignature (Height height) @safe nothrow
     {
-        if (height > this.getBlockHeight())
+        if (height > this.height())
             return false;
         else if (height == this.last_block.header.height) // most common case
             return this.hasMajoritySignature(this.last_block.header);
@@ -941,11 +941,11 @@ public class Ledger
 
     public auto getBlocksFrom (Height start_height) @safe nothrow
     {
-        start_height = min(start_height, this.getBlockHeight() + 1);
+        start_height = min(start_height, this.height() + 1);
 
         // Call to `Height.value` to work around
         // https://issues.dlang.org/show_bug.cgi?id=21583
-        return iota(start_height.value, this.getBlockHeight() + 1)
+        return iota(start_height.value, this.height() + 1)
             .map!(idx => this.storage.readBlock(Height(idx)));
     }
 
@@ -963,7 +963,7 @@ public class Ledger
 
         Returns:
           A newly created block based on the current block
-          (See `Ledger.lastBlock()` and `Ledger.getBlockHeight()`)
+          (See `Ledger.lastBlock()` and `Ledger.height()`)
 
     ***************************************************************************/
 
@@ -971,7 +971,7 @@ public class Ledger
         Enrollment[] enrollments, uint[] missing_validators)
         @safe
     {
-        const height = this.getBlockHeight() + 1;
+        const height = this.height() + 1;
         const validators = this.getValidators(height);
 
         Hash[] preimages = validators.enumerate.map!(
@@ -998,7 +998,7 @@ public class Ledger
     /// return the last paid out block before the current block
     public Height getLastPaidHeight () const scope @safe @nogc nothrow pure
     {
-        return lastPaidHeight(this.getBlockHeight, this.params.PayoutPeriod);
+        return lastPaidHeight(this.height, this.params.PayoutPeriod);
     }
 
     /***************************************************************************
@@ -1037,7 +1037,7 @@ public class Ledger
     /// Ditto
     public UTXO[Hash] getEnrolledUTXOs () @safe nothrow
     {
-        return this.getEnrolledUTXOs(this.getBlockHeight() + 1);
+        return this.getEnrolledUTXOs(this.height() + 1);
     }
 
     /***************************************************************************
@@ -1182,9 +1182,9 @@ public abstract class UTXOTracker
 unittest
 {
     scope ledger = new Ledger();
-    assert(ledger.getBlockHeight() == 0);
+    assert(ledger.height() == 0);
     // This used to throw because `validateBlock` would pass and the Ledger
     // was attempting to re-add the same block.
     assert(ledger.acceptBlock(ledger.lastBlock()) is null);
-    assert(ledger.getBlockHeight() == 0);
+    assert(ledger.height() == 0);
 }

@@ -208,7 +208,7 @@ public class NodeLedger : Ledger
         in ubyte double_spent_threshold_pct = 0,
         in ushort min_fee_pct = 0) @safe
     {
-        const Height expected_height = this.getBlockHeight() + 1;
+        const Height expected_height = this.height() + 1;
         auto tx_hash = hashFull(tx);
 
         // If we were looking for this TX, stop
@@ -306,7 +306,7 @@ public class NodeLedger : Ledger
         scope UTXOFinder utxo_finder)
         @safe nothrow
     {
-        const expect_height = this.getBlockHeight() + 1;
+        const expect_height = this.height() + 1;
         bool[Hash] local_unknown_txs;
 
         Amount tot_fee, tot_data_fee;
@@ -378,7 +378,7 @@ public class NodeLedger : Ledger
     public string validateConsensusData (in ConsensusData data,
         in uint[] initial_missing_validators) @trusted nothrow
     {
-        const validating = this.getBlockHeight() + 1;
+        const validating = this.height() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         Transaction[] tx_set;
@@ -732,7 +732,7 @@ public class ValidatingLedger : NodeLedger
     public void prepareNominatingSet (out ConsensusData data)
         @safe
     {
-        const next_height = this.getBlockHeight() + 1;
+        const next_height = this.height() + 1;
 
         auto utxo_finder = this.utxo_set.getUTXOFinder();
         data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
@@ -870,7 +870,7 @@ public class ValidatingLedger : NodeLedger
     /// simulate block creation as if a nomination and externalize round completed
     public void forceCreateBlock (bool sign_all = true)
     {
-        const next_block = this.getBlockHeight() + 1;
+        const next_block = this.height() + 1;
         this.simulatePreimages(next_block);
         ConsensusData data;
         this.prepareNominatingSet(data);
@@ -880,7 +880,7 @@ public class ValidatingLedger : NodeLedger
         // In which case, we simply re-enroll the validators already enrolled
         if (data.enrolls.length == 0 && this.validatorCount(next_block + 1) == 0)
         {
-            auto validators = this.getValidators(this.getBlockHeight());
+            auto validators = this.getValidators(this.height());
             foreach (v; validators)
             {
                 auto kp = WK.Keys[v.address];
@@ -893,7 +893,7 @@ public class ValidatingLedger : NodeLedger
         if (auto reason = this.externalize(data, sign_all))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized: %s"(
-                       this.getBlockHeight() + 1, reason));
+                       this.height() + 1, reason));
         }
     }
 
@@ -903,7 +903,7 @@ public class ValidatingLedger : NodeLedger
         // Special case for genesis
         if (!last_txs.length)
         {
-            assert(this.getBlockHeight() == 0);
+            assert(this.height() == 0);
 
             last_txs = genesisSpendable().enumerate()
                 .map!(en => en.value.refund(WK.Keys.A.address).sign())
@@ -1010,7 +1010,7 @@ version (unittest)
 unittest
 {
     scope ledger = new TestLedger(WK.Keys.NODE3);
-    assert(ledger.getBlockHeight() == 0);
+    assert(ledger.height() == 0);
 
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
     assert(blocks[$ - 1] == ledger.params.Genesis);
@@ -1029,7 +1029,7 @@ unittest
 
     /// now generate 98 more blocks to make it 100 + genesis block (101 total)
     genBlockTransactions(98);
-    assert(ledger.getBlockHeight() == 100);
+    assert(ledger.height() == 100);
 
     blocks = ledger.getBlocksFrom(Height(0)).takeExactly(10);
     assert(blocks[0] == ledger.params.Genesis);
@@ -1315,7 +1315,7 @@ unittest
         .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 1);
+    assert(ledger.height() == 1);
 
     // Create data with nomal size
     ubyte[] data;
@@ -1335,7 +1335,7 @@ unittest
               .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 2);
+    assert(ledger.height() == 2);
     auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 3);
     assert(blocks[2].header.height == 2);
@@ -1356,7 +1356,7 @@ unittest
               .array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 3);
+    assert(ledger.height() == 3);
     blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks.length == 4);
     assert(blocks[3].header.height == 3);
@@ -1396,7 +1396,7 @@ unittest
         .map!(en => en.value.refund(WK.Keys[en.index].address).sign()).array;
     txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 1);
+    assert(ledger.height() == 1);
 
     // generate a block with only freezing transactions
     auto new_txs = txs[0 .. 4].enumerate()
@@ -1408,7 +1408,7 @@ unittest
     new_txs ~= TxBuilder(txs[$ - 1]).split(WK.Keys[0].address.repeat(8)).sign();
     new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 2);
+    assert(ledger.height() == 2);
 
     // UTXOs for enrollments
     Hash[] utxos = [
@@ -1424,12 +1424,12 @@ unittest
         .array;
     new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 3);
+    assert(ledger.height() == 3);
 
     foreach (height; 4 .. params.ValidatorCycle)
     {
         new_txs = genGeneralBlock(new_txs);
-        assert(ledger.getBlockHeight() == Height(height));
+        assert(ledger.height() == Height(height));
     }
 
     // add four new enrollments
@@ -1453,13 +1453,13 @@ unittest
 
     // create the last block of the cycle to make the `Enrollment`s enrolled
     new_txs = genGeneralBlock(new_txs);
-    assert(ledger.getBlockHeight() == Height(20));
+    assert(ledger.height() == Height(20));
     auto b20 = ledger.getBlocksFrom(Height(20))[0];
     assert(b20.header.enrollments.length == 4);
 
     // block 21
     new_txs = genGeneralBlock(new_txs);
-    assert(ledger.getBlockHeight() == Height(21));
+    assert(ledger.height() == Height(21));
 
     // check missing validators not revealing pre-images.
     auto temp_txs = genTransactions(new_txs);
@@ -1600,7 +1600,7 @@ unittest
         }
 
         assert(ledger.externalize(data) is null);
-        assert(ledger.getBlockHeight() == blocks.length);
+        assert(ledger.height() == blocks.length);
         blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
@@ -1799,7 +1799,7 @@ unittest
 
     // should be able to create a new block after previous height receives majority signatures
     ledger.forceCreateBlock();
-    assert(ledger.getBlockHeight() == 2);
+    assert(ledger.height() == 2);
 }
 
 // test enrollment sigs and request for a future height
@@ -1824,7 +1824,7 @@ unittest
     assert(ledger.enrollment_manager.addEnrollment(enrollment, kp.address,
         Height(5), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
 
-    while (ledger.getBlockHeight() != Height(5))
+    while (ledger.height() != Height(5))
         ledger.forceCreateBlock();
     assert(ledger.lastBlock.header.height == Height(5));
     assert(ledger.lastBlock.header.enrollments.canFind(enrollment));

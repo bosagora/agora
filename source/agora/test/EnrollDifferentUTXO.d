@@ -53,8 +53,8 @@ private class SameKeyValidator : TestValidatorNode
         assert(unused_utxo != Hash.init);
 
         const new_enroll =
-            this.enroll_man.createEnrollment(unused_utxo, this.ledger.getBlockHeight() + 1);
-        this.postEnrollment(new_enroll, this.ledger.getBlockHeight() + 1);
+            this.enroll_man.createEnrollment(unused_utxo, this.ledger.height() + 1);
+        this.postEnrollment(new_enroll, this.ledger.height() + 1);
 
         return new_enroll;
     }
