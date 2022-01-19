@@ -32,13 +32,14 @@ jobs:
       with:
         path: faucet
         repository: bosagora/faucet
-        submodules: recursive
+        submodules: true
 
     - name: Update Faucet submodule to point to our clone
       run: |
         cd ${{ github.workspace }}/faucet/
         git -C submodules/agora fetch origin ${{ github.sha }}:agora-ci-integration-test-donotuse
-        git -C submodules/agora checkout --recurse-submodules agora-ci-integration-test-donotuse
+        git -C submodules/agora checkout agora-ci-integration-test-donotuse
+        git -C submodules/agora submodule update --recursive --init
         # For debug output
         git submodule
 
