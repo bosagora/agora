@@ -450,7 +450,7 @@ public class FullNode : API
 
         // Special case
         // Block externalized handler is set and push for Genesis block.
-        if (this.block_handlers.length > 0 && this.getBlockHeight() == 0)
+        if (this.block_handlers.length > 0 && this.ledger.getBlockHeight() == 0)
             this.pushBlock(this.params.Genesis);
 
         this.timers ~= this.taskman.setTimer(
