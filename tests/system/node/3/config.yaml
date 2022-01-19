@@ -62,9 +62,9 @@ validator:
 ################################################################################
 network:
   # Supported value: IPv4, IPv6
-  - tcp://node-0:1735
+  - agora://node-0:1735
   - http://node-2:2826
   - http://node-4:4826
-  - tcp://node-5:5735
+  - agora://node-5:5735
   - http://node-6:6826
-  - tcp://node-7:7735
+  - agora://node-7:7735
