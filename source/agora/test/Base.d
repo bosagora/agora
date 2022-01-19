@@ -2550,29 +2550,20 @@ public final class LocalRestDNSResolver : DNSResolver
 
     /***************************************************************************
 
-        Returns the `ResourceRecord` matching `type` associated with `name`
-
-        This low-level function will query the registered resolvers for the
-        records matching `name`. `type` is an optional argument indicating what
-        kind of RR is expected. While it defaults to `ALL`, it is recommended
-        to provide a different value, as many servers might refuse to answer
-        for queries on which they are not authoritative.
+        Query the server with given `msg` and return the response
 
         Params:
-          name = The name to resolve
-          type = Type of reecord to query
+            msg = DNS message
 
     ***************************************************************************/
 
-    public override ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @trusted
+    public override ResourceRecord[] query (Message msg) @trusted
     {
-        auto msg = this.buildQuery(name, type);
-
         DNSQuery q = DNSQuery(msg, new Channel!Message());
         ensure(this.dns_chan.write(q), "DNS write channel closed");
         Message answer;
         ensure(q.response_chan.read(answer, 5.seconds), "Failed to get DNS response");
-        log.trace("Got response from for '{}'({}): {}", name, type, answer);
+        log.trace("Got response from for '{}' : {}", msg, answer);
         if (answer.header.RCODE == Header.RCode.NoError)
             return answer.answers;
         return null;
