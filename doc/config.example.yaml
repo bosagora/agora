@@ -31,10 +31,6 @@ node:
     msecs: 5000
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: data
-  # The local address where the stats server (currently Prometheus)
-  # is going to connect to, for example: http://0.0.0.0:8008
-  # It can also be set to -1 do disable listening (default is -1)
-  stats_listening_port: 9110
   # The duration between requests for doing periodic network discovery
   network_discovery_interval:
     seconds: 5
@@ -77,6 +73,9 @@ interfaces:
     address: 0.0.0.0 # Any node can bind - default value
     # Port on which we bind
     port:    2826    # 0xB0A, default value
+  - type: stats
+    address: 0.0.0.0
+    port: 9110
 
 # Proxy to be used for outgoing Agora connections
 proxy:

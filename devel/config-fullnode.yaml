@@ -13,13 +13,14 @@ node:
   realm: "testnet.bosagora.io"
   testing: true
   data_dir: .fullnode/data/
-  # Can be used with curl or just a browser
-  stats_listening_port: 9111
 
 interfaces:
   - type:    http
     address: 0.0.0.0
     port:    2826
+  - type: stats
+    address: 0.0.0.0
+    port: 9111
 
 consensus:
   block_interval:

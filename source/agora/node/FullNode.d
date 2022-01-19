@@ -444,8 +444,7 @@ public class FullNode : API
                     }));
         }
 
-        if (config.node.stats_listening_port != 0)
-            this.stats_server = this.makeStatsServer();
+        this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
 
         // Special case
@@ -716,7 +715,10 @@ public class FullNode : API
     /// Returns a newly constructed StatsServer
     protected StatsServer makeStatsServer ()
     {
-        return new StatsServer(this.config.node.stats_listening_port);
+        auto stat_intf = this.config.interfaces.find!(intf => intf.type == InterfaceConfig.Type.stats);
+        if (stat_intf.empty)
+            return null;
+        return new StatsServer(stat_intf.front.address, stat_intf.front.port);
     }
 
     /// Returns: The Logger to use for this class

@@ -34,15 +34,12 @@ public class StatsServer
 
     ***************************************************************************/
 
-    public this (ushort port)
+    public this (string address, ushort port)
     {
         auto router = new URLRouter;
         router.get("/metrics", &handle_metrics);
 
-        auto settings = new HTTPServerSettings;
-        // Vibe.d uses both IPv6 and IPv4 all-interfaces at once, which causes
-        // problems on Linux because of dual stack (the second listen fails)
-        settings.bindAddresses = [ "::" ];
+        auto settings = new HTTPServerSettings(address);
         settings.port = port;
         // The following correspond to your scraping interval in Prometheus
         // The default value for Prometheus is 1 minute:
