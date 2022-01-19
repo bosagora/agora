@@ -82,25 +82,16 @@ public final class VibeDNSResolver : DNSResolver
 
     /***************************************************************************
 
-        Returns the `ResourceRecord` matching `type` associated with `name`
-
-        This low-level function will query the registered resolvers for the
-        records matching `name`. `type` is an optional argument indicating what
-        kind of RR is expected. While it defaults to `ALL`, it is recommended
-        to provide a different value, as many servers might refuse to answer
-        for queries on which they are not authoritative.
+        Query the server with given `msg` and return the response
 
         Params:
-          name = The name to resolve
-          type = Type of reecord to query
+            msg = DNS message
 
     ***************************************************************************/
 
-    public override ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @trusted
+    public override ResourceRecord[] query (Message msg) @trusted
     {
         ubyte[16384] buffer;
-
-        auto msg = this.buildQuery(name, type);
         foreach (ref peer; this.resolvers)
         {
             auto conn = listenUDP(0, "0.0.0.0",
@@ -112,15 +103,15 @@ public final class VibeDNSResolver : DNSResolver
                 conn.send(msg.serializeFull);
                 auto response = conn.recv(5.seconds, buffer);
                 auto answer = response.deserializeFull!Message();
-                log.trace("Got response from '{}' for '{}'({}): {}",
-                          peer.address, name, type, answer);
+                log.trace("Got response from '{}' for '{}' : {}",
+                          peer.address, msg, answer);
                 if (answer.header.RCODE == Header.RCode.NoError)
                     return answer.answers;
             }
             catch (Exception exc)
             {
-                log.warn("Network error while resolving '{}' ({}) using '{}': {}",
-                         name, type, peer.address, exc);
+                log.warn("Network error while resolving '{}' using '{}': {}",
+                         msg, peer.address, exc);
                 continue;
             }
         }
@@ -146,10 +137,18 @@ public abstract class DNSResolver
         this.log.enableConsole();
     }
 
-    ///
-    protected abstract ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @safe;
+    /***************************************************************************
 
-    ///
+        Query the server with given `msg` and return the response
+
+        Params:
+            msg = DNS message
+
+    ***************************************************************************/
+
+    protected abstract ResourceRecord[] query (Message msg) @safe;
+
+    /// Returns: DNS message for querying a record of `type` for `name'
     protected Message buildQuery (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
     {
         Message msg;
@@ -182,7 +181,7 @@ public abstract class DNSResolver
         catch (std.socket.SocketException) {}
 
         // We need to execute a query, and parse the resulting DNS record
-        auto results = this.query(address.host);
+        auto results = this.query(this.buildQuery(address.host));
         ensure(results.length > 0, "Could not resolve host name '{}' (address: '{}')",
                address.host, address);
 
@@ -228,7 +227,7 @@ public abstract class DNSResolver
 
     public Domain[] getNameServers (const(char)[] name) @safe
     {
-        if (auto answers = this.query(name, QTYPE.NS))
+        if (auto answers = this.query(this.buildQuery(name, QTYPE.NS)))
             return answers.map!(answ => answ.rdata.name).array;
         return null;
     }
