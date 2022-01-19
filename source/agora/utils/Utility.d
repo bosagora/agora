@@ -28,6 +28,12 @@ import core.time;
 
 mixin AddLogger!();
 
+public static assumeNothrow (T)(lazy T exp) nothrow
+{
+    try return exp();
+    catch (Exception ex) assert(0, ex.msg);
+}
+
 /***************************************************************************
 
     Retry executing a given delegate at most X times and wait between

@@ -143,6 +143,7 @@ NominationProtocol::recordEnvelope(SCPEnvelopeWrapperPtr env)
 void
 NominationProtocol::emitNomination()
 {
+    CLOG(DEBUG, "SCP") << "NominationProtocol::emitNomination i: " << mSlot.mSlotIndex;
     SCPStatement st;
     st.nodeID = mSlot.getLocalNode()->getNodeID();
     st.pledges.type(SCP_ST_NOMINATE);
@@ -167,6 +168,7 @@ NominationProtocol::emitNomination()
             isNewerStatement(mLastEnvelope->getStatement().pledges.nominate(),
                              st.pledges.nominate()))
         {
+            CLOG(DEBUG, "SCP") << "NominationProtocol::emitNomination isNewerStatement i: " << mSlot.mSlotIndex;
             mLastEnvelope = envW;
             if (mSlot.isFullyValidated())
             {
@@ -361,18 +363,26 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
     auto const& st = envelope->getStatement();
     auto const& nom = st.pledges.nominate();
 
+    CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope i: " << mSlot.mSlotIndex;
     if (!isNewerStatement(st.nodeID, nom))
+    {
+        CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope: not newer statement i: " << mSlot.mSlotIndex;
         return SCP::EnvelopeState::INVALID;
+    }
 
     if (!isSane(st))
     {
-        CLOG(TRACE, "SCP") << "NominationProtocol: message didn't pass sanity check";
+        CLOG(TRACE, "SCP") << "NominationProtocol::processEnvelope message didn't pass sanity check i: " << mSlot.mSlotIndex;
         return SCP::EnvelopeState::INVALID;
     }
 
     recordEnvelope(envelope);
 
-    if (mNominationStarted)
+    if (!mNominationStarted)
+    {
+        CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope: NOT mNominationStarted i: " << mSlot.mSlotIndex;
+    }
+    else
     {
         // tracks if we should emit a new nomination message
         bool modified = false;
@@ -384,6 +394,7 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
             auto vw = mSlot.getSCPDriver().wrapValue(v);
             if (mAccepted.find(vw) != mAccepted.end())
             { // v is already accepted
+                CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope already accepted i: " << mSlot.mSlotIndex;
                 continue;
             }
             if (mSlot.federatedAccept(
@@ -400,12 +411,14 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
                 auto vl = validateValue(v);
                 if (vl == SCPDriver::kFullyValidatedValue)
                 {
+                    CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope kFullyValidatedValue i: " << mSlot.mSlotIndex;
                     mAccepted.emplace(vw);
                     mVotes.emplace(vw);
                     modified = true;
                 }
                 else
                 {
+                    CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope NOT kFullyValidatedValue i: " << mSlot.mSlotIndex;
                     // the value made it pretty far:
                     // see if we can vote for a variation that
                     // we consider valid
@@ -418,6 +431,10 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
                         }
                     }
                 }
+            }
+            else
+            {
+                CLOG(DEBUG, "SCP") << "NominationProtocol::processEnvelope NOT federatedAccept i: " << mSlot.mSlotIndex;
             }
         }
         // attempts to promote accepted values to candidates

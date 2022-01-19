@@ -55,7 +55,9 @@ public struct Logger
     /// See `ocean.util.log.Logger : Logger.dbg`
     public void dbg (Args...) (cstring fmt, Args args)
     {
-        this.format(LogLevel.Debug, fmt, args);
+        // For debug logging let's assume we do not throw
+        static import agora.utils.Utility;
+        agora.utils.Utility.assumeNothrow(this.format(LogLevel.Debug, fmt, args));
     }
 
     /// See `ocean.util.log.Logger : Logger.trace`

@@ -79,6 +79,8 @@ public QuorumConfig buildQuorumConfig (in NodeID key, in Hash[] utxo_keys,
     scope UTXOFinder finder, in Hash rand_seed, const ref QuorumParams params)
     @safe nothrow
 {
+    static import agora.utils.Utility;
+
     // special-case: only 1 validator is active
     if (utxo_keys.length == 1)
         return QuorumConfig(1, [key]);
@@ -94,18 +96,12 @@ public QuorumConfig buildQuorumConfig (in NodeID key, in Hash[] utxo_keys,
     auto RNG_gen = getGenerator(key, rand_seed);
     auto stake_amounts = stakes.map!(stake => stake.amount.integral);
 
-    static assumeNothrow (T)(lazy T exp) nothrow
-    {
-        try return exp();
-        catch (Exception ex) assert(0, ex.msg);
-    }
-
     // +1 as we already added ourself
     const MaxNodes = min(stakes.length + 1, params.MaxQuorumNodes);
     while (quorum.nodes.length < MaxNodes)
     {
         // dice() can only throw if the sum of stakes is zero
-        auto idx = assumeNothrow(dice(RNG_gen, stake_amounts));
+        auto idx = agora.utils.Utility.assumeNothrow(dice(RNG_gen, stake_amounts));
         if (added[idx])  // skip duplicate
             continue;
 

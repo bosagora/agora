@@ -28,7 +28,9 @@ unittest
 {
     TestConf conf;
     conf.consensus.payout_period = 10;
-
+    conf.node.limit_test_validators = 4;
+    conf.consensus.max_quorum_nodes = 4;
+    conf.consensus.quorum_threshold = 75;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
