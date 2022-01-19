@@ -162,6 +162,16 @@ public class Ledger
         }
     }
 
+    /// Create an instance of the Ledger suitable for unittests
+    version (unittest) public this ()
+    {
+        auto params = new immutable(ConsensusParams)();
+        auto stateDB = new ManagedDatabase(":memory:");
+        auto storage = new MemBlockStorage();
+        auto vset = new ValidatorSet(stateDB, params);
+        this(params, stateDB, storage, vset);
+    }
+
     /***************************************************************************
 
         Returns the last block in the `Ledger`
@@ -298,6 +308,13 @@ public class Ledger
 
     public string acceptBlock (in Block block) @safe
     {
+        // Make the Ledger tolerant to externalization of already-known block,
+        // but only of the latest height.
+        if (this.last_block.header.height == block.header.height)
+            return (this.last_block.hashFull() == block.hashFull())
+                ? null
+                : "Trying to externalize a different block for the latest height";
+
         if (!this.hasMajoritySignature(this.getBlockHeight()))
             return "Previous height does not have majority signature";
 
@@ -1117,4 +1134,15 @@ public abstract class UTXOTracker
         if (this.include(hash, output))
             this.data_.put(Tracked(hash, output));
     }
+}
+
+// Test that externalizing an already-known block is a no-op
+unittest
+{
+    scope ledger = new Ledger();
+    assert(ledger.getBlockHeight() == 0);
+    // This used to throw because `validateBlock` would pass and the Ledger
+    // was attempting to re-add the same block.
+    assert(ledger.acceptBlock(ledger.lastBlock()) is null);
+    assert(ledger.getBlockHeight() == 0);
 }
