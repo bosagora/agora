@@ -30,7 +30,7 @@ import agora.utils.Log;
 import vibe.inet.url;
 
 import std.algorithm.iteration : splitter;
-import std.algorithm.searching : all;
+import std.algorithm.searching : all, count;
 import std.exception;
 import std.getopt;
 import std.traits : hasUnsharedAliasing;
@@ -141,6 +141,8 @@ public struct Config
 
         if (this.consensus.quorum_threshold < 1 || this.consensus.quorum_threshold > 100)
             throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
+        if (this.interfaces.count!(intf => intf.type == InterfaceConfig.Type.stats) > 1)
+            throw new Exception("Can only configure a single stats interface");
     }
 }
 
@@ -160,6 +162,7 @@ public struct InterfaceConfig
         http = 0,
         https = 1,
         tcp = 2,
+        stats = 3,
     }
 
     /// Ditto
@@ -204,11 +207,6 @@ public struct NodeConfig
 
     /// Maximum number of listeners to connect to
     public size_t max_listeners = 10;
-
-    /// The local address where the stats server (currently Prometheus)
-    /// is going to connect to, for example: http://0.0.0.0:8008
-    /// It can also be set to 0 do disable listening
-    public @Optional ushort stats_listening_port;
 
     /// Time to wait between request retries
     public Duration retry_delay = 3.seconds;
