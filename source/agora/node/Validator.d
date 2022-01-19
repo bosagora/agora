@@ -100,12 +100,12 @@ public class Validator : FullNode, API
         // This is especially important on initialization, as replaying blocks
         // does not call `onAcceptedBlock`.
         PreImageInfo self;
-        if (this.enroll_man.getNextPreimage(self, this.ledger.getBlockHeight()))
+        if (this.enroll_man.getNextPreimage(self, this.ledger.height()))
             this.ledger.addPreimage(self);
 
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
-        this.regenerateQuorums(this.ledger.getBlockHeight());
+        this.regenerateQuorums(this.ledger.height());
     }
 
     /***************************************************************************
@@ -122,7 +122,7 @@ public class Validator : FullNode, API
 
         Params:
             height = the height at which the validator set changed.
-                     Note that it may be different to 'ledger.getBlockHeight()'
+                     Note that it may be different to 'ledger.height()'
                      when the node is booting up for the first time as we
                      currently only have commitment info from GenesisBlock,
                      and lack preimages.
@@ -191,7 +191,7 @@ public class Validator : FullNode, API
         // In the fast path, this is called immediately after a block has been
         // externalized, so we can simply use the Ledger. Otherwise we need
         // to run from storage.
-        const rand_seed = this.ledger.getBlockHeight() == height ?
+        const rand_seed = this.ledger.height() == height ?
             this.ledger.lastBlock().header.randomSeed() :
             this.ledger.getBlocksFrom(height).front.header.randomSeed();
         foreach (utxo; utxos)
@@ -226,10 +226,10 @@ public class Validator : FullNode, API
             this.config.validator.preimage_catchup_interval,
             &this.preImageCatchupTask, Periodic.Yes);
 
-        if (this.enroll_man.isEnrolled(this.ledger.getBlockHeight() + 1, &this.ledger.peekUTXO))
+        if (this.enroll_man.isEnrolled(this.ledger.height() + 1, &this.ledger.peekUTXO))
             this.nominator.startNominatingTimer();
         if (this.config.validator.recurring_enrollment)
-            this.checkAndEnroll(this.ledger.getBlockHeight());
+            this.checkAndEnroll(this.ledger.height());
     }
 
     /// Ditto
@@ -259,7 +259,7 @@ public class Validator : FullNode, API
 
         // Only query pre-images if we need them, to avoid flooding peers
         // with queries
-        const next_height = this.ledger.getBlockHeight() + 1;
+        const next_height = this.ledger.height() + 1;
 
         if (!this.enroll_man.isEnrolled(next_height, &this.ledger.peekUTXO))
             return;
@@ -616,7 +616,7 @@ public class Validator : FullNode, API
     {
         PreImageInfo preimage;
         if (this.enroll_man.getNextPreimage(preimage,
-            this.ledger.getBlockHeight()))
+            this.ledger.height()))
         {
             this.ledger.addPreimage(preimage);
             this.network.peers.each!(p => p.client.sendPreimage(preimage));
@@ -723,6 +723,6 @@ public class Validator : FullNode, API
         // Network needs Validators, see if we can enroll
         if (this.config.validator.recurring_enrollment &&
             msg == NodeLedger.InvalidConsensusDataReason.NotEnoughValidators)
-            this.checkAndEnroll(this.ledger.getBlockHeight());
+            this.checkAndEnroll(this.ledger.height());
     }
 }

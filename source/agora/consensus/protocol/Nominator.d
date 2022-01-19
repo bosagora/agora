@@ -287,7 +287,7 @@ extern(D):
         // we stop the nomination and set the new quorum set.
         if(this.is_nominating)
         {
-            const height = this.ledger.getBlockHeight();
+            const height = this.ledger.height();
             try
             {
                 () @trusted {
@@ -431,7 +431,7 @@ extern(D):
     protected ulong getExpectedBlockTime () @safe @nogc nothrow pure
     {
         return this.params.GenesisTimestamp +
-            (ledger.getBlockHeight() + 1) * this.params.BlockInterval.total!"seconds";
+            (ledger.height() + 1) * this.params.BlockInterval.total!"seconds";
     }
 
     /***************************************************************************
@@ -449,7 +449,7 @@ extern(D):
 
     protected void checkNominate () @safe
     {
-        const slot_idx = this.ledger.getBlockHeight() + 1;
+        const slot_idx = this.ledger.height() + 1;
         // are we done nominating this round
         if (this.last_confirmed_height >= slot_idx)
         {
@@ -479,11 +479,11 @@ extern(D):
             return;
         }
 
-        if (!this.ledger.hasMajoritySignature(this.ledger.getBlockHeight()))
+        if (!this.ledger.hasMajoritySignature(this.ledger.height()))
         {
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
-                this.ledger.getBlockHeight(), this.ledger.lastBlock().header.validators);
+                this.ledger.height(), this.ledger.lastBlock().header.validators);
             return;
         }
 
@@ -709,7 +709,7 @@ extern(D):
 
     public const(BlockHeader) receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
-        const cur_height = this.ledger.getBlockHeight();
+        const cur_height = this.ledger.height();
         log.trace("Received BLOCK SIG {} from node {} for block {}",
                     block_sig.signature, block_sig.utxo, block_sig.height);
         if (block_sig.height > cur_height)
@@ -903,7 +903,7 @@ extern(D):
             }
         }
 
-        const last_height = this.ledger.getBlockHeight();
+        const last_height = this.ledger.height();
         if (last_height + 1 == slot_idx) // Let's check last block is still one before this one
         {
             if (!this.ledger.hasMajoritySignature(last_height))
@@ -934,7 +934,7 @@ extern(D):
         ref const(Value) value) nothrow
     {
         Height height = Height(slot_idx);
-        const Height last_height = this.ledger.getBlockHeight();
+        const Height last_height = this.ledger.height();
         if (height != last_height + 1)
         {
             log.trace("valueExternalized: Will not externalize envelope with slot id {} as ledger is at height {}",

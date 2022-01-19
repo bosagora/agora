@@ -353,7 +353,7 @@ public class FullNode : API
 
     private void collectBlockStats (Collector collector)
     {
-        this.block_stats.agora_block_height_counter = this.ledger.getBlockHeight();
+        this.block_stats.agora_block_height_counter = this.ledger.height();
         collector.collect(this.block_stats);
     }
 
@@ -368,7 +368,7 @@ public class FullNode : API
 
     private void collectValidatorStats (Collector collector)
     {
-        auto validators = this.ledger.getValidators(this.ledger.getBlockHeight() + 1);
+        auto validators = this.ledger.getValidators(this.ledger.height() + 1);
 
         foreach (const ref val; validators)
             this.validator_preimages_stats.setMetricTo!"agora_preimages_counter"(
@@ -450,7 +450,7 @@ public class FullNode : API
 
         // Special case
         // Block externalized handler is set and push for Genesis block.
-        if (this.block_handlers.length > 0 && this.ledger.getBlockHeight() == 0)
+        if (this.block_handlers.length > 0 && this.ledger.height() == 0)
             this.pushBlock(this.params.Genesis);
 
         this.timers ~= this.taskman.setTimer(
@@ -520,7 +520,7 @@ public class FullNode : API
             return;
 
         this.network.getBlocksFrom(
-            Height(this.ledger.getBlockHeight() + 1),
+            Height(this.ledger.height() + 1),
             &this.addBlocks);
         this.network.getUnknownTXs(this.ledger);
         try
@@ -571,7 +571,7 @@ public class FullNode : API
         {
             // A block might have been externalized in the meantime,
             // so just skip older heights
-            if (block.header.height <= this.ledger.getBlockHeight())
+            if (block.header.height <= this.ledger.height())
                 continue;
             else if (auto fail_msg = this.acceptBlock(block))
             {
@@ -580,7 +580,7 @@ public class FullNode : API
             }
             this.recordBlockStats(block);
         }
-        return this.ledger.getBlockHeight();
+        return this.ledger.height();
     }
 
     /***************************************************************************
@@ -619,7 +619,7 @@ public class FullNode : API
         validators.each!(validator => this.network.whitelist(validator.utxo));
 
         // We return if height in ledger is reached for this block to prevent fetching again
-        return this.ledger.getBlockHeight() >= block.header.height ? null
+        return this.ledger.height() >= block.header.height ? null
             : format!"Ledger is already at height %s"(block.header.height);
     }
 
@@ -951,7 +951,7 @@ public class FullNode : API
     public override ulong getBlockHeight ()
     {
         this.recordReq("block_height");
-        return this.ledger.getBlockHeight();
+        return this.ledger.height();
     }
 
     /// GET: /blocks_from
@@ -981,7 +981,7 @@ public class FullNode : API
 
         const Height stored_height = Height(height);
 
-        if (this.ledger.getBlockHeight() < stored_height)
+        if (this.ledger.height() < stored_height)
             return null;
 
         Block block = this.storage.readBlock(stored_height);
@@ -997,7 +997,7 @@ public class FullNode : API
         this.recordReq("postEnrollment");
 
         // Ignore enrollments targeting a previous Height
-        if (avail_height <= this.ledger.getBlockHeight())
+        if (avail_height <= this.ledger.height())
         {
             log.trace("Ignoring enrollment {} targeting a previous Height {}", prettify(enroll), avail_height);
             return;
@@ -1107,7 +1107,7 @@ public class FullNode : API
 
         // if enroll_keys is empty, then all preimages should be returned
         if (enroll_keys.empty())
-            return this.ledger.getValidators(this.ledger.getBlockHeight() + 1)
+            return this.ledger.getValidators(this.ledger.height() + 1)
                 .map!(vi => vi.preimage).array();
 
 
@@ -1127,7 +1127,7 @@ public class FullNode : API
     {
         this.recordReq("preimages_range");
 
-        const known = this.ledger.getBlockHeight();
+        const known = this.ledger.height();
         // We have no data that could match this query
         if (known < start_height)
             return null;
@@ -1401,6 +1401,6 @@ public class FullNode : API
     ///
     public ValidatorInfo[] getValidators ()
     {
-        return this.getValidators(this.ledger.getBlockHeight());
+        return this.getValidators(this.ledger.height());
     }
 }
