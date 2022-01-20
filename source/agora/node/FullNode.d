@@ -692,14 +692,14 @@ public class FullNode : API
         immutable Genesis = () {
             if (!config.node.testing)
                 return COINNET.GenesisBlock;
-            if (!config.node.limit_test_validators)
+            if (!config.node.test_validators)
                 return TESTNET.GenesisBlock;
 
             immutable Block result = {
                 header: {
                     merkle_root: TESTNET.GenesisBlock.header.merkle_root,
-                    validators: typeof(BlockHeader.validators)(config.node.limit_test_validators),
-                    enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.limit_test_validators],
+                    validators: typeof(BlockHeader.validators)(config.node.test_validators),
+                    enrollments: TESTNET.GenesisBlock.header.enrollments[0 .. config.node.test_validators],
                 },
                 merkle_tree: TESTNET.GenesisBlock.merkle_tree,
                 txs:         TESTNET.GenesisBlock.txs,
