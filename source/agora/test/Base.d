@@ -2046,6 +2046,10 @@ public struct TestConf
     /// Matches the eponymous field in the `banman` section.
     public size_t max_failed_requests = 100;
 
+    /// duration that the node is banned
+    /// Matches the eponymous field in the `banman` section.
+    public Duration ban_duration = 300.seconds;
+
     /// Base values for the `node` section
     public NodeConfig node = {
         /// Minimum number of clients to connect to
@@ -2173,7 +2177,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     BanManager.Config ban_conf =
     {
         max_failed_requests : test_conf.max_failed_requests,
-        ban_duration: 300.seconds,
+        ban_duration: test_conf.ban_duration,
     };
 
     immutable(Address[]) makeNetworkConfig (size_t idx, Address[] addresses)
