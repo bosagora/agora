@@ -1,18 +1,7 @@
 ################################################################################
-##                                  Faucet Configuration                      ##
-################################################################################
-web:
-  address: 127.0.0.1
-  port: 2766
-
-################################################################################
 ##                  Transaction Generator Configuration                       ##
 ################################################################################
 tx_generator:
-
-  # port number that can provide stats
-  stats_port: 9113
-
   # How frequently we run our periodic task in seconds
   send_interval: 4
 
