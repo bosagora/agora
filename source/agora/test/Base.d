@@ -724,7 +724,7 @@ public class TestAPIManager
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        this.expectHeightAndPreImg(iota(GenesisValidators), height, enroll_header,
+        this.expectHeightAndPreImg(iota(this.test_conf.node.limit_test_validators), height, enroll_header,
             timeout, file, line);
     }
 
@@ -759,7 +759,7 @@ public class TestAPIManager
     public void waitForPreimages (const(Enrollment)[] enrolls, Height height,
         Duration timeout = 10.seconds)
     {
-        this.waitForPreimages(iota(GenesisValidators), enrolls, height, timeout);
+        this.waitForPreimages(iota(this.test_conf.node.limit_test_validators), enrolls, height, timeout);
     }
 
     /// Ditto
@@ -1062,7 +1062,7 @@ public class TestAPIManager
     public void generateBlocks (Height height, bool no_txs = false,
         string file = __FILE__, int line = __LINE__)
     {
-        this.generateBlocks(iota(GenesisValidators), height, no_txs, file, line);
+        this.generateBlocks(iota(this.test_conf.node.limit_test_validators), height, no_txs, file, line);
     }
 
     /// Ditto
@@ -1095,7 +1095,7 @@ public class TestAPIManager
     void addBlock (bool no_txs = false,
         string file = __FILE__, int line = __LINE__)
     {
-        this.addBlock(iota(0, GenesisValidators), no_txs, file, line);
+        this.addBlock(iota(0, this.test_conf.node.limit_test_validators), no_txs, file, line);
     }
 
     /// Ditto
@@ -1182,7 +1182,7 @@ public class TestAPIManager
 
     void enroll (size_t client_idx)
     {
-        enroll(iota(GenesisValidators), client_idx);
+        enroll(iota(this.test_conf.node.limit_test_validators), client_idx);
     }
 
     /// Ditto
@@ -1216,7 +1216,7 @@ public class TestAPIManager
     void assertSameBlocks (Height to, Height from = Height(0),
         string file = __FILE__, int line = __LINE__)
     {
-        assertSameBlocks(iota(GenesisValidators), to, from, file, line);
+        assertSameBlocks(iota(this.test_conf.node.limit_test_validators), to, from, file, line);
     }
 
     /// Ditto
@@ -2070,6 +2070,10 @@ public struct TestConf
 
         // Always set to true, cannot be overriden, but also set here for clarity
         testing: true,
+
+        // As testing is set to True it is possible to use a subset of the validators
+        limit_test_validators: 6,
+
         // Unittest realm
         realm: Domain.fromSafeString("unittest.bosagora.io."),
     };
@@ -2143,7 +2147,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     static import std.concurrency;
     std.concurrency.scheduler = null;
 
-    const TotalNodes = GenesisValidators + test_conf.full_nodes +
+    const TotalNodes = test_conf.node.limit_test_validators + test_conf.full_nodes +
         test_conf.outsider_validators + /* Registry */ 1;
 
     ConsensusConfig makeConsensusConfig ()
@@ -2168,7 +2172,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         NodeConfig conf = test_conf.node;
         conf.testing = true;
         if (conf.min_listeners == size_t.max)
-            conf.min_listeners = (GenesisValidators + test_conf.full_nodes) - 1;
+            conf.min_listeners = (test_conf.node.limit_test_validators + test_conf.full_nodes) - 1;
         if (conf.max_listeners == size_t.max)
             conf.max_listeners = TotalNodes - 1;
         return conf;
@@ -2264,7 +2268,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     auto outsider_validators_keys = WK.Keys.byRange()
         .takeExactly(test_conf.outsider_validators);
 
-    auto validator_keys = genesis_validator_keys ~ outsider_validators_keys.array;
+    auto validator_keys = genesis_validator_keys[0 .. test_conf.node.limit_test_validators] ~ outsider_validators_keys.array;
 
     // all enrolled and un-enrolled validators
     auto validator_addresses = validator_keys.enumerate
@@ -2272,7 +2276,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     // only enrolled validators
     auto enrolled_addresses = genesis_validator_keys.enumerate
-        .takeExactly(GenesisValidators)
+        .takeExactly(test_conf.node.limit_test_validators)
         .map!(en => validatorAddress(en.index, en.value)).array;
 
     auto full_node_addresses = test_conf.full_nodes.iota.map!(
@@ -2300,8 +2304,10 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto all_configs = validator_configs.chain(full_node_configs).array;
 
-    immutable(Block)[] blocks = generateExtraBlocks(GenesisBlock,
-        test_conf.extra_blocks);
+    immutable(Block)[] blocks;
+    if (!test_conf.node.limit_test_validators ||
+        test_conf.node.limit_test_validators == GenesisBlock.header.enrollments.length)
+        blocks = generateExtraBlocks(GenesisBlock, test_conf.extra_blocks);
 
     auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp, eArgs);
 

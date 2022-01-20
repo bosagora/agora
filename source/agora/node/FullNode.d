@@ -692,7 +692,8 @@ public class FullNode : API
         immutable Genesis = () {
             if (!config.node.testing)
                 return COINNET.GenesisBlock;
-            if (!config.node.limit_test_validators)
+            if (!config.node.limit_test_validators
+                || config.node.limit_test_validators == TESTNET.GenesisBlock.header.enrollments.length)
                 return TESTNET.GenesisBlock;
 
             immutable Block result = {
