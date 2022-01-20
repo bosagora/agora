@@ -165,8 +165,8 @@ unittest
     network.generateBlocks(Height(GenesisValidatorCycle - 3), true);
 
     // Make 2 nodes sleep for longer than test can possibly run
-    node_4.ctrl.sleep(1.hours, true);
-    node_5.ctrl.sleep(1.hours, true);
+    node_4.ctrl.sleep(10.minutes, true);
+    node_5.ctrl.sleep(10.minutes, true);
 
     network.generateBlocks(iota(4),
         Height(GenesisValidatorCycle - 1), true);
