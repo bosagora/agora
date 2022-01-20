@@ -472,19 +472,35 @@ private class RPCConnection
       impl = The object that will handle the call
       address = The address to bind to (netmask, e.g. `0.0.0.0` for all)
       port = The port to bind to
+      proxy_protocol = The Proxy Protocol V1 is enabled
       isBannedDg = Delegate for checking if sending peer is banned
 
 *******************************************************************************/
 
-public TCPListener listenRPC (API) (API impl, string address, ushort port,
+public TCPListener listenRPC (API) (API impl, string address, ushort port, bool proxy_protocol,
     Duration timeout, void delegate (agora.api.Validator.API api) @safe nothrow discoverFromClient,
     RejectConnectionPredicate isBannedDg)
 {
     auto callback = (TCPConnection stream) @safe nothrow {
-        if (isBannedDg(stream.remoteAddress))
+        NetworkAddress net_addr = stream.remoteAddress;
+        if (proxy_protocol)
+        {
+            try
+            {
+                auto pp = ProxyProtocol(stream);
+                log.trace("RPC connection through ProxyProtocol: {}", pp.src.toString());
+                net_addr = NetworkAddress(pp.src);
+            }
+            catch (Exception e) {
+                log.error("RPC through ProxyProtocol error: {}", e.msg);
+                return; // Drop connection
+            }
+        }
+
+        if (isBannedDg(net_addr))
         {
             try log.trace("RPC connection discarded, peer is banned {}",
-                stream.remoteAddress.toAddressString());
+                net_addr.toAddressString());
             catch (Exception e) {}
             return;
         }
