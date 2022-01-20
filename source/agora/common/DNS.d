@@ -28,6 +28,7 @@ import std.bitmanip;
 import std.format;
 import std.range;
 import std.string;
+import std.typecons : Tuple;
 
 /*******************************************************************************
 
@@ -1107,6 +1108,40 @@ public struct Domain
         return result;
     }
 
+    /// Tuple for service and protocol labels
+    alias ServiceProtoTuple = Tuple!(const(char[]), "service", const(char[]), "protocol");
+
+    /***************************************************************************
+
+        Get service and protocol labels
+
+        Returns:
+          A tuple containing both service and protocol labels, empty
+          `ServiceProtoTuple` is returned when one of them is missing.
+
+    ***************************************************************************/
+
+    public ServiceProtoTuple serviceAndProtocolLabels () const nothrow @safe
+    {
+        if (this.value[0] != '_')
+            return ServiceProtoTuple.init;
+
+        try
+        {
+            auto splitted = this.value.splitter('.');
+            const service = splitted.front();
+            splitted.popFront();
+            const proto = splitted.front();
+
+            if (proto.length == 0 || proto[0] != '_')
+                return ServiceProtoTuple.init;
+
+            return ServiceProtoTuple(service[1 .. $], proto[1 .. $]);
+        }
+        catch (Exception e)
+            assert(0);
+    }
+
     size_t toHash () const @safe pure nothrow
     {
         import std.ascii : toLower;
@@ -1417,6 +1452,22 @@ unittest
                           "0123456789abcdef0123456789abcde." ~
                           "0123456789abcdef0123456789abcde." ~
                           "0123456789abcdef0123456789abcde")); // Final '.'
+
+    auto service_proto = Domain.fromSafeString("_agora._tcp.bosagora.io.").serviceAndProtocolLabels();
+    assert(service_proto.service == "agora");
+    assert(service_proto.protocol == "tcp");
+
+    auto no_service = Domain.fromSafeString("agora._tcp.bosagora.io.").serviceAndProtocolLabels();
+    assert(no_service == Domain.ServiceProtoTuple.init);
+
+    auto no_proto = Domain.fromSafeString("_agora.tcp.bosagora.io.").serviceAndProtocolLabels();
+    assert(no_proto == Domain.ServiceProtoTuple.init);
+
+    auto empty_label = Domain.fromSafeString("_agora.").serviceAndProtocolLabels();
+    assert(empty_label == Domain.ServiceProtoTuple.init);
+
+    auto no_label = Domain.fromSafeString(".").serviceAndProtocolLabels();
+    assert(no_label == Domain.ServiceProtoTuple.init);
 }
 
 /// Context used while deserializing a DNS message
