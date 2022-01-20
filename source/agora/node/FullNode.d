@@ -1020,66 +1020,24 @@ public class FullNode : API
             return;
         }
 
+        scope UTXOFinder utxo_finder = (in Hash hash, out UTXO found_utxo) @safe nothrow
+        {
+            return this.ledger.peekUTXO(hash, found_utxo) || this.pool.peekUTXO(hash, found_utxo);
+        };
+        scope GetPenaltyDeposit getPenaltyDeposit = (Hash hash)
+        {
+            UTXO utxo;
+            if (this.ledger.peekUTXO(hash, utxo))
+                return this.ledger.getPenaltyDeposit(hash);
+
+            if (this.pool.peekUTXO(hash, utxo))
+                return this.params.SlashPenaltyAmount;
+            else
+                return 0.coins;
+        };
+
         UTXO utxo;
-        Output found_output;
-        scope UTXOFinder utxo_finder;
-        scope GetPenaltyDeposit getPenaltyDeposit;
-        if (this.ledger.peekUTXO(enroll.utxo_key, utxo))
-        {
-            utxo_finder = (in Hash hash, out UTXO found_utxo)
-            {
-                if (hash == enroll.utxo_key)
-                {
-                    found_utxo = utxo;
-                    return true;
-                }
-                return false;
-            };
-            getPenaltyDeposit = &this.ledger.getPenaltyDeposit;
-        }
-        else
-        {
-            /// FIXME: Use a proper type and sensible memory allocation pattern
-            // We create a extra UTXO set using the transaction pool if there
-            // is no UTXO in the UTXO set. We only use transactions that have
-            // a frozen UTXO with the right amount.
-            version (all)
-            {
-                foreach (ref Hash hash, ref Transaction tx; this.pool)
-                {
-                    if (!tx.isFreeze())
-                        continue;
-
-                    foreach (size_t idx, output_; tx.outputs)
-                    {
-                        if (output_.type == OutputType.Freeze &&
-                            output_.value >= Amount.MinFreezeAmount)
-                        {
-                            if (UTXO.getHash(hashFull(tx), idx) == enroll.utxo_key)
-                            {
-                                found_output = output_;
-                                utxo_finder = (in Hash hash, out UTXO found_utxo)
-                                {
-                                    if (hash == enroll.utxo_key)
-                                    {
-                                        found_utxo.output = found_output;
-                                        return true;
-                                    }
-                                    return false;
-                                };
-                                getPenaltyDeposit = (Hash utxo) { return this.params.SlashPenaltyAmount; };
-                                break;
-                            }
-                        }
-                    }
-
-                    if (utxo_finder(enroll.utxo_key, utxo))
-                        break;
-                }
-            }
-        }
-
-        if (utxo == UTXO.init)
+        if (!utxo_finder(enroll.utxo_key, utxo))
         {
             log.info("Found no UTXO for the enrollment: {}", prettify(enroll));
             return;

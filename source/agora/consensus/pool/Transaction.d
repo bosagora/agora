@@ -18,6 +18,7 @@ import agora.common.Amount;
 import agora.common.ManagedDatabase;
 import agora.common.Types;
 import agora.common.Set;
+import agora.consensus.data.UTXO;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
 import agora.crypto.Hash;
@@ -94,6 +95,9 @@ public class TransactionPool
     /// A delegate to select one of the double spent TXs
     public DoubleSpentSelector selector;
 
+    /// UTXO set
+    protected Output[Hash] utxo_set;
+
     /***************************************************************************
 
         Params:
@@ -113,7 +117,11 @@ public class TransactionPool
 
         // populate the input set from the tx'es in the DB
         foreach (const ref Transaction tx; this)
+        {
             this.updateSpenderList(tx);
+            auto tx_hash = tx.hashFull();
+            iota(tx.outputs.length).each!(idx => utxo_set[UTXO.getHash(tx_hash, idx)] = tx.outputs[idx]);
+        }
 
         // Set selector after rebuilding the spender list, so nothing gets
         // filtered out
@@ -149,7 +157,8 @@ public class TransactionPool
 
         // insert each input information of the transaction
         this.updateSpenderList(tx);
-
+        auto tx_hash = tx.hashFull();
+        iota(tx.outputs.length).each!(idx => utxo_set[UTXO.getHash(tx_hash, idx)] = tx.outputs[idx]);
         serializeToBuffer(tx, buffer);
 
         () @trusted {
@@ -175,6 +184,7 @@ public class TransactionPool
         auto tx_hash = tx.hashFull();
 
         this.db.execute("DELETE FROM tx_pool WHERE key = ?", tx_hash);
+        iota(tx.outputs.length).each!(idx => this.utxo_set.remove(UTXO.getHash(tx_hash, idx)));
 
         if (rm_double_spent)
         {
@@ -569,6 +579,29 @@ public class TransactionPool
         const(char)* msg) nothrow
     {
         log.error("SQLite error: ({}) {}", code, msg.fromStringz);
+    }
+
+    /***************************************************************************
+
+        Get an UTXO, no double-spend protection.
+
+        Params:
+            hash = the hash of the UTXO (`hashMulti(tx_hash, index)`)
+            value = the UTXO
+
+        Returns:
+            true if the UTXO was found
+
+    ***************************************************************************/
+
+    public bool peekUTXO (in Hash utxo, out UTXO value) nothrow @safe
+    {
+        if (auto output = utxo in this.utxo_set)
+        {
+            value.output = *output;
+            return true;
+        }
+        return false;
     }
 }
 
