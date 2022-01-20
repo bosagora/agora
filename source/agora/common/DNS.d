@@ -810,7 +810,11 @@ public struct ResourceRecord
                     tmp_data.soa = SOA.fromBinary!(SOA)(ctx);
                     break;
                 case TYPE.URI:
-                    tmp_data.uri = deserializeFull!(URIRDATA)(&ctx.read, ctx.options);
+                    tmp_data.uri = URIRDATA(
+                        deserializeFull!(typeof(URIRDATA.priority))(&ctx.read, ctx.options),
+                        deserializeFull!(typeof(URIRDATA.weight))(&ctx.read, ctx.options),
+                        Address(cast(string) ctx.read(rdlength - (URIRDATA.priority.sizeof + URIRDATA.weight.sizeof)))
+                    );
                     break;
                 default:
                     tmp_data.binary = cast(ubyte[]) ctx.read(rdlength);
@@ -845,7 +849,11 @@ public struct ResourceRecord
                 case TYPE.SOA:
                     return this.rdata.soa.serializeFull(CompactMode.No);
                 case TYPE.URI:
-                    return this.rdata.uri.serializeFull(CompactMode.No);
+                    ubyte[] buffer;
+                    buffer ~= this.rdata.uri.priority.serializeFull(CompactMode.No);
+                    buffer ~= this.rdata.uri.weight.serializeFull(CompactMode.No);
+                    buffer ~= this.rdata.uri.target.toString().representation;
+                    return buffer;
                 default:
                     return this.rdata.binary;
             }
