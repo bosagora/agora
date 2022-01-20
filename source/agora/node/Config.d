@@ -127,17 +127,17 @@ public struct Config
             enforce(this.network.length || this.registry.enabled ||
                     this.validator.registry_address != string.init ||
                     // Allow single-network validator (assume this is NODE6)
-                    this.node.limit_test_validators == 1,
+                    this.node.test_validators == 1,
                     "Either the network section must not be empty, or 'validator.registry_address' must be set " ~
                     ", or registry must be enabled");
         else
             enforce(this.network.length || this.registry.enabled,
                     "Either the network section must not be empty, or registry must be enabled");
 
-        if (!this.node.testing && this.node.limit_test_validators)
+        if (!this.node.testing && this.node.test_validators)
             throw new Exception("Cannot use 'node.limit_test_validator' without 'node.testing' set to 'true'");
-        if (this.node.limit_test_validators > 6)
-            throw new Exception("Value of 'node.limit_test_validators' must be between 0 and 6, inclusive");
+        if (this.node.test_validators > 6)
+            throw new Exception("Value of 'node.test_validators' must be between 0 and 6, inclusive");
 
         if (this.consensus.quorum_threshold < 1 || this.consensus.quorum_threshold > 100)
             throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
@@ -198,7 +198,7 @@ public struct NodeConfig
 
     /// Should only be set if `test` is set, can be set to the number of desired
     /// enrollment in the test Genesis block (1 - 6)
-    public @Optional ubyte limit_test_validators;
+    public @Optional ubyte test_validators;
 
     /// The minimum number of listeners to connect to
     /// before discovery is considered complete

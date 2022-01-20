@@ -12,7 +12,7 @@
 node:
   realm: "localhost"
   testing: true
-  limit_test_validators: 1
+  test_validators: 1
   data_dir: .single/data/
 
 interfaces:

@@ -23,12 +23,18 @@ version (unittest):
 
 import agora.test.Base;
 
-/// Simple test
+/// Simple test with 4 nodes
 unittest
 {
     TestConf conf;
-    conf.consensus.payout_period = 10;
+    conf.node.test_validators = 4;
+    conf.consensus.max_quorum_nodes = 3;
+    simpleTest(conf);
+}
 
+public void simpleTest (TestConf conf)
+{
+    conf.consensus.payout_period = 8;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();

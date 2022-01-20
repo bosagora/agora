@@ -143,7 +143,7 @@ public class Ledger
                  this.last_block.header.hashFull());
 
         Block gen_block = this.storage.readBlock(Height(0));
-        ensure(gen_block == params.Genesis,
+        ensure(gen_block.hashFull() == params.Genesis.hashFull(),
                 "Genesis block loaded from disk ({}) is different from the one in the config file ({})",
                 gen_block.hashFull(), params.Genesis.hashFull());
 
