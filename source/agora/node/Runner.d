@@ -222,11 +222,11 @@ public Listeners runNode (Config config)
     {
         log.info("Node will be listening on TCP interface: {}:{}", interface_.address, interface_.port);
         if (auto fl = cast(agora.api.Validator.API) result.node)
-            result.tcp ~= listenRPC!(agora.api.Validator.API)(fl, interface_.address, interface_.port, config.node.timeout,
-                &result.node.getNetworkManager().discoverFromClient, isBannedDg);
+            result.tcp ~= listenRPC!(agora.api.Validator.API)(fl, interface_.address, interface_.port, interface_.proxy_proto,
+                config.node.timeout, &result.node.getNetworkManager().discoverFromClient, isBannedDg);
         else
-            result.tcp ~= listenRPC!(agora.api.FullNode.API)(result.node, interface_.address, interface_.port, config.node.timeout,
-                &result.node.getNetworkManager().discoverFromClient, isBannedDg);
+            result.tcp ~= listenRPC!(agora.api.FullNode.API)(result.node, interface_.address, interface_.port, interface_.proxy_proto,
+                config.node.timeout, &result.node.getNetworkManager().discoverFromClient, isBannedDg);
     }
 
     return result;

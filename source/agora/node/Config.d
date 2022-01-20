@@ -174,6 +174,9 @@ public struct InterfaceConfig
     /// Bind port
     public ushort port;
 
+    /// Proxy Protocol V1
+    public bool proxy_proto;
+
     /// Default values when none is given in the config file
     private static immutable InterfaceConfig[Type.max] Default = [
         // Publicly enabled by default
