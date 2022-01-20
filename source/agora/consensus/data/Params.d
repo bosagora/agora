@@ -113,6 +113,7 @@ public immutable class ConsensusParams
 /// Ditto
 public struct ConsensusConfig
 {
+    /// Time at which the Genesis block was created
     public ulong genesis_timestamp = 1609_459_200; // 2021-01-01:00:00:00 GMT
 
     /// The cycle length for a validator
