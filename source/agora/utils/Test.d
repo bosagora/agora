@@ -32,8 +32,10 @@ module agora.utils.Test;
 import agora.common.Amount;
 import agora.common.Types;
 import agora.consensus.data.Block;
+import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
+import agora.consensus.state.Ledger;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
@@ -441,4 +443,35 @@ unittest
            format("h1 (%s) was a pre-image of h2 (%s) after 2 computation", h1, h2));
     assert(preImageJitter(h2, h1) ==
            format("h2 (%s) was a pre-image of h1 (%s) after 2 computation", h1, h2));
+}
+
+/*******************************************************************************
+
+    Externalize pre-images for all validators (minus skipped ones) at `height`
+
+    When generating blocks in unittests, a common need is to have pre-images
+    externalized so that the signatures match.
+
+    This can be done by this function, which will call `addPreimage` for each
+    currently-enrolled validator with a value suitable for height `height`.
+
+    Params:
+      ledger = The Ledger to call `addPreimage` on
+      height = The desired height for the pre-images
+      skip_indexes = If not empty (the default), validators that are at the
+                     provided index(es) will not have their pre-images added.
+                     The index can be retrieved from `getValidators`.
+                     This can be used to test slashing.
+
+*******************************************************************************/
+
+public void simulatePreimages (Ledger ledger, in Height height,
+                               uint[] skip_indexes = null) @safe
+{
+    ledger.getValidators(height).enumerate.each!((idx, val)
+    {
+        if (skip_indexes.length == 0 || !skip_indexes.canFind(idx))
+            ledger.addPreimage(PreImageInfo(val.preimage.utxo,
+                WK.PreImages[WK.Keys[val.address]][height], height));
+    });
 }
