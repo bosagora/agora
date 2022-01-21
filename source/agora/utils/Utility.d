@@ -132,11 +132,10 @@ public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
 {
     // wait 100 msecs between attempts
     const SleepTime = 100;
-    auto attempts = timeout.total!"msecs" / SleepTime;
-    const TotalAttempts = attempts;
+    const TotalAttempts = timeout.total!"msecs" / SleepTime;
 
     ThreadWaiter thread_waiter;
-    if (!retry!check(thread_waiter, attempts, SleepTime.msecs).isNull)
+    if (!retry!check(thread_waiter, TotalAttempts, SleepTime.msecs).isNull)
         return;
 
     auto message = format("Check condition failed after timeout of %s " ~
