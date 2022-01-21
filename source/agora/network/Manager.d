@@ -716,9 +716,10 @@ public class NetworkManager
 
         if (this.registry_client !is null)
         {
-            foreach (utxo; last_known_validator_utxos.byValue)
+            foreach (utxo; last_known_validator_utxos.byKeyValue)
+            if (!this.peers[].map!(ni => ni.utxo).canFind(utxo.key))
             {
-                auto key = utxo.output.address;
+                auto key = utxo.value.output.address;
                 // Do not query the registry about ourself
                 if (key == this.validator_config.key_pair.address)
                     continue;
