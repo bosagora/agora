@@ -2284,7 +2284,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     Address fullNodeAddress (size_t idx)
     {
-        return Address(format("http://FullNode-%s.localrest", idx));
+        return Address(format("agora://10.0.255.%s", idx));
     }
 
     auto outsider_validators_keys = WK.Keys.byRange()
