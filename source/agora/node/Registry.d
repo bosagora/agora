@@ -145,10 +145,6 @@ public class NameRegistry: NameRegistryAPI
     protected TYPE ensureValidPayload (in RegistryPayload payload,
         TypedPayload previous) @safe
     {
-        // verify signature
-        ensure(payload.verifySignature(payload.data.public_key),
-                "Incorrect signature for payload");
-
         // check if we received stale data
         if (previous != TypedPayload.init)
             ensure(previous.payload.data.seq <= payload.data.seq,
@@ -235,6 +231,14 @@ public class NameRegistry: NameRegistryAPI
         ensure(this.zones[ZoneIndex.Validator].type != ZoneType.caching,
             "Couldn't register, server is not authoritative for the zone");
 
+        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
+               "Incorrect signature for payload");
+        this.registerValidator(registry_payload);
+    }
+
+    /// Similar to `postValidator`, but does not perform signature verification
+    public void registerValidator (RegistryPayload registry_payload) @safe
+    {
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
 
@@ -321,6 +325,9 @@ public class NameRegistry: NameRegistryAPI
     {
         ensure(this.zones[ZoneIndex.Flash].type != ZoneType.caching,
             "Couldn't register, server is not authoritative for the zone");
+
+        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
+               "Incorrect signature for payload");
 
         TYPE payload_type = this.ensureValidPayload(registry_payload,
             this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
