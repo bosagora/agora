@@ -148,6 +148,12 @@ public abstract class DNSResolver
 
     protected abstract ResourceRecord[] query (Message msg) @safe;
 
+    /// Ditto
+    public ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
+    {
+        return this.query(this.buildQuery(name, type));
+    }
+
     /// Returns: DNS message for querying a record of `type` for `name'
     protected Message buildQuery (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
     {
