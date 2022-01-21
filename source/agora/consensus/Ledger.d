@@ -997,12 +997,6 @@ version (unittest)
         {
             return super.utxo_set;
         }
-
-        /// Expose the `protected` method to the module, not only the class
-        public override void simulatePreimages (in Height height, uint[] skip_indexes = null) @safe
-        {
-            super.simulatePreimages(height, skip_indexes);
-        }
     }
 }
 

@@ -1057,25 +1057,6 @@ public class Ledger
 
     version (unittest):
 
-    /// Make sure the preimages are available when the block is validated
-    protected void simulatePreimages (in Height height, uint[] skip_indexes = null) @safe
-    {
-        auto validators = this.getValidators(height);
-
-        void addPreimageLog (in PublicKey public_key, in PreImageInfo preimage_info)
-        {
-            log.info("Adding test preimages for height {} for validator {}: {}", height, public_key, preimage_info);
-            this.addPreimage(preimage_info);
-        }
-        validators.enumerate.each!((idx, val)
-        {
-            if (skip_indexes.length && skip_indexes.canFind(idx))
-                log.info("Skip add preimage for validator idx {} at height {} as requested by test", idx, height);
-            else
-                addPreimageLog(val.address, PreImageInfo(val.preimage.utxo,
-                    WK.PreImages[WK.Keys[val.address]][height], height));
-        });
-    }
 }
 
 /// This is the last block height that has had fees and rewards paid before the current block
