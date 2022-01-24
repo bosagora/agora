@@ -317,8 +317,7 @@ public class RPCClient (API) : API
         if (this.config == Config.init)
             this.config = rhs.config;
         rhs.pool.removeUnused((RPCConnection conn) @trusted nothrow {
-            if (!this.addConnection(conn))
-                conn.close();
+            this.addConnection(conn);
         });
     }
 }
