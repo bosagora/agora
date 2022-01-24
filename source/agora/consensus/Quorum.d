@@ -24,7 +24,6 @@ import agora.consensus.protocol.Config;
 import agora.consensus.state.UTXOCache;
 import agora.crypto.Hash;
 import agora.crypto.Key;
-import agora.node.Config;
 
 import scpd.Cpp;
 import scpd.types.Stellar_SCP;
