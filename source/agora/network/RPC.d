@@ -194,7 +194,12 @@ public class RPCClient (API) : API
 
                     scope DeserializeDg dg = (size_t size)
                         {
-                            ensure(size < tmp.length, "Out of bound read");
+                            if (size >= tmp.length)
+                            {
+                                this.log.warn("{}: Read size {} is too large for buffer size {}, closing connection",
+                                         __PRETTY_FUNCTION__, size, tmp.length);
+                                ensure(0, "{}: Out of bound read: {} >= {}", __PRETTY_FUNCTION__, size, tmp.length);
+                            }
                             conn.read(tmp[0 .. size]);
                             return tmp[0 .. size];
                         };
