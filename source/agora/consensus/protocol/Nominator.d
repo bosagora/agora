@@ -912,7 +912,11 @@ extern(D):
             }
         }
         else if (slot_idx > last_height + 1)   // Too early for us to check for signatures
+        {
+            log.dbg("Too early to check signatures of last block. slot_idx: {}, ledger height: {}",
+                slot_idx, last_height);
             return ValidationLevel.kMaybeValidValue;
+        }
 
         return ValidationLevel.kFullyValidatedValue;
     }
@@ -934,6 +938,7 @@ extern(D):
     {
         Height height = Height(slot_idx);
         const Height last_height = this.ledger.height();
+        log.trace("valueExternalized: attempt to add slot id {} to ledger at height {}", height, last_height);
         if (height != last_height + 1)
         {
             log.trace("valueExternalized: Will not externalize envelope with slot id {} as ledger is at height {}",
@@ -983,6 +988,7 @@ extern(D):
             assert(0, exc.message);
         }
         this.initial_missing_validators = [];
+        log.trace("valueExternalized: added slot id {} to ledger at height {}", height, last_height);
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
@@ -1245,6 +1251,7 @@ extern(D):
     public override ValueWrapperPtr combineCandidates (uint64_t slot_idx,
         ref const(ValueWrapperPtrSet) candidates)
     {
+        log.dbg("combineCandidates for slot i: {}", cast(ulong) slot_idx);
         try
         {
             CandidateHolder[] candidate_holders;
@@ -1280,7 +1287,7 @@ extern(D):
             }
 
             auto chosen_consensus_data = candidate_holders.sort().front;
-            log.trace("Chosen consensus data: {}", chosen_consensus_data.prettify);
+            log.trace("Chosen consensus data for slot i: {} : {}", cast(ulong) slot_idx, chosen_consensus_data.prettify);
 
             const Value val = chosen_consensus_data.serializeFull().toVec();
             auto dupe_val = duplicate_value(&val);

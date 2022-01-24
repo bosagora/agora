@@ -571,12 +571,15 @@ public class NetworkClient
         {
             foreach (conn; this.connections)
             {
-                log.dbg("Client.attemptRequest '{}' to {}: {}/{}",
-                    name, conn.address, idx, this.max_retries);
-                if (!this.banman.isBanned(conn.address))
+                if (this.banman.isBanned(conn.address))
+                {
+                    log.dbg("Client.attemptRequest '{}' skipped as {} is banned: {}/{}", name, conn.address, idx, this.max_retries);
+                }
+                else
                 {
                     try
                     {
+                        log.dbg("Client.attemptRequest '{}' to {}: {}/{}", name, conn.address, idx, this.max_retries);
                         scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
                             name, conn.address, idx, this.max_retries);
                         return __traits(getMember, conn.api, name)(args);

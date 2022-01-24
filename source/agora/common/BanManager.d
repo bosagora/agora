@@ -27,7 +27,11 @@ import d2sqlite3.results;
 import d2sqlite3.sqlite3;
 
 import std.algorithm;
+import std.datetime.systime : SysTime;
+import std.datetime.timezone : UTC;
+import std.exception : assumeWontThrow;
 import std.file;
+import std.format;
 import std.socket : getAddressInfo, AddressFamily;
 import std.stdio;
 
@@ -254,6 +258,12 @@ public class BanManager
         this.banUntil(address, ban_until);
     }
 
+    private string unixDateTime(TimePoint unixtime) @safe nothrow
+    {
+        return assumeWontThrow(
+            format!"unixtime:%s (%s)"(unixtime, SysTime.fromUnixTime(unixtime, UTC()).toString));
+    }
+
     /***************************************************************************
 
         Manually ban an address, until the specified time.
@@ -269,9 +279,10 @@ public class BanManager
         if (address is Address.init || this.isWhitelisted(address))
             return; // no address or Whitelisted address
 
-        log.info("BanManager: Address {} banned until {}", address, banned_until);
         try
         {
+            log.info("BanManager: Address {} banned at {} until {}", address,
+                unixDateTime(this.getCurTime()), unixDateTime(banned_until));
             this.url_failures.require(address).banned_until = banned_until;
             this.storeBanned(address, banned_until);
         }
@@ -310,6 +321,7 @@ public class BanManager
 
         this.whitelisted.put(address);
         this.storeWhitelisted(address);
+        log.dbg("{}/{}: Whitelisted address {}", __FILE__, __LINE__, address);
     }
 
     private void storeWhitelisted (Address address) @trusted nothrow
@@ -339,6 +351,7 @@ public class BanManager
         this.whitelisted.remove(address);
         // remove from cache db
         this.deleteWhitelisted(address);
+        log.dbg("[{}:{}] {} No longer whitelisted at {}", __FILE__, __LINE__, address, unixDateTime(this.getCurTime()));
     }
 
     private void deleteWhitelisted (Address address) @trusted nothrow
@@ -374,15 +387,18 @@ public class BanManager
         // if the ban was set and has expired then remove it
         if (status.banned_until > 0 && this.getCurTime() > status.banned_until)
         {
+            log.dbg("[{}:{}] {} No longer banned at {}", __FILE__, __LINE__, address, unixDateTime(this.getCurTime()));
             // remove from AA
             this.url_failures.remove(address);
             // remove from cache db
             this.deleteBanned(address);
             return false;
         }
-
         // return if the ban is still active
-        return status.banned_until > this.getCurTime();
+        const stillBanned = status.banned_until > this.getCurTime();
+        if (stillBanned)
+            log.dbg("[{}:{}] {} Still banned at {} until {}", __FILE__, __LINE__, address, unixDateTime(this.getCurTime()), unixDateTime(status.banned_until));
+        return stillBanned;
     }
 
     private void deleteBanned (Address address) @trusted nothrow
