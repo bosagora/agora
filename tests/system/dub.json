@@ -45,7 +45,7 @@
         "../../source",
         "../../submodules/base32/src",
         "../../submodules/bitblob/source",
-        "../../submodules/config/source",
+        "../../submodules/configy/source",
         "../../submodules/crypto/source",
         "../../submodules/serialization/source",
         "../../submodules/d2sqlite3/source",

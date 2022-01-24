@@ -23,8 +23,6 @@ version (unittest) {}
 else:
 
 import agora.common.FileBasedLock;
-import agora.config.Config;
-import agora.config.Exceptions;
 import agora.node.admin.Setup;
 import agora.node.Config;
 import agora.node.FullNode;
@@ -36,6 +34,8 @@ import agora.utils.TracyAPI;
 import vibe.core.core;
 import vibe.inet.url;
 import vibe.http.server;
+
+import configy.Read;
 
 import std.getopt;
 import std.path : absolutePath;
@@ -133,27 +133,13 @@ private int main (string[] args)
         return runEventLoop();
     }
 
-    Nullable!Config config = ()
+    Nullable!Config configN = ()
     {
         if (cmdln.config_path == "/dev/null")
             return Nullable!Config(Config.init);
-
-        try
-            return Nullable!Config(parseConfigFile!Config(cmdln));
-        catch (ConfigException ex)
-        {
-            writefln("Failed to parse configuration file '%s'", cmdln.config_path);
-            writefln("%S", ex);
-            return Nullable!Config();
-        }
-        catch (Exception ex)
-        {
-            writefln("Failed to read configuration file '%s'", cmdln.config_path);
-            writeln(ex.message());
-            return Nullable!Config();
-        }
+        return cmdln.parseConfigFileSimple!Config();
     }();
-    if (config.isNull)
+    if (configN.isNull)
         return 1;
 
     if (cmdln.config_check)
@@ -163,13 +149,14 @@ private int main (string[] args)
         return 0;
     }
 
-    if (config.get().admin.enabled && !config.get().validator.enabled)
+    auto config = configN.get();
+    if (config.admin.enabled && !config.validator.enabled)
     {
         writeln("Cannot have admin interface enabled for non-validator node");
         return 1;
     }
 
-    auto file_based_lock = FileBasedLock("agoraNode.lock", config.get().node.data_dir, true);
+    auto file_based_lock = FileBasedLock("agoraNode.lock", config.node.data_dir, true);
     try
         file_based_lock.lockThrow();
     catch (Exception ex)
@@ -182,7 +169,7 @@ private int main (string[] args)
     runTask(
         () nothrow {
             try
-                listeners = runNode(config.get());
+                listeners = runNode(config);
             catch (Exception exc)
             {
                 try

@@ -185,7 +185,7 @@
         "barcode":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "base32":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "bitblob":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
-        "config":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "configy":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "crypto":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "d2sqlite3":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "dyaml":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },

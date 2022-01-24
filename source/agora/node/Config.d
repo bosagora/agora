@@ -20,14 +20,14 @@ import agora.common.BanManager;
 import agora.common.DNS;
 import agora.common.Ensure;
 import agora.common.Types;
-import agora.config.Attributes;
-import agora.config.Config;
 import agora.consensus.data.Params;
 import agora.crypto.Key;
 import agora.flash.Config;
 import agora.utils.Log;
 
 import vibe.inet.url;
+
+import configy.Read;
 
 import std.algorithm.iteration : splitter;
 import std.algorithm.searching : all, count;

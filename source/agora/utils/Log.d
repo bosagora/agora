@@ -26,7 +26,7 @@
 
 module agora.utils.Log;
 
-import agora.config.Attributes;
+import configy.Attributes;
 
 import ocean.text.convert.Formatter;
 import ocean.transition;

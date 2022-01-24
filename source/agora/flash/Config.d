@@ -18,12 +18,13 @@ import agora.flash.Types;
 
 import agora.common.Amount;
 import agora.common.Types;
-import agora.config.Attributes;
 import agora.consensus.data.Transaction;
 import agora.crypto.ECC;
 import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.crypto.Schnorr;
+
+import configy.Attributes;
 
 import core.time;
 
