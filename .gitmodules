@@ -3,7 +3,7 @@
 	url = https://github.com/bosagora/d-base32.git
 [submodule "bitblob"]
 	path = submodules/bitblob
-	url = https://github.com/Geod24/bitblob.git
+	url = https://github.com/bosagora/bitblob.git
 [submodule "diet-ng"]
 	path = submodules/diet-ng
 	url = https://github.com/rejectedsoftware/diet-ng.git
@@ -15,10 +15,10 @@
 	url = https://github.com/bosagora/eventcore.git
 [submodule "libsodiumd"]
 	path = submodules/libsodiumd
-	url = https://github.com/Geod24/libsodiumd.git
+	url = https://github.com/bosagora/libsodiumd.git
 [submodule "localrest"]
 	path = submodules/localrest
-	url = https://github.com/Geod24/localrest.git
+	url = https://github.com/bosagora/localrest.git
 [submodule "mir-linux-kernel"]
 	path = submodules/mir-linux-kernel
 	url = https://github.com/libmir/mir-linux-kernel.git
