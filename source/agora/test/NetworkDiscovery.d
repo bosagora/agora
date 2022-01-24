@@ -41,32 +41,6 @@ unittest
     }
 }
 
-/// test network discovery through the getNodeInfo() API
-unittest
-{
-    TestConf conf =
-    {
-        topology : NetworkTopology.MinimallyConnected,
-        full_nodes : 4,
-    };
-    conf.node.min_listeners = 9;
-    conf.node.network_discovery_interval = 1.seconds;
-    auto network = makeTestNetwork!TestAPIManager(conf);
-
-    network.start();
-    scope(exit) network.shutdown();
-    scope(failure) network.printLogs();
-    network.waitForDiscovery;
-
-    foreach (key, node; network.nodes)
-    {
-        auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
-        // It can connect to between min of 9 and max of 6 validators + 4 fullnode + registry
-        assert(addresses.sort.uniq.count >= 9 && addresses.sort.uniq.count <= 11,
-               format("Node %s has %d peers: %s", key, addresses.length, addresses));
-    }
-}
-
 /// test finding all quorum nodes before network discovery is complete
 unittest
 {
@@ -82,15 +56,6 @@ unittest
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
-
-    foreach (key, node; network.nodes)
-    {
-        auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
-        const expectedCount = network.nodes.count + 1; // include name registry
-        assert(addresses.sort.uniq.count == expectedCount,
-               format("Node %s has %d peers but expected %d: %s",
-                key, addresses.length, expectedCount, addresses));
-    }
 }
 
 ///
