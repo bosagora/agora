@@ -165,8 +165,6 @@ public class RPCClient (API) : API
         assert(this.pool.add(conn));
     }
 
-    private struct Pack (T...) { T args; }
-
     /// Implementation of the API's functions
     static foreach (member; __traits(allMembers, API))
         static foreach (ovrld; __traits(getOverloads, API, member))
