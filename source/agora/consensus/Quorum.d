@@ -93,18 +93,12 @@ public QuorumConfig buildQuorumConfig (in NodeID key, in Hash[] utxo_keys,
     auto RNG_gen = getGenerator(key, rand_seed);
     auto stake_amounts = stakes.map!(stake => stake.amount.integral);
 
-    static assumeNothrow (T)(lazy T exp) nothrow
-    {
-        try return exp();
-        catch (Exception ex) assert(0, ex.msg);
-    }
-
     // +1 as we already added ourself
     const MaxNodes = min(stakes.length + 1, params.MaxQuorumNodes);
     while (quorum.nodes.length < MaxNodes)
     {
         // dice() can only throw if the sum of stakes is zero
-        auto idx = assumeNothrow(dice(RNG_gen, stake_amounts));
+        auto idx = assumeWontThrow(dice(RNG_gen, stake_amounts));
         if (added[idx])  // skip duplicate
             continue;
 
