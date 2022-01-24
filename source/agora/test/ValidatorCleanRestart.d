@@ -119,6 +119,9 @@ unittest
 unittest
 {
     TestConf conf;
+    conf.node.test_validators = 4;
+    conf.consensus.max_quorum_nodes = 3; // Can be removed after dynamic quorums is merged
+    conf.consensus.quorum_threshold = 66;
     conf.node.block_catchup_interval = 100.msecs; // speed up catchup
     conf.node.network_discovery_interval = 200.msecs; // speed up discovery
     auto network = makeTestNetwork!TestAPIManager(conf);
@@ -132,7 +135,8 @@ unittest
     auto node_1 = nodes[1];
     auto node_2 = nodes[2];
 
-    assert(node_1.getQuorumConfig().threshold == 5);
+    // 4 nodes has quorums of 3 nodes so quorum slice is 2 if threshold is 66%
+    assert(node_1.getQuorumConfig().threshold == 2);
 
     // Create a block after the Genesis block
     network.generateBlocks(Height(1));
@@ -142,7 +146,7 @@ unittest
     node_2.ctrl.sleep(1.hours, true);
 
     // Make 2 blocks
-    network.generateBlocks(only(0, 1, 3, 4, 5), Height(3));
+    network.generateBlocks(only(0, 1, 3), Height(3));
 
     // Wake up node_2
     node_2.ctrl.sleep(0.seconds);
@@ -151,9 +155,13 @@ unittest
     node_1.ctrl.sleep(1.hours, true);
 
     // wait till node_2 catches up
-    network.assertSameBlocks(only(0, 2, 3, 4, 5), Height(3));
+    network.assertSameBlocks(only(0, 2, 3), Height(3));
+
+    // give time for node_2 to be discovered again
+    // as catchup for missing txs only occurs after nomination has started
+    Thread.sleep(conf.node.network_discovery_interval);
 
     // A new block is still inserted into the ledger with the approval
     // of node_2, although node_1 was sleeping.
-    network.generateBlocks(only(0, 2, 3, 4, 5), Height(4));
+    network.generateBlocks(only(0, 2, 3), Height(4));
 }
