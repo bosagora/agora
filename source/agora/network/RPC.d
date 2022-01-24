@@ -185,10 +185,10 @@ public class RPCClient (API) : API
                     // Send the method type
 
                     conn.wlock.lock();
-                    conn.write(serializeFull(method));
+                    serializePart(method, &conn.write);
                     // List of parameters
                     foreach (ref p; params)
-                        serializePart(p, (in ubyte[] v) => conn.write(v));
+                        serializePart(p, &conn.write);
                     conn.flush();
                     conn.wlock.unlock();
 
