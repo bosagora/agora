@@ -17,7 +17,8 @@
 module agora.client.Common;
 
 import agora.api.FullNode;
-import agora.config.Config;
+
+import configy.Read;
 
 import std.getopt;
 

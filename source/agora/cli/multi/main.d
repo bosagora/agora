@@ -13,15 +13,17 @@
 
 module agora.cli.multi.main;
 
-import agora.config.Config;
 import agora.consensus.data.Params;
 import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
 import agora.utils.Log;
+
 import vibe.core.core;
 import vibe.web.rest;
 import vibe.inet.url;
+
+import configy.Read;
 
 import std.exception;
 import std.file;

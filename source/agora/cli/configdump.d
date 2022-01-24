@@ -15,7 +15,7 @@
 
 module agora.cli.configdump;
 
-import agora.config.Config;
+import configy.Read;
 
 import std.getopt;
 import std.stdio;

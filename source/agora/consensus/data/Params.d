@@ -113,7 +113,7 @@ public immutable class ConsensusParams
 /// Ditto
 public struct ConsensusConfig
 {
-    import agora.config.Attributes;
+    import configy.Attributes;
 
     /// Time at which the Genesis block was created
     public ulong genesis_timestamp = 1609_459_200; // 2021-01-01:00:00:00 GMT

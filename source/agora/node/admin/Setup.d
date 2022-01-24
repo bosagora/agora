@@ -18,7 +18,6 @@
 
 module agora.node.admin.Setup;
 
-import agora.config.Config;
 import agora.crypto.Key;
 import agora.node.Config;
 import agora.node.FullNode;
@@ -32,6 +31,8 @@ import vibe.http.router;
 import vibe.http.server;
 import vibe.inet.url;
 import vibe.stream.operations;
+
+import configy.Read;
 
 static import std.file;
 import std.format;

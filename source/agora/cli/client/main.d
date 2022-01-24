@@ -16,10 +16,11 @@ module agora.client.main;
 import agora.api.FullNode;
 import agora.client.GenTxProcess;
 import agora.client.SendTxProcess;
-import agora.config.Config;
 
 import vibe.core.core;
 import vibe.web.rest;
+
+import configy.Read;
 
 import std.getopt;
 import std.stdio;
