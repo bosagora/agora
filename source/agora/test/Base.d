@@ -1120,7 +1120,7 @@ public class TestAPIManager
             // Wait for tx gossipping before setting time for block
             client_idxs.each!(idx =>
                 retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
-                    4.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
+                    10.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
                         (file, line, idx, target_height)));
         }
 
