@@ -631,8 +631,10 @@ LOuter: while (1)
             funding_tx_signed.inputs[0].unlock
                 = genKeyUnlock(this.kp.sign(this.conf.funding_tx.getChallenge()));
 
-            log.info("Publishing funding tx..");
-            this.txPublisher(funding_tx_signed);
+            auto result = this.txPublisher(funding_tx_signed);
+            log.info("{}: Publishing funding tx: {}. Result: {}",
+                this.own_pk.flashPrettify, this.funding_tx_signed.hashFull.flashPrettify,
+                result);
         }
 
         this.trigger_utxo = UTXO.getHash(update_pair.update_tx.hashFull(), 0);
@@ -1984,9 +1986,10 @@ LOuter: while (1)
         this.pending_close.validated = true;
 
         // todo: schedule this
-        log.info("{}: Publishing close tx: {}",
-            this.own_pk.flashPrettify, this.pending_close.tx.hashFull.flashPrettify);
-        this.txPublisher(this.pending_close.tx);
+        auto result = this.txPublisher(this.pending_close.tx);
+        log.info("{}: Publishing close tx: {}. Result: {}",
+            this.own_pk.flashPrettify, this.pending_close.tx.hashFull.flashPrettify,
+            result);
         return true;
     }
 
@@ -2260,9 +2263,10 @@ LOuter: while (1)
             else
                 update_tx.inputs[idx].unlock = genKeyUnlock(fee_sig);
 
-        log.info("{}: Publishing update tx {}: {}",
-            this.own_pk.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify);
-        this.txPublisher(update_tx);
+        auto result = this.txPublisher(update_tx);
+        log.info("{}: Publishing update tx {}: {}. Result: {}",
+            this.own_pk.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify,
+            result);
         return update_tx;
     }
 
@@ -2312,11 +2316,10 @@ LOuter: while (1)
             else
                 input.unlock = genKeyUnlock(fee_sig);
 
-        log.info("{}: Publishing last settle tx {}: {}",
+        auto result = this.txPublisher(settle_tx);
+        log.info("{}: Publishing last settle tx {}: {}. Result: {}",
             this.own_pk.flashPrettify, this.channel_updates.length,
-            settle_tx.hashFull().flashPrettify);
-
-        this.txPublisher(settle_tx);
+            settle_tx.hashFull().flashPrettify, result);
         return settle_tx;
     }
 
