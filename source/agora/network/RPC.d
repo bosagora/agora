@@ -42,101 +42,8 @@ mixin AddLogger!();
 /// Ditto
 public class RPCClient (API) : API
 {
-    /// Aggregate configuration options for `RPCClient`
-    public struct Config
-    {
-        /***********************************************************************
-
-            Host to connect to
-
-            See_Also: https://tools.ietf.org/html/rfc3986#section-3.2.2
-
-        ***********************************************************************/
-
-        public string host;
-
-        /***********************************************************************
-
-            Port to connect to
-
-            See_Also: https://tools.ietf.org/html/rfc3986#section-3.2.3
-
-        ***********************************************************************/
-
-        public ushort port;
-
-        /***********************************************************************
-
-            Maximum number of retries before throwing an `Exception`
-
-            Whenever connecting or sending a request to a remote host,
-            this class will perform `max_retries` attempt at the operation
-            before throwing an `Exception`. Each attempt will have a delay
-            in between, and their own timeout, depending on the operation.
-
-        ***********************************************************************/
-
-        public uint max_retries;
-
-        /***********************************************************************
-
-            Timeout for a connection attempt
-
-            Whenever connecting to a remote host, this value defines how long
-            we are willing to wait before marking the connection attempt as
-            failed. Note that the total wait time also depends on `max_retries`
-            and `retry_delay`.
-
-        ***********************************************************************/
-
-        public Duration connection_timeout = 5.seconds;
-
-        /***********************************************************************
-
-            Timeout for a read operation
-
-            Whenever reading from a remote host, this value defines how long
-            we are willing to wait before marking the operation as failed.
-            Note that the total wait time also depends on `max_retries` and
-            `retry_delay`.
-
-        ***********************************************************************/
-
-        public Duration read_timeout = 5.seconds;
-
-        /***********************************************************************
-
-            Timeout for a write operation
-
-            Whenever sending data toa remote host, this value defines how long
-            we are willing to wait before marking the operation as failed.
-            Note that the total wait time also depends on `max_retries` and
-            `retry_delay`.
-
-        ***********************************************************************/
-
-        public Duration write_timeout = 5.seconds;
-
-        /***********************************************************************
-
-            Time to wait between two attempts at connecting / reading / writing
-
-            Whenever an operation is marked as failed, this is the time to
-            wait between each attempt.
-            Note that a smarter client might want to set max_retries to 0,
-            in which case this value has no effect, to implement smarter
-            approaches to retry, e.g. exponential backoff.
-
-        ***********************************************************************/
-
-        public Duration retry_delay  = 1.seconds;
-
-        ///
-        public uint concurrency = 3;
-    }
-
     /// Config instance for this client
-    private Config config;
+    private RPCConfig config;
 
     /// Pool of connections to the host
     private ConnectionPool!RPCConnection pool;
@@ -175,7 +82,7 @@ public class RPCClient (API) : API
                  uint concurrency, ThisEndAPI impl)
         @trusted
     {
-        const Config conf = {
+        const RPCConfig conf = {
             host:               host,
             port:               port,
 
@@ -191,13 +98,13 @@ public class RPCClient (API) : API
     }
 
     /// Ditto
-    public this (ThisEndAPI) (const Config config, ThisEndAPI impl) @trusted
+    public this (ThisEndAPI) (const RPCConfig config, ThisEndAPI impl) @trusted
     {
         this.config = config;
         this.log = Log.lookup(
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
         this.pool = new ConnectionPool!RPCConnection(() @safe {
-            ensure(this.config != Config.init, "Can not connect on unidentified client");
+            ensure(this.config != RPCConfig.init, "Can not connect on unidentified client");
             uint attempts;
             do
             {
@@ -244,7 +151,7 @@ public class RPCClient (API) : API
     /// Ditto
     public this (ThisEndAPI) (RPCConnection conn, ThisEndAPI impl) @trusted
     {
-        this(Config.init, impl);
+        this(RPCConfig.init, impl);
         assert(this.pool.add(conn));
     }
 
@@ -314,12 +221,105 @@ public class RPCClient (API) : API
     ///
     void merge (RPCClient!API rhs)
     {
-        if (this.config == Config.init)
+        if (this.config == RPCConfig.init)
             this.config = rhs.config;
         rhs.pool.removeUnused((RPCConnection conn) @trusted nothrow {
             this.addConnection(conn);
         });
     }
+}
+
+/// Aggregate configuration options for `RPCClient`
+public struct RPCConfig
+{
+    /***************************************************************************
+
+        Host to connect to
+
+        See_Also: https://tools.ietf.org/html/rfc3986#section-3.2.2
+
+    ***************************************************************************/
+
+    public string host;
+
+    /***************************************************************************
+
+        Port to connect to
+
+        See_Also: https://tools.ietf.org/html/rfc3986#section-3.2.3
+
+    ***************************************************************************/
+
+    public ushort port;
+
+    /***************************************************************************
+
+        Maximum number of retries before throwing an `Exception`
+
+        Whenever connecting or sending a request to a remote host,
+        this class will perform `max_retries` attempt at the operation
+        before throwing an `Exception`. Each attempt will have a delay
+        in between, and their own timeout, depending on the operation.
+
+    ***************************************************************************/
+
+    public uint max_retries;
+
+    /***************************************************************************
+
+        Timeout for a connection attempt
+
+        Whenever connecting to a remote host, this value defines how long
+        we are willing to wait before marking the connection attempt as
+        failed. Note that the total wait time also depends on `max_retries`
+        and `retry_delay`.
+
+    ***************************************************************************/
+
+    public Duration connection_timeout = 5.seconds;
+
+    /***************************************************************************
+
+        Timeout for a read operation
+
+        Whenever reading from a remote host, this value defines how long
+        we are willing to wait before marking the operation as failed.
+        Note that the total wait time also depends on `max_retries` and
+        `retry_delay`.
+
+    ***************************************************************************/
+
+    public Duration read_timeout = 5.seconds;
+
+    /***************************************************************************
+
+        Timeout for a write operation
+
+        Whenever sending data toa remote host, this value defines how long
+        we are willing to wait before marking the operation as failed.
+        Note that the total wait time also depends on `max_retries` and
+        `retry_delay`.
+
+    ***************************************************************************/
+
+    public Duration write_timeout = 5.seconds;
+
+    /***************************************************************************
+
+        Time to wait between two attempts at connecting / reading / writing
+
+        Whenever an operation is marked as failed, this is the time to
+        wait between each attempt.
+        Note that a smarter client might want to set max_retries to 0,
+        in which case this value has no effect, to implement smarter
+        approaches to retry, e.g. exponential backoff.
+
+    ***************************************************************************/
+
+    public Duration retry_delay  = 1.seconds;
+
+    ///
+    public uint concurrency = 3;
 }
 
 ///
