@@ -246,10 +246,6 @@ public class RPCClient (API) : API
     {
         this(Config.init, impl);
         assert(this.pool.add(conn));
-        static import vibe.core.core;
-        vibe.core.core.runTask({
-            conn.startListening(impl);
-        });
     }
 
     private struct Pack (T...) { T args; }
@@ -349,6 +345,7 @@ private class RPCConnection
         this.rlock = new TaskMutex();
         this.wlock = new TaskMutex();
         this.rcond = new TaskCondition(this.rlock);
+        this.rlock.lock();
     }
 
     ///
@@ -358,10 +355,9 @@ private class RPCConnection
         this();
     }
 
-    ///
+    /// Assumes rlock is locked
     void startListening (ThisEndAPI) (ThisEndAPI impl) @safe
     {
-        this.rlock.lock();
         scope (exit) {
             this.conn.close();
             this.rlock.unlock();
@@ -404,14 +400,15 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port,
 
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
+        auto conn = new RPCConnection(stream);
         try
-            discoverFromClient(new RPCClient!(agora.api.Validator.API)(new RPCConnection(stream), impl));
+            discoverFromClient(new RPCClient!(agora.api.Validator.API)(conn, impl));
         catch (Exception ex)
         {
             try log.trace("Exception caught while trying to create a client from incoming conn: {}", ex);
             catch (Exception e) {}
-            return;
         }
+        conn.startListening(impl);
     };
     return listenTCP(port, callback, address);
 }
