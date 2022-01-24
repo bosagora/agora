@@ -519,8 +519,10 @@ public class FullNode : API
         if (this.network.peers.empty())  // no clients yet (discovery)
             return;
 
+        const nextHeight = Height(this.ledger.height() + 1);
+        log.dbg("catchupTask: getBlocksFrom height {}", nextHeight);
         this.network.getBlocksFrom(
-            Height(this.ledger.height() + 1),
+            nextHeight,
             &this.addBlocks);
         this.network.getUnknownTXs(this.ledger);
         try
