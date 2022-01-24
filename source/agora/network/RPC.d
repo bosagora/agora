@@ -143,6 +143,7 @@ public class RPCClient (API) : API
                         static import vibe.core.core;
                         auto rpc_conn = new RPCConnection(conn);
                         vibe.core.core.runTask({
+                            rpc_conn.rlock.lock();
                             rpc_conn.startListening(impl);
                         });
                         return rpc_conn;
@@ -357,7 +358,6 @@ private class RPCConnection
         this.rlock = new TaskMutex();
         this.wlock = new TaskMutex();
         this.rcond = new TaskCondition(this.rlock);
-        this.rlock.lock();
     }
 
     ///
@@ -413,6 +413,7 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port,
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
         auto conn = new RPCConnection(stream);
+        conn.rlock.lock();
         try
             discoverFromClient(new RPCClient!(agora.api.Validator.API)(conn, impl));
         catch (Exception ex)
