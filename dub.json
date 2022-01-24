@@ -76,7 +76,6 @@
                 "source/agora/consensus/protocol/Config.d",
                 "source/agora/consensus/protocol/EnvelopeStore.d",
                 "source/agora/consensus/protocol/Nominator.d",
-                "source/agora/consensus/state/Ledger.d",
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
                 "source/agora/test/*",

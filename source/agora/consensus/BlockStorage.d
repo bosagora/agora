@@ -14,7 +14,7 @@
 
 *******************************************************************************/
 
-module agora.node.BlockStorage;
+module agora.consensus.BlockStorage;
 
 import agora.common.Amount;
 import agora.common.BitMask;

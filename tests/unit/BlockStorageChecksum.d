@@ -14,10 +14,10 @@
 module unit.BlockStorageChecksum;
 
 import agora.common.Types;
+import agora.consensus.BlockStorage;
 import agora.consensus.data.Block;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.genesis.Test;
-import agora.node.BlockStorage;
 import agora.utils.Test;
 
 import std.file;
