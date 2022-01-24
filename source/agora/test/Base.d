@@ -1141,7 +1141,7 @@ public class TestAPIManager
             // Wait for tx gossipping before setting time for block
             client_idxs.each!(idx =>
                 retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
-                    4.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
+                    10.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
                         (file, line, idx, target_height)));
         }
 
@@ -1251,7 +1251,7 @@ public class TestAPIManager
 
         client_idxs.each!(idx =>
             retryFor(Height(this.clients[idx].getBlockHeight()) == to,
-                5.seconds,
+                10.seconds,
                 format!"[%s:%s] Expected height %s for client #%s not %s"
                     (file, line, to, idx,
                         this.clients[idx].getBlockHeight())));
@@ -1259,7 +1259,7 @@ public class TestAPIManager
         // Compare blocks one at a time
         iota(from, to + 1).each!(h =>
             retryFor(client_idxs.map!(idx =>
-                this.clients[idx].getBlocksFrom(h, 1).hashFull).uniq().count() == 1, 5.seconds,
+                this.clients[idx].getBlocksFrom(h, 1).hashFull).uniq().count() == 1, 10.seconds,
                 format!"[%s:%s] Clients %s blocks are not all the same for block %s: %s"
                 (file, line, client_idxs, h, client_idxs.fold!((s, i) =>
                     s ~ format!"\n\n========== Client #%s (%s) ==========%s"
@@ -1312,7 +1312,7 @@ public class TestAPIManager
     /// Ensure that a transaction has been put in the tx pools of the client indices
     public void ensureTxInPool (Idxs) (Idxs clients_idxs, in Hash hash)
     {
-        retryFor(clients_idxs.all!(idx => this.clients[idx].hasTransactionHash(hash)), 3.seconds);
+        retryFor(clients_idxs.all!(idx => this.clients[idx].hasTransactionHash(hash)), 10.seconds);
     }
 
     /// Ditto
