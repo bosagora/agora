@@ -42,6 +42,17 @@ mixin AddLogger!();
 /// Ditto
 public class RPCClient (API) : API
 {
+    /// Lookup table for hashes (they can't be computed at CT)
+    private static immutable Hash[string] lookup;
+
+    /// Initialize `lookup`
+    shared static this ()
+    {
+        static foreach (member; __traits(allMembers, API))
+            static foreach (ovrld; __traits(getOverloads, API, member))
+                RPCClient.lookup[ovrld.mangleof] = hashFull(ovrld.mangleof);
+    }
+
     /// Config instance for this client
     private RPCConfig config;
 
@@ -50,9 +61,6 @@ public class RPCClient (API) : API
 
     /// Logger for this client
     private Logger log;
-
-    /// Lookup table for hashes (they can't be computed at CT)
-    private Hash[string] lookup;
 
     /***************************************************************************
 
@@ -142,10 +150,6 @@ public class RPCClient (API) : API
             ensure(false, "Failed to connect to host");
             assert(0);
         }, this.config.concurrency);
-
-        static foreach (member; __traits(allMembers, API))
-            static foreach (ovrld; __traits(getOverloads, API, member))
-                this.lookup[ovrld.mangleof] = hashFull(ovrld.mangleof);
     }
 
     /// Ditto
