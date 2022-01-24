@@ -18,6 +18,7 @@ module unit.BlockStorageMultiSig;
 import agora.common.Amount;
 import agora.common.BitMask;
 import agora.common.Types;
+import agora.consensus.BlockStorage;
 import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
@@ -25,7 +26,6 @@ import agora.consensus.validation.Block;
 import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.crypto.ECC;
-import agora.node.BlockStorage;
 import agora.utils.Test;
 import agora.utils.PrettyPrinter;
 

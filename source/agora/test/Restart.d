@@ -55,10 +55,10 @@ unittest
 /// Node which has a persistent Ledger (restart always clear the local state)
 private class PersistentNode : TestValidatorNode
 {
+    import agora.consensus.BlockStorage;
     import agora.consensus.EnrollmentManager;
     import agora.consensus.Fee;
     import agora.consensus.state.UTXOSet;
-    import agora.node.BlockStorage;
 
     mixin ForwardCtor!();
 
