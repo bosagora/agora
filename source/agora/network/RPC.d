@@ -42,15 +42,21 @@ mixin AddLogger!();
 /// Ditto
 public class RPCClient (API) : API
 {
-    /// Lookup table for hashes (they can't be computed at CT)
+    /// Lookup table for the client, mapping an overload to a hash
     private static immutable Hash[string] lookup;
+
+    /// Reverse lookup tables for the server, mapping a hash to an overload
+    private static immutable string[Hash] rlookup;
 
     /// Initialize `lookup`
     shared static this ()
     {
         static foreach (member; __traits(allMembers, API))
             static foreach (ovrld; __traits(getOverloads, API, member))
+            {
                 RPCClient.lookup[ovrld.mangleof] = hashFull(ovrld.mangleof);
+                RPCClient.rlookup[RPCClient.lookup[ovrld.mangleof]] = ovrld.mangleof;
+            }
     }
 
     /// Config instance for this client
@@ -467,14 +473,6 @@ private bool handle (API) (API api, RPCConnection stream, Duration timeout) @tru
 private void handleThrow (API) (scope API api, RPCConnection stream, Duration timeout)
     @trusted
 {
-    static string[Hash] lookup;
-    if (lookup.length == 0)
-    {
-        static foreach (member; __traits(allMembers, API))
-            static foreach (ovrld; __traits(getOverloads, API, member))
-                lookup[hashFull(ovrld.mangleof)] = ovrld.mangleof;
-    }
-
     ubyte[1024] buffer = void;
     scope DeserializeDg reader = (size_t size) @safe
     {
@@ -483,7 +481,7 @@ private void handleThrow (API) (scope API api, RPCConnection stream, Duration ti
         return buffer[0 .. size];
     };
 
-    string* method;
+    immutable(string)* method;
     Hash methodbin;
     while (true)
     {
@@ -500,7 +498,7 @@ private void handleThrow (API) (scope API api, RPCConnection stream, Duration ti
         }
         else
         {
-            method = methodbin in lookup;
+            method = methodbin in RPCClient!(API).rlookup;
             ensure(method !is null, format("[{}] Calling out of range method: {}",
                     stream.peerAddress, methodbin));
             break;
