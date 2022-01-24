@@ -519,8 +519,10 @@ public class FullNode : API
         if (this.network.peers.empty())  // no clients yet (discovery)
             return;
 
+        const nextHeight = Height(this.ledger.height() + 1);
+        log.dbg("catchupTask: getBlocksFrom height {}", nextHeight);
         this.network.getBlocksFrom(
-            Height(this.ledger.height() + 1),
+            nextHeight,
             &this.addBlocks);
         this.network.getUnknownTXs(this.ledger);
         try
@@ -1122,6 +1124,7 @@ public class FullNode : API
     protected void onAcceptedBlock (in Block block, bool validators_changed)
         @safe
     {
+        log.dbg("{}: height {}", __PRETTY_FUNCTION__, block.header.height);
         this.pushBlock(block);
         if (this.registry)
             this.registry.onAcceptedBlock(block, validators_changed);

@@ -37,6 +37,7 @@ import Ocean = ocean.util.log.Logger;
 
 import std.algorithm : min;
 import std.stdio;
+import std.exception : assumeWontThrow;
 import std.range : Cycle, cycle, isOutputRange, take, takeExactly, put;
 
 /// nothrow wrapper around Ocean's Logger
@@ -55,7 +56,8 @@ public struct Logger
     /// See `ocean.util.log.Logger : Logger.dbg`
     public void dbg (Args...) (cstring fmt, Args args)
     {
-        this.format(LogLevel.Debug, fmt, args);
+        // For debug logging let's assume we do not throw
+        assumeWontThrow(this.format(LogLevel.Debug, fmt, args));
     }
 
     /// See `ocean.util.log.Logger : Logger.trace`
