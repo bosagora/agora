@@ -260,139 +260,6 @@ public class NetworkManager
         }
     }
 
-    /***************************************************************************
-
-        Queries a Node's getNodeInfo() API endpoint to discover new sets
-        of addresses we may want to connect to.
-
-        The provided delegate will be called each time a Node's known
-        addresses were retrieved via the getNodeInfo() API endpoint.
-
-        Note that this is a never-ending task. A node's NodeInfo may signal
-        that it's complete, however the list of its peers may grow as new
-        incoming connections are established as well as when any quorum
-        reshuffling happens.
-
-    ***************************************************************************/
-
-    private class AddressDiscoveryTask
-    {
-        /// A queue of clients. Each client is contacted, and pushed back to the
-        /// queue (unless they were banned)
-        private DList!NetworkClient clients;
-
-        /// Convenience alias
-        public alias Callback = void delegate (Set!Address addresses);
-
-        /// Called when we have retrieved a set of addresses from a client
-        private Callback onNewAddresses;
-
-        // workaround to only run this task once
-        // (cannot run it in the ctor as the scheduler may not be running yet)
-        // todo: move it to the ctor once we have `schedule` implemented.
-        private bool is_running;
-
-        /***********************************************************************
-
-            Constructor
-
-            Params:
-                onNewAddresses = called when a set of addresses were retrieved
-                                 from a node
-
-        ***********************************************************************/
-
-        public this (Callback onNewAddresses) @safe pure nothrow @nogc
-        {
-            this.onNewAddresses = onNewAddresses;
-        }
-
-        /***********************************************************************
-
-            Start the asynchronous address discovery task.
-
-        ***********************************************************************/
-
-        public void run () nothrow
-        {
-            if (!this.is_running)
-            {
-                this.is_running = true;
-                this.outer.taskman.runTask(&this.getNewAddresses);
-            }
-        }
-
-        /***********************************************************************
-
-            Add a new client to the list of clients to query addresses from.
-
-        ***********************************************************************/
-
-        public void add (NetworkClient client)
-        {
-            this.clients.insertBack(client);
-        }
-
-        /***********************************************************************
-
-            Neverending function that retrieves the network state out of
-            all the clients it knows about. The clients are kept in a queue,
-            and each client is queried in sequence.
-
-            If the client's address is banned, it will be removed from the
-            clients list.
-
-        ***********************************************************************/
-
-        private void getNewAddresses () nothrow
-        {
-            log.dbg("getNewAddresses: Start never ending loop");
-            while (this.is_running)
-            {
-                auto peers = this.clients[].walkLength;
-                foreach (i; 1 .. peers + 1)
-                {
-                    if (!this.is_running)
-                        break; // We are shutting down
-
-                    NetworkClient client = this.clients.front;
-                    log.dbg("getNewAddresses: Update client {}/{} with current addresses {}", i, peers, client.addresses());
-                    this.clients.removeFront();
-
-                    try
-                    {
-                        auto node_info = client.getNodeInfo();
-                        this.onNewAddresses(node_info.addresses);
-                    }
-                    catch (Exception ex)
-                    {
-                        // request failures are already logged
-                    }
-                    finally
-                    {
-                        if (!client.connections.all!(
-                                conn => this.outer.banman.isBanned(conn.address)))
-                        {
-                            this.clients.insertBack(client);
-                            log.dbg("getNewAddresses: Updated client {}/{} with addresses {}", i, peers, client.addresses());
-                        }
-                        else
-                            log.dbg("getNewAddresses: client has all addresses {} banned",
-                                client.addresses());
-                    }
-                }
-                if (this.is_running)
-                {
-                    log.dbg("getNewAddresses: Wait for {} msecs",
-                        this.outer.node_config.network_discovery_interval.total!"msecs");
-                    this.outer.taskman.wait(this.outer.node_config.network_discovery_interval);
-                }
-                else
-                    log.dbg("getNewAddresses: Shutting down so exit");
-            }
-        }
-    }
-
     /// Logger instance
     protected Logger log;
 
@@ -407,9 +274,6 @@ public class NetworkManager
 
     /// Task manager
     private ITaskManager taskman;
-
-    /// Never-ending address discovery task
-    protected AddressDiscoveryTask discovery_task;
 
     /// Connection tasks for the nodes we're trying to connect to
     protected ConnectionTask[Address] connection_tasks;
@@ -462,7 +326,6 @@ public class NetworkManager
         this.consensus_config = config.consensus;
         this.cacheDB = cache;
         this.banman = this.getBanManager(config.banman, clock, cache);
-        this.discovery_task = new AddressDiscoveryTask(&this.addAddresses);
         this.clock = clock;
         this.owner_node = owner_node;
 
@@ -508,7 +371,6 @@ public class NetworkManager
         if (!node.client.connections.any!(conn => conn.address == Address.init))
         {
             this.peers.insertBack(node);
-            this.discovery_task.add(node.client);
 
             if (node.isValidator())
             {
@@ -752,10 +614,6 @@ public class NetworkManager
                 });
             }
         }
-
-        // actually just runs it once, but we need the scheduler to run first
-        // and it doesn't run in the constructor yet (LocalRest)
-        this.discovery_task.run();
 
         /// Returns: true if we should keep trying to connect to an address,
         /// else false if the address was banned
@@ -1123,7 +981,6 @@ public class NetworkManager
     /// Shut down timers & dump the metadata
     public void shutdown () @trusted
     {
-        this.discovery_task.is_running = false; // Exit never ending loop in addAddresses
         foreach (peer; this.peers)
             peer.client.shutdown();
         foreach (const ref peer; this.peers)
