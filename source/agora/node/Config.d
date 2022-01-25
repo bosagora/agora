@@ -100,7 +100,7 @@ public struct Config
     public RegistryConfig registry;
 
     /// The list of IPs for use with network discovery
-    public @Optional immutable string[] network;
+    public @Optional immutable Address[] network;
 
     /// The list of DNS FQDN seeds for use with network discovery
     @Name("dns")
@@ -627,7 +627,7 @@ network:
   - http://192.168.0.42:2826
 `;
         auto conf = parseConfigString!Config(conf_str, "/dev/null");
-        assert(conf.network == [ `http://192.168.0.42:2826` ]);
+        assert(conf.network == [ Address(`http://192.168.0.42:2826`) ]);
     }
 }
 
@@ -638,7 +638,7 @@ unittest
 node:
   data_dir: .cache
 network:
- - "something"
+ - "agora://something"
 `;
     auto config = parseConfigString!Config(conf_example, "/dev/null");
     assert(config.node.min_listeners == 2);
@@ -661,7 +661,7 @@ consensus:
     payout_period:           9999
     genesis_timestamp:     424242
 network:
- - "something"
+ - "agora://something"
 `;
 
     auto config = parseConfigString!Config(conf_example, "/dev/null");
@@ -688,7 +688,7 @@ validator:
   preimage_reveal_interval:
     seconds: 99
 network:
- - "something"
+ - "agora://something"
 `;
         auto config = parseConfigString!Config(conf_example, "/dev/null");
         assert(config.validator.enabled);
@@ -702,7 +702,7 @@ network:
 validator:
   enabled: true
 network:
- - "something"
+ - "agora://something"
 `;
     assertThrown!Exception(parseConfigString!Config(conf_example, "/dev/null"));
     }
@@ -719,7 +719,7 @@ logging:
   agora.network:
     level: Error
 network:
- - "something"
+ - "agora://something"
 `;
         auto config = parseConfigString!Config(conf_example, "/dev/null");
         assert(config.logging[0].name == "root");
@@ -731,7 +731,7 @@ network:
     {
         immutable conf_example = `
 network:
- - "something"
+ - "agora://something"
 `;
         auto config = parseConfigString!Config(conf_example, "/dev/null");
         assert(config.logging.length == 1);
@@ -750,7 +750,7 @@ unittest
     {
         immutable conf_example = `
 network:
-  - "something"
+  - "agora://something"
 `;
         auto config = parseConfigString!Config(conf_example, "/dev/null");
         assert(config.event_handlers.length == 0);
@@ -760,7 +760,7 @@ network:
     {
         immutable conf_example = `
 network:
-  - "something"
+  - "agora://something"
 event_handlers:
   BlockExternalized:
     addresses:
@@ -790,7 +790,7 @@ event_handlers:
     {
         immutable conf_example = `
 network:
-  - "something"
+  - "agora://something"
 event_handlers:
   BlockExternalized:
     addresses:
