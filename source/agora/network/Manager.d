@@ -184,7 +184,7 @@ public class NetworkManager
         {
             if (this.api is null)
                 this.api = this.outer.getClient(
-                    this.address, this.outer.node_config.timeout);
+                    this.address, this.outer.config.node.timeout);
 
             PublicKey key;
             Hash utxo;
@@ -224,14 +224,14 @@ public class NetworkManager
                         return;
 
                     // else try again
-                    this.outer.taskman.wait(this.outer.node_config.retry_delay);
+                    this.outer.taskman.wait(this.outer.config.node.retry_delay);
                 }
             }
 
             if (key != PublicKey.init)
             {
                 if (this.address !is Address.init
-                    && key == this.outer.validator_config.key_pair.address)
+                    && key == this.outer.config.validator.key_pair.address)
                 {
                     // either we connected to ourself, or someone else is pretending
                     // to be us
@@ -242,8 +242,8 @@ public class NetworkManager
             }
 
             auto client = new NetworkClient(this.outer.taskman,
-                this.outer.banman, this.outer.node_config.retry_delay,
-                this.outer.node_config.max_retries);
+                this.outer.banman, this.outer.config.node.retry_delay,
+                this.outer.config.node.max_retries);
             if (!client.merge(this.address, this.api))
                 assert(0);
 
@@ -261,13 +261,7 @@ public class NetworkManager
     protected Logger log;
 
     /// Config instance
-    protected const NodeConfig node_config = NodeConfig.init;
-
-    /// Validator instance
-    protected const ValidatorConfig validator_config = ValidatorConfig.init;
-
-    /// ConsensusConfig instance
-    protected const ConsensusConfig consensus_config = ConsensusConfig.init;
+    protected const Config config = Config.init;
 
     /// Task manager
     private ITaskManager taskman;
@@ -304,9 +298,6 @@ public class NetworkManager
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
-    /// Proxy to be used for outgoing Agora connections
-    protected URL proxy_url;
-
     protected agora.api.FullNode.API owner_node;
 
     /// Ctor
@@ -314,10 +305,7 @@ public class NetworkManager
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
-        this.node_config = config.node;
-        this.proxy_url = config.proxy.url;
-        this.validator_config = config.validator;
-        this.consensus_config = config.consensus;
+        this.config = config;
         this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
@@ -490,7 +478,7 @@ public class NetworkManager
         offsets.length = 0;
         () @trusted { assumeSafeAppend(offsets); }();
         // must include our own assumed clock drift (zero)
-        offsets ~= TimeInfo(this.validator_config.key_pair.address,
+        offsets ~= TimeInfo(this.config.validator.key_pair.address,
             this.clock.localTime(), 0, 0);
 
         foreach (node; this.validators())
@@ -526,7 +514,7 @@ public class NetworkManager
     public ITimer startPeriodicNameRegistration ()
     {
         this.registry_client = this.getNameRegistryClient(
-            this.validator_config.registry_address, 2.seconds);
+            this.config.validator.registry_address, 2.seconds);
         if (this.registry_client is null)
             return null;
 
@@ -535,7 +523,7 @@ public class NetworkManager
         // 1. network registry server is restarted
         // 2. client running agora node acquired some new IPs
         return this.taskman.setTimer(
-            this.validator_config.name_registration_interval,
+            this.config.validator.name_registration_interval,
             &this.onRegisterName, Periodic.Yes);
     }
 
@@ -566,7 +554,7 @@ public class NetworkManager
             {
                 auto key = utxo.value.output.address;
                 // Do not query the registry about ourself
-                if (key == this.validator_config.key_pair.address)
+                if (key == this.config.validator.key_pair.address)
                     continue;
 
                 taskman.runTask
@@ -625,7 +613,7 @@ public class NetworkManager
             if (this.connection_tasks.length >= MaxConnectionTasks)
             {
                 log.info("Connection task limit reached. Will trying again in {}..",
-                    this.node_config.network_discovery_interval);
+                    this.config.node.network_discovery_interval);
                 break;
             }
 
@@ -711,7 +699,7 @@ public class NetworkManager
     /// register network addresses into the name registry
     public void onRegisterName () @safe
     {
-        const(Address)[] addresses = this.validator_config.addresses_to_register;
+        const(Address)[] addresses = this.config.validator.addresses_to_register;
         if (!addresses.length)
             addresses = InetUtils.getPublicIPs().map!(
                 ip => Address("agora://"~ip)
@@ -725,13 +713,13 @@ public class NetworkManager
         {
             data:
             {
-                public_key : this.validator_config.key_pair.address,
+                public_key : this.config.validator.key_pair.address,
                 addresses : addresses,
                 seq : time(null)
             }
         };
 
-        payload.signPayload(this.validator_config.key_pair);
+        payload.signPayload(this.config.validator.key_pair);
 
         try
         {
@@ -972,9 +960,9 @@ public class NetworkManager
     private bool minPeersConnected () nothrow @safe
     {
         log.dbg("minPeersConnected: missing = {}, peers = {}, min = {}",
-            this.required_peers.length, this.peers[].walkLength, this.node_config.min_listeners);
+            this.required_peers.length, this.peers[].walkLength, this.config.node.min_listeners);
         return this.required_peers.length == 0 &&
-            this.peers[].walkLength >= this.node_config.min_listeners &&
+            this.peers[].walkLength >= this.config.node.min_listeners &&
             this.validators().filter!(node =>
                 !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
@@ -983,7 +971,7 @@ public class NetworkManager
     {
         return this.required_peers.length == 0 &&
             this.peers[].filter!(node =>
-                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count >= this.node_config.max_listeners &&
+                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count >= this.config.node.max_listeners &&
             this.validators().filter!(node =>
                 !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
@@ -1044,7 +1032,7 @@ public class NetworkManager
             settings.httpClientSettings = new HTTPClientSettings;
             settings.httpClientSettings.connectTimeout = timeout;
             settings.httpClientSettings.readTimeout = timeout;
-            settings.httpClientSettings.proxyURL = this.proxy_url;
+            settings.httpClientSettings.proxyURL = this.config.proxy.url;
             return new RestInterfaceClient!(agora.api.Validator.API)(settings);
         }
         assert(0, "Unknown agora schema");
@@ -1077,7 +1065,7 @@ public class NetworkManager
         settings.httpClientSettings = new HTTPClientSettings();
         settings.httpClientSettings.connectTimeout = timeout;
         settings.httpClientSettings.readTimeout = timeout;
-        settings.httpClientSettings.proxyURL = this.proxy_url;
+        settings.httpClientSettings.proxyURL = this.config.proxy.url;
 
         return new RestInterfaceClient!NameRegistryAPI(settings);
     }
@@ -1167,9 +1155,9 @@ public class NetworkManager
         auto settings = new RestInterfaceSettings;
         settings.baseURL = address;
         settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = this.node_config.timeout;
-        settings.httpClientSettings.readTimeout = this.node_config.timeout;
-        settings.httpClientSettings.proxyURL = this.proxy_url;
+        settings.httpClientSettings.connectTimeout = this.config.node.timeout;
+        settings.httpClientSettings.readTimeout = this.config.node.timeout;
+        settings.httpClientSettings.proxyURL = this.config.proxy.url;
         return settings;
     }
 
