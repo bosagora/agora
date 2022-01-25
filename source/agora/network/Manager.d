@@ -325,7 +325,7 @@ public class NetworkManager
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
         this.cacheDB = cache;
-        this.banman = this.getBanManager(config.banman, clock, cache);
+        this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
 
@@ -719,7 +719,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected BanManager getBanManager (in BanManager.Config banman_conf,
+    protected BanManager makeBanManager (in BanManager.Config banman_conf,
         Clock clock, ManagedDatabase cache)
     {
         return new BanManager(banman_conf, clock, cache);
