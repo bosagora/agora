@@ -819,7 +819,7 @@ public class Ledger
         }
 
         // Check that more than half have signed
-        if (!this.hasMajoritySignature(header))
+        if (!this.hasMajoritySignature(header, validators))
             if (auto fail_msg = this.handleNotSignedByMajority(header, validators))
                 return fail_msg;
 
@@ -890,23 +890,19 @@ public class Ledger
 
         Params:
             header = header to check the signatures of
+            validators = validator info for the active validators
 
         Returns:
             If the signatures have reached majority
 
     ***************************************************************************/
 
-    public bool hasMajoritySignature (const BlockHeader header) @safe nothrow
+    protected bool hasMajoritySignature (const BlockHeader header,
+        in ValidatorInfo[] validators) @safe nothrow
     {
         if (header.height == 0)  // Genesis block is not signed
             return true;
-
-        ulong num_validators;
-        try
-            num_validators = this.getValidators(header.height).length;
-        catch (Exception exc)
-            return false;
-
+        ulong num_validators = validators.length;
         assert(num_validators == header.validators.count);
         // Check that more than half have signed
         auto signed = header.validators.setCount;
@@ -916,13 +912,18 @@ public class Ledger
     /// Ditto
     public bool hasMajoritySignature (Height height) @safe nothrow
     {
+        ValidatorInfo[] validators;
+        try
+            validators = this.getValidators(height);
+        catch (Exception exc)
+            return false;
         if (height > this.height())
             return false;
         else if (height == this.last_block.header.height) // most common case
-            return this.hasMajoritySignature(this.last_block.header);
+            return this.hasMajoritySignature(this.last_block.header, validators);
 
         try
-            return this.hasMajoritySignature(this.storage.readBlock(height).header);
+            return this.hasMajoritySignature(this.storage.readBlock(height).header, validators);
         catch (Exception exc)
             return false;
     }
