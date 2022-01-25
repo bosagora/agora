@@ -720,6 +720,53 @@ public class ValidatingLedger : NodeLedger
 
     /***************************************************************************
 
+        Override so that if this validator has not yet signed it is not included
+
+        Params:
+            header = header to check the signatures of
+            validators = validator info for the active validators
+            height = block height we are checking (used in second overload)
+
+        Returns:
+            If the signatures have reached majority
+
+    ***************************************************************************/
+
+    protected override bool hasMajoritySignature (const BlockHeader header,
+        in ValidatorInfo[] validators) @safe nothrow
+    {
+        if (header.height == 0)  // Genesis block is not signed
+            return true;
+        const num_validators = validators.length;
+        assert(num_validators == header.validators.count);
+        // Check that more than half have signed
+        try
+        {
+            const self_utxo = this.enroll_man.getEnrollmentKey();
+            if (self_utxo != Hash.init)
+            {
+                // If this node has not signed yet then assume it will
+                const self_idx = validators.map!(v => v.utxo).countUntil(self_utxo);
+                if (self_idx >= 0 && !header.validators[self_idx])
+                    return header.validators.setCount + 1 > (num_validators / 2);
+            }
+        }
+        catch (Exception e)
+        {
+            log.dbg("[{}:{}]: ValidatingLedger.hasMajoritySignature: {}",
+                __FILE__, __LINE__, e.msg);
+        }
+        return header.validators.setCount > (num_validators / 2);
+    }
+
+    /// Ditto
+    public override bool hasMajoritySignature (Height height) @safe nothrow
+    {
+        return super.hasMajoritySignature(height);
+    }
+
+    /***************************************************************************
+
         Collect up to a maximum number of transactions to nominate
 
         Params:
