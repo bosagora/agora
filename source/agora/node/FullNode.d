@@ -913,7 +913,7 @@ public class FullNode : API
     }
 
     /// GET: /node_info
-    public override NodeInfo getNodeInfo () nothrow @safe
+    public override NodeInfo getNodeInfo () @safe
     {
         this.recordReq("node_info");
         return this.network.getNetworkInfo();

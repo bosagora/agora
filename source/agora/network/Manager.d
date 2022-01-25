@@ -27,6 +27,7 @@ import agora.api.Registry;
 import agora.api.Validator;
 import agora.api.FullNode;
 import agora.common.BanManager;
+import agora.common.Ensure;
 import agora.common.Types;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
@@ -96,19 +97,17 @@ public class NetworkManager
 
     private class ConnectionTask
     {
+        /// PublicKey of the node that we want to connect to
+        private PublicKey key;
+
         /// Address to connect to
-        private const Address address;
+        private Address address;
 
         /// Called when we've connected and determined if this is
         /// a FullNode / Validator
         public alias OnHandshakeComplete = void delegate (scope ref NodeConnInfo);
         /// Ditto
         private OnHandshakeComplete onHandshakeComplete;
-
-        /// Called when a request to a node fails.
-        /// The delegate should return true if we should continue trying
-        /// to send requests to this node, or false (e.g. if the node is banned)
-        private bool delegate (in Address) onFailedRequest;
 
         ///
         private agora.api.Validator.API api;
@@ -121,28 +120,31 @@ public class NetworkManager
                 address = the adddress of the node
                 onHandshakeComplete = called when we've successfully connected
                                       and determined the type of the Node
-                onFailedRequest = called when a request fails, returns true
-                                  if we should keep trying to send requests
 
         ***********************************************************************/
 
-        public this (Address address,
-            OnHandshakeComplete onHandshakeComplete,
-            bool delegate (in Address address) onFailedRequest)
+        public this (PublicKey key,
+            OnHandshakeComplete onHandshakeComplete)
             @safe pure nothrow @nogc
         {
-            this(address, null, onHandshakeComplete, onFailedRequest);
+            this.key = key;
+            this.onHandshakeComplete = onHandshakeComplete;
         }
 
-        public this (Address address, agora.api.Validator.API api,
-            OnHandshakeComplete onHandshakeComplete,
-            bool delegate (in Address address) onFailedRequest)
+        public this (Address address,
+            OnHandshakeComplete onHandshakeComplete)
             @safe pure nothrow @nogc
         {
             this.address = address;
+            this.onHandshakeComplete = onHandshakeComplete;
+        }
+
+        public this (agora.api.Validator.API api,
+            OnHandshakeComplete onHandshakeComplete)
+            @safe pure nothrow @nogc
+        {
             this.api = api;
             this.onHandshakeComplete = onHandshakeComplete;
-            this.onFailedRequest = onFailedRequest;
         }
 
         /***********************************************************************
@@ -161,10 +163,6 @@ public class NetworkManager
             Repeatedly attempt connecting to an address, and try to determine
             if this is a FullNode or a Validator.
 
-            After each connection failure / request failure the ban manager is
-            queried, and if this address was banned then 'onFailedRequest()'
-            will be called and the task will be killed.
-
             If we've successfully connected and determined the Node type,
             'onHandshakeComplete' is called and the task is killed.
 
@@ -177,64 +175,95 @@ public class NetworkManager
             catch (Exception exc)
                 log.error("Unexpected exception while contacting {}: {}",
                           this.address, exc);
+            this.outer.connection_tasks.remove(this.address.toString());
+            this.outer.connection_tasks.remove(this.key.toString());
         }
 
         /// Ditto, just behind a trampoline to avoid function-wide try/catch
         private void connect_canthrow ()
         {
+            if (this.address is Address.init && this.api is null)
+            {
+                ensure(this.outer.registry_client !is null, "Trying to connect to a PublicKey"
+                    ~ "with no registry client");
+                ensure(this.key != PublicKey.init, "Misconfigured connection task");
+
+                RegistryPayload payload;
+                retry!
+                ({
+                    payload = this.outer.registry_client.getValidator(this.key);
+                    return payload != RegistryPayload.init;
+                },
+                )(this.outer.taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
+
+                if (payload == RegistryPayload.init)
+                {
+                    log.warn("Could not find mapping in registry for key {}", this.key);
+                    return;
+                }
+
+                if (payload.data.public_key != this.key)
+                {
+                    log.error("Registry answered with the wrong key: {} => {}",
+                                this.key, payload);
+                    return;
+                }
+
+                if (!payload.data.addresses.length)
+                {
+                    log.error("Registry answered with no addresses: {} => {}",
+                                this.key, payload);
+                    return;
+                }
+
+                // they are all good as any
+                this.address = payload.data.addresses[0];
+            }
+
             if (this.api is null)
                 this.api = this.outer.getClient(this.address);
 
-            PublicKey key;
             Hash utxo;
-            while (1)
+            try
             {
-                try
+                import agora.flash.OnionPacket : generateSharedSecret;
+                import libsodium.crypto_auth;
+
+                const ephemeral_kp = KeyPair.random();
+                auto id = this.api.handshake(ephemeral_kp.address);
+
+                // No identity, either a full node or not enrolled
+                if (id.key == PublicKey.init)
+                    return;
+
+                Hash shared_sec = generateSharedSecret(true,
+                    ephemeral_kp.secret, id.key).hashFull();
+                static assert(shared_sec.sizeof >= crypto_auth_KEYBYTES);
+
+                if (id.mac.length != crypto_auth_KEYBYTES ||
+                    crypto_auth_verify(id.mac.ptr, id.key[].ptr,
+                        id.key[].length, shared_sec[].ptr) != 0)
                 {
-                    import agora.flash.OnionPacket : generateSharedSecret;
-                    import libsodium.crypto_auth;
-
-                    const ephemeral_kp = KeyPair.random();
-                    auto id = this.api.handshake(ephemeral_kp.address);
-
-                    // No identity, either a full node or not enrolled
-                    if (id.key == PublicKey.init)
-                        break;
-
-                    Hash shared_sec = generateSharedSecret(true,
-                        ephemeral_kp.secret, id.key).hashFull();
-                    static assert(shared_sec.sizeof >= crypto_auth_KEYBYTES);
-
-                    if (id.mac.length != crypto_auth_KEYBYTES ||
-                        crypto_auth_verify(id.mac.ptr, id.key[].ptr,
-                            id.key[].length, shared_sec[].ptr) != 0)
-                    {
-                        this.outer.banman.ban(this.address);
-                        return;
-                    }
-
-                    utxo = id.utxo;
-                    key = id.key;
-                    break;
+                    this.outer.banman.ban(this.address);
+                    return;
                 }
-                catch (Exception ex)
-                {
-                    if (!this.onFailedRequest(this.address))
-                        return;
 
-                    // else try again
-                    this.outer.taskman.wait(this.outer.config.node.retry_delay);
-                }
+                utxo = id.utxo;
+                if (this.key == PublicKey.init)
+                    this.key = id.key;
+                else if (this.key != id.key)
+                    return; // not the droid we are looking for
             }
+            catch (Exception ex)
+                return;
 
-            if (key != PublicKey.init)
+            if (this.key != PublicKey.init)
             {
                 if (this.address !is Address.init
                     && key == this.outer.config.validator.key_pair.address)
                 {
                     // either we connected to ourself, or someone else is pretending
                     // to be us
-                    this.outer.connection_tasks.remove(address);
                     this.outer.banman.ban(address);
                     return;
                 }
@@ -247,7 +276,7 @@ public class NetworkManager
                 assert(0);
 
             NodeConnInfo node = {
-                key : key,
+                key : this.key,
                 utxo: utxo,
                 client : client
             };
@@ -266,16 +295,10 @@ public class NetworkManager
     private ITaskManager taskman;
 
     /// Connection tasks for the nodes we're trying to connect to
-    protected ConnectionTask[Address] connection_tasks;
+    protected ConnectionTask[string] connection_tasks;
 
     /// All connected nodes (Validators & FullNodes)
     public DList!NodeConnInfo peers;
-
-    /// All known addresses so far (used for getNodeInfo())
-    protected Set!Address known_addresses;
-
-    /// The list of addresses we have not yet tried to connect to
-    protected Set!Address todo_addresses;
 
     /// For a Validator, NodeInfo.state will be Complete only
     /// if it has connected to all of its quorum peers.
@@ -308,13 +331,6 @@ public class NetworkManager
         this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
-
-        // add the IP seeds
-        this.addAddresses(Set!Address.from(config.network));
-
-        // add the DNS seeds
-        if (config.dns_seeds.length > 0)
-            this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -328,7 +344,6 @@ public class NetworkManager
     private void onHandshakeComplete (scope ref NodeConnInfo node)
     {
         log.dbg("onHandshakeComplete: addresses: {}", node.client.addresses());
-        node.client.connections.each!(conn => this.connection_tasks.remove(conn.address));
         if (this.tryMerge(node))
         {
             this.required_peers.remove(node.utxo);
@@ -350,12 +365,6 @@ public class NetworkManager
             }
             else
                 log.info("Found new FullNode: {}", node.client.addresses());
-        }
-        else // unidentified connection that we can not merge, just use it for a single shot of address discovery
-        {
-            log.dbg("onHandshakeComplete: an unidentified connection was included");
-            auto node_info = node.client.getNodeInfo();
-            this.addAddresses(node_info.addresses);
         }
     }
 
@@ -548,130 +557,46 @@ public class NetworkManager
             "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
             required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
 
-        if (this.registry_client !is null)
+        bool spawnConnectionTask (AddressOrPublicKey) (AddressOrPublicKey id)
         {
-            foreach (utxo; last_known_validator_utxos.byKeyValue)
-            if (!this.peers[].map!(ni => ni.utxo).canFind(utxo.key))
-            {
-                auto key = utxo.value.output.address;
-                // Do not query the registry about ourself
-                if (key == this.config.validator.key_pair.address)
-                    continue;
+            if (id.toString() in this.connection_tasks)
+                return true;
 
-                taskman.runTask
-                ({
-                    // https://github.com/bosagora/agora/issues/2197
-                    const ckey = key;
-                    retry!
-                    ({
-                        auto payload = this.registry_client.getValidator(ckey);
-                        if (payload == RegistryPayload.init)
-                        {
-                            log.warn("Could not find mapping in registry for key {}", ckey);
-                            return false;
-                        }
-
-                        if (payload.data.public_key != ckey)
-                        {
-                            log.error("Registry answered with the wrong key: {} => {}",
-                                      ckey, payload);
-                            return false;
-                        }
-
-                        foreach (addr; payload.data.addresses)
-                            this.addAddress(addr);
-                        return true;
-                    },
-                    )(taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
-                });
-            }
-        }
-
-        /// Returns: true if we should keep trying to connect to an address,
-        /// else false if the address was banned
-        bool onFailedRequest (in Address address) nothrow
-        {
-            if (this.banman.isBanned(address))
-            {
-                this.connection_tasks.remove(address);
-                return false;
-            }
-
-            return true;
-        }
-
-        try
-        {
-            foreach (addr; registry.validatorsAddresses())
-                this.addAddress(addr);
-        }
-        catch (Exception ex)
-            log.info("Cannot fetch validator addresses from our registry {}",
-                ex);
-
-        while (this.todo_addresses.length)
-        {
             if (this.connection_tasks.length >= MaxConnectionTasks)
             {
                 log.info("Connection task limit reached. Will trying again in {}..",
                     this.config.node.network_discovery_interval);
-                break;
+                return false;
             }
 
-            const num_addresses = MaxConnectionTasks -
-                this.connection_tasks.length;
+            auto conn_task = new ConnectionTask(id, &onHandshakeComplete);
+            this.connection_tasks[id.toString()] = conn_task;
+            conn_task.start();
+            return true;
+        }
 
-            foreach (address; this.todo_addresses.pickRandom(num_addresses))
+        foreach (peer_addr; this.config.network)
+        {
+            if (this.banman.isBanned(peer_addr) ||
+                this.peers[].canFind!(peer => peer.client.addresses().canFind(peer_addr)))
+                continue;
+            if (!spawnConnectionTask(peer_addr))
+                return;
+        }
+
+        if (this.registry_client)
+        {
+            auto to_connect_utxos = this.required_peers[].map!(key =>
+                required_peer_utxos[key]).chain(last_known_validator_utxos.byValue);
+            foreach (peer_addr; to_connect_utxos.map!(utxo => utxo.output.address))
             {
-                this.todo_addresses.remove(address);
-                this.connection_tasks[address] = new ConnectionTask(
-                    address, &onHandshakeComplete, &onFailedRequest);
-                this.connection_tasks[address].start();
+                if (peer_addr == this.config.validator.key_pair.address ||
+                    this.peers[].canFind!(peer => peer.key == peer_addr))
+                    continue;
+                if (!spawnConnectionTask(peer_addr))
+                    return;
             }
         }
-    }
-
-    /***************************************************************************
-
-        Check if we should connect with the given address.
-        If the address is banned, already connected, or already queued
-        for a connection then return false.
-
-        Params:
-            address = the address to check
-
-        Returns:
-            true if we should establish connection to this address
-
-    ***************************************************************************/
-
-    private bool shouldEstablishConnection (Address address) @safe
-    {
-        auto existing_peer = this.peers[].find!(p => p.client.addresses.canFind(address));
-        return !this.banman.isBanned(address) &&
-            address !in this.connection_tasks &&
-            address !in this.todo_addresses &&
-            (existing_peer.empty || // either does not exist or a validator with no stake
-                (existing_peer.front.isValidator() && existing_peer.front.utxo == Hash.init));
-    }
-
-    /// Received new set of addresses, put them in the todo address list
-    private void addAddresses (Set!Address addresses) @safe
-    {
-        foreach (address; addresses)
-            this.addAddress(address);
-    }
-
-    /// Ditto
-    private void addAddress (Address address) @safe
-    {
-        if (this.shouldEstablishConnection(address))
-            this.todo_addresses.put(address);
-
-        // We include banned addresses in known address,
-        // because while *we* cannot establish a connection with
-        // a node it's possible other nodes in the network might be able to.
-        this.known_addresses.put(address);
     }
 
     /***************************************************************************
@@ -705,7 +630,6 @@ public class NetworkManager
             addresses = InetUtils.getPublicIPs().map!(
                 ip => Address("agora://"~ip)
             ).array;
-        this.addAddresses(Set!Address.from(addresses));
 
         if (this.registry_client is null)
             return;
@@ -978,12 +902,12 @@ public class NetworkManager
     }
 
     /// Returns: the list of node IPs this node is connected to
-    public NodeInfo getNetworkInfo () nothrow @safe
+    public NodeInfo getNetworkInfo () @safe
     {
         return NodeInfo(
             this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
-            this.known_addresses);
+            Set!Address.from(this.peers[].map!(peer => peer.client.addresses).joiner().array));
     }
 
     /***************************************************************************
@@ -1192,8 +1116,7 @@ public class NetworkManager
     ///
     public void discoverFromClient (agora.api.Validator.API api) @trusted nothrow
     {
-        new ConnectionTask(Address.init, api, &onHandshakeComplete,
-                           (in Address _) { return false; }).start();
+        new ConnectionTask(api, &onHandshakeComplete).start();
     }
 }
 
