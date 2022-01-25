@@ -902,10 +902,10 @@ public class Ledger
     {
         if (header.height == 0)  // Genesis block is not signed
             return true;
-        ulong num_validators = validators.length;
+        const num_validators = validators.length;
         assert(num_validators == header.validators.count);
         // Check that more than half have signed
-        auto signed = header.validators.setCount;
+        const signed = header.validators.setCount;
         return signed > (num_validators / 2);
     }
 
