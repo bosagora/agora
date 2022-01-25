@@ -906,7 +906,7 @@ public class Ledger
         assert(num_validators == header.validators.count);
         // Check that more than half have signed
         auto signed = header.validators.setCount;
-        return signed > num_validators / 2;
+        return signed > (num_validators / 2);
     }
 
     /// Ditto
