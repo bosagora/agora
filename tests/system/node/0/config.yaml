@@ -22,6 +22,7 @@ node:
   relay_tx_min_fee : 0
   relay_tx_cache_exp:
     seconds : 1200
+  realm: "integration.bosagora.io"
 
 interfaces:
   - type: http
@@ -49,17 +50,24 @@ validator:
   enabled: false
 
 ################################################################################
-##                               Node discovery                               ##
-##                                                                            ##
-## When the network first starts, we need to connect to some peers to learn   ##
-## the topology and find a safe intersection to listen to, and, if we are     ##
-## a validator, to insert ourselves.                                          ##
+##                             Registry configuration                         ##
 ################################################################################
-network:
-  # Supported value: IPv4, IPv6
-  - http://node-2:2826
-  - agora://node-3:3735
-  - http://node-4:4826
-  - agora://node-5:5735
-  - http://node-6:6826
-  - agora://node-7:7735
+registry:
+  enabled: true
+  address: 0.0.0.0
+  port: 8053
+  realm:
+    authoritative: true
+    primary: node-0.
+    soa:
+      email: dev@bosagora.io
+  validators:
+    authoritative: true
+    primary: node-0.
+    soa:
+      email: dev@bosagora.io
+  flash:
+    authoritative: true
+    primary: node-0.
+    soa:
+      email: dev@bosagora.io
