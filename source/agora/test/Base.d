@@ -2226,7 +2226,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             interfaces: [ makeInterfaceConfig(self_address.host) ],
             consensus: makeConsensusConfig(),
             validator : validator,
-            network : cast(immutable) makeNetworkConfig(idx, addresses).map!(addr => addr.toString).array,
+            network : cast(immutable) makeNetworkConfig(idx, addresses),
             logging: test_conf.logging,
             event_handlers : test_conf.event_handlers,
         };
@@ -2243,7 +2243,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             node : makeNodeConfig(),
             interfaces: [ makeInterfaceConfig(self_address.host) ],
             consensus: makeConsensusConfig(),
-            network : cast(immutable) makeNetworkConfig(idx, addresses).map!(addr => addr.toString).array,
+            network : cast(immutable) makeNetworkConfig(idx, addresses),
             logging: test_conf.logging,
             event_handlers : test_conf.event_handlers,
         };
@@ -2320,7 +2320,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
       node : makeNodeConfig(),
       interfaces: [ makeInterfaceConfig("name.registry") ],
       consensus: makeConsensusConfig(),
-      network : net.nodes.map!(pair => "http://"~pair.address).array.idup,
+      network : net.nodes.map!(pair => Address("http://"~pair.address)).array.idup,
       logging: test_conf.logging,
       event_handlers : test_conf.event_handlers,
       registry: {
