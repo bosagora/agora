@@ -17,6 +17,7 @@ version (unittest):
 
 import agora.common.ManagedDatabase;
 import agora.consensus.data.Params;
+import agora.crypto.Hash;
 import agora.test.Base;
 
 /// A test that stops and restarts a node
@@ -30,17 +31,21 @@ unittest
     network.waitForDiscovery();
 
     auto nodes = network.clients;
-    auto node_1 = nodes[0];
+    auto node_0 = nodes[0];
+    auto node_1 = nodes[1];
 
-    auto txes = genesisSpendable().map!(txb => txb.sign()).array();
-    txes.each!(tx => node_1.postTransaction(tx));
+    Transaction[] txes = genesisSpendable().map!(txb => txb.sign()).array();
+    node_0.postTransaction(txes[0]);
     network.expectHeight(Height(1));
 
     // Now shut down & restart one node
-    auto restartMe = nodes[0];
-    network.restart(restartMe);
+    network.restart(node_1);
     network.waitForDiscovery();
-    network.expectHeight(Height(1));
+
+    // Now test tx is gossiped to restarted node
+    Transaction tx = txes[1];
+    node_0.postTransaction(tx);
+    node_1.hasAcceptedTxHash(hashFull(tx)).retryFor(10.seconds);
 
     // Test for https://github.com/bosagora/agora/issues/2344
     network.restart(nodes[$-1]);
@@ -49,7 +54,7 @@ unittest
     // trigger the dreaded `assert`
     // "Trying to access node at address ... without first creating it"
     network.waitForDiscovery();
-    network.expectHeight(Height(1));
+    network.expectHeight(Height(2));
 }
 
 /// Node which has a persistent Ledger (restart always clear the local state)
