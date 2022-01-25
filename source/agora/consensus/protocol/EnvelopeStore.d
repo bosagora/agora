@@ -70,16 +70,16 @@ public class SCPEnvelopeStore
 
     ***************************************************************************/
 
-    public void lock () @trusted nothrow
+    public void lock () @trusted
     {
-        this.db.beginBatch();
+        this.db.begin();
     }
 
     /// Ditto
-    public void unlock (bool commit) @trusted nothrow
+    public void unlock (bool commit) @trusted
     {
         if (commit)
-            this.db.commitBatch();
+            this.db.commit();
         else
             this.db.rollback();
     }
