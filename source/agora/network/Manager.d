@@ -298,9 +298,6 @@ public class NetworkManager
     /// Address ban manager
     protected BanManager banman;
 
-    ///
-    private ManagedDatabase cacheDB;
-
     /// Clock instance
     protected Clock clock;
 
@@ -324,21 +321,9 @@ public class NetworkManager
         this.proxy_url = config.proxy.url;
         this.validator_config = config.validator;
         this.consensus_config = config.consensus;
-        this.cacheDB = cache;
         this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
-
-        this.cacheDB.execute(
-            "CREATE TABLE IF NOT EXISTS network_manager (" ~
-            "utxo TEXT, pubkey TEXT, address TEXT NOT NULL)");
-
-        auto results = this.cacheDB.execute("SELECT address FROM network_manager");
-        foreach (ref row; results)
-        {
-            const address = row.peek!(string)(0);
-            this.addAddress(Address(address));
-        }
 
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
@@ -983,11 +968,6 @@ public class NetworkManager
     {
         foreach (peer; this.peers)
             peer.client.shutdown();
-        foreach (const ref peer; this.peers)
-        foreach (addr; peer.client.addresses.filter!(addr => addr != Address.init))
-            this.cacheDB.execute(
-                "REPLACE INTO network_manager(address, utxo, pubkey) VALUES(?, ?, ?)",
-                addr, peer.utxo, peer.key);
     }
 
     ///
