@@ -470,7 +470,7 @@ public void simulatePreimages (Ledger ledger, in Height height,
 {
     ledger.getValidators(height).enumerate.each!((idx, val)
     {
-        if (skip_indexes.length == 0 || !skip_indexes.canFind(idx))
+        if (!skip_indexes.canFind(idx))
             ledger.addPreimage(PreImageInfo(val.preimage.utxo,
                 WK.PreImages[WK.Keys[val.address]][height], height));
     });
