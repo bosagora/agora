@@ -228,8 +228,7 @@ public class NetworkManager
                 }
             }
 
-            const is_validator = key != PublicKey.init;
-            if (is_validator)
+            if (key != PublicKey.init)
             {
                 if (this.address !is Address.init
                     && key == this.outer.validator_config.key_pair.address)
@@ -247,8 +246,6 @@ public class NetworkManager
                 this.outer.node_config.max_retries);
             if (!client.merge(this.address, this.api))
                 assert(0);
-            if (is_validator)
-                client.setIdentity(key);
 
             NodeConnInfo node = {
                 key : key,
@@ -362,6 +359,7 @@ public class NetworkManager
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
                          node.client.addresses(), node.utxo, node.key);
                 this.required_peers.remove(node.utxo);
+                node.client.setIdentity(node.key);
             }
             else
                 log.info("Found new FullNode: {}", node.client.addresses());
