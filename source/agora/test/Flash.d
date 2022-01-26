@@ -375,7 +375,7 @@ public class FlashNodeFactory : TestAPIManager
             max_retry_time : 4.seconds,
             max_retry_delay : 100.msecs,
             listener_address : ListenerAddress,
-            registry_address : "http://name.registry",
+            registry_address : "dns://10.8.8.8",
             addresses_to_register : [ Address("http://"~to!string(kp.address)) ],
             key_pair : kp,
         };
