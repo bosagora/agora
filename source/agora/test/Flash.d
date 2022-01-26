@@ -1715,20 +1715,7 @@ unittest
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
 
-    FlashConfig alice_conf = { enabled : true,
-        min_funding : Amount(1000),
-        max_funding : Amount(100_000_000),
-        min_settle_time : 0,
-        max_settle_time : 100,
-        listener_address : network.ListenerAddress,
-        max_retry_time : 4.seconds,
-        max_retry_delay : 10.msecs,
-        registry_address : "http://name.registry",
-        addresses_to_register : [ Address("http://"~to!string(WK.Keys.A.address)) ],
-        key_pair : WK.Keys.A
-    };
-
-    auto alice = network.createFlashNode(alice_conf);
+    auto alice = network.createFlashNode(WK.Keys.A);
     auto charlie = network.createFlashNode!RejectingFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
 
@@ -1813,20 +1800,7 @@ unittest
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
 
-    FlashConfig alice_conf = { enabled : true,
-        min_funding : Amount(1000),
-        max_funding : Amount(100_000_000),
-        min_settle_time : 0,
-        max_settle_time : 100,
-        listener_address : network.ListenerAddress,
-        max_retry_time : 4.seconds,
-        max_retry_delay : 10.msecs,
-        registry_address : "http://name.registry",
-        addresses_to_register : ["http://"~to!string(WK.Keys.A.address)],
-        key_pair : WK.Keys.A
-    };
-
-    auto alice = network.createFlashNode(alice_conf);
+    auto alice = network.createFlashNode(WK.Keys.A);
     auto charlie = network.createFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
 
