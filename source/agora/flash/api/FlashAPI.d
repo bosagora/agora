@@ -61,7 +61,11 @@ public struct ChannelConfig
     public PublicKey peer_pk;
 
     /// Sum of `funder_pk + peer_pk`.
-    public PublicKey pair_pk;
+    public PublicKey pair_pk () const scope @safe nothrow @nogc
+    {
+        // Use `.data` as otherwise any compilation error is misdiagnosed
+        return PublicKey(this.funder_pk.data + this.peer_pk.data);
+    }
 
     /// Total number of co-signers needed to make update/settlement transactions
     /// in this channel.
@@ -120,7 +124,6 @@ public struct ChannelConfig
         import std.algorithm.searching : canFind;
 
         if (!this.funder_pk.isValid() || !this.peer_pk.isValid() ||
-            this.pair_pk != this.funder_pk + this.peer_pk ||
             this.funding_tx.hashFull() != this.funding_tx_hash ||
             this.funding_tx.outputs.length <= this.funding_utxo_idx)
             return false;
