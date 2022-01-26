@@ -380,12 +380,12 @@ public class FlashNodeFactory : TestAPIManager
             addresses_to_register : [ Address("http://"~to!string(kp.address)) ],
             key_pair : kp,
         };
-        return this.createFlashNode!FlashNodeImpl(kp, conf, storage, file, line);
+        return this.createFlashNode!FlashNodeImpl(conf, storage, file, line);
     }
 
     /// ditto
     public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
-        (const KeyPair kp, FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local,
+        (FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local,
         string file = __FILE__, int line = __LINE__)
     {
         import agora.api.Handlers;
@@ -394,10 +394,10 @@ public class FlashNodeFactory : TestAPIManager
             conf, &this.registry, this.nodes[0].address, storage,
             10.seconds, 10.seconds, file, line);  // timeout from main thread
 
-        this.addresses ~= kp.address;
+        this.addresses ~= conf.key_pair.address;
         this.flash_nodes ~= api;
-        this.registry.register(kp.address.to!string, api.listener());
-        api.registerKey(kp);
+        this.registry.register(conf.key_pair.address.to!string, api.listener());
+        api.registerKey(conf.key_pair);
 
         return api;
     }
@@ -1038,7 +1038,7 @@ unittest
         key_pair : WK.Keys.A
     };
 
-    auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
+    auto alice = network.createFlashNode(alice_conf);
     auto charlie = network.createFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
 
@@ -1538,7 +1538,7 @@ unittest
         key_pair : WK.Keys.C
     };
     auto alice = network.createFlashNode(WK.Keys.A);
-    auto charlie = network.createFlashNode(WK.Keys.C, charlie_conf);
+    auto charlie = network.createFlashNode(charlie_conf);
 
     network.start();
     network.waitForDiscovery();
@@ -1741,7 +1741,7 @@ unittest
         key_pair : WK.Keys.A
     };
 
-    auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
+    auto alice = network.createFlashNode(alice_conf);
     auto charlie = network.createFlashNode!RejectingFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
 
@@ -1839,7 +1839,7 @@ unittest
         key_pair : WK.Keys.A
     };
 
-    auto alice = network.createFlashNode(WK.Keys.A, alice_conf);
+    auto alice = network.createFlashNode(alice_conf);
     auto charlie = network.createFlashNode(WK.Keys.C);
     auto diego = network.createFlashNode(WK.Keys.D);
 
