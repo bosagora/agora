@@ -775,7 +775,7 @@ public class FlashNode : FlashControlAPI
                         open.conf.chan_id.flashPrettify);
 
                 try
-                    if (!isValidChannelOpen(open.conf, this.getBlock(open.height)))
+                    if (!open.conf.isValidOpen(this.getBlock(open.height).txs))
                         continue;
                 catch (Exception e)
                     continue;
@@ -1510,22 +1510,6 @@ public class FlashNode : FlashControlAPI
 
         return new RestInterfaceClient!FlashListenerAPI(settings);
     }
-}
-
-///
-public bool isValidChannelOpen (in ChannelConfig conf, in Block block) @safe nothrow
-{
-    if (!conf.funder_pk.isValid() ||
-        !conf.peer_pk.isValid() ||
-        conf.pair_pk != conf.funder_pk + conf.peer_pk ||
-        conf.funding_tx.hashFull() != conf.funding_tx_hash ||
-        conf.funding_tx.outputs.length <= conf.funding_utxo_idx)
-        return false;
-    auto utxo = conf.funding_tx.outputs[conf.funding_utxo_idx];
-    if (utxo.address != conf.pair_pk ||
-        utxo.value != conf.capacity)
-        return false;
-    return block.txs.canFind!(tx => tx.hashFull() == conf.funding_tx_hash);
 }
 
 /// All the node metadata which we keep in the DB for storage

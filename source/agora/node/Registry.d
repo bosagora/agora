@@ -28,7 +28,6 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr: Signature;
 import agora.node.Config;
 import agora.flash.api.FlashAPI;
-import agora.flash.Node;
 import agora.serialization.Serializer;
 import agora.stats.Registry;
 import agora.stats.Utils;
@@ -314,7 +313,7 @@ public class NameRegistry: NameRegistryAPI
             this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
 
         auto range = this.ledger.getBlocksFrom(channel.height);
-        ensure(!range.empty && isValidChannelOpen(channel.conf, range.front),
+        ensure(!range.empty && channel.conf.isValidOpen(range.front.txs),
                "Not a valid channel");
 
         // register data
