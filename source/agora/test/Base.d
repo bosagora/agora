@@ -892,7 +892,7 @@ public class TestAPIManager
 
         The name registry is a full node that exposes a more advanced interface.
         It is not part of the `nodes` array, but is reachable as a designed
-        address (currently "name.registry").
+        address (currently "10.8.8.8").
 
         Params:
           conf = The `FullNode` configuration to use.
@@ -2208,7 +2208,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             enabled : true,
             key_pair : key_pair,
             addresses_to_register : [ self_address ],
-            registry_address : "http://name.registry",
+            registry_address : "dns://10.8.8.8",
             recurring_enrollment : test_conf.recurring_enrollment,
             name_registration_interval : 10.seconds,
             preimage_reveal_interval : test_conf.preimage_reveal_interval,
@@ -2318,7 +2318,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     Config registry_config = {
       banman : ban_conf,
       node : makeNodeConfig(),
-      interfaces: [ makeInterfaceConfig("name.registry") ],
+      interfaces: [ makeInterfaceConfig("10.8.8.8") ],
       consensus: makeConsensusConfig(),
       network : connect_addresses.array.idup,
       logging: test_conf.logging,
