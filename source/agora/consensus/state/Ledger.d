@@ -402,7 +402,8 @@ public class Ledger
 
     protected void addValidatedBlock (in Block block) @safe
     {
-        log.info("Beginning externalization of block #{}", block.header.height);
+        log.info("Beginning externalization of block #{} (previous block signatures: {})",
+                 block.header.height, this.last_block.header.validators);
         log.info("Transactions: {} - Enrollments: {}",
                  block.txs.length, block.header.enrollments.length);
         log.info("Validators: Active: {} - Signing: {} - Slashed: {}",
