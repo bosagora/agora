@@ -1248,7 +1248,6 @@ public class FlashNode : FlashControlAPI
             gen_hash        : this.genesis_hash,
             funder_pk       : funding_utxo.output.address,
             peer_pk         : recv_pk,
-            pair_pk         : funding_utxo.output.address + recv_pk,
             num_peers       : num_peers,
             update_pair_pk  : getUpdatePk(pair_pk, funding_tx_hash, num_peers),
             funding_tx      : funding_tx,
