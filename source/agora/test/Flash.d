@@ -435,7 +435,7 @@ public class FlashNodeFactory : TestAPIManager
         {
             writeln("---------------------------- START OF FLASH LOGS ----------------------------");
             writefln("%s(%s): Flash node logs:\n", file, line);
-            foreach (node; this.flash_nodes)
+            foreach (idx, node; this.flash_nodes)
             {
                 try
                 {
@@ -443,7 +443,7 @@ public class FlashNodeFactory : TestAPIManager
                 }
                 catch (Exception ex)
                 {
-                    writefln("Could not print logs for node: %s", ex.message);
+                    writefln("Could not print logs for node %s: %s", this.addresses[idx], ex.message);
                 }
             }
         }
