@@ -775,10 +775,19 @@ public class FlashNode : FlashControlAPI
                         open.conf.chan_id.flashPrettify);
 
                 try
-                    if (!open.conf.isValidOpen(this.getBlock(open.height).txs))
+                    if (auto err = open.conf.isNotValidOpenReason(this.getBlock(open.height).txs))
+                    {
+                        log.warn("Skipping gossipping of {} because is not valid/open: {}",
+                                 open.conf.chan_id, err);
                         continue;
-                catch (Exception e)
+                    }
+                catch (Exception exc)
+                {
+                    log.error(
+                        "Exception thrown from `getBlock` while gossipping: {} - Channel: {}",
+                        exc, open.conf);
                     continue;
+                }
 
                 this.known_channels[open.conf.chan_id] = KnownChannel(open.height, open.conf);
                 this.network.addChannel(open.conf);
