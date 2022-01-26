@@ -455,7 +455,7 @@ private class RPCConnection
         }
         // Try to reuse the connection, if no requests arrive within a certain
         // period then handleThrow() will throw and handle() will return false
-        while (handle(impl, this, this.conn.readTimeout)) {}
+        while (this.conn.connected() && handle(impl, this, this.conn.readTimeout)) {}
     }
 }
 
