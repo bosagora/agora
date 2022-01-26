@@ -112,6 +112,23 @@ public struct ChannelConfig
     {
         return this.funder_pk == key || this.peer_pk == key;
     }
+
+    /// Whether this channel is to be considered valid and open
+    public bool isValidOpen (in Transaction[] txs)
+        const scope @safe nothrow
+    {
+        import std.algorithm.searching : canFind;
+
+        if (!this.funder_pk.isValid() || !this.peer_pk.isValid() ||
+            this.pair_pk != this.funder_pk + this.peer_pk ||
+            this.funding_tx.hashFull() != this.funding_tx_hash ||
+            this.funding_tx.outputs.length <= this.funding_utxo_idx)
+            return false;
+        auto utxo = this.funding_tx.outputs[this.funding_utxo_idx];
+        if (utxo.address != this.pair_pk || utxo.value != this.capacity)
+            return false;
+        return txs.canFind!(tx => tx.hashFull() == this.funding_tx_hash);
+    }
 }
 
 /// Channel update. Peers can update some channel attributes on the fly.
