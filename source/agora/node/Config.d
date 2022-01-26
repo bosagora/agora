@@ -135,7 +135,7 @@ public struct Config
                     "Either the network section must not be empty, or registry must be enabled");
 
         if (!this.node.testing && this.node.test_validators)
-            throw new Exception("Cannot use 'node.limit_test_validator' without 'node.testing' set to 'true'");
+            throw new Exception("Cannot use 'node.test_validators' without 'node.testing' set to 'true'");
         if (this.node.test_validators > 6)
             throw new Exception("Value of 'node.test_validators' must be between 0 and 6, inclusive");
 
