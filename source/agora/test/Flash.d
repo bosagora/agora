@@ -363,12 +363,11 @@ public class FlashNodeFactory : TestAPIManager
         this.flash_nodes.each!(fn => fn.start());
     }
 
-    /// Create a new flash node user
-    public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
-        (const KeyPair kp, DatabaseStorage storage = DatabaseStorage.Local,
-        string file = __FILE__, int line = __LINE__)
+    /// Returns: A default config for `kp` suitable for `createFlashNode`
+    public FlashConfig makeFlashNodeConfig (in KeyPair kp) const scope @safe
     {
-        FlashConfig conf = { enabled : true,
+        FlashConfig conf = {
+            enabled : true,
             min_funding : Amount(1000),
             max_funding : Amount(100_000_000),
             min_settle_time : 0,
@@ -380,6 +379,15 @@ public class FlashNodeFactory : TestAPIManager
             addresses_to_register : [ Address("http://"~to!string(kp.address)) ],
             key_pair : kp,
         };
+        return conf;
+    }
+
+    /// Create a new flash node user
+    public RemoteAPI!TestFlashAPI createFlashNode (FlashNodeImpl = TestFlashNode)
+        (in KeyPair kp, DatabaseStorage storage = DatabaseStorage.Local,
+        string file = __FILE__, int line = __LINE__)
+    {
+        auto conf = this.makeFlashNodeConfig(kp);
         return this.createFlashNode!FlashNodeImpl(conf, storage, file, line);
     }
 
@@ -1513,17 +1521,9 @@ unittest
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
 
-    FlashConfig charlie_conf = { enabled : true,
-        min_funding : Amount(1000),
-        max_funding : Amount(100_000_000),
-        min_settle_time : 10,
-        max_settle_time : 100,
-        max_retry_delay : 100.msecs,
-        registry_address : "http://name.registry",
-        addresses_to_register : [ Address("http://"~to!string(WK.Keys.C.address)) ],
-        listener_address : network.ListenerAddress,
-        key_pair : WK.Keys.C
-    };
+    auto charlie_conf = network.makeFlashNodeConfig(WK.Keys.C);
+    charlie_conf.min_settle_time = 10;
+
     auto alice = network.createFlashNode(WK.Keys.A);
     auto charlie = network.createFlashNode(charlie_conf);
 
