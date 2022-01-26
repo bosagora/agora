@@ -648,6 +648,13 @@ public class FullNode : API
             timer.stop();
         this.timers = null;
 
+        // The handlers are just arrays on which we iterate,
+        // so setting them to null doesn't incur any risk.
+        this.block_handlers = null;
+        this.block_header_handlers = null;
+        this.preimage_handlers = null;
+        this.transaction_handlers = null;
+
         // The relayer depends on the NetworkManager and the pool,
         // so shut its timers down first.
         this.transaction_relayer.shutdown();
@@ -672,11 +679,6 @@ public class FullNode : API
             this.storage = null;
             this.stateDB = null;
             this.cacheDB = null;
-
-            this.block_handlers = null;
-            this.block_header_handlers = null;
-            this.preimage_handlers = null;
-            this.transaction_handlers = null;
         }
     }
 
