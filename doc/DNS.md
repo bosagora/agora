@@ -6,7 +6,7 @@ Without participation, no reward will be provided. In the event a node having en
 becomes completely unreachable for an extended period of time,
 it will be financially penalized ("slashed").
 
-The procotol is designed so that the risk of being unduely penalized is minimal,
+The protocol is designed so that the risk of being unduly penalized is minimal,
 and safeguards can be put in place to prevent penalization, such as a watchtower
 system that will take over if the primary server becomes unreachable.
 Such safeties do not require a publicly accessible server, nor access to the private key,
@@ -64,7 +64,7 @@ it means the registry MUST respond to requests for `validators.testnet.bosagora.
 and `flash.testnet.bosagora.io`.
 
 The `validators` zone holds information about currently (and potentially past)
-eligible nodes, while `flash` holds informations about eligible `flash` nodes.
+eligible nodes, while `flash` holds information about eligible `flash` nodes.
 
 It is expected that on the long run `flash` would hold orders of magnitude more
 nodes than `validators`, although this might not be the case early on.
@@ -113,5 +113,5 @@ The registry MUST then answer, if it has a matching record, with an URI record, 
 ### Flash zone
 
 The flash zone works similarly to the `validators` zone, except for two key details:
-- Registration is done through another endpoint (currrently `POST /flash_node`);
+- Registration is done through another endpoint (currently `POST /flash_node`);
 - Eligibility criteria is looser: Any public key with a potential flash channel may register;
