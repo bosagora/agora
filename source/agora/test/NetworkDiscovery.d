@@ -34,7 +34,7 @@ unittest
     foreach (key, node; network.nodes)
     {
         auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
-        const expectedCount = network.nodes.count + 1; // include name registry
+        const expectedCount = network.nodes.count;
         assert(addresses.sort.uniq.count == expectedCount,
             format("Node %s has %d peers but expected %d: %s",
                 key, addresses.length, expectedCount, addresses));
