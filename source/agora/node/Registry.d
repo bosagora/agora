@@ -313,8 +313,10 @@ public class NameRegistry: NameRegistryAPI
             this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
 
         auto range = this.ledger.getBlocksFrom(channel.height);
-        ensure(!range.empty && channel.conf.isValidOpen(range.front.txs),
-               "Not a valid channel");
+        ensure(!range.empty, "Channel is at height {} but local Ledger is at height {}",
+               channel.height, this.ledger.height);
+        if (auto err = channel.conf.isNotValidOpenReason(range.front.txs))
+            ensure(0, "Channel is not valid or open: {}", err);
 
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,

@@ -117,20 +117,28 @@ public struct ChannelConfig
         return this.funder_pk == key || this.peer_pk == key;
     }
 
-    /// Whether this channel is to be considered valid and open
-    public bool isValidOpen (in Transaction[] txs)
+    /// Whether this channel is to be considered valid and open, and why
+    public string isNotValidOpenReason (in Transaction[] txs)
         const scope @safe nothrow
     {
         import std.algorithm.searching : canFind;
 
-        if (!this.funder_pk.isValid() || !this.peer_pk.isValid() ||
-            this.funding_tx.hashFull() != this.funding_tx_hash ||
-            this.funding_tx.outputs.length <= this.funding_utxo_idx)
-            return false;
+        if (!this.funder_pk.isValid())
+            return "funder_pk is not a valid public key";
+        if (!this.peer_pk.isValid())
+            return "peer_pk is not a valid public key";
+        if (this.funding_tx.hashFull() != this.funding_tx_hash)
+            return "funding_tx hash does not match funcing_tx_hash variable";
+        if (this.funding_tx.outputs.length <= this.funding_utxo_idx)
+            return "funding_utxo_idx is out of funding_tx.outputs range";
+
         auto utxo = this.funding_tx.outputs[this.funding_utxo_idx];
-        if (utxo.address != this.pair_pk || utxo.value != this.capacity)
-            return false;
-        return txs.canFind!(tx => tx.hashFull() == this.funding_tx_hash);
+        if (utxo.address != this.pair_pk)
+            return "Referenced UTXO does not match the peers public key";
+        if (utxo.value != this.capacity)
+            return "Channel capacity is different from UTXO's value";
+        return txs.canFind!(tx => tx.hashFull() == this.funding_tx_hash)
+            ? null : "Could not find funding_tx_hash in provided transactions";
     }
 }
 
