@@ -1010,13 +1010,13 @@ public class TestAPIManager
                 try
                     node.client.printLog();
                 catch (Exception ex)
-                    writefln("Could not print logs for node: %s", ex.message);
+                    writefln("Could not print logs for node %s: %s", node.address, ex.message);
             }
             writeln("Registry logs:");
             try
                 this.dns.printLog();
             catch (Exception ex)
-                writefln("Could not print registry logs: %s", ex.message);
+                writefln("Could not print registry logs (%s): %s", this.dns.address, ex.message);
         }
     }
 
