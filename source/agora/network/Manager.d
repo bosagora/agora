@@ -189,12 +189,20 @@ public class NetworkManager
                 ensure(this.key != PublicKey.init, "Misconfigured connection task");
 
                 RegistryPayload payload;
-                retry!
-                ({
-                    payload = this.outer.registry_client.getValidator(this.key);
-                    return payload != RegistryPayload.init;
-                },
-                )(this.outer.taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
+                foreach (attempts; 0 .. 3)
+                {
+                    import agora.utils.Backoff;
+
+                    try
+                        payload = this.outer.registry_client.getValidator(this.key);
+                    catch (Exception e) {}
+                    if (payload != RegistryPayload.init)
+                        break;
+                    auto delay = getDelay(attempts, 10,
+                        this.outer.config.node.retry_delay.total!"msecs".to!uint
+                        * this.outer.config.node.max_retries);
+                    log.info("Would delay {}", delay.msecs);
+                }
 
                 if (payload == RegistryPayload.init)
                 {
@@ -940,13 +948,13 @@ public class NetworkManager
                 new RPCClient!(agora.api.Validator.API)(
                 url.host, url.port,
                 /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
+                timeout, timeout, timeout, 1 /* Hard coded max tcp connections*/,
                 owner_validator)
                 :
                 new RPCClient!(agora.api.Validator.API)(
                 url.host, url.port,
                 /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
+                timeout, timeout, timeout, 1 /* Hard coded max tcp connections*/,
                 this.owner_node);
         }
 
@@ -1116,7 +1124,7 @@ public class NetworkManager
     ///
     public void discoverFromClient (agora.api.Validator.API api) @trusted nothrow
     {
-        new ConnectionTask(api, &onHandshakeComplete).start();
+//        new ConnectionTask(api, &onHandshakeComplete).start();
     }
 }
 
