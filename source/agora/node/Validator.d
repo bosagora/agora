@@ -375,6 +375,15 @@ public class Validator : FullNode, API
             return fail_msg;
 
         acceptHeader(block.header);
+        // In the case where a validator is restarted and frozen utxo is not in Genesis
+        if (this.identity.utxo == Hash.init)
+        {
+            const self = this.getFrozenUTXO();
+            if (self != Hash.init)
+            {
+                this.setIdentity(self);
+            }
+        }
         return null;
     }
 
