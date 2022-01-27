@@ -712,7 +712,7 @@ unittest
 
     // at this point charlie will automatically publish the latest update tx
     // and then a settlement will be published (but only after time lock expires)
-    iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
+    iota(Settle_1_Blocks * 2).each!(idx => network.addBlock());
     network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
@@ -797,7 +797,7 @@ unittest
     // at `Settle_4_Blocks` blocks need to be externalized before a settlement
     // can be attached to the update transaction
     // and then a settlement will be automatically published
-    iota(Settle_4_Blocks * 2 + 5).each!(idx => network.addBlock(true));
+    iota(Settle_4_Blocks * 2 + 5).each!(idx => network.addBlock());
     network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
@@ -895,7 +895,7 @@ unittest
         ChannelState.StartedUnilateralClose);
 
     // trigger tx & latest update tx & latest settle tx
-    iota(4).each!(idx => network.addBlock(true));
+    iota(4).each!(idx => network.addBlock());
     network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
 
@@ -1924,7 +1924,7 @@ unittest
     update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 4);
     network.expectTxExternalization(update_tx);
 
-    iota(Settle_1_Blocks * 2).each!(idx => network.addBlock(true));
+    iota(Settle_1_Blocks * 2).each!(idx => network.addBlock());
     network.listener.waitUntilChannelState(chan_id,
         ChannelState.Closed);
 }
@@ -2126,6 +2126,6 @@ unittest
         ChannelState.StartedUnilateralClose);
 
     // trigger tx & latest update tx & latest settle tx
-    iota(4).each!(idx => network.addBlock(true));
+    iota(4).each!(idx => network.addBlock());
     network.listener.waitUntilChannelState(chan_id, ChannelState.Closed);
 }
