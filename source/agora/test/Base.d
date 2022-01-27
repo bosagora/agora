@@ -1342,24 +1342,23 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override TestAPI getClient (Address address,
-        Duration timeout)
+    protected final override TestAPI getClient (Address address)
     {
         auto tid = this.registry.locate!TestAPI(address.host);
         if (tid != typeof(tid).init)
-            return new RemoteAPI!TestAPI(tid, timeout);
+            return new RemoteAPI!TestAPI(tid, this.config.node.timeout);
         assert(0, format("Trying to access node at address '%s' from '%s' without first creating it",
                          address, this.address));
     }
 
     ///
-    public override RemoteAPI!NameRegistryAPI getNameRegistryClient (string address, Duration timeout)
+    public override RemoteAPI!NameRegistryAPI getNameRegistryClient (string address)
     {
         assert(address != string.init, "Requested address for registry is empty");
         const url = Address(address);
         auto tid = this.registry.locate!NameRegistryAPI(url.host);
         if (tid != typeof(tid).init)
-            return new RemoteAPI!NameRegistryAPI(tid, timeout);
+            return new RemoteAPI!NameRegistryAPI(tid, this.config.node.timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
                "' without first creating it");
     }
