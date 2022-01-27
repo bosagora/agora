@@ -129,7 +129,7 @@ public Listeners runNode (Config config)
         auto flash = new FlashNode(config.flash,
             config.node.data_dir, params.Genesis.hashFull(), new Engine(),
             result.node.getTaskManager(), &result.node.postTransaction,
-            &result.node.getBlock, &result.node.getNetworkManager().getNameRegistryClient);
+            &result.node.getBlock, &result.node.getNetworkManager().getRegistryClient);
         router.registerRestInterface!FlashAPI(flash, settings);
         result.flash = flash;
     }

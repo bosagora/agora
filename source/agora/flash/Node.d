@@ -179,7 +179,7 @@ public class FlashNode : FlashControlAPI
     protected const(Block) delegate (ulong _height) @safe getBlock;
 
     ///
-    protected NameRegistryAPI delegate (string address) getNameRegistryClient;
+    protected NameRegistryAPI delegate (string address) getRegistryClient;
 
     /***************************************************************************
 
@@ -201,7 +201,7 @@ public class FlashNode : FlashControlAPI
         Engine engine, ITaskManager taskman,
         TransactionResult delegate (in Transaction tx) postTransaction,
         const(Block) delegate (ulong _height) @safe getBlock,
-        NameRegistryAPI delegate (string address) getNameRegistryClient)
+        NameRegistryAPI delegate (string address) getRegistryClient)
     {
         this.conf = conf;
         this.genesis_hash = genesis_hash;
@@ -213,7 +213,7 @@ public class FlashNode : FlashControlAPI
         this.db = this.getManagedDatabase(db_path);
         this.postTransaction = postTransaction;
         this.getBlock = getBlock;
-        this.getNameRegistryClient = getNameRegistryClient;
+        this.getRegistryClient = getRegistryClient;
 
         this.load();
 
@@ -270,7 +270,7 @@ public class FlashNode : FlashControlAPI
     private void onRegisterName ()
     {
         if (this.registry_client is null)  // try to get the client
-            this.registry_client = this.getNameRegistryClient(
+            this.registry_client = this.getRegistryClient(
                 this.conf.registry_address);
 
         if (this.registry_client is null)

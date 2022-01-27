@@ -512,7 +512,7 @@ public class NetworkManager
     /// Periodically registers network addresses
     public ITimer startPeriodicNameRegistration ()
     {
-        this.registry_client = this.getNameRegistryClient(
+        this.registry_client = this.getRegistryClient(
             this.config.validator.registry_address);
         if (this.registry_client is null)
             return null;
@@ -1054,7 +1054,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public NameRegistryAPI getNameRegistryClient (string address)
+    public NameRegistryAPI getRegistryClient (string address)
     {
         if (address == string.init)
             return null;
