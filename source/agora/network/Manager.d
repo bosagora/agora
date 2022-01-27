@@ -41,6 +41,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Clock;
 import agora.network.Client;
+import agora.network.DNSResolver;
 import agora.network.RPC;
 import agora.node.Config;
 import agora.node.Registry : NameRegistry;
@@ -695,6 +696,24 @@ public class NetworkManager
         Clock clock, ManagedDatabase cache)
     {
         return new BanManager(banman_conf, clock, cache);
+    }
+
+    /***************************************************************************
+
+        Returns an instance of a DNSResolver
+
+        Params:
+            peer_addrs = Addresses of DNS servers that Resolver will send queries to
+        Returns:
+            the dns resolver
+
+    ***************************************************************************/
+
+    public DNSResolver makeDNSResolver (Address[] peer_addrs = null)
+    {
+        return (peer_addrs !is null)
+            ? new VibeDNSResolver(peer_addrs)
+            : new VibeDNSResolver();
     }
 
     /// register network addresses into the name registry

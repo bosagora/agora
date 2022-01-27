@@ -1332,13 +1332,17 @@ public class TestNetworkManager : NetworkManager
     /// and converts it to a pointer (e.g. something that can route the message).
     public AnyRegistry* registry;
 
+    /// Channel that DNS server listens to
+    private Channel!DNSQuery dns_chan;
+
     /// Constructor
     public this (Parameters!(NetworkManager.__ctor) args, string address,
-                 AnyRegistry* reg)
+                 AnyRegistry* reg, Channel!DNSQuery dns_chan)
     {
         super(args);
         this.registry = reg;
         this.address = address;
+        this.dns_chan = dns_chan;
     }
 
     ///
@@ -1361,6 +1365,12 @@ public class TestNetworkManager : NetworkManager
             return new RemoteAPI!NameRegistryAPI(tid, this.config.node.timeout);
         assert(0, "Trying to access name registry at address '" ~ address ~
                "' without first creating it");
+    }
+
+    /// Returns an instance of a DNSResolver
+    public override DNSResolver makeDNSResolver (Address[] peer_addrs = null)
+    {
+        return new LocalRestDNSResolver(this.dns_chan);
     }
 
     ///
@@ -1661,19 +1671,13 @@ private mixin template TestNodeMixin ()
         return new TestNetworkManager(
             this.config, this.cacheDB, taskman, clock, this,
             this.config.interfaces[0].address,
-            this.nregistry);
+            this.nregistry, this.dns_chan);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
     protected override EnrollmentManager makeEnrollmentManager ()
     {
         return super.makeEnrollmentManager();
-    }
-
-    /// Returns an instance of a DNSResolver
-    protected override DNSResolver makeDNSResolver ()
-    {
-        return new LocalRestDNSResolver(this.dns_chan);
     }
 
     /// Get the active validator count for the current block height
