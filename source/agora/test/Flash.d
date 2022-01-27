@@ -396,8 +396,6 @@ public class FlashNodeFactory : TestAPIManager
         (FlashConfig conf, DatabaseStorage storage = DatabaseStorage.Local,
         string file = __FILE__, int line = __LINE__)
     {
-        import agora.api.Handlers;
-
         RemoteAPI!TestFlashAPI api = RemoteAPI!TestFlashAPI.spawn!FlashNodeImpl(
             conf, &this.registry, this.nodes[0].address, storage,
             10.seconds, 10.seconds, file, line);  // timeout from main thread
