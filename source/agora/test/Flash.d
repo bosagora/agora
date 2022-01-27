@@ -146,7 +146,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
 
         this.agora_node = this.getAgoraClient(agora_address, timeout);
         super(conf, storage, genesis_hash, engine, new LocalRestTaskManager(),
-            &this.postTransaction, &agora_node.getBlock, &this.getNameRegistryClient);
+            &this.postTransaction, &agora_node.getBlock, &this.getRegistryClient);
     }
 
     /***************************************************************************
@@ -220,7 +220,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    public NameRegistryAPI getNameRegistryClient (string address)
+    public NameRegistryAPI getRegistryClient (string address)
     {
         assert(address != string.init, "Empty address");
         const url = Address(address);

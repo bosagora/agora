@@ -1352,7 +1352,7 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    public override RemoteAPI!NameRegistryAPI getNameRegistryClient (string address)
+    public override RemoteAPI!NameRegistryAPI getRegistryClient (string address)
     {
         assert(address != string.init, "Requested address for registry is empty");
         const url = Address(address);
