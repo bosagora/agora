@@ -330,17 +330,11 @@ public class TestFlashNode : FlashNode, TestFlashAPI
 /// Is in charge of spawning the flash nodes
 public class FlashNodeFactory : TestAPIManager
 {
-    /// list of flash addresses
-    private PublicKey[] addresses;
-
-    /// list of listener addresses
-    private string[] listener_addresses;
-
     /// list of flash nodes
-    private RemoteAPI!TestFlashAPI[] flash_nodes;
+    private APIPair!TestFlashAPI[] flash_nodes;
 
     /// list of FlashListenerAPI nodes
-    private RemoteAPI!TestFlashListenerAPI[] listener_nodes;
+    private APIPair!TestFlashListenerAPI[] listener_nodes;
 
     /// Flash listener address
     private static const ListenerAddress = "http://flash-listener";
@@ -400,9 +394,9 @@ public class FlashNodeFactory : TestAPIManager
             conf, &this.registry, this.nodes[0].address, storage,
             10.seconds, 10.seconds, file, line);  // timeout from main thread
 
-        this.addresses ~= conf.key_pair.address;
-        this.flash_nodes ~= api;
-        this.registry.register(conf.key_pair.address.to!string, api.listener());
+        auto pair = APIPair!(TestFlashAPI)(conf.key_pair.address.to!string, api);
+        this.flash_nodes ~= pair;
+        this.registry.register(pair.address, api.listener());
         api.registerKey(conf.key_pair);
 
         return api;
@@ -414,9 +408,10 @@ public class FlashNodeFactory : TestAPIManager
     {
         auto api = RemoteAPI!TestFlashListenerAPI.spawn!Listener(
             &this.registry, this.nodes[0].address, 5.seconds);
+
+        this.listener_nodes ~= APIPair!(TestFlashListenerAPI)(address, api);
         this.registry.register(Address(address).host, api.listener());
-        this.listener_addresses ~= address;
-        this.listener_nodes ~= api;
+
         return api;
     }
 
@@ -433,15 +428,15 @@ public class FlashNodeFactory : TestAPIManager
         {
             writeln("---------------------------- START OF FLASH LOGS ----------------------------");
             writefln("%s(%s): Flash node logs:\n", file, line);
-            foreach (idx, node; this.flash_nodes)
+            foreach (pair; this.flash_nodes)
             {
                 try
                 {
-                    node.printLog();
+                    pair.printLog();
                 }
                 catch (Exception ex)
                 {
-                    writefln("Could not print logs for node %s: %s", this.addresses[idx], ex.message);
+                    writefln("Could not print logs for node %s: %s", pair.address, ex.message);
                 }
             }
         }
@@ -461,25 +456,25 @@ public class FlashNodeFactory : TestAPIManager
     {
         super.shutdown();
 
-        foreach (node; this.flash_nodes)
-            node.shutdownNode();
+        foreach (pair; this.flash_nodes)
+            pair.client.shutdownNode();
 
-        foreach (node; this.flash_nodes)
-            node.ctrl.shutdown();
+        foreach (pair; this.flash_nodes)
+            pair.client.ctrl.shutdown();
 
-        foreach (node; this.listener_nodes)
+        foreach (pair; this.listener_nodes)
         {
-            node.ctrl.shutdown();
+            pair.client.ctrl.shutdown();
         }
     }
 
     /// Shut down & restart all nodes
     public void restart ()
     {
-        foreach (node; this.flash_nodes)
+        foreach (pair; this.flash_nodes)
         {
-            node.ctrl.restart((Object node) { (cast(TestFlashNode)node).shutdownNode(); });
-            node.ctrl.withTimeout(0.msecs, (scope FlashControlAPI api) { api.start(); });
+            pair.client.ctrl.restart((Object node) { (cast(TestFlashNode)node).shutdownNode(); });
+            pair.client.ctrl.withTimeout(0.msecs, (scope FlashControlAPI api) { api.start(); });
         }
     }
 }

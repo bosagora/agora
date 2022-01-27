@@ -548,26 +548,43 @@ private final class LocalRestTimer : ITimer
 /// We use a pair of (key, client) rather than a hashmap client[key],
 /// since we want to know the order of the nodes which were configured
 /// in the makeTestNetwork() call.
-public struct NodePair
+public struct APIPair (API)
 {
     ///
     public string address;
 
     ///
-    public RemoteAPI!TestAPI client;
+    public RemoteAPI!API client;
+
+    ///
+    public inout(API) api () inout @safe pure nothrow @nogc
+    {
+        return this.client;
+    }
+
+    /// Expose the `api` by default so one doesn't accidentally use `ctrl`
+    alias api this;
+}
+
+/// Holds an `APIPair` along with the node's time
+public struct NodePair
+{
+    ///
+    public this (string address, RemoteAPI!TestAPI client, shared(TimePoint)* time)
+        @safe pure nothrow @nogc
+    {
+        this.pair = APIPair!TestAPI(address, client);
+        this.cur_time = time;
+    }
+
+    /// Underlying APIPair
+    public APIPair!TestAPI pair;
+    public alias pair this;
 
     /// the adjustable local clock time for this node.
     /// This does not affect request timeouts and is only
     /// used in the Nomination protocol.
     private shared(TimePoint)* cur_time;
-
-    ///
-    public inout(TestAPI) api () inout @safe pure nothrow @nogc
-    {
-        return this.client;
-    }
-
-    alias api this;
 
     /// Get the current clock time
     @property TimePoint time () @trusted @nogc nothrow
