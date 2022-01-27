@@ -55,6 +55,18 @@ import core.thread;
 
 mixin AddLogger!();
 
+private immutable Address[PublicKey] FlashNodesAddress;
+
+shared static this ()
+{
+    FlashNodesAddress = [
+        WK.Keys.A.address: Address("agora://10.0.100.0"),
+        WK.Keys.C.address: Address("agora://10.0.100.1"),
+        WK.Keys.D.address: Address("agora://10.0.100.2"),
+        WK.Keys.E.address: Address("agora://10.0.100.3"),
+    ];
+}
+
 /// Listener (wallet / front-end)
 public interface TestFlashListenerAPI : FlashListenerAPI
 {
@@ -337,7 +349,7 @@ public class FlashNodeFactory : TestAPIManager
     private APIPair!TestFlashListenerAPI[] listener_nodes;
 
     /// Flash listener address
-    private static const ListenerAddress = "http://flash-listener";
+    private static const ListenerAddress = "agora://10.0.100.255";
 
     /// Flash listener (Wallet)
     public TestFlashListenerAPI listener;
@@ -370,7 +382,7 @@ public class FlashNodeFactory : TestAPIManager
             max_retry_delay : 100.msecs,
             listener_address : ListenerAddress,
             registry_address : "dns://10.8.8.8",
-            addresses_to_register : [ Address("http://"~to!string(kp.address)) ],
+            addresses_to_register : [ FlashNodesAddress[kp.address] ],
             key_pair : kp,
         };
         return conf;
@@ -394,7 +406,7 @@ public class FlashNodeFactory : TestAPIManager
             conf, &this.registry, this.nodes[0].address, storage,
             10.seconds, 10.seconds, file, line);  // timeout from main thread
 
-        auto pair = APIPair!(TestFlashAPI)(Address("http://" ~ conf.key_pair.address.to!string), api);
+        auto pair = APIPair!(TestFlashAPI)(FlashNodesAddress[conf.key_pair.address], api);
         this.flash_nodes ~= pair;
         this.registry.register(pair.address.host, api.listener());
         api.registerKey(conf.key_pair);
@@ -411,7 +423,6 @@ public class FlashNodeFactory : TestAPIManager
 
         this.listener_nodes ~= APIPair!(TestFlashListenerAPI)(address, api);
         this.registry.register(Address(address).host, api.listener());
-
         return api;
     }
 
@@ -624,10 +635,10 @@ do
     TestConf conf;
     conf.consensus.quorum_threshold = 100;
     conf.event_handlers = [
-        EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.A.address.to!string()]),
-        EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.C.address.to!string()]),
-        EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.D.address.to!string()]),
-        EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.E.address.to!string()])
+        EventHandlerConfig(HandlerType.BlockExternalized, [ FlashNodesAddress[WK.Keys.A.address].toString() ]),
+        EventHandlerConfig(HandlerType.BlockExternalized, [ FlashNodesAddress[WK.Keys.C.address].toString() ]),
+        EventHandlerConfig(HandlerType.BlockExternalized, [ FlashNodesAddress[WK.Keys.D.address].toString() ]),
+        EventHandlerConfig(HandlerType.BlockExternalized, [ FlashNodesAddress[WK.Keys.E.address].toString() ]),
     ][0 .. handlers];
     return conf;
 }
@@ -663,7 +674,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address))); // TODO common registry localrest
+        Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]); // TODO common registry localrest
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -742,7 +753,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_4_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_4_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -841,7 +852,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -928,7 +939,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        1.coins, Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -952,7 +963,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
-        Amount(300_000), Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        Amount(300_000), Settle_1_Blocks, WK.Keys.D.address, false, FlashNodesAddress[WK.Keys.D.address]);
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1053,7 +1064,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1076,7 +1087,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        Amount(10_000), Settle_1_Blocks, WK.Keys.D.address, false, FlashNodesAddress[WK.Keys.D.address]);
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1099,7 +1110,7 @@ unittest
     const diego_utxo = UTXO(0, txs[2].outputs[0]);
     const diego_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const diego_alice_chan_id_res = diego.openNewChannel(diego_utxo, diego_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.A.address, false, Address("http://"~to!string(WK.Keys.A.address)));
+        Amount(10_000), Settle_1_Blocks, WK.Keys.A.address, false, FlashNodesAddress[WK.Keys.A.address]);
     assert(diego_alice_chan_id_res.error == ErrorCode.None,
         diego_alice_chan_id_res.message);
     const diego_alice_chan_id = diego_alice_chan_id_res.value;
@@ -1192,7 +1203,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        1.coins, Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1215,7 +1226,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[2].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
-        1.coins, Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.D.address, false, FlashNodesAddress[WK.Keys.D.address]);
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -1247,7 +1258,7 @@ unittest
     const charlie_utxo_2 = UTXO(0, txs[3].outputs[0]);
     const charlie_utxo_hash_2 = UTXO.getHash(hashFull(txs[3]), 0);
     const charlie_diego_chan_id_2_res = charlie.openNewChannel(charlie_utxo_2, charlie_utxo_hash_2,
-        1.coins, Settle_1_Blocks, WK.Keys.D.address, false, Address("http://"~to!string(WK.Keys.D.address)));
+        1.coins, Settle_1_Blocks, WK.Keys.D.address, false, FlashNodesAddress[WK.Keys.D.address]);
     assert(charlie_diego_chan_id_2_res.error == ErrorCode.None,
         charlie_diego_chan_id_2_res.message);
     const charlie_diego_chan_id_2 = charlie_diego_chan_id_2_res.value;
@@ -1400,7 +1411,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        1.coins, 0, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        1.coins, 0, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1465,7 +1476,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None,
         chan_id_res.message);
     const chan_id = chan_id_res.value;
@@ -1542,17 +1553,17 @@ unittest
 
     // error on mismatching genesis hash
     ChannelConfig bad_conf = { funder_pk : WK.Keys.A.address, peer_pk : WK.Keys.C.address};
-    auto open_res = charlie.openChannel(bad_conf, PublicNonce.init, Address("http://"~bad_conf.funder_pk.to!string()));
+    auto open_res = charlie.openChannel(bad_conf, PublicNonce.init, FlashNodesAddress[bad_conf.funder_pk]);
     assert(open_res.error == ErrorCode.InvalidGenesisHash, open_res.to!string);
 
     bad_conf.peer_pk = PublicKey.init;
     // error on non-managed key
-    open_res = charlie.openChannel(bad_conf, PublicNonce.init, Address("http://"~bad_conf.funder_pk.to!string()));
+    open_res = charlie.openChannel(bad_conf, PublicNonce.init, FlashNodesAddress[bad_conf.funder_pk]);
     assert(open_res.error == ErrorCode.KeyNotRecognized, open_res.to!string);
 
     // error on capacity too low
     auto res = alice.openNewChannel(utxo, utxo_hash, Amount(1), Settle_10_Blocks,
-        WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.None);
 
     auto error = network.listener.waitUntilChannelState(res.value,
@@ -1565,7 +1576,7 @@ unittest
 
     // error on capacity too high
     res = alice.openNewChannel(utxo, utxo_hash, Amount(1_000_000_000),
-        Settle_10_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_10_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1574,7 +1585,7 @@ unittest
 
     // error on settle time too low
     res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), 5, WK.Keys.C.address,
-        false, Address("http://"~to!string(WK.Keys.C.address)));
+        false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1583,21 +1594,21 @@ unittest
 
     // error on not enough funds on funding UTXO
     res = alice.openNewChannel(utxo, utxo_hash, Amount.MaxUnitSupply, Settle_10_Blocks, WK.Keys.C.address,
-        false, Address("http://"~to!string(WK.Keys.C.address)));
+        false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not enough funds on funding UTXO for TX fees
     res = alice.openNewChannel(utxo, utxo_hash, utxo.output.value, Settle_10_Blocks, WK.Keys.C.address,
-        false, Address("http://"~to!string(WK.Keys.C.address)));
+        false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.RejectedFundingUTXO);
 
     // error on not own funding UTXO
     res = charlie.openNewChannel(utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.A.address,
-        false, Address("http://"~to!string(WK.Keys.A.address)));
+        false, FlashNodesAddress[WK.Keys.A.address]);
     assert(res.error == ErrorCode.KeyNotRecognized);
 
     res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), 1000, WK.Keys.C.address,
-        false, Address("http://"~to!string(WK.Keys.C.address)));
+        false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.None);
 
     error = network.listener.waitUntilChannelState(res.value,
@@ -1605,7 +1616,7 @@ unittest
     assert(error == ErrorCode.RejectedSettleTime, res.to!string);
 
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), Settle_10_Blocks,
-        WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     network.listener.waitUntilChannelState(res.value, ChannelState.WaitingForFunding);
     const chan_id = chan_id_res.value;
@@ -1620,7 +1631,7 @@ unittest
 
     // test what happens trying to open a new channel with the same funding tx
     res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_10_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_10_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(res.error == ErrorCode.DuplicateChannelID, res.to!string);
 
     // test some update signer error cases
@@ -1732,7 +1743,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000), Settle_1_Blocks,
-        WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -1817,7 +1828,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
 
@@ -1856,7 +1867,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
@@ -1958,7 +1969,7 @@ unittest
     const alice_utxo = UTXO(0, txs[0].outputs[0]);
     const alice_utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const alice_charlie_chan_id_res = alice.openNewChannel(alice_utxo, alice_utxo_hash,
-        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Amount(10_000), Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(alice_charlie_chan_id_res.error == ErrorCode.None,
         alice_charlie_chan_id_res.message);
     const alice_charlie_chan_id = alice_charlie_chan_id_res.value;
@@ -1982,7 +1993,7 @@ unittest
     const charlie_utxo = UTXO(0, txs[1].outputs[0]);
     const charlie_utxo_hash = UTXO.getHash(hashFull(txs[1]), 0);
     const charlie_diego_chan_id_res = charlie.openNewChannel(charlie_utxo, charlie_utxo_hash,
-        Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, true, Address("http://"~to!string(WK.Keys.D.address)));
+        Amount(3_000), Settle_1_Blocks, WK.Keys.D.address, true, FlashNodesAddress[WK.Keys.D.address]);
     assert(charlie_diego_chan_id_res.error == ErrorCode.None,
         charlie_diego_chan_id_res.message);
     const charlie_diego_chan_id = charlie_diego_chan_id_res.value;
@@ -2005,7 +2016,7 @@ unittest
     const diego_utxo = UTXO(0, txs[2].outputs[0]);
     const diego_utxo_hash = UTXO.getHash(hashFull(txs[2]), 0);
     const eomer_diego_chan_id_res = diego.openNewChannel(diego_utxo, diego_utxo_hash,
-        Amount(3_000), Settle_1_Blocks, WK.Keys.E.address, false, Address("http://"~to!string(WK.Keys.E.address)));
+        Amount(3_000), Settle_1_Blocks, WK.Keys.E.address, false, FlashNodesAddress[WK.Keys.E.address]);
     assert(eomer_diego_chan_id_res.error == ErrorCode.None,
         eomer_diego_chan_id_res.message);
     const eomer_diego_chan_id = eomer_diego_chan_id_res.value;
@@ -2095,7 +2106,7 @@ unittest
     const utxo = UTXO(0, txs[0].outputs[0]);
     const utxo_hash = UTXO.getHash(hashFull(txs[0]), 0);
     const chan_id_res = alice.openNewChannel(utxo, utxo_hash, Amount(10_000),
-        Settle_1_Blocks, WK.Keys.C.address, false, Address("http://"~to!string(WK.Keys.C.address)));
+        Settle_1_Blocks, WK.Keys.C.address, false, FlashNodesAddress[WK.Keys.C.address]);
     assert(chan_id_res.error == ErrorCode.None, chan_id_res.message);
     const chan_id = chan_id_res.value;
     network.listener.waitUntilChannelState(chan_id, ChannelState.WaitingForFunding);
