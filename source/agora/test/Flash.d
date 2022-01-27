@@ -622,7 +622,9 @@ private class FlashListener : TestFlashListenerAPI
     }
 }
 
-private TestConf flashTestConf () @safe
+private TestConf flashTestConf (size_t handlers = 4) @safe
+in (handlers <= 4, "Out of bound index")
+do
 {
     import agora.node.Config;
 
@@ -633,7 +635,7 @@ private TestConf flashTestConf () @safe
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.C.address.to!string()]),
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.D.address.to!string()]),
         EventHandlerConfig(HandlerType.BlockExternalized, ["http://"~WK.Keys.E.address.to!string()])
-    ];
+    ][0 .. handlers];
     return conf;
 }
 
@@ -641,7 +643,7 @@ private TestConf flashTestConf () @safe
 //version (none)
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -721,7 +723,7 @@ unittest
 //version (none)
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -819,7 +821,7 @@ unittest
         }
     }
 
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -903,7 +905,7 @@ unittest
 //version (none)
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(3);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1028,7 +1030,7 @@ unittest
 /// Test path probing
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(3);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1167,7 +1169,7 @@ unittest
 /// Test path probing
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(3);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1380,7 +1382,7 @@ unittest
         }
     }
 
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1444,7 +1446,7 @@ unittest
 //version (none)
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1516,7 +1518,7 @@ unittest
 /// test various error cases
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1710,7 +1712,7 @@ unittest
         }
     }
 
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(3);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1795,7 +1797,7 @@ unittest
         }
     }
 
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(3);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -1835,7 +1837,7 @@ unittest
 //version (none)
 unittest
 {
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
@@ -2073,7 +2075,7 @@ unittest
         }
     }
 
-    auto conf = flashTestConf();
+    auto conf = flashTestConf(2);
     auto network = makeTestNetwork!FlashNodeFactory(conf);
     scope (exit) network.shutdown();
     scope (failure) network.printLogs();
