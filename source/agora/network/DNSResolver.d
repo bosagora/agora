@@ -71,10 +71,6 @@ public final class VibeDNSResolver : DNSResolver
         // underlying address.
         foreach (idx, ref res; this.resolvers)
         {
-            assert(peers[idx].host.guessAddressType != TYPE.CNAME,
-                   "Address '" ~ peers[idx].host ~
-                   "' is not an IP address and can't be used for DNS resolution");
-
             res.address = resolveHost(peers[idx].host);
             res.address.port = peers[idx].port;
         }
