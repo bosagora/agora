@@ -217,7 +217,8 @@ public class TestFlashNode : FlashNode, TestFlashAPI
             this.taskman.wait(500.msecs);
         }
 
-        assert(tid != typeof(tid).init, "Flash node not initialized");
+        assert(tid != typeof(tid).init,
+               format!("Flash node %s is not initialized")(address));
 
         return new RemoteAPI!TestFlashAPI(tid, timeout);
     }
