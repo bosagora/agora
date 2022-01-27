@@ -890,14 +890,14 @@ unittest
 
     log.info("Alice collaboratively closing the channel..");
     auto error = alice.beginCollaborativeClose(WK.Keys.A.address, chan_id).error;
-    assert(error == ErrorCode.None, error.to!string);
+    assert(error == ErrorCode.None);
     // note: not checking for StartedUnilateralClose due to timing
     network.listener.waitUntilChannelState(chan_id,
         ChannelState.RejectedCollaborativeClose);
 
     log.info("Alice unilaterally closing the channel..");
     error = alice.beginUnilateralClose(WK.Keys.A.address, chan_id).error;
-    assert(error == ErrorCode.None, error.to!string);
+    assert(error == ErrorCode.None);
     network.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
@@ -1285,8 +1285,8 @@ unittest
     assert(info.state == ChannelState.Negotiating
         || info.state == ChannelState.SettingUp
         || info.state == ChannelState.WaitingForFunding, info.state.to!string);
-    assert(info.owner_balance == Amount(0), info.owner_balance.to!string);
-    assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
+    assert(info.owner_balance == Amount(0));
+    assert(info.peer_balance == Amount(0));
 
     // await charlie & charlie channel funding transaction
     network.expectTxExternalization(charlie_diego_chan_id_2);
@@ -1301,8 +1301,8 @@ unittest
     assert(infos.length == 1);
     info = infos[0];
     assert(info.state == ChannelState.Open);
-    assert(info.owner_balance == 1.coins, info.owner_balance.to!string);
-    assert(info.peer_balance == Amount(0), info.peer_balance.to!string);
+    assert(info.owner_balance == 1.coins);
+    assert(info.peer_balance == Amount(0));
 
     update = ChannelUpdate(charlie_diego_chan_id_2,
         PaymentDirection.TowardsPeer,
@@ -2122,13 +2122,13 @@ unittest
 
     log.info("Alice collaboratively closing the channel..");
     auto error = alice.beginCollaborativeClose(WK.Keys.A.address, chan_id).error;
-    assert(error == ErrorCode.None, error.to!string);
+    assert(error == ErrorCode.None);
     network.listener.waitUntilChannelState(chan_id,
         ChannelState.RejectedCollaborativeClose);
 
     log.info("Alice unilaterally closing the channel..");
     error = alice.beginUnilateralClose(WK.Keys.A.address, chan_id).error;
-    assert(error == ErrorCode.None, error.to!string);
+    assert(error == ErrorCode.None);
     network.listener.waitUntilChannelState(chan_id,
         ChannelState.StartedUnilateralClose);
 
