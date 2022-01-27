@@ -512,10 +512,12 @@ public class NetworkManager
     /// Periodically registers network addresses
     public ITimer startPeriodicNameRegistration ()
     {
+        // No configured registry, nothing to do
+        if (this.config.validator.registry_address.length == 0)
+            return null;
+
         this.registry_client = this.getRegistryClient(
             this.config.validator.registry_address);
-        if (this.registry_client is null)
-            return null;
 
         this.onRegisterName();  // avoid delay
         // We re-register at regular interval in order to cope with the situation below
@@ -1056,8 +1058,6 @@ public class NetworkManager
 
     public NameRegistryAPI getRegistryClient (string address)
     {
-        if (address == string.init)
-            return null;
         auto settings = new RestInterfaceSettings();
         settings.baseURL = Address(address);
         settings.httpClientSettings = new HTTPClientSettings();

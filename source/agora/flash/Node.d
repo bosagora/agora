@@ -255,11 +255,14 @@ public class FlashNode : FlashControlAPI
         else  // avoid null checks & segfaults
             this.listener = new BlackHole!FlashListenerAPI();
 
+        assert(this.conf.registry_address.length);
+        this.registry_client = this.getRegistryClient(this.conf.registry_address);
+        this.onRegisterName();  // avoid delay
+
         this.gossip_timer = this.taskman.setTimer(100.msecs,
             &this.gossipTask, Periodic.Yes);
         this.open_chan_timer = this.taskman.setTimer(100.msecs,
             &this.channelOpenTask, Periodic.Yes);
-        this.onRegisterName();  // avoid delay
         this.periodic_timer = this.taskman.setTimer(2.minutes,
             &this.onRegisterName, Periodic.Yes);
         this.monitor_timer = this.taskman.setTimer(2.minutes,
@@ -269,13 +272,6 @@ public class FlashNode : FlashControlAPI
     /// register network addresses into the name registry
     private void onRegisterName ()
     {
-        if (this.registry_client is null)  // try to get the client
-            this.registry_client = this.getRegistryClient(
-                this.conf.registry_address);
-
-        if (this.registry_client is null)
-            return;  // failed, try again later
-
         foreach (pair; this.getManagedKeys())
         {
             RegistryPayload payload =
