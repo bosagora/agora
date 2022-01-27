@@ -612,7 +612,7 @@ public class NetworkClient
                 this.taskman.wait(this.retry_delay);
             }
         }
-        log.info("Client.attemptRequest '{}' to addresses {} FAILED after {} attempts",
+        log.warn("Client.attemptRequest '{}' to addresses {} FAILED after {} attempts",
             name, this.connections.map!(c => c.address), this.max_retries);
 
         // request considered failed after max retries reached
