@@ -183,8 +183,7 @@ public class NetworkManager
         private void connect_canthrow ()
         {
             if (this.api is null)
-                this.api = this.outer.getClient(
-                    this.address, this.outer.config.node.timeout);
+                this.api = this.outer.getClient(this.address);
 
             PublicKey key;
             Hash utxo;
@@ -514,7 +513,7 @@ public class NetworkManager
     public ITimer startPeriodicNameRegistration ()
     {
         this.registry_client = this.getNameRegistryClient(
-            this.config.validator.registry_address, 2.seconds);
+            this.config.validator.registry_address);
         if (this.registry_client is null)
             return null;
 
@@ -996,17 +995,17 @@ public class NetworkManager
 
         Params:
           address = The address (IPv4, IPv6, hostname) of this node
-          timeout = the timeout duration to use for requests
 
         Returns:
           An object to communicate with the node at `address`
 
     ***************************************************************************/
 
-    protected agora.api.Validator.API getClient (Address url, Duration timeout)
+    protected agora.api.Validator.API getClient (Address url)
     {
         import std.algorithm.searching;
 
+        const timeout = this.config.node.timeout;
         if (url.schema == "agora")
         {
             auto owner_validator = cast (agora.api.Validator.API) this.owner_node;
@@ -1049,22 +1048,21 @@ public class NetworkManager
 
         Params:
           address = The address of the name registry server
-          timeout = the timeout duration to use for requests
 
         Returns:
           An object to communicate with the name registry server
 
     ***************************************************************************/
 
-    public NameRegistryAPI getNameRegistryClient (string address, Duration timeout)
+    public NameRegistryAPI getNameRegistryClient (string address)
     {
         if (address == string.init)
             return null;
         auto settings = new RestInterfaceSettings();
         settings.baseURL = Address(address);
         settings.httpClientSettings = new HTTPClientSettings();
-        settings.httpClientSettings.connectTimeout = timeout;
-        settings.httpClientSettings.readTimeout = timeout;
+        settings.httpClientSettings.connectTimeout = this.config.node.timeout;
+        settings.httpClientSettings.readTimeout = this.config.node.timeout;
         settings.httpClientSettings.proxyURL = this.config.proxy.url;
 
         return new RestInterfaceClient!NameRegistryAPI(settings);
