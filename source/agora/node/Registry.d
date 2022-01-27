@@ -936,7 +936,7 @@ private struct ZoneData
                     format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
             }
 
-            this.config.fromConfig(this.root);
+            this.soa = this.config.fromConfig(this.root);
             this.updateSOA();
         }
         else if (this.type == ZoneType.secondary
