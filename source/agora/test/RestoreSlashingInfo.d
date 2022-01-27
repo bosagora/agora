@@ -74,10 +74,16 @@ unittest
     auto b20 = set_a[0].getBlocksFrom(GenesisValidatorCycle, 1)[0];
     assert(b20.header.enrollments.length == conf.outsider_validators + 1);
 
+    // Check if the validators in the set B have all the addresses for
+    // current validators and previous validators except themselves.
+    set_b.each!(node =>
+        retryFor(node.getNodeInfo().addresses.length ==
+            GenesisValidators + conf.outsider_validators,
+            5.seconds));
+
     // Wait for nodes to run a discovery task and update their required peers
-    Thread.sleep(3.seconds);
-    // Set B validators should discover each other
-    network.waitForDiscovery();
+    Thread.sleep(conf.node.network_discovery_interval);
+
     // Block 21
     network.generateBlocks(iota(GenesisValidators - 1, GenesisValidators + conf.outsider_validators),
         Height(GenesisValidatorCycle + 1), true);
@@ -85,5 +91,6 @@ unittest
     // Now restarting the validators in the set B, all the data of those
     // validators has been wiped out.
     set_b.each!(node => network.restart(node.client));
+
     network.expectHeight(Height(GenesisValidatorCycle + 1));
 }
