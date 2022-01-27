@@ -117,7 +117,6 @@ unittest
     foreach (node; network.nodes)
         if (node != impersonator_node)
             retryFor(
-                node.client.isBanned(Address("http://"~impersonator_node.address)) ||
-                node.client.isBanned(Address("agora://"~impersonator_node.address)) , 1.seconds,
+                node.client.isBanned(impersonator_node.address) , 1.seconds,
                 format!"Node %s did not ban %s"(node.address, impersonator_node.address));
 }

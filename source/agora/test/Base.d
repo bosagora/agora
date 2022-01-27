@@ -551,7 +551,7 @@ private final class LocalRestTimer : ITimer
 public struct APIPair (API)
 {
     ///
-    public string address;
+    public Address address;
 
     ///
     public RemoteAPI!API client;
@@ -570,7 +570,7 @@ public struct APIPair (API)
 public struct NodePair
 {
     ///
-    public this (string address, RemoteAPI!TestAPI client, shared(TimePoint)* time)
+    public this (Address address, RemoteAPI!TestAPI client, shared(TimePoint)* time)
         @safe pure nothrow @nogc
     {
         this.pair = APIPair!TestAPI(address, client);
@@ -897,8 +897,11 @@ public class TestAPIManager
 
         foreach (ref interf; conf.interfaces)
         {
-            assert(this.registry.register(interf.address, api.listener()));
-            this.nodes ~= NodePair(interf.address, api, time);
+            // The 'interfaces' technically contains netmask on which to bind,
+            // so we're "abusing" it by using a fixed IP.
+            auto address = Address("agora://" ~ interf.address);
+            assert(this.registry.register(address.host, api.listener()));
+            this.nodes ~= NodePair(address, api, time);
         }
         return api;
     }
@@ -931,8 +934,9 @@ public class TestAPIManager
             this.dns_chan, conf.node.timeout, file, line);
         auto casted = new RemoteAPI!(TestAPI)(cli.listener(), conf.node.timeout);
 
-        this.dns = NodePair(conf.interfaces[0].address, casted, time);
-        assert(this.registry.register(conf.interfaces[0].address, cli.listener()));
+        auto address = Address("agora://" ~ conf.interfaces[0].address);
+        this.dns = NodePair(address, casted, time);
+        assert(this.registry.register(address.host, cli.listener()));
     }
 
     /***************************************************************************
