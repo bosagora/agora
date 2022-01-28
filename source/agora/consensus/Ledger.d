@@ -87,6 +87,9 @@ public class NodeLedger : Ledger
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
+    /// Hashes of Values we fully validated for a slot
+    private Set!Hash fully_validated_value;
+
     /***************************************************************************
 
         Constructor
@@ -139,6 +142,7 @@ public class NodeLedger : Ledger
             this.onAcceptedBlock(block, validators_changed);
         }
 
+        () @trusted { this.fully_validated_value.clear(); }();
         return null;
     }
 
@@ -381,6 +385,10 @@ public class NodeLedger : Ledger
         const validating = this.height() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
+        auto idx_value_hash = hashMulti(validating, data);
+        if (idx_value_hash in this.fully_validated_value)
+            return null;
+
         Transaction[] tx_set;
         if (auto fail_reason = this.getValidTXSet(data, tx_set, utxo_finder))
             return fail_reason;
@@ -453,6 +461,7 @@ public class NodeLedger : Ledger
             return "Internal error while validating slashing data";
         }
 
+        this.fully_validated_value.put(idx_value_hash);
         return null;
     }
 
@@ -1559,13 +1568,12 @@ unittest
     ConsensusData data;
     ledger.prepareNominatingSet(data);
 
+    assert(data.missing_validators == skip_indexes);
+    assert(ledger.validateConsensusData(data, [2]) == "Higher bound violation - Missing validator mismatch [2, 5] is not a subset of [2]");
     assert(ledger.validateConsensusData(data, skip_indexes) is null);
 
     data.missing_validators = [2,3,5];
     assert(ledger.validateConsensusData(data, [2,3,5,7,9]) is null);
-
-    data.missing_validators = [2,5];
-    assert(ledger.validateConsensusData(data, [2]) == "Higher bound violation - Missing validator mismatch [2, 5] is not a subset of [2]");
 
     data.missing_validators = [5];
     assert(ledger.validateConsensusData(data, [2]) == "Lower bound violation - Missing validator mismatch [2, 5] is not a subset of [5]");
