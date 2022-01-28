@@ -332,7 +332,12 @@ public class NodeLedger : Ledger
                 local_unknown_txs[tx_hash] = true;
             else if (auto fail_reason = tx.isInvalidReason(this.engine,
                 utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
+            {
+                try
+                    this.pool.remove(tx_hash, false);
+                catch (Exception) {}
                 return fail_reason;
+            }
             else
                 tx_set ~= tx;
         }
@@ -853,27 +858,11 @@ public class ValidatingLedger : NodeLedger
         scope UTXOFinder utxo_finder) @safe
     {
         Hash[] result;
-        Amount tot_fee, tot_data_fee;
         size_t size_budget = this.params.MaxTxSetSize * 1024; // cant overflow
-
         foreach (ref Hash hash, ref Transaction tx; this.pool)
         {
-            scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
-                const err = this.fee_man.check(tx, sum_unspent);
-                if (!err)
-                {
-                    tot_fee.add(sum_unspent);
-                    tot_data_fee.add(
-                        this.fee_man.getDataFee(tx.payload.length));
-                }
-                return err;
-            };
-
             auto size = tx.sizeInBytes();
-            if (auto reason = tx.isInvalidReason(
-                    this.engine, utxo_finder, height, checkAndAcc, &this.getPenaltyDeposit))
-                log.trace("Rejected invalid ('{}') tx: {}", reason, tx);
-            else if (size_budget >= size)
+            if (size_budget >= size)
             {
                 result ~= hash;
                 size_budget -= size;
