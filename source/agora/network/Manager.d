@@ -795,11 +795,11 @@ public class NetworkManager
         node_pairs.length = 0;
         assumeSafeAppend(node_pairs);
 
-        // return ulong.max if getBlockHeight() fails
+        // return ulong.max if getSignedHeight() fails
         Height getHeight (NetworkClient node)
         {
             try
-                return Height(node.getBlockHeight());
+                return Height(node.getSignedHeight());
             catch (Exception ex)
                 return Height(ulong.max);
         }

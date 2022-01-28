@@ -405,6 +405,22 @@ public class NetworkClient
 
     /***************************************************************************
 
+        Returns:
+            the heightest block with majority signed in the node's ledger,
+            or ulong.max if the request failed
+
+        Throws:
+            Exception if the request failed.
+
+    ***************************************************************************/
+
+    public ulong getSignedHeight ()
+    {
+        return this.attemptRequest!(API.getSignedHeight, Throw.Yes)();
+    }
+
+    /***************************************************************************
+
         Get the array of blocks starting from the provided block height.
         The block at height is included in the array.
 

@@ -153,6 +153,18 @@ public interface API
 
     /***************************************************************************
 
+        Returns:
+            the highest height in this node's ledger with majority signatures
+
+        API:
+            GET /signed_height
+
+    ***************************************************************************/
+
+    public ulong getSignedHeight ();
+
+    /***************************************************************************
+
         Expose blocks as a REST collection
 
         API:

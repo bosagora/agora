@@ -963,6 +963,13 @@ public class FullNode : API
         return this.ledger.height();
     }
 
+    /// GET: /signed_height
+    public override ulong getSignedHeight ()
+    {
+        this.recordReq("signed_height");
+        return this.ledger.majorityHeight();
+    }
+
     /// GET: /blocks_from
     public override const(Block)[] getBlocksFrom (ulong height,
         uint max_blocks)  @safe

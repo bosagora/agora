@@ -211,6 +211,23 @@ public class Ledger
 
     /***************************************************************************
 
+        Returns the height with majority signatures for this `Ledger`
+
+        Returns:
+            The highest block height known to this Ledger with more then half
+            active validator's signatures
+
+    ***************************************************************************/
+
+    public Height majorityHeight () @safe nothrow
+    {
+        // If the latest block does not have majority of signatures then return the previous height
+        const height = this.last_block.header.height;
+        return this.hasMajoritySignature(height) ? height : Height(height - 1);
+    }
+
+    /***************************************************************************
+
         Expose the list of validators at a given height
 
         The `ValidatorInfo` struct contains the validator's UTXO hash, address,
