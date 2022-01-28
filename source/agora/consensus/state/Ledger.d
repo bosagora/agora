@@ -882,8 +882,9 @@ public class Ledger
     protected string handleNotSignedByMajority (in BlockHeader header,
         in ValidatorInfo[] validators) @safe nothrow
     {
-        log.error("Block#{}: Signatures are not majority: {}/{}, signers: {}",
-            header.height, header.validators.setCount, header.validators.count, validators);
+        log.info("Block#{}: Signatures are not majority: {}/{}, signers: {}",
+            header.height, header.validators.setCount, header.validators.count,
+            validators.map!(v => v.address));
         return "The majority of validators hasn't signed this block";
     }
 
