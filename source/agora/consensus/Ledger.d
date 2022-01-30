@@ -330,14 +330,6 @@ public class NodeLedger : Ledger
             auto tx = this.pool.getTransactionByHash(tx_hash);
             if (tx == Transaction.init)
                 local_unknown_txs[tx_hash] = true;
-            else if (auto fail_reason = tx.isInvalidReason(this.engine,
-                utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
-            {
-                try
-                    this.pool.remove(tx_hash, false);
-                catch (Exception) {}
-                return fail_reason;
-            }
             else
                 tx_set ~= tx;
         }
@@ -366,6 +358,16 @@ public class NodeLedger : Ledger
                 local_unknown_txs.length, this.unknown_txs.length);
             return InvalidConsensusDataReason.NotInPool;
         }
+
+        foreach (tx; tx_set)
+            if (auto fail_reason = tx.isInvalidReason(this.engine,
+                utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
+            {
+                try
+                    this.pool.remove(tx.hashFull(), false);
+                catch (Exception) {}
+                return fail_reason;
+            }
 
         return null;
     }
