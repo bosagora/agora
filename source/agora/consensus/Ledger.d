@@ -313,18 +313,6 @@ public class NodeLedger : Ledger
         const expect_height = this.height() + 1;
         bool[Hash] local_unknown_txs;
 
-        Amount tot_fee, tot_data_fee;
-        scope checkAndAcc = (in Transaction tx, Amount sum_unspent) {
-            const err = this.fee_man.check(tx, sum_unspent);
-            if (!err && !tx.isCoinbase)
-            {
-                tot_fee.add(sum_unspent);
-                tot_data_fee.add(
-                    this.fee_man.getDataFee(tx.payload.length));
-            }
-            return err;
-        };
-
         foreach (const ref tx_hash; data.tx_set)
         {
             auto tx = this.pool.getTransactionByHash(tx_hash);
@@ -361,7 +349,7 @@ public class NodeLedger : Ledger
 
         foreach (tx; tx_set)
             if (auto fail_reason = tx.isInvalidReason(this.engine,
-                utxo_finder, expect_height, checkAndAcc, &this.getPenaltyDeposit))
+                utxo_finder, expect_height, &this.fee_man.check, &this.getPenaltyDeposit))
             {
                 try
                     this.pool.remove(tx.hashFull(), false);
