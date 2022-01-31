@@ -217,6 +217,15 @@ public class TransactionPool
         }
     }
 
+    /// Remove all TXs that spend the `utxo_hash`
+    public void removeSpenders (in Hash utxo_hash) @trusted
+    {
+        if (auto spender_set = utxo_hash in this.spenders)
+            foreach (tx_hash; *spender_set)
+                this.remove(tx_hash, false);
+        this.spenders.remove(utxo_hash);
+    }
+
     /***************************************************************************
 
         Add the given TX to `spenders` list
