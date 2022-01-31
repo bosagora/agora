@@ -393,14 +393,6 @@ private void runTCPDNSServer (TCPConnection conn, NameRegistry registry) @truste
 private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry) @trusted
 {
     ubyte[4096] buffer;
-    ushort length = 2;
-    scope writer = (in ubyte[] data) @safe {
-        ensure(data.length <= (buffer.length - length),
-               "Buffer overflow: Trying to write {} bytes in a {} buffer ({} used)",
-               data.length, buffer.length, length);
-        buffer[length .. length + data.length] = data[];
-        length += data.length;
-    };
 
     try
     {
@@ -422,15 +414,14 @@ private void runTCPDNSServer_canThrow (TCPConnection conn, NameRegistry registry
         auto query = deserializeFull!Message(buffer[0 .. size]);
         registry.answerQuestions(
             query, conn.remoteAddress.toAddressString(),
-            (in Message msg) @safe => msg.serializePart(writer, CompactMode.No),
+            (in Message msg) @trusted
+            {
+                auto s_msg = msg.serializeFull(CompactMode.No);
+                ushort length = cast(ushort) s_msg.length;
+                auto s_length = length.serializeFull(CompactMode.No);
+                conn.write(s_length ~ s_msg);
+            },
             true);
-
-        // Write the length at the begining
-        assert(length >= 2);
-        ushort copy = cast(ushort) (length - 2);
-        length = 0;
-        copy.serializePart(writer, CompactMode.No);
-        conn.write(buffer[0 .. copy + 2]);
     }
     catch (Exception exc)
     {
