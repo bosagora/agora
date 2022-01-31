@@ -2350,13 +2350,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
       registry: {
           enabled: true,
           validators: {
-              authoritative: true,
-              primary: "name.registry",
+              authoritative: SetInfo!bool(true, true),
+              primary: SetInfo!string("name.registry", true),
               soa: { email: SetInfo!string("test@testnet", true), },
           },
           flash: {
-              authoritative: true,
-              primary: "name.registry",
+              authoritative: SetInfo!bool(true, true),
+              primary: SetInfo!string("name.registry", true),
               soa: { email: SetInfo!string("test@testnet", true), },
           },
       },
