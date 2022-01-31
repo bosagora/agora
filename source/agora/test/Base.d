@@ -639,6 +639,9 @@ public class TestAPIManager
     /// The channel that the dns server listens to
     public Channel!DNSQuery dns_chan;
 
+    /// A DNS resolver to query registry
+    public LocalRestDNSResolver dns_resolver;
+
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
@@ -929,6 +932,7 @@ public class TestAPIManager
 
         auto time = new shared(TimePoint)(this.initial_time);
         this.dns_chan = new Channel!DNSQuery();
+        this.dns_resolver = new LocalRestDNSResolver(this.dns_chan);
         auto cli = RemoteAPI!FullRegistryAPI.spawn!RegistryNode(
             conf, &this.registry, this.blocks, this.test_conf, time,
             this.dns_chan, conf.node.timeout, file, line);
@@ -1319,12 +1323,6 @@ public class TestAPIManager
     public void ensureTxInPool (in Hash hash)
     {
         this.ensureTxInPool(iota(this.clients.length), hash);
-    }
-
-    /// Resolve a hostname
-    public auto resolve (Address addr)
-    {
-        return new LocalRestDNSResolver(this.dns_chan).resolve(addr);
     }
 }
 

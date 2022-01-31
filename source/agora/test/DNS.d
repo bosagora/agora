@@ -30,7 +30,7 @@ unittest
     FiberScheduler scheduler = new FiberScheduler;
     scheduler.start(
         () {
-            auto addr = network.resolve(Address("agora://boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2.validators.unittest.bosagora.io"));
+            auto addr = network.dns_resolver.resolve(Address("agora://boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2.validators.unittest.bosagora.io"));
             assert(addr.host.startsWith("10.0.0."));
         }
     );
