@@ -470,11 +470,12 @@ extern(D):
         }
 
         const next_nomination = this.getExpectedBlockTime();
-        if (cur_time < next_nomination)
+        const nomination_deadline = next_nomination + this.params.BlockInterval.total!"seconds" / 2;
+        if (cur_time < next_nomination || (cur_time > nomination_deadline && this.is_nominating))
         {
             this.log.trace(
-                "checkNominate(): Too early to nominate (current: {}, next: {})",
-                cur_time, next_nomination);
+                "checkNominate(): Not in the nomination window (current: {}, window: {}-{})",
+                cur_time, next_nomination, nomination_deadline);
             return;
         }
 
