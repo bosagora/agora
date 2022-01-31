@@ -143,6 +143,15 @@ public Listeners runNode (Config config)
             //dnstask.interrupt();
         }
 
+    bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
+        try
+            return result.node.getBanManager().isBanned(Address("agora://" ~ address.toAddressString()));
+        catch (Exception e)
+            assert(false, e.msg);
+    };
+
+    result.node.start();
+
     if (config.registry.enabled)
     {
         auto reg = result.node.getRegistry();
@@ -153,15 +162,6 @@ public Listeners runNode (Config config)
         result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(reg),
                 config.registry.address);
     }
-
-    bool delegate (in NetworkAddress address) @safe nothrow isBannedDg = (in address) @safe nothrow {
-        try
-            return result.node.getBanManager().isBanned(Address("agora://" ~ address.toAddressString()));
-        catch (Exception e)
-            assert(false, e.msg);
-    };
-
-    result.node.start();
 
     string tls_user_help;
     auto tls_ctx = getTLSContext(tls_user_help);

@@ -124,6 +124,12 @@ public class NameRegistry: NameRegistryAPI
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
     }
 
+    public void start ()
+    {
+        foreach (ref zone; this.zones)
+            zone.start();
+    }
+
     /***************************************************************************
 
         Collect registry stats
@@ -835,6 +841,8 @@ private struct ZoneData
     /// REST API of a primary registry to redirect API calls, only for secondary
     private NameRegistryAPI redirect_register;
 
+    private NetworkManager netman;
+
     /***************************************************************************
 
          Params:
@@ -853,6 +861,7 @@ private struct ZoneData
         this.root = root;
         this.taskman = taskman;
         this.soa = SOA.init;
+        this.netman = network;
 
         if (this.config.authoritative)
         {
@@ -933,42 +942,56 @@ private struct ZoneData
         catch (Exception)
             was_primary = false;
 
+        if (this.type == ZoneType.primary && !was_primary)
+        {
+            this.db.execute(
+                format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
+            this.db.execute(
+                format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
+        }
+        else if ((this.type == ZoneType.secondary
+                || this.type == ZoneType.caching) && was_primary)
+        {
+            this.db.execute(
+                format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
+            this.db.execute(
+                format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
+        }
+
+        // Initialize common fields
+        this.db.execute(query_sig_create);
+        this.db.execute(query_addr_create);
+        this.soa_ttl = 90;
+    }
+
+    /***************************************************************************
+
+        Start the zone
+
+    ***************************************************************************/
+
+    public void start ()
+    {
         if (this.type == ZoneType.primary)
         {
-            if (!was_primary)
-            {
-                this.db.execute(
-                    format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
-                this.db.execute(
-                    format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
-            }
-
             this.soa = this.config.fromConfig(this.root);
             this.updateSOA();
         }
         else if (this.type == ZoneType.secondary
                 || this.type == ZoneType.caching)
         {
-            if (was_primary)
-            {
-                this.db.execute(
-                    format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
-                this.db.execute(
-                    format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
-            }
-
             // DNS resolver is used to get SOA RR and performing AXFR
             auto peer_addrs = this.config.query_servers.map!(
                 peer => Address("dns://" ~ peer)
             ).array();
-            this.resolver = network.makeDNSResolver(peer_addrs);
+            this.resolver = this.netman.makeDNSResolver(peer_addrs);
 
             if (this.type == ZoneType.secondary)
             {
                 // Since a secondary zone cannot transfer UTXO, sequence and signature
                 // fields of data from a primary, it redirects API calls to API of the
                 // configured primary
-                this.redirect_register = network.getRegistryClient(
+                this.redirect_register = this.netman.getRegistryClient(
                     this.config.redirect_register);
 
                 this.expire_timer = this.taskman.createTimer(&this.disable);
@@ -981,13 +1004,6 @@ private struct ZoneData
             this.soa = SOA(Domain.init, Domain.init, 0, 540, 10, 6000, 120);
             this.soa_update_timer = this.taskman.setTimer(0.seconds, &this.updateSOA);
         }
-        else
-            return;
-
-        // Initialize common fields
-        this.db.execute(query_sig_create);
-        this.db.execute(query_addr_create);
-        this.soa_ttl = 90;
     }
 
     /***************************************************************************

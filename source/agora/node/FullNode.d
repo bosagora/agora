@@ -448,6 +448,8 @@ public class FullNode : API
         this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
 
+        this.registry.start();
+
         // Special case
         // Block externalized handler is set and push for Genesis block.
         if (this.block_handlers.length > 0 && this.ledger.height() == 0)
