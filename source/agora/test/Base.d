@@ -2567,7 +2567,9 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
                 assert(channel.read(query)); // should never be closed
                 this.registry.answerQuestions(
                     query.msg, "peer.localrest",
-                    (in Message msg) @trusted { query.response_chan.write(msg.clone()); });
+                    (in Message msg) @trusted { query.response_chan.write(msg.clone()); },
+                    (query.msg.questions.length > 0
+                     && query.msg.questions[0].qtype == QTYPE.AXFR));
             }
             catch (Exception exc)
             {
