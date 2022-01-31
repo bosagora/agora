@@ -2352,6 +2352,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
           validators: {
               authoritative: SetInfo!bool(true, true),
               primary: SetInfo!string("name.registry", true),
+              allow_transfer: [ZoneConfig.IPAddress("127.0.0.127")],
               soa: { email: SetInfo!string("test@testnet", true), },
           },
           flash: {
@@ -2566,7 +2567,7 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
                 DNSQuery query;
                 assert(channel.read(query)); // should never be closed
                 this.registry.answerQuestions(
-                    query.msg, "peer.localrest",
+                    query.msg, "127.0.0.127",
                     (in Message msg) @trusted { query.response_chan.write(msg.clone()); },
                     (query.msg.questions.length > 0
                      && query.msg.questions[0].qtype == QTYPE.AXFR));
