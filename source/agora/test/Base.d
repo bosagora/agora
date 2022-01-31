@@ -634,7 +634,7 @@ public class TestAPIManager
     protected TestConf test_conf;
 
     /// The name registry used in this network
-    public NodePair dns;
+    public NodePair[] dns;
 
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
@@ -823,7 +823,8 @@ public class TestAPIManager
         // We also need to set the registry time, because otherwise their Ledger
         // will reject new blocks as they exceed tolerance.
         // Note that this relies on the time moving forward only.
-        this.dns.time = exp_time;
+        foreach (dns_node; this.dns)
+            dns_node.time = exp_time;
         foreach (pair; pairs)
             pair.time = exp_time;
     }
@@ -931,7 +932,8 @@ public class TestAPIManager
         auto casted = new RemoteAPI!(TestAPI)(cli.listener(), conf.node.timeout);
 
         auto address = Address("agora://" ~ conf.interfaces[0].address);
-        this.dns = NodePair(address, casted, time);
+        this.dns ~= NodePair(address, casted, time);
+
         assert(this.registry.register(address.host, cli.listener()));
     }
 
@@ -950,7 +952,8 @@ public class TestAPIManager
 
         // have to wait indefinitely as the constructor is
         // currently a slow routine, stalling the call to start().
-        this.dns.client.ctrl.withTimeout(0.msecs, startDg);
+        foreach (dns_node; this.dns)
+            dns_node.client.ctrl.withTimeout(0.msecs, startDg);
         foreach (node; this.nodes)
             node.client.ctrl.withTimeout(0.msecs, startDg);
     }
@@ -987,9 +990,13 @@ public class TestAPIManager
         this.registry.clear();
         this.nodes = null;
 
-        this.dns.client.ctrl.shutdown(
-            printLogs ? &shutdownWithLogs : &shutdownSilent);
-        this.dns.client = null;
+        foreach (ref dns_node; this.dns)
+        {
+            dns_node.client.ctrl.shutdown(
+                printLogs ? &shutdownWithLogs : &shutdownSilent);
+            dns_node.client = null;
+        }
+        this.dns = null;
     }
 
     /***************************************************************************
@@ -1030,10 +1037,13 @@ public class TestAPIManager
                     writefln("Could not print logs for node %s: %s", node.address, ex.message);
             }
             writeln("Registry logs:");
-            try
-                this.dns.printLog();
-            catch (Exception ex)
-                writefln("Could not print registry logs (%s): %s", this.dns.address, ex.message);
+            foreach (dns_node; this.dns)
+            {
+                try
+                    dns_node.printLog();
+                catch (Exception ex)
+                    writefln("Could not print registry logs (%s): %s", dns_node.address, ex.message);
+            }
         }
     }
 
