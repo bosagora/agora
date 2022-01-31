@@ -161,7 +161,7 @@ public Listeners runNode (Config config)
             assert(false, e.msg);
     };
 
-    setTimer(0.seconds, &result.node.start, Periodic.No);  // asynchronous
+    result.node.start();
 
     string tls_user_help;
     auto tls_ctx = getTLSContext(tls_user_help);
