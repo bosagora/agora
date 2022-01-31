@@ -184,6 +184,7 @@ public class NodeLedger : Ledger
                 assert(0);
             }
             this.utxo_set.updateUTXOLock(enrollment.utxo_key, block.header.height + this.params.ValidatorCycle);
+            this.pool.removeSpenders(enrollment.utxo_key);
         }
     }
 
@@ -347,15 +348,9 @@ public class NodeLedger : Ledger
             return InvalidConsensusDataReason.NotInPool;
         }
 
-        foreach (tx; tx_set)
-            if (auto fail_reason = tx.isInvalidReason(this.engine,
-                utxo_finder, expect_height, &this.fee_man.check, &this.getPenaltyDeposit))
-            {
-                try
-                    this.pool.remove(tx.hashFull(), false);
-                catch (Exception) {}
-                return fail_reason;
-            }
+        UTXO val;
+        if (!tx_set.filter!(tx => !tx.isCoinbase).all!(tx => tx.inputs.all!(input => utxo_finder(input.utxo, val))))
+            return "Double spending TX set";
 
         return null;
     }
