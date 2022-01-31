@@ -69,6 +69,14 @@ unittest
             query.questions[0].qtype = QTYPE.CNAME;
             result = network.dns_resolver.query(query);
             assert(result.length == 0);
+
+            // AXFR zone transfer
+            query.questions[0] = Question(name, QTYPE.AXFR, QCLASS.IN);
+            result = network.dns_resolver.query(query);
+            // + 2 for starting and ending SOA records
+            assert(result.length == conf.node.test_validators + 2);
+            assert(result[0].type == TYPE.SOA);
+            assert(result[$-1].type == TYPE.SOA);
         }
     );
 }
