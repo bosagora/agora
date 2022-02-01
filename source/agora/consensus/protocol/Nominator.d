@@ -154,6 +154,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Envelope process task delay
     private enum EnvTaskDelay = 10.msecs;
 
+    /// Hashes of Values we fully validated for a slot
+    private Set!Hash fully_validated_value;
+
 extern(D):
 
     /***************************************************************************
@@ -877,6 +880,10 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
+        auto idx_value_hash = hashMulti(slot_idx, value);
+        if (idx_value_hash in this.fully_validated_value)
+            return ValidationLevel.kFullyValidatedValue;
+
         ConsensusData data;
         try
         {
@@ -919,6 +926,7 @@ extern(D):
             return ValidationLevel.kMaybeValidValue;
         }
 
+        this.fully_validated_value.put(idx_value_hash);
         return ValidationLevel.kFullyValidatedValue;
     }
 
@@ -990,6 +998,7 @@ extern(D):
         }
         this.initial_missing_validators = [];
         log.trace("valueExternalized: added slot id {} to ledger at height {}", height, last_height);
+        () @trusted { this.fully_validated_value.clear(); }();
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
