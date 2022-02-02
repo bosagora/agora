@@ -635,7 +635,7 @@ private SOA fromConfig (in ZoneConfig zone, Domain name) @safe
     return SOA(
         // mname, rname
         Domain.fromString(zone.primary), Domain.fromString(zone.soa.email.value.replace('@', '.')),
-        0, // Serial is not a config value, Will be set through `updateSOA`
+        cast(uint) Clock.currTime(UTC()).toUnixTime(),
         // Casts are safe as the values are validated during config parsing
         cast(int) zone.soa.refresh.total!"seconds",
         cast(int) zone.soa.retry.total!"seconds",
@@ -973,10 +973,7 @@ private struct ZoneData
     public void start ()
     {
         if (this.type == ZoneType.primary)
-        {
             this.soa = this.config.fromConfig(this.root);
-            this.updateSOA();
-        }
         else if (this.type == ZoneType.secondary
                 || this.type == ZoneType.caching)
         {
@@ -1031,7 +1028,8 @@ private struct ZoneData
     {
         if (this.type == ZoneType.primary)
         {
-            this.soa.serial = cast(uint) Clock.currTime(UTC()).toUnixTime();
+            uint time = cast(uint) Clock.currTime(UTC()).toUnixTime();
+            this.soa.serial = max(time, this.soa.serial + 1);
             return;
         }
 
