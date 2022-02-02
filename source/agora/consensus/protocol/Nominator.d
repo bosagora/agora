@@ -157,6 +157,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Hashes of Values we fully validated for a slot
     private Set!Hash fully_validated_value;
 
+    /// Hashes of envelopes we have processed already
+    private Set!Hash seen_envs;
+
 extern(D):
 
     /***************************************************************************
@@ -596,9 +599,14 @@ extern(D):
 
     public void receiveEnvelope (in SCPEnvelope envelope) @trusted
     {
-        auto copied = envelope.clone();
-        this.queued_envelopes.insertBack(copied);
-        this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
+        auto env_hash = envelope.hashFull();
+        if (env_hash !in this.seen_envs)
+        {
+            auto copied = envelope.clone();
+            this.queued_envelopes.insertBack(copied);
+            this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
+            this.seen_envs.put(env_hash);
+        }
     }
 
     /***************************************************************************
@@ -999,6 +1007,7 @@ extern(D):
         this.initial_missing_validators = [];
         log.trace("valueExternalized: added slot id {} to ledger at height {}", height, last_height);
         () @trusted { this.fully_validated_value.clear(); }();
+        () @trusted { this.seen_envs.clear(); }();
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
