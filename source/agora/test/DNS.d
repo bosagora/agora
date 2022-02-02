@@ -16,10 +16,13 @@ version (unittest):
 import agora.common.DNS;
 import agora.test.Base;
 import agora.utils.WellKnownKeys;
+
+import core.thread;
+
 import geod24.LocalRest;
 import geod24.concurrency;
 
-/// DNS test
+/// Primary registry test
 unittest
 {
     TestConf conf;
@@ -75,4 +78,110 @@ unittest
     assert(result.length == conf.node.test_validators + 2);
     assert(result[0].type == TYPE.SOA);
     assert(result[$-1].type == TYPE.SOA);
+}
+
+// Secondary registry test
+unittest
+{
+    import std.stdio : writeln;
+    TestConf conf = {
+        create_secondary_registry: true,
+    };
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    const node_addr = NODE2.address.toString;
+
+    // Allow some nodes to register and secondary to zone transfer
+    Thread.sleep(2.seconds);
+
+    auto resolver = network.makeDNSResolver([ Address("dns://10.8.8.9") ]);
+    auto addr = resolver.resolve(
+        Address("agora://" ~ node_addr ~ ".validators.unittest.bosagora.io"));
+    assert(addr.host.startsWith("10.0.0."));
+
+    Message query;
+
+    // Query for SOA record
+    auto name = Domain.fromSafeString("validators.unittest.bosagora.io.");
+    query.questions ~= Question(name, QTYPE.SOA, QCLASS.IN);
+    query.fill(query.header);
+    auto result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].name == name);
+    assert(result[0].type == TYPE.SOA);
+    assert(result[0].rdata.soa.mname == Domain.fromSafeString("name.registry."));
+    assert(result[0].rdata.soa.rname == Domain.fromSafeString("test.testnet."));
+
+    // A record
+    auto node_name = Domain.fromString(node_addr ~ ".validators.unittest.bosagora.io.");
+    query.questions[0] = Question(node_name, QTYPE.A, QCLASS.IN);
+    result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.A);
+
+    // CNAME record
+    query.questions[0].qtype = QTYPE.CNAME;
+    result = resolver.query(query);
+    assert(result.length == 0);
+
+    // AXFR zone transfer
+    query.questions[0] = Question(name, QTYPE.AXFR, QCLASS.IN);
+    result = resolver.query(query);
+    // + 2 for starting and ending SOA records
+    assert(result.length == conf.node.test_validators + 2);
+    assert(result[0].type == TYPE.SOA);
+    assert(result[$-1].type == TYPE.SOA);
+}
+
+// Caching registry test
+unittest
+{
+    import std.stdio : writeln;
+    TestConf conf = {
+        create_caching_registry: true,
+    };
+    auto network = makeTestNetwork!TestAPIManager(conf);
+    network.start();
+    scope(exit) network.shutdown();
+    scope(failure) network.printLogs();
+    network.waitForDiscovery();
+
+    const node_addr = NODE2.address.toString;
+
+    // Allow some nodes to register
+    Thread.sleep(2.seconds);
+
+    auto resolver = network.makeDNSResolver([ Address("dns://10.8.8.10") ]);
+    auto addr = resolver.resolve(
+        Address("agora://" ~ node_addr ~ ".validators.unittest.bosagora.io"));
+    assert(addr.host.startsWith("10.0.0."));
+
+    Message query;
+
+    // Query for SOA record
+    auto name = Domain.fromSafeString("validators.unittest.bosagora.io.");
+    query.questions ~= Question(name, QTYPE.SOA, QCLASS.IN);
+    query.fill(query.header);
+    auto result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].name == name);
+    assert(result[0].type == TYPE.SOA);
+    assert(result[0].rdata.soa.mname == Domain.fromSafeString("name.registry."));
+    assert(result[0].rdata.soa.rname == Domain.fromSafeString("test.testnet."));
+
+    // A record
+    auto node_name = Domain.fromString(node_addr ~ ".validators.unittest.bosagora.io.");
+    query.questions[0] = Question(node_name, QTYPE.A, QCLASS.IN);
+    result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.A);
+
+    // CNAME record
+    query.questions[0].qtype = QTYPE.CNAME;
+    result = resolver.query(query);
+    assert(result.length == 0);
 }
