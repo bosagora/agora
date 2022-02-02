@@ -2068,6 +2068,12 @@ public struct TestConf
     /// Matches the eponymous field in the `banman` section.
     public size_t max_failed_requests = 100;
 
+    /// Create a secondary registry that zone transfers from primary
+    public bool create_secondary_registry = false;
+
+    /// Create a caching registry that caches from primary
+    public bool create_caching_registry = false;
+
     /// Base values for the `node` section
     public NodeConfig node = {
         /// Minimum number of clients to connect to
@@ -2338,36 +2344,53 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     auto net = new APIManager(blocks, test_conf, validator_configs[0].consensus.genesis_timestamp, eArgs);
 
-    import configy.Attributes : SetInfo;
-    Config registry_config = {
-      banman : ban_conf,
-      node : makeNodeConfig(),
-      interfaces: [ makeInterfaceConfig("10.8.8.8") ],
-      consensus: makeConsensusConfig(),
-      network : connect_addresses.array.idup,
-      logging: test_conf.logging,
-      event_handlers : test_conf.event_handlers,
-      registry: {
-          enabled: true,
-          realm: {
-              authoritative: SetInfo!bool(true, true),
-              primary: SetInfo!string("name.registry", true),
-              soa: { email: SetInfo!string("test@testnet", true), },
-          },
-          validators: {
-              authoritative: SetInfo!bool(true, true),
-              primary: SetInfo!string("name.registry", true),
-              allow_transfer: [ZoneConfig.IPAddress("127.0.0.127")],
-              soa: { email: SetInfo!string("test@testnet", true), },
-          },
-          flash: {
-              authoritative: SetInfo!bool(true, true),
-              primary: SetInfo!string("name.registry", true),
-              soa: { email: SetInfo!string("test@testnet", true), },
-          },
-      },
-    };
-    net.createNameRegistry(registry_config, file, line);
+    Config makeRegistryConfig (string addr, bool authoritative, bool set_soa)
+    {
+        import configy.Attributes : SetInfo;
+
+        Config registry_config = {
+            banman : ban_conf,
+            node : makeNodeConfig(),
+            interfaces: [ makeInterfaceConfig(addr) ],
+            consensus: makeConsensusConfig(),
+            network : connect_addresses.array.idup,
+            logging: test_conf.logging,
+            event_handlers : test_conf.event_handlers,
+            registry: {
+                enabled: true,
+                realm: {
+                    authoritative: SetInfo!bool(true, true),
+                    primary: SetInfo!string("name.registry", true),
+                    soa: { email: SetInfo!string("test@testnet", true), },
+                },
+                validators: {
+                    authoritative: SetInfo!bool(authoritative, true),
+                    primary: SetInfo!string("name.registry", true),
+                    allow_transfer: [ZoneConfig.IPAddress("127.0.0.127")],
+                    query_servers: ["10.8.8.8"],
+                    redirect_register: "http://10.8.8.8",
+                    soa: { email: SetInfo!string("test@testnet", set_soa),
+                        refresh: 2.seconds, },
+                },
+                flash: {
+                    authoritative: SetInfo!bool(true, true),
+                    primary: SetInfo!string("name.registry", true),
+                    soa: { email: SetInfo!string("test@testnet", true), },
+                },
+            },
+        };
+
+        return registry_config;
+    }
+
+    // Primary registry
+    net.createNameRegistry(makeRegistryConfig("10.8.8.8", true, true), file, line);
+
+    if (test_conf.create_secondary_registry)
+        net.createNameRegistry(makeRegistryConfig("10.8.8.9", true, false), file, line);
+
+    if (test_conf.create_caching_registry)
+        net.createNameRegistry(makeRegistryConfig("10.8.8.10", false, false), file, line);
 
     foreach (ref conf; all_configs)
         net.createNewNode(conf, file, line);
