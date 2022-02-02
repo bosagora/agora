@@ -2349,6 +2349,11 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
       event_handlers : test_conf.event_handlers,
       registry: {
           enabled: true,
+          realm: {
+              authoritative: SetInfo!bool(true, true),
+              primary: SetInfo!string("name.registry", true),
+              soa: { email: SetInfo!string("test@testnet", true), },
+          },
           validators: {
               authoritative: SetInfo!bool(true, true),
               primary: SetInfo!string("name.registry", true),
