@@ -39,6 +39,7 @@
 module agora.consensus.data.Params;
 
 import agora.common.Amount;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.crypto.Key;
 
@@ -116,7 +117,7 @@ public struct ConsensusConfig
     import configy.Attributes;
 
     /// Time at which the Genesis block was created
-    public ulong genesis_timestamp = 1609_459_200; // 2021-01-01:00:00:00 GMT
+    public TimePoint genesis_timestamp = 1609_459_200; // 2021-01-01:00:00:00 GMT
 
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
