@@ -265,7 +265,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
             return TransactionRelayError.TxFeeTooLow;
 
         this.txs.insert(TxHolder(rate, tx_hash,
-            this.clock.networkTime() + this.config.node.relay_tx_cache_exp.total!"seconds"));
+            this.clock.networkTime() + this.config.node.relay_tx_cache_exp));
         this.tx_hashes.put(tx_hash);
 
         return null;
@@ -378,7 +378,8 @@ public class TransactionRelayerFeeImp : TransactionRelayer
             return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, getPenaltyDeposit, rate);
         };
 
-        this(new TransactionPool(cacheDB), config, toDelegate(noclients), null, new MockClock(0), wrapper, false);
+        this(new TransactionPool(cacheDB), config, toDelegate(noclients), null,
+             new MockClock(TimePoint.init), wrapper, false);
     }
 
     /***************************************************************************
@@ -470,7 +471,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         assert(transaction_relayer.txs.length == 2);
 
         // clean up the relay queue after changing the clock
-        (cast(MockClock) transaction_relayer.clock).setTime(TimePoint.max - 1);
+        (cast(MockClock) transaction_relayer.clock).setTime(TimePoint.init + Duration.max);
         transaction_relayer.cleanRelayQueue();
         assert(transaction_relayer.tx_hashes.length == 0);
         assert(transaction_relayer.txs.length == 0);

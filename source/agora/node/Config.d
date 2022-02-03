@@ -710,7 +710,7 @@ network:
     assert(config.consensus.tx_payload_fee_factor == 2100);
     assert(config.consensus.validator_tx_fee_cut == 69);
     assert(config.consensus.payout_period == 9999);
-    assert(config.consensus.genesis_timestamp == 424242);
+    assert(config.consensus.genesis_timestamp == TimePoint.fromString("424242"));
 }
 
 unittest

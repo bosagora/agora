@@ -482,9 +482,9 @@ public class NetworkManager
             if (node_time == 0)
                 continue;  // request failed
 
-            const req_delay = (this.clock.utcTime() - req_start).seconds;
+            const req_delay = (this.clock.utcTime() - req_start);
             const dist_delay = req_delay / 2;  // divide evently
-            const offset = (node_time - req_start).seconds - dist_delay;
+            const offset = (node_time - req_start) - dist_delay;
             offsets ~= TimeInfo(node.identity.key, node_time, req_delay, offset);
         }
 

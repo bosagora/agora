@@ -824,7 +824,7 @@ public class TestAPIManager
         static assert (isInputRange!Pairs);
 
         const exp_time = this.test_start_time +
-            this.test_conf.consensus.block_interval.total!"seconds" * height;
+            this.test_conf.consensus.block_interval * height;
         // We also need to set the registry time, because otherwise their Ledger
         // will reject new blocks as they exceed tolerance.
         // Note that this relies on the time moving forward only.

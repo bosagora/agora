@@ -123,7 +123,8 @@ public struct ConsensusConfig
         Defaults to 2021-01-01:00:00:00 GMT.
 
     ***************************************************************************/
-    public TimePoint genesis_timestamp = 1609_459_200;
+
+    public TimePoint genesis_timestamp = TimePoint(1609_459_200);
 
     /// The cycle length for a validator
     public uint validator_cycle = 1008;
