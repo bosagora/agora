@@ -55,7 +55,7 @@ import core.stdc.time;
 import core.time;
 
 /// Delegate used to calculate the time offset to apply in `networkTime`
-public alias GetNetTimeOffset = bool delegate (out long) @safe nothrow;
+public alias GetNetTimeOffset = bool delegate (out Duration) @safe nothrow;
 
 /// Delegate used to set timer for synchronizing the clock with the network
 public alias SetPeriodicTimer = void delegate (Duration, void delegate())
@@ -68,7 +68,7 @@ public class Clock
     private GetNetTimeOffset getNetTimeOffset;
 
     /// the offset for the current time, which may be negative
-    private long net_time_offset = 0;
+    private Duration net_time_offset;
 
     /// how often the clock should be synchronized with the network
     public const Duration ClockSyncInterval = 1.minutes;
@@ -107,7 +107,7 @@ public class Clock
 
     public TimePoint networkTime () @safe nothrow
     {
-        return this.localTime() + this.net_time_offset;
+        return this.localTime() + this.net_time_offset.total!"seconds";
     }
 
     /***************************************************************************
@@ -146,7 +146,7 @@ public class Clock
 
     public void synchronize () @safe nothrow
     {
-        long time_offset;
+        Duration time_offset;
         if (this.getNetTimeOffset(time_offset))
             this.net_time_offset = time_offset;
     }

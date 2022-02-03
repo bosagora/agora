@@ -806,7 +806,7 @@ public class FullNode : API
     {
         // non-synchronizing clock (for now)
         return new Clock(
-            (out long time_offset) { return true; },
+            (out Duration time_offset) { return true; },
             (Duration duration, void delegate() cb) nothrow @trusted
                 { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }

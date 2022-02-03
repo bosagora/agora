@@ -1846,7 +1846,7 @@ public class TestFullNode : FullNode, TestAPI
     protected override TestClock makeClock ()
     {
         return new TestClock(this.taskman,
-            (out long time_offset) { return true; }, this.cur_time);
+            (out Duration time_offset) { return true; }, this.cur_time);
     }
 
     /// ditto
@@ -1934,7 +1934,7 @@ public class TestValidatorNode : Validator, TestAPI
     protected override TestClock makeClock ()
     {
         return new TestClock(this.taskman,
-            (out long time_offset)
+            (out Duration time_offset)
             {
                 return this.network.getNetTimeOffset(this.qc.threshold,
                     time_offset);
