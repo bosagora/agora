@@ -25,7 +25,6 @@ import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 
 import core.thread;
-import core.time;
 
 /// test preimage changing quorum configs
 unittest

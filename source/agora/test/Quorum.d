@@ -20,7 +20,6 @@ import agora.node.FullNode;
 import agora.test.Base;
 
 import core.thread;
-import core.time;
 
 ///
 unittest
