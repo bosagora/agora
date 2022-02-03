@@ -517,7 +517,7 @@ public class Validator : FullNode, API
 
     protected override Clock makeClock ()
     {
-        return new Clock((out long time_offset)
+        return new Clock((out Duration time_offset)
             {
                 return this.network.getNetTimeOffset(this.qc.threshold,
                     time_offset);

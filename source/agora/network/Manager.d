@@ -462,7 +462,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public bool getNetTimeOffset (uint threshold, out long time_offset)
+    public bool getNetTimeOffset (uint threshold, out Duration time_offset)
         @safe nothrow
     {
         // contains a node's clock time and the calculated drift time
@@ -471,7 +471,7 @@ public class NetworkManager
             PublicKey key;
             TimePoint node_time;
             long req_delay;
-            long offset;
+            Duration offset;
         }
 
         static TimeInfo[] offsets;
@@ -479,7 +479,7 @@ public class NetworkManager
         () @trusted { assumeSafeAppend(offsets); }();
         // must include our own assumed clock drift (zero)
         offsets ~= TimeInfo(this.config.validator.key_pair.address,
-            this.clock.localTime(), 0, 0);
+            this.clock.localTime());
 
         foreach (node; this.validators())
         {
@@ -494,7 +494,7 @@ public class NetworkManager
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
             const offset = (node_time - dist_delay) - req_start;
-            offsets ~= TimeInfo(node.key, node_time, req_delay, offset);
+            offsets ~= TimeInfo(node.key, node_time, req_delay, offset.seconds);
         }
 
         // we heard from at least one quorum slice
