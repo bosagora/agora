@@ -254,7 +254,7 @@ public class BanManager
 
     public void banFor (Address address, Duration duration) @safe nothrow
     {
-        const ban_until = this.getCurTime() + duration.total!"seconds";
+        const ban_until = this.getCurTime() + duration;
         this.banUntil(address, ban_until);
     }
 
@@ -490,7 +490,7 @@ unittest
     assert(!banman.isBanned(node1));
 
     // banUntil
-    banman.banUntil(node1, 86500);
+    banman.banUntil(node1, TimePoint(86500));
     banman.time = 86499;
     assert(banman.isBanned(node1));
     banman.time = 86500;

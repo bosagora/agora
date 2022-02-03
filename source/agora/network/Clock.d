@@ -98,7 +98,7 @@ public class Clock
 
     public TimePoint networkTime () @safe nothrow
     {
-        return this.utcTime() + this.net_time_offset.total!"seconds";
+        return this.utcTime() + this.net_time_offset;
     }
 
     /***************************************************************************

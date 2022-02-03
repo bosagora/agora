@@ -44,7 +44,85 @@ shared static this ()
 
 /// Represents a specific point in time, it should be changed to time_t
 /// after time_t became platform independent
-public alias TimePoint = ulong;
+public struct TimePoint
+{
+    import std.conv : to;
+    import std.format : formattedWrite;
+    import core.time;
+
+    ///
+    public ulong value;
+
+    ///
+    public alias value this;
+
+    /// Return the result of offsetting the duration to the current time
+    public TimePoint opBinary (string op) (in Duration duration) const scope
+    {
+        static if (op == "+")
+            return TimePoint(this.value + duration.total!"seconds");
+        else static if (op == "-")
+        {
+            if (duration.total!"seconds" > this.value)
+                return TimePoint.init;
+            return TimePoint(this.value - duration.total!"seconds");
+        }
+        else
+            static assert(0, "Operation `" ~ op ~ "` is not supported");
+    }
+
+    /// Implement this / duration
+    public size_t opBinary (string op : "/") (in Duration duration) const scope
+    {
+        assert(duration >= 1.seconds);
+        return this.value / duration.total!"seconds";
+    }
+
+    /// Return the result of offsetting the duration to the current time
+    public Duration opBinary (string op : "-") (in TimePoint other) const scope
+    {
+        return (this.value - other.value).seconds;
+    }
+
+    /// Apply the duration to the current instance and return it
+    ref TimePoint opOpAssign (string op) (in Duration duration) return scope
+    {
+        static if (op == "+")
+            this.value += duration.total!"seconds";
+        else static if (op == "-")
+            // Do not underflow, set to 0
+            this.value -= (duration.total!"seconds" <= this.value)
+                ? duration.total!"seconds" : this.value;
+        else
+            static assert(0, "Operation `" ~ op ~ "` is not supported");
+
+        return this;
+    }
+
+    /// Writes a human-readable string representation of this `TimePoint` to `sink`
+    /// Format is `YYYY-Mon-DD HH:MM:SS`
+    public void toString (scope void delegate (in char[]) @safe sink)
+        const scope @safe
+    {
+        formattedWrite(sink, "%d", this.value);
+    }
+
+    /// Ditto
+    public string toString () const scope @safe
+    {
+        string result;
+        this.toString((in char[] data) { result ~= data; });
+        return result;
+    }
+
+    /// Build a `TimePoint` for a human-readable representation
+    /// Format is the same as `toString`
+    public static TimePoint fromString (scope const(char)[] str)
+        @safe
+    {
+        return TimePoint(str.to!ulong);
+    }
+}
 
 /// An array of const characters
 public alias cstring = const(char)[];

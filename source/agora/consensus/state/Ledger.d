@@ -1055,9 +1055,8 @@ public class Ledger
     {
         if (utcTime <= this.params.GenesisTimestamp)
             return Height.init;
-        size_t offset = utcTime - this.params.GenesisTimestamp;
-        // TimePoint is a `ulong` consisting of a number of seconds
-        return Height(offset / this.params.BlockInterval.total!"seconds");
+        const offset = utcTime - this.params.GenesisTimestamp;
+        return Height(offset / this.params.BlockInterval);
     }
 }
 
@@ -1179,17 +1178,19 @@ unittest
 // Unittests for `Ledger.expectedHeight`
 unittest
 {
+    import core.time;
+
     scope ledger = new Ledger();
-    assert(ledger.expectedHeight(0) == Height(0));
+    assert(ledger.expectedHeight(TimePoint.init) == Height(0));
 
     const GTS = ledger.params.GenesisTimestamp;
-    const BIS = ledger.params.BlockInterval.total!"seconds";
-    assert(BIS >= 2);
+    const BIS = ledger.params.BlockInterval;
+    assert(BIS >= 2.seconds);
 
     assert(ledger.expectedHeight(GTS) == Height(0));
-    assert(ledger.expectedHeight(GTS + BIS - 1) == Height(0));
-    assert(ledger.expectedHeight(GTS + BIS    ) == Height(1));
-    assert(ledger.expectedHeight(GTS + BIS + 1) == Height(1));
+    assert(ledger.expectedHeight(GTS + BIS - 1.seconds) == Height(0));
+    assert(ledger.expectedHeight(GTS + BIS            ) == Height(1));
+    assert(ledger.expectedHeight(GTS + BIS + 1.seconds) == Height(1));
 
     assert(ledger.expectedHeight(GTS + (BIS * 200)) == Height(200));
 }

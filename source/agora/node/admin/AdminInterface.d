@@ -145,7 +145,7 @@ public class AdminInterface : NodeControlAPI
         KeyPair temp_kp = KeyPair.random();
 
         // A 'nonce' used to allow expiring (default: +90 days)
-        TimePoint expires = this.clock.utcTime() + (60 * 60 * 24 * 90);
+        TimePoint expires = this.clock.utcTime() + 90.days;
         LoginInfo login_info = LoginInfo(
             temp_kp.secret.toString(PrintMode.Clear),
             VoterCard(

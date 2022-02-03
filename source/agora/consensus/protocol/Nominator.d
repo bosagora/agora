@@ -495,7 +495,7 @@ extern(D):
     protected TimePoint getExpectedBlockTime () @safe @nogc nothrow pure
     {
         return this.params.GenesisTimestamp +
-            (ledger.height() + 1) * this.params.BlockInterval.total!"seconds";
+            (ledger.height() + 1) * this.params.BlockInterval;
     }
 
     /***************************************************************************

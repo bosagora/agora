@@ -38,5 +38,5 @@ unittest
             en.value.each!(tx => node_1.postTransaction(tx));
             network.expectHeightAndPreImg(Height(en.index + 1));
         });
-    assert(node_1.getNetworkTime() >= startTime + (4 * conf.consensus.block_interval.total!"seconds"));
+    assert(node_1.getNetworkTime() >= startTime + (4 * conf.consensus.block_interval));
 }
