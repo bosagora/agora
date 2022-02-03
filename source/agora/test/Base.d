@@ -636,12 +636,6 @@ public class TestAPIManager
     /// The name registry used in this network
     public NodePair dns;
 
-    /// The channel that the dns server listens to
-    public Channel!DNSQuery dns_chan;
-
-    /// A DNS resolver to query registry
-    public LocalRestDNSResolver dns_resolver;
-
     /// Used by the unittests in order to directly interact with the nodes,
     /// without trying to handshake or do any automatic network discovery.
     /// Also kept here to avoid any eager garbage collection.
@@ -895,7 +889,7 @@ public class TestAPIManager
     {
         auto time = new shared(TimePoint)(this.initial_time);
         auto api = RemoteAPI!TestAPI.spawn!NodeType(conf, &this.registry,
-            this.blocks, this.test_conf, time, this.dns_chan, eArgs,
+            this.blocks, this.test_conf, time, eArgs,
             conf.node.timeout, file, line);
 
         foreach (ref interf; conf.interfaces)
@@ -931,11 +925,9 @@ public class TestAPIManager
         assert(conf.interfaces.length == 1);
 
         auto time = new shared(TimePoint)(this.initial_time);
-        this.dns_chan = new Channel!DNSQuery();
-        this.dns_resolver = new LocalRestDNSResolver(this.dns_chan);
         auto cli = RemoteAPI!FullRegistryAPI.spawn!RegistryNode(
             conf, &this.registry, this.blocks, this.test_conf, time,
-            this.dns_chan, conf.node.timeout, file, line);
+            conf.node.timeout, file, line);
         auto casted = new RemoteAPI!(TestAPI)(cli.listener(), conf.node.timeout);
 
         auto address = Address("agora://" ~ conf.interfaces[0].address);
@@ -1324,6 +1316,13 @@ public class TestAPIManager
     {
         this.ensureTxInPool(iota(this.clients.length), hash);
     }
+
+    /// Returns: A newly instantiated DNS resolver usable for testing
+    public DNSResolver makeDNSResolver (
+        Address[] peer_addrs = null, Duration timeout = 10.seconds)
+    {
+        return new LocalRestDNSResolver(peer_addrs, this.registry, timeout);
+    }
 }
 
 /*******************************************************************************
@@ -1351,17 +1350,13 @@ public class TestNetworkManager : NetworkManager
     /// and converts it to a pointer (e.g. something that can route the message).
     public AnyRegistry* registry;
 
-    /// Channel that DNS server listens to
-    private Channel!DNSQuery dns_chan;
-
     /// Constructor
     public this (Parameters!(NetworkManager.__ctor) args, string address,
-                 AnyRegistry* reg, Channel!DNSQuery dns_chan)
+                 AnyRegistry* reg)
     {
         super(args);
         this.registry = reg;
         this.address = address;
-        this.dns_chan = dns_chan;
     }
 
     ///
@@ -1389,7 +1384,7 @@ public class TestNetworkManager : NetworkManager
     /// Returns an instance of a DNSResolver
     public override DNSResolver makeDNSResolver (Address[] peer_addrs = null)
     {
-        return new LocalRestDNSResolver(this.dns_chan);
+        return new LocalRestDNSResolver(peer_addrs, *this.registry);
     }
 
     ///
@@ -1635,9 +1630,6 @@ private mixin template TestNodeMixin ()
     /// Blocks to preload into the memory storage
     private immutable(Block)[] blocks;
 
-    /// Channel that DNS server listens to
-    private Channel!DNSQuery dns_chan;
-
     ///
     public override void start ()
     {
@@ -1690,7 +1682,7 @@ private mixin template TestNodeMixin ()
         return new TestNetworkManager(
             this.config, this.cacheDB, taskman, clock, this,
             this.config.interfaces[0].address,
-            this.nregistry, this.dns_chan);
+            this.nregistry);
     }
 
     /// Return an enrollment manager backed by an in-memory SQLite db
@@ -1833,12 +1825,11 @@ public class TestFullNode : FullNode, TestAPI
 
     ///
     public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
-        in TestConf test_conf, shared(TimePoint)* cur_time, Channel!DNSQuery dns_chan)
+        in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.nregistry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
-        this.dns_chan = dns_chan;
 
         // Keep in sync with `TestValidator` ctor
         Log.root.level(atomicLoad(defaultLogLevel), true);
@@ -1905,12 +1896,11 @@ public class TestValidatorNode : Validator, TestAPI
 
     ///
     public this (Config config, AnyRegistry* reg, immutable(Block)[] blocks,
-                 in TestConf test_conf, shared(TimePoint)* cur_time, Channel!DNSQuery dns_chan)
+                 in TestConf test_conf, shared(TimePoint)* cur_time)
     {
         this.nregistry = reg;
         this.blocks = blocks;
         this.cur_time = cur_time;
-        this.dns_chan = dns_chan;
 
         // This is normally done by `agora.node.Runner`
         // By default all output is written to the appender
@@ -2497,8 +2487,15 @@ public class NoGossipTransactionRelayer : TransactionRelayer
     public override string addTransaction (in Transaction tx) @safe { return null; }
 }
 
-/// Interface combining both the `TestAPI` and the `NameRegistryAPI` to expose both at once
-package interface FullRegistryAPI : TestAPI, NameRegistryAPI {}
+/// Interface combining `TestAPI`, `NameRegistryAPI`, and methods for DNS queries
+package interface FullRegistryAPI : TestAPI, NameRegistryAPI
+{
+    /// Perform an UDP request
+    public Message queryUDP (in Message query);
+
+    /// Perform a TCP request
+    public Message queryTCP (in Message query);
+}
 
 /// Mimics a DNS UDP Socket
 private struct DNSQuery
@@ -2545,60 +2542,59 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     }
 
     ///
-    public override void start ()
+    public override Message queryUDP (in Message query)
     {
-        super.start();
-        this.taskman.runTask(() {
-            try
-                runDNSServer(this.dns_chan);
-            catch (Exception e)
-                assert(0, e.msg);
-        });
+        Message result;
+        this.registry.answerQuestions(query, "127.0.0.127",
+            (in Message msg) @trusted { result = msg.clone(); },
+            false);
+        return result;
     }
 
     ///
-    private void runDNSServer (Channel!DNSQuery channel)
+    public override Message queryTCP (in Message query)
     {
-        scope (exit) channel.close();
-        while (true)
-        {
-            try
-            {
-                DNSQuery query;
-                assert(channel.read(query)); // should never be closed
-                this.registry.answerQuestions(
-                    query.msg, "127.0.0.127",
-                    (in Message msg) @trusted { query.response_chan.write(msg.clone()); },
-                    (query.msg.questions.length > 0
-                     && query.msg.questions[0].qtype == QTYPE.AXFR));
-            }
-            catch (Exception exc)
-            {
-                scope (failure) assert(0);
-                stderr.writeln("Exception thrown while handling query: ", exc);
-            }
-        }
+        Message result;
+        this.registry.answerQuestions(query, "127.0.0.127",
+            (in Message msg) @trusted { result = msg.clone(); },
+            true);
+        return result;
     }
 }
 
 ///
 public final class LocalRestDNSResolver : DNSResolver
 {
-    /// Channel to the DNS server
-    private Channel!DNSQuery dns_chan;
+    ///
+    private FullRegistryAPI[] peers;
 
     /***************************************************************************
 
         Instantiate a new object of this type
 
         Params:
-          dns_chan = Channel that DNS server listens to
+          addresses = Addresses of the DNS servers to use
+          router = Localrest registry to resolve `addresses`
+          timmeout = Timeout to use for queries
 
     ***************************************************************************/
 
-    public this (Channel!DNSQuery dns_chan)
+    public this (Address[] addresses, ref AnyRegistry router,
+                 Duration timeout = 10.seconds)
     {
-        this.dns_chan = dns_chan;
+        foreach (addr; addresses)
+            this.addResolver(addr, router, timeout);
+    }
+
+    /// Add a new peer / resolver to query
+    public void addResolver (Address address, ref AnyRegistry router,
+                             Duration timeout = 10.seconds)
+    {
+        auto tid = router.locate!FullRegistryAPI(address.host);
+        assert(tid !is typeof(tid).init),
+            format("Trying to access DNS registry at address '%s' without first creating it",
+                   address);
+        this.peers ~= new RemoteAPI!FullRegistryAPI(tid, timeout);
     }
 
     /***************************************************************************
@@ -2612,13 +2608,15 @@ public final class LocalRestDNSResolver : DNSResolver
 
     public override ResourceRecord[] query (Message msg) @trusted
     {
-        DNSQuery q = DNSQuery(msg, new Channel!Message());
-        ensure(this.dns_chan.write(q), "DNS write channel closed");
-        Message answer;
-        ensure(q.response_chan.read(answer, 5.seconds), "Failed to get DNS response");
-        log.trace("Got response from for '{}' : {}", msg, answer);
-        if (answer.header.RCODE == Header.RCode.NoError)
-            return answer.answers;
+        const tcp = msg.questions.length > 0 && msg.questions[0].qtype == QTYPE.AXFR;
+        foreach (p; this.peers)
+        {
+            auto answer = !tcp ? p.queryUDP(msg) : p.queryTCP(msg);
+            log.trace("Got response from for '{}' : {}", msg, answer);
+            if (answer.header.RCODE == Header.RCode.NoError)
+                return answer.answers;
+        }
+        log.trace("None of the {} had an answer for '{}' : {}", this.peers.length, msg);
         return null;
     }
 }
