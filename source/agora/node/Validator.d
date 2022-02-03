@@ -481,7 +481,7 @@ public class Validator : FullNode, API
         return new Nominator(
             this.params, this.config.validator.key_pair, clock, network, ledger,
             enroll_man, taskman, this.cacheDB,
-            this.config.validator.nomination_interval, &this.acceptBlock);
+            this.config.validator.nomination_interval, &this.acceptBlock, &this.acceptHeader);
     }
 
     /***************************************************************************

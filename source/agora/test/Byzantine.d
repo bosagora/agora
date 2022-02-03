@@ -89,7 +89,7 @@ class ByzantineNode (ByzantineReason reason) : TestValidatorNode
         return new ByzantineNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, reason);
+            &this.acceptBlock, &this.acceptHeader, reason);
     }
 }
 
@@ -149,7 +149,7 @@ private class SpyingValidator : TestValidatorNode
         return new SpyNominator(
             this.params, this.config.validator.key_pair, args,
             this.cacheDB, this.config.validator.nomination_interval,
-            &this.acceptBlock, this.envelope_type_counts);
+            &this.acceptBlock, &this.acceptHeader, this.envelope_type_counts);
     }
 }
 

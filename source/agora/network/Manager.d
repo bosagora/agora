@@ -270,6 +270,9 @@ public class NetworkManager
 
     protected agora.api.FullNode.API owner_node;
 
+    // Protect against running multiple times simultaneously
+    private bool isGettingMissingBlockSigs = false;
+
     /// Ctor
     public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
     {
@@ -902,6 +905,11 @@ public class NetworkManager
         import std.range;
         import std.typecons;
 
+        // Protect against running multiple times simultaneously
+        if (this.isGettingMissingBlockSigs)
+            return;
+        this.isGettingMissingBlockSigs = true;
+
         size_t[Height] signed_validators;
 
         try
@@ -964,6 +972,7 @@ public class NetworkManager
         {
             log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
         }
+        this.isGettingMissingBlockSigs = false;
     }
 
     /// Shut down timers & dump the metadata

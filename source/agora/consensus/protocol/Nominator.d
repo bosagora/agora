@@ -142,6 +142,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Delegate called when a block is to be externalized
     public extern (D) string delegate (in Block) @safe acceptBlock;
 
+    /// Delegate called when a block header is to be updated with signatures
+    public extern (D) void delegate (const(BlockHeader)) @safe acceptHeader;
+
     /// The missing validators at the start of the nomination round
     protected uint[] initial_missing_validators;
 
@@ -177,6 +180,7 @@ extern(D):
             data_dir = path to the data directory
             nomination_interval = How often to trigger `checkNominate`
             externalize = delegate called when a block is to be externalized
+            acceptHeader = delegate called when header is updated
 
     ***************************************************************************/
 
@@ -184,7 +188,8 @@ extern(D):
         Clock clock, NetworkManager network, ValidatingLedger ledger,
         EnrollmentManager enroll_man, ITaskManager taskman, ManagedDatabase cacheDB,
         Duration nomination_interval,
-        string delegate (in Block) @safe externalize)
+        string delegate (in Block) @safe externalize,
+        void delegate(const(BlockHeader)) @safe acceptHeader)
     {
         assert(externalize !is null);
 
@@ -210,6 +215,7 @@ extern(D):
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
         this.acceptBlock = externalize;
+        this.acceptHeader = acceptHeader;
     }
 
     /// Shut down the envelope processing timer
@@ -470,6 +476,7 @@ extern(D):
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
                 this.ledger.height(), this.ledger.lastBlock().header.validators);
+            this.network.getMissingBlockSigs(this.ledger, this.acceptHeader);
             return;
         }
 
