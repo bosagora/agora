@@ -181,7 +181,7 @@ unittest
             return new BadNominator(
                 this.params, this.config.validator.key_pair, args,
                 this.cacheDB, this.config.validator.nomination_interval,
-                &this.acceptBlock, this.runCount);
+                &this.acceptBlock, &this.acceptHeader, this.runCount);
         }
     }
 
