@@ -157,6 +157,12 @@ public extern (C++) class Nominator : SCPDriver
     /// Envelope process task delay
     private enum EnvTaskDelay = 10.msecs;
 
+    // Timer used to enable tx catchup in background as task
+    private ITimer tx_catchup_timer;
+
+    ///  tx catchup task delay
+    private enum TxCatchupTaskDelay = 100.msecs;
+
     /// Hashes of Values we fully validated for a slot
     private Set!Hash fully_validated_value;
 
@@ -186,8 +192,8 @@ extern(D):
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
         Clock clock, NetworkManager network, ValidatingLedger ledger,
-        EnrollmentManager enroll_man, ITaskManager taskman, ManagedDatabase cacheDB,
-        Duration nomination_interval,
+        EnrollmentManager enroll_man, ITaskManager taskman,  ITimer tx_catchup_timer,
+        ManagedDatabase cacheDB, Duration nomination_interval,
         string delegate (in Block) @safe externalize,
         void delegate(const(BlockHeader)) @safe acceptHeader)
     {
@@ -206,6 +212,8 @@ extern(D):
         this.envelope_timer = this.taskman.setTimer(EnvTaskDelay,
             &this.envelopeProcessTask, Periodic.No);
         this.envelope_timer.stop();
+        // Create timer for tx catchup then stop it
+        this.tx_catchup_timer = tx_catchup_timer;
         // Find the node id of this validator and create an SCPObject
         Hash[] utxo_keys;
         this.enroll_man.getEnrolledUTXOs(Height(1), utxo_keys);
@@ -912,6 +920,7 @@ extern(D):
             if (fail_reason == this.ledger.InvalidConsensusDataReason.NotInPool)
             {
                 log.trace("validateValue(): This node can not yet fully validate this value: {}. Data: {}", fail_reason, data.prettify);
+                this.tx_catchup_timer.rearm(TxCatchupTaskDelay, Periodic.No);
                 return ValidationLevel.kMaybeValidValue;
             }
             else if (fail_reason == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)

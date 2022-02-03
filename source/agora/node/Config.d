@@ -226,6 +226,10 @@ public struct NodeConfig
     /// from all other nodes
     public Duration block_catchup_interval = 20.seconds;
 
+    /// The duration between requests for retrieving unknown txs found in
+    /// nominations from other nodes
+    public Duration tx_catchup_interval = 10.seconds;
+
     // The percentage by which the double spend transaction's fee should be
     // increased in order to be added to the transaction pool
     public ubyte double_spent_threshold_pct = 20;
