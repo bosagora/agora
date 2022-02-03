@@ -31,52 +31,48 @@ unittest
 
     const node_addr = NODE2.address.toString;
 
-    FiberScheduler scheduler = new FiberScheduler;
-    scheduler.start(
-        () {
-            auto addr = network.dns_resolver.resolve(
-                Address("agora://" ~ node_addr ~ ".validators.unittest.bosagora.io"));
-            assert(addr.host.startsWith("10.0.0."));
+    auto resolver = network.makeDNSResolver([ Address("dns://10.8.8.8") ]);
+    auto addr = resolver.resolve(
+        Address("agora://" ~ node_addr ~ ".validators.unittest.bosagora.io"));
+    assert(addr.host.startsWith("10.0.0."));
 
-            Message query;
+    Message query;
 
-            // Query for SOA record
-            auto name = Domain.fromSafeString("validators.unittest.bosagora.io.");
-            query.questions ~= Question(name, QTYPE.SOA, QCLASS.IN);
-            query.fill(query.header);
-            auto result = network.dns_resolver.query(query);
-            assert(result.length == 1);
-            assert(result[0].name == name);
-            assert(result[0].type == TYPE.SOA);
-            assert(result[0].rdata.soa.mname == Domain.fromSafeString("name.registry."));
-            assert(result[0].rdata.soa.rname == Domain.fromSafeString("test.testnet."));
+    // Query for SOA record
+    auto name = Domain.fromSafeString("validators.unittest.bosagora.io.");
+    query.questions ~= Question(name, QTYPE.SOA, QCLASS.IN);
+    query.fill(query.header);
+    auto result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].name == name);
+    assert(result[0].type == TYPE.SOA);
+    assert(result[0].rdata.soa.mname == Domain.fromSafeString("name.registry."));
+    assert(result[0].rdata.soa.rname == Domain.fromSafeString("test.testnet."));
 
-            // Query for NS record
-            query.questions[0].qtype = QTYPE.NS;
-            result = network.dns_resolver.query(query);
-            assert(result.length == 1);
-            assert(result[0].type == TYPE.NS);
-            assert(result[0].rdata.name == Domain.fromSafeString("name.registry."));
+    // Query for NS record
+    query.questions[0].qtype = QTYPE.NS;
+    result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.NS);
+    assert(result[0].rdata.name == Domain.fromSafeString("name.registry."));
 
-            // A record
-            auto node_name = Domain.fromString(node_addr ~ ".validators.unittest.bosagora.io.");
-            query.questions[0] = Question(node_name, QTYPE.A, QCLASS.IN);
-            result = network.dns_resolver.query(query);
-            assert(result.length == 1);
-            assert(result[0].type == TYPE.A);
+    // A record
+    auto node_name = Domain.fromString(node_addr ~ ".validators.unittest.bosagora.io.");
+    query.questions[0] = Question(node_name, QTYPE.A, QCLASS.IN);
+    result = resolver.query(query);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.A);
 
-            // CNAME record
-            query.questions[0].qtype = QTYPE.CNAME;
-            result = network.dns_resolver.query(query);
-            assert(result.length == 0);
+    // CNAME record
+    query.questions[0].qtype = QTYPE.CNAME;
+    result = resolver.query(query);
+    assert(result.length == 0);
 
-            // AXFR zone transfer
-            query.questions[0] = Question(name, QTYPE.AXFR, QCLASS.IN);
-            result = network.dns_resolver.query(query);
-            // + 2 for starting and ending SOA records
-            assert(result.length == conf.node.test_validators + 2);
-            assert(result[0].type == TYPE.SOA);
-            assert(result[$-1].type == TYPE.SOA);
-        }
-    );
+    // AXFR zone transfer
+    query.questions[0] = Question(name, QTYPE.AXFR, QCLASS.IN);
+    result = resolver.query(query);
+    // + 2 for starting and ending SOA records
+    assert(result.length == conf.node.test_validators + 2);
+    assert(result[0].type == TYPE.SOA);
+    assert(result[$-1].type == TYPE.SOA);
 }
