@@ -302,6 +302,7 @@ public class NetworkManager
 
     // Protect against running multiple times simultaneously
     private bool isGettingMissingBlockSigs = false;
+    private bool isGettingUnknownTXs = false;
 
     /// Ctor
     public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
@@ -853,6 +854,11 @@ public class NetworkManager
 
     public void getUnknownTXs (NodeLedger ledger) @safe nothrow
     {
+        // Protect against running multiple times simultaneously
+        if (this.isGettingUnknownTXs)
+            return;
+        this.isGettingUnknownTXs = true;
+
         auto unknown_txs = ledger.getUnknownTXHashes();
         log.trace("getUnknownTXs: detected {} unknown txs", unknown_txs.length);
 
@@ -871,6 +877,7 @@ public class NetworkManager
             log.trace("getUnknownTXs: Added {} txs to tx pool", added);
             unknown_txs = ledger.getUnknownTXHashes();
         }
+        this.isGettingUnknownTXs = false;
     }
 
     // Add the chunk of txs fetched from the other node
