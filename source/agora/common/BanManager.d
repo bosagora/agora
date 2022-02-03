@@ -381,24 +381,25 @@ public class BanManager
     public bool isBanned (Address address) @safe nothrow
     {
         auto status = address in this.url_failures;
-        if (!status)
+        if (!status || (*status).banned_until == TimePoint.init)
             return false;
 
-        // if the ban was set and has expired then remove it
-        if (status.banned_until > 0 && this.getCurTime() > status.banned_until)
+        // For code simplification, `banned_until` is non inclusive, which allows
+        // use to do a simple if/else instead of checking 3 states.
+        if (this.getCurTime() >= status.banned_until)
         {
-            log.dbg("[{}:{}] {} No longer banned at {}", __FILE__, __LINE__, address, unixDateTime(this.getCurTime()));
+            log.dbg("[{}:{}] {} No longer banned at {}", __FILE__, __LINE__,
+                    address, unixDateTime(this.getCurTime()));
             // remove from AA
             this.url_failures.remove(address);
             // remove from cache db
             this.deleteBanned(address);
             return false;
         }
-        // return if the ban is still active
-        const stillBanned = status.banned_until > this.getCurTime();
-        if (stillBanned)
-            log.dbg("[{}:{}] {} Still banned at {} until {}", __FILE__, __LINE__, address, unixDateTime(this.getCurTime()), unixDateTime(status.banned_until));
-        return stillBanned;
+
+        log.dbg("[{}:{}] {} Still banned at {} until {}", __FILE__, __LINE__,
+                address, unixDateTime(this.getCurTime()), unixDateTime(status.banned_until));
+        return true;
     }
 
     private void deleteBanned (Address address) @trusted nothrow
