@@ -237,7 +237,8 @@ public abstract class DNSResolver
     /// Ditto
     public ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
     {
-        return this.query(this.buildQuery(name, type));
+        // RFC 5936 recommends AXFR over TCP
+        return this.query(this.buildQuery(name, type), type == QTYPE.AXFR);
     }
 
     /// Returns: DNS message for querying a record of `type` for `name'
