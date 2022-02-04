@@ -2616,7 +2616,7 @@ public final class LocalRestDNSResolver : DNSResolver
             if (answer.header.RCODE == Header.RCode.NoError)
                 return answer.answers;
         }
-        log.trace("None of the {} had an answer for '{}' : {}", this.peers.length, msg);
+        log.trace("None of the {} peers had an answer for message: {}", this.peers.length, msg);
         return null;
     }
 }
