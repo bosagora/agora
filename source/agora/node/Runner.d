@@ -309,7 +309,7 @@ private void runDNSServer_canThrow (in RegistryConfig config, NameRegistry regis
         UDPListenOptions.reuseAddress | UDPListenOptions.reusePort);
     scope (exit) udp.close();
     // Otherwise `recv` allocates 65k per call (!!!)
-    ubyte[2048] buffer;
+    ubyte[OPTRR.init.payloadSize()] buffer;
     // `recv` will store the peer address here so we can respond
     NetworkAddress peer;
     scope ppeer = &peer;
