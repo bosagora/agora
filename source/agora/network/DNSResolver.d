@@ -85,7 +85,7 @@ public final class VibeDNSResolver : DNSResolver
 
     ***************************************************************************/
 
-    public override ResourceRecord[] queryUDP (Message msg) @trusted
+    public override Message queryUDP (Message msg) @trusted
     {
         ubyte[16384] buffer;
         foreach (ref peer; this.resolvers)
@@ -101,8 +101,7 @@ public final class VibeDNSResolver : DNSResolver
                 auto answer = response.deserializeFull!Message();
                 log.trace("Got response from '{}' for '{}' : {}",
                           peer.address, msg, answer);
-                if (answer.header.RCODE == Header.RCode.NoError)
-                    return answer.answers;
+                return answer;
             }
             catch (Exception exc)
             {
@@ -111,7 +110,7 @@ public final class VibeDNSResolver : DNSResolver
                 continue;
             }
         }
-        return null;
+        return Message.init;
     }
 
     /***************************************************************************
@@ -123,7 +122,7 @@ public final class VibeDNSResolver : DNSResolver
 
     ***************************************************************************/
 
-    public override ResourceRecord[] queryTCP (Message msg) @trusted
+    public override Message queryTCP (Message msg) @trusted
     {
         ubyte[16384] buffer;
 
@@ -161,10 +160,7 @@ public final class VibeDNSResolver : DNSResolver
                     conn.read(buffer[0 .. size]);
                     conn.close();
 
-                    auto answer = deserializeFull!Message(buffer[0 .. size]);
-                    if (answer.header.RCODE == Header.RCode.NoError)
-                        return answer.answers;
-
+                    return deserializeFull!Message(buffer[0 .. size]);
                 }
                 catch (Exception exc)
                 {
@@ -176,7 +172,7 @@ public final class VibeDNSResolver : DNSResolver
             }
         }
 
-        return null;
+        return Message.init;
     }
 }
 
@@ -209,7 +205,19 @@ public abstract class DNSResolver
 
     public final ResourceRecord[] query (Message msg, bool tcp = false) @safe
     {
-        return !tcp ? this.queryUDP(msg) : this.queryTCP(msg);
+        auto answer = !tcp ? this.queryUDP(msg) : this.queryTCP(msg);
+
+        if (answer == Message.init)
+            return null;
+
+        // Message is truncated over UDP, retry over TCP
+        if (!tcp && answer.header.TC)
+            answer = this.queryTCP(msg);
+
+        if (answer.header.RCODE != Header.RCode.NoError)
+            return null;
+
+        return answer.answers;
     }
 
     /***************************************************************************
@@ -221,7 +229,7 @@ public abstract class DNSResolver
 
     ***************************************************************************/
 
-    protected abstract ResourceRecord[] queryUDP (Message msg) @trusted;
+    protected abstract Message queryUDP (Message msg) @trusted;
 
     /***************************************************************************
 
@@ -232,7 +240,7 @@ public abstract class DNSResolver
 
     ***************************************************************************/
 
-    protected abstract ResourceRecord[] queryTCP (Message msg) @trusted;
+    protected abstract Message queryTCP (Message msg) @trusted;
 
     /// Ditto
     public ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
