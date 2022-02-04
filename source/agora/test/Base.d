@@ -2497,16 +2497,6 @@ package interface FullRegistryAPI : TestAPI, NameRegistryAPI
     public Message queryTCP (in Message query);
 }
 
-/// Mimics a DNS UDP Socket
-private struct DNSQuery
-{
-    /// DNS message
-    public Message msg;
-
-    /// A channel that the client will wait the response on
-    public Channel!Message response_chan;
-}
-
 /// A node that implements `FullRegistryAPI`
 public class RegistryNode : TestFullNode, FullRegistryAPI
 {
