@@ -955,7 +955,7 @@ public struct OPTRR
     ***************************************************************************/
 
     public ResourceRecord record = ResourceRecord(
-        Domain.init, TYPE.OPT, cast(CLASS) 4096, 0, ResourceRecord.RDATA(null));
+        Domain.init, TYPE.OPT, cast(CLASS) 2048, 0, ResourceRecord.RDATA(null));
 
     /// Requestor's UDP payload size
     public ushort payloadSize () scope const
