@@ -413,7 +413,7 @@ public class NameRegistry: NameRegistryAPI
                         goto BAILOUT;
                     }
                     // Ignore the DO bit for now
-                    payloadSize = min(opt.payloadSize(), ushort(512));
+                    payloadSize = max(opt.payloadSize(), ushort(512));
                     reply.additionals ~= responseOPT.record;
                 }
             }
