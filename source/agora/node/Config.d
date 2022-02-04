@@ -125,10 +125,10 @@ public struct Config
     {
         if (this.validator.enabled)
             enforce(this.network.length || this.registry.enabled ||
-                    this.validator.registry_address != string.init ||
+                    this.node.registry_address != string.init ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.test_validators == 1,
-                    "Either the network section must not be empty, or 'validator.registry_address' must be set " ~
+                    "Either the network section must not be empty, or 'node.registry_address' must be set " ~
                     ", or registry must be enabled");
         else
             enforce(this.network.length || this.registry.enabled,
@@ -278,6 +278,9 @@ public struct NodeConfig
     /// The realm to which this node belongs (a domain name)
     public immutable(Domain) realm = Domain.fromSafeString("coinnet.bosagora.io.");
 
+    // Registry address
+    public @Optional string registry_address;
+
     /// Validate this struct
     public void validate () const scope @safe
     {
@@ -322,9 +325,6 @@ public struct ValidatorConfig
 
     // Network addresses that will be registered with the public key
     public @Optional immutable Address[] addresses_to_register;
-
-    // Registry address
-    public @Optional string registry_address;
 
     // If the enrollments will be renewed or not at the end of the cycle
     public bool recurring_enrollment = true;
@@ -620,9 +620,10 @@ validator:
     // Missing 'network' section for a validator node with name registry
     {
         immutable conf_str = `
+node:
+  registry_address: http://127.0.0.1:3003
 validator:
   enabled: true
-  registry_address: http://127.0.0.1:3003
   seed:    SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
   recurring_enrollment: true
   preimage_reveal_interval:
@@ -703,10 +704,11 @@ unittest
 {
     {
         immutable conf_example = `
+node:
+  registry_address: http://127.0.0.1:3003
 validator:
   enabled: true
   seed: SDV3GLVZ6W7R7UFB2EMMY4BBFJWNCQB5FTCXUMD5ZCFTDEVZZ3RQ2BZI
-  registry_address: http://127.0.0.1:3003
   recurring_enrollment : false
   preimage_reveal_interval:
     seconds: 99

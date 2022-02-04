@@ -13,6 +13,7 @@ node:
   realm: "testnet.bosagora.io"
   testing: true
   data_dir: .fullnode/data/
+  registry_address: https://ns1.bosagora.io/
 
 interfaces:
   - type:    http
@@ -26,10 +27,6 @@ consensus:
   block_interval:
     seconds: 20
   validator_cycle: 20
-
-validator:
-  enabled: false
-  registry_address: https://ns1.bosagora.io/
 
 registry:
   enabled: true

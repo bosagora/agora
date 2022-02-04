@@ -2180,6 +2180,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     {
         NodeConfig conf = test_conf.node;
         conf.testing = true;
+        conf.registry_address = "dns://10.8.8.8";
         const selfCount = 1;
         if (conf.min_listeners == size_t.max)
             conf.min_listeners = (test_conf.node.test_validators + test_conf.full_nodes) - selfCount;
@@ -2222,7 +2223,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             enabled : true,
             key_pair : key_pair,
             addresses_to_register : [ self_address ],
-            registry_address : "dns://10.8.8.8",
             recurring_enrollment : test_conf.recurring_enrollment,
             name_registration_interval : 10.seconds,
             preimage_reveal_interval : test_conf.preimage_reveal_interval,
