@@ -196,46 +196,50 @@ public class RPCClient (API) : API
         this.config = config;
         this.log = Log.lookup(
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
-        this.pool = new ConnectionPool!RPCConnection(() @safe {
-            ensure(this.config != RPCConfig.init, "Can not connect on unidentified client");
-            uint attempts;
-            do
+        this.pool = new ConnectionPool!RPCConnection(
+            () => this.connect(impl), this.config.concurrency);
+    }
+
+    /// Returns: A new `RPCConnection` using `impl` as listener
+    private RPCConnection connect (ThisAPIImpl) (ThisAPIImpl impl) @safe
+    {
+        ensure(this.config != RPCConfig.init, "Can not connect on unidentified client");
+        uint attempts;
+        do
+        {
+            // If it's not the first time we loop, sleep before retry
+            if (attempts > 0)
             {
-                // If it's not the first time we loop, sleep before retry
-                if (attempts > 0)
+                import vibe.core.core : sleep;
+                sleep(this.config.retry_delay);
+            }
+
+            try
+            {
+                auto conn = connectTCP(
+                    this.config.host, this.config.port,
+                    null, 0, // Bind interface / port, unused
+                    this.config.connection_timeout);
+                conn.keepAlive = true;
+                conn.readTimeout = this.config.read_timeout;
+
+                if (conn.connected())
                 {
-                    import vibe.core.core : sleep;
-                    sleep(this.config.retry_delay);
+                    static import vibe.core.core;
+                    auto rpc_conn = new RPCConnection(conn);
+                    vibe.core.core.runTask({
+                        rpc_conn.rlock.lock();
+                        rpc_conn.startListening(impl);
+                    });
+                    return rpc_conn;
                 }
+            }
+            catch (Exception e) {}
+            attempts++;
+        } while (attempts < this.config.max_retries);
 
-                try
-                {
-                    auto conn = connectTCP(
-                        this.config.host, this.config.port,
-                        null, 0, // Bind interface / port, unused
-                        this.config.connection_timeout);
-                    conn.keepAlive = true;
-                    conn.readTimeout = this.config.read_timeout;
-
-                    if (conn.connected())
-                    {
-                        static import vibe.core.core;
-                        auto rpc_conn = new RPCConnection(conn);
-                        vibe.core.core.runTask({
-                            rpc_conn.rlock.lock();
-                            rpc_conn.startListening(impl);
-                        });
-                        return rpc_conn;
-                    }
-                }
-                catch (Exception e) {}
-                attempts++;
-
-            } while (attempts < this.config.max_retries);
-
-            ensure(false, "Failed to connect to host");
-            assert(0);
-        }, this.config.concurrency);
+        ensure(false, "Failed to connect to host");
+        assert(0);
     }
 
     /// Ditto
