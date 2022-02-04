@@ -134,7 +134,6 @@ public abstract class DNSResolver
     public this ()
     {
         this.log = Log.lookup(__MODULE__);
-        this.log.enableConsole();
     }
 
     /***************************************************************************
@@ -271,6 +270,7 @@ version (AgoraStandaloneDNSResolver)
         runTask(() @trusted nothrow {
             scope (failure) assert(0);
             DNSResolver resolver = new VibeDNSResolver();
+            resolver.log.enableConsole();
 
             foreach (host; args[1 .. $])
             {
