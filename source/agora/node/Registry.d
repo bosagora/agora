@@ -413,7 +413,9 @@ public class NameRegistry: NameRegistryAPI
                         goto BAILOUT;
                     }
                     // Ignore the DO bit for now
-                    payloadSize = max(opt.payloadSize(), ushort(512));
+                    // `min` is to prevent DOS attack (request with huge payload size)
+                    payloadSize = min(max(opt.payloadSize(), ushort(512)),
+                        responseOPT.payloadSize());
                     reply.additionals ~= responseOPT.record;
                 }
             }
