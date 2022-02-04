@@ -514,11 +514,11 @@ public class NetworkManager
     public ITimer startPeriodicNameRegistration ()
     {
         // No configured registry, nothing to do
-        if (this.config.validator.registry_address.length == 0)
+        if (this.config.node.registry_address.length == 0)
             return null;
 
         this.registry_client = this.getRegistryClient(
-            this.config.validator.registry_address);
+            this.config.node.registry_address);
 
         this.onRegisterName();  // avoid delay
         // We re-register at regular interval in order to cope with the situation below
