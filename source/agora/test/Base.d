@@ -2633,12 +2633,12 @@ public final class LocalRestDNSResolver : DNSResolver
 
         Params:
             msg = DNS message
+            tcp = Use TCP for query, default is UDP
 
     ***************************************************************************/
 
-    public override ResourceRecord[] query (Message msg) @trusted
+    private ResourceRecord[] queryInner (Message msg, bool tcp = false) @trusted
     {
-        const tcp = msg.questions.length > 0 && msg.questions[0].qtype == QTYPE.AXFR;
         foreach (p; this.peers)
         {
             auto answer = !tcp ? p.queryUDP(msg) : p.queryTCP(msg);
@@ -2648,5 +2648,33 @@ public final class LocalRestDNSResolver : DNSResolver
         }
         log.trace("None of the {} peers had an answer for message: {}", this.peers.length, msg);
         return null;
+    }
+
+    /***************************************************************************
+
+        Query the server over UDP with given `msg` and return the response
+
+        Params:
+            msg = DNS message
+
+    ***************************************************************************/
+
+    public override ResourceRecord[] queryUDP (Message msg) @trusted
+    {
+        return this.queryInner(msg, false);
+    }
+
+    /***************************************************************************
+
+        Query the server over TCP with given `msg` and return the response
+
+        Params:
+            msg = DNS message
+
+    ***************************************************************************/
+
+    public override ResourceRecord[] queryTCP (Message msg) @trusted
+    {
+        return this.queryInner(msg, true);
     }
 }

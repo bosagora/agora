@@ -78,14 +78,14 @@ public final class VibeDNSResolver : DNSResolver
 
     /***************************************************************************
 
-        Query the server with given `msg` and return the response
+        Query the server over UDP with given `msg` and return the response
 
         Params:
             msg = DNS message
 
     ***************************************************************************/
 
-    public override ResourceRecord[] query (Message msg) @trusted
+    public override ResourceRecord[] queryUDP (Message msg) @trusted
     {
         ubyte[16384] buffer;
         foreach (ref peer; this.resolvers)
@@ -113,6 +113,71 @@ public final class VibeDNSResolver : DNSResolver
         }
         return null;
     }
+
+    /***************************************************************************
+
+        Query the server over TCP with given `msg` and return the response
+
+        Params:
+            msg = DNS message
+
+    ***************************************************************************/
+
+    public override ResourceRecord[] queryTCP (Message msg) @trusted
+    {
+        ubyte[16384] buffer;
+
+        ushort length = 2;
+        scope writer = (in ubyte[] data) @safe {
+            ensure(data.length <= (buffer.length - length),
+                "Buffer overflow: Trying to write {} bytes in a {} buffer ({} used)",
+                data.length, buffer.length, length);
+            buffer[length .. length + data.length] = data[];
+            length += data.length;
+        };
+
+        foreach (ref peer; this.resolvers)
+        {
+            auto conn = connectTCP(peer.address, anyAddress, 5.seconds);
+            if (conn.connected)
+            {
+                try
+                {
+                    // Write length ~ serialized msg
+                    msg.serializePart(writer, CompactMode.No);
+                    assert(length >= 2);
+                    ushort copy = cast(ushort) (length - 2);
+                    length = 0;
+                    copy.serializePart(writer, CompactMode.No);
+                    conn.write(buffer[0 .. copy + 2]);
+
+                    conn.read(buffer[0 .. 2]);
+                    const ushort size = deserializeFull!ushort(
+                        buffer[0 .. 2], DeserializerOptions(DefaultMaxLength, CompactMode.No));
+
+                    // DNS TCP message size is not limited from Agora registry while sending
+                    // but here received message size is not in our control,
+                    // limited to a buffer for preventing DOS attack
+                    conn.read(buffer[0 .. size]);
+                    conn.close();
+
+                    auto answer = deserializeFull!Message(buffer[0 .. size]);
+                    if (answer.header.RCODE == Header.RCode.NoError)
+                        return answer.answers;
+
+                }
+                catch (Exception exc)
+                {
+                    log.warn("Network error while resolving '{}' using '{}': {}",
+                            msg, peer.address, exc);
+                    conn.close();
+                }
+                break;
+            }
+        }
+
+        return null;
+    }
 }
 
 ///
@@ -138,10 +203,36 @@ public abstract class DNSResolver
 
         Params:
             msg = DNS message
+            tcp = Use TCP for query, default is UDP
 
     ***************************************************************************/
 
-    protected abstract ResourceRecord[] query (Message msg) @safe;
+    public final ResourceRecord[] query (Message msg, bool tcp = false) @safe
+    {
+        return !tcp ? this.queryUDP(msg) : this.queryTCP(msg);
+    }
+
+    /***************************************************************************
+
+        Query the server over UDP with given `msg` and return the response
+
+        Params:
+            msg = DNS message
+
+    ***************************************************************************/
+
+    protected abstract ResourceRecord[] queryUDP (Message msg) @trusted;
+
+    /***************************************************************************
+
+        Query the server over TCP with given `msg` and return the response
+
+        Params:
+            msg = DNS message
+
+    ***************************************************************************/
+
+    protected abstract ResourceRecord[] queryTCP (Message msg) @trusted;
 
     /// Ditto
     public ResourceRecord[] query (const(char)[] name, QTYPE type = QTYPE.ALL) @safe
