@@ -143,25 +143,29 @@ unittest
 
     // node_2 restarts and becomes unresponsive
     network.restart(node_2);
-    node_2.ctrl.sleep(1.hours, true);
+    {
+        node_2.ctrl.sleep(1.hours, true);
+        // Wake up node_2
+        scope (exit) node_2.ctrl.sleep(0.seconds);
 
-    // Make 2 blocks
-    network.generateBlocks(only(0, 1, 3), Height(3));
+        // Make 2 blocks
+        network.generateBlocks(only(0, 1, 3), Height(3));
+    }
 
-    // Wake up node_2
-    node_2.ctrl.sleep(0.seconds);
+    {
+        node_1.ctrl.sleep(1.hours, true);
+        // Make sure we can print the logs
+        scope (failure) node_1.ctrl.sleep(0.seconds);
 
-    // node_1 is sleeping
-    node_1.ctrl.sleep(1.hours, true);
+        // wait till node_2 catches up
+        network.assertSameBlocks(only(0, 2, 3), Height(3));
 
-    // wait till node_2 catches up
-    network.assertSameBlocks(only(0, 2, 3), Height(3));
+        // give time for node_2 to be discovered again
+        // as catchup for missing txs only occurs after nomination has started
+        Thread.sleep(conf.node.network_discovery_interval);
 
-    // give time for node_2 to be discovered again
-    // as catchup for missing txs only occurs after nomination has started
-    Thread.sleep(conf.node.network_discovery_interval);
-
-    // A new block is still inserted into the ledger with the approval
-    // of node_2, although node_1 was sleeping.
-    network.generateBlocks(only(0, 2, 3), Height(4));
+        // A new block is still inserted into the ledger with the approval
+        // of node_2, although node_1 was sleeping.
+        network.generateBlocks(only(0, 2, 3), Height(4));
+    }
 }
