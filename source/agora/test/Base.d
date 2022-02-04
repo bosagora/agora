@@ -2637,17 +2637,16 @@ public final class LocalRestDNSResolver : DNSResolver
 
     ***************************************************************************/
 
-    private ResourceRecord[] queryInner (Message msg, bool tcp = false) @trusted
+    private Message queryInner (Message msg, bool tcp = false) @trusted
     {
         foreach (p; this.peers)
         {
             auto answer = !tcp ? p.queryUDP(msg) : p.queryTCP(msg);
             log.trace("Got response from for '{}' : {}", msg, answer);
-            if (answer.header.RCODE == Header.RCode.NoError)
-                return answer.answers;
+            return answer;
         }
         log.trace("None of the {} peers had an answer for message: {}", this.peers.length, msg);
-        return null;
+        return Message.init;
     }
 
     /***************************************************************************
@@ -2659,7 +2658,7 @@ public final class LocalRestDNSResolver : DNSResolver
 
     ***************************************************************************/
 
-    public override ResourceRecord[] queryUDP (Message msg) @trusted
+    public override Message queryUDP (Message msg) @trusted
     {
         return this.queryInner(msg, false);
     }
@@ -2673,7 +2672,7 @@ public final class LocalRestDNSResolver : DNSResolver
 
     ***************************************************************************/
 
-    public override ResourceRecord[] queryTCP (Message msg) @trusted
+    public override Message queryTCP (Message msg) @trusted
     {
         return this.queryInner(msg, true);
     }
