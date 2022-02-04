@@ -157,4 +157,10 @@ unittest
     // CNAME record
     result = resolver.query(node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.CNAME);
     assert(result.length == 0);
+
+    // AXFR zone transfer
+    result = resolver.query("validators.unittest.bosagora.io.", QTYPE.AXFR);
+    // Only authoritative zones are capable to do AXFR zone transfer, thus
+    // caching zone returns error, `query` return null when zone errors
+    assert(result is null);
 }
