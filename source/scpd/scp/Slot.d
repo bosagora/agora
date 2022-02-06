@@ -72,8 +72,8 @@ private:
 
     ValueWrapperPtr getLatestCompositeCandidate();
 
-    // // returns the latest messages the slot emitted
-    // vector!SCPEnvelope getLatestMessagesSend() const;
+    // returns the latest messages the slot emitted
+    vector!SCPEnvelope getLatestMessagesSend() const;
 
     // // forces the state to match the one in the envelope
     // // this is used when rebuilding the state after a crash for example

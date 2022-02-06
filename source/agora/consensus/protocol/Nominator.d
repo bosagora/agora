@@ -108,7 +108,7 @@ public extern (C++) class Nominator : SCPDriver
     private bool is_nominating;
 
     /// Last height that we finished the nomination round
-    private Height last_confirmed_height;
+    private Height heighest_ballot_height;
 
     /// Periodic nomination timer. It runs every second and checks the clock
     /// time to see if it's time to start nominating. We do not use the
@@ -455,15 +455,6 @@ extern(D):
     protected void checkNominate () @safe
     {
         const slot_idx = this.ledger.height() + 1;
-        // are we done nominating this round
-        if (this.last_confirmed_height >= slot_idx)
-        {
-            this.log.trace(
-                "checkNominate(): Not nominating because we already confirmed ({} >= {})",
-                this.last_confirmed_height, slot_idx);
-            return;
-        }
-
         const cur_time = this.clock.networkTime();
         const next_nomination = this.getExpectedBlockTime();
         if (cur_time < next_nomination)
@@ -479,6 +470,19 @@ extern(D):
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
                 this.ledger.height(), this.ledger.lastBlock().header.validators);
+            return;
+        }
+
+        if (this.heighest_ballot_height >= slot_idx)
+        {
+            this.log.trace("checkNominate(): Balloting already started for height {}" ~
+                " skipping new nomination", slot_idx);
+            () @trusted
+            {
+                foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
+                    if (env.statement.pledges.type_ != SCPStatementType.SCP_ST_NOMINATE)
+                        this.emitEnvelope(env);
+            } ();
             return;
         }
 
@@ -1102,14 +1106,6 @@ extern(D):
 
     public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
-
-        // Per SCP rules, once we CONFIRM a NOMINATE; we can't
-        // nominate new values. Keep track of the biggest slot_idx we confirmed
-        // a NOMINATE on
-        if (envelope.statement.slotIndex > this.last_confirmed_height &&
-            envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
-            this.last_confirmed_height = Height(envelope.statement.slotIndex);
-
         SCPEnvelope env = cast()envelope;
         log.trace("Emitting envelope: {}", scpPrettify(&envelope, &this.getQSet));
 
@@ -1353,6 +1349,17 @@ extern(D):
     override StellarHash getHashOf (ref vector!Value vals) const nothrow
     {
         return StellarHash(hashMulti(vals)[][0 .. Hash.sizeof]);
+    }
+
+    // SCP hook that is called for new ballots
+    override void startedBallotProtocol(uint64_t slot_idx,
+        ref const(SCPBallot) ballot) nothrow
+    {
+        if (Height(slot_idx) > this.heighest_ballot_height)
+        {
+            this.heighest_ballot_height = Height(slot_idx);
+            log.info("Balloting started for slot idx {}", slot_idx);
+        }
     }
 }
 
