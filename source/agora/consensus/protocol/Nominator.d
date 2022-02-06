@@ -465,16 +465,6 @@ extern(D):
         }
 
         const cur_time = this.clock.networkTime();
-        const genesis_timestamp = this.params.GenesisTimestamp;
-
-        if (cur_time < genesis_timestamp)
-        {
-            this.log.error(
-                "Clock is out of sync: {} (Current) < {} (Genesis)",
-                cur_time, genesis_timestamp);
-            return;
-        }
-
         const next_nomination = this.getExpectedBlockTime();
         if (cur_time < next_nomination)
         {
