@@ -603,7 +603,10 @@ extern(D):
         if (env_hash !in this.seen_envs)
         {
             auto copied = envelope.clone();
-            this.queued_envelopes.insertBack(copied);
+            if (copied.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
+                this.queued_envelopes.insertBack(copied);
+            else
+                this.queued_envelopes.insertFront(copied);
             this.envelope_timer.rearm(EnvTaskDelay, Periodic.No);
             this.seen_envs.put(env_hash);
         }
