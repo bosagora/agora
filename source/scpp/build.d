@@ -33,7 +33,6 @@ import std.stdio;
 immutable RootPath    = __FILE_FULL_PATH__.dirName();
 immutable SourcePath  = RootPath;
 immutable BuildPath   = RootPath.buildPath("build");
-immutable BuildTarget = BuildPath.buildPath("libscp.o");
 
 /// Include path for C++ dependency - libsodium must be in the include path
 /// (INCLUDE on Windows, and /usr/include/ or similar on POSIX)
@@ -173,7 +172,7 @@ int main ()
         }
         else
         {
-            writeln("Target ", BuildTarget, " is up to date, nothing to do");
+            writeln("All ", objs.length, " target object files are up to date, nothing to do");
             return 0;
         }
     }
