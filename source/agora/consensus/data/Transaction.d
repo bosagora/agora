@@ -378,7 +378,7 @@ public struct TransactionResult
         Duplicated,
         Rejected,
     }
-    
+
     Status status;
     string reason;
 }
@@ -406,7 +406,9 @@ public bool getSumOutput (in Transaction tx, ref Amount acc)
     return true;
 }
 
-unittest
+// Will only perform this test if the user has a dependency on Vibe.d too
+// This version is automatically provided by dub
+version (Have_vibe_d_data) unittest
 {
     import vibe.data.json;
     Transaction old_tx = Transaction(
