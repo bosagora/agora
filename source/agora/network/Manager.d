@@ -247,6 +247,9 @@ public class NetworkManager
     /// Current quorum set
     private Set!Hash quorum_set_keys;
 
+    /// Return value of `Ledger.getEnrolledUTXOs`
+    protected UTXO[Hash] last_known_validator_utxos;
+
     /// Address ban manager
     protected BanManager banman;
 
@@ -525,11 +528,17 @@ public class NetworkManager
             &this.onRegisterName, Periodic.Yes);
     }
 
+    /// Update `last_known_validator_utxos`
+    public void updateKnownValidators (UTXO[Hash] last_known)
+        @safe pure nothrow @nogc
+    {
+        this.last_known_validator_utxos = last_known;
+    }
+
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
-    public void discover (UTXO[Hash] last_known_validator_utxos,
-        UTXO[Hash] required_peer_utxos = null) nothrow
+    public void discover (UTXO[Hash] required_peer_utxos = null) nothrow
     {
         this.quorum_set_keys.from(Set!Hash.init);
         this.required_peers.from(Set!Hash.init);
@@ -543,9 +552,9 @@ public class NetworkManager
 
         log.info(
             "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
-            required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
+            required_peer_utxos.length, this.required_peers.length, this.last_known_validator_utxos.length);
 
-        foreach (utxo; last_known_validator_utxos.byKeyValue)
+        foreach (utxo; this.last_known_validator_utxos.byKeyValue)
         {
             if (!this.peers[].map!(ni => ni.identity.utxo).canFind(utxo.key))
             {
