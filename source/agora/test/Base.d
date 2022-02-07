@@ -1392,9 +1392,11 @@ public class TestNetworkManager : NetworkManager
     }
 
     /// Returns an instance of a DNSResolver
-    public override DNSResolver makeDNSResolver (Address[] peer_addrs = null)
+    public override DNSResolver makeDNSResolver (Address[] peers = null)
     {
-        return new LocalRestDNSResolver(peer_addrs, *this.registry);
+        if (peers.length == 0)
+            peers = [ Address(this.config.node.registry_address) ];
+        return new LocalRestDNSResolver(peers, *this.registry);
     }
 
     ///

@@ -705,17 +705,20 @@ public class NetworkManager
         Returns an instance of a DNSResolver
 
         Params:
-            peer_addrs = Addresses of DNS servers that Resolver will send queries to
+            peers = Addresses of DNS servers that Resolver will send queries to
+                    If none / `null` is provided, default to the list of
+                    configured registries.
+
         Returns:
-            the dns resolver
+            A newly instantiated `DNSResolver` with the provided `peers`
 
     ***************************************************************************/
 
-    public DNSResolver makeDNSResolver (Address[] peer_addrs = null)
+    public DNSResolver makeDNSResolver (Address[] peers = null)
     {
-        return (peer_addrs !is null)
-            ? new VibeDNSResolver(peer_addrs)
-            : new VibeDNSResolver();
+        if (peers.length == 0)
+            peers = [ Address(this.config.node.registry_address) ];
+        return new VibeDNSResolver(peers);
     }
 
     /// register network addresses into the name registry
