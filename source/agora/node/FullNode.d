@@ -513,7 +513,7 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
-        this.network.discover(this.registry, this.ledger.getEnrolledUTXOs());
+        this.network.discover(this.registry);
         this.timers[TimersIdx.Discovery].rearm(this.config.node.network_discovery_interval, false);
     }
 
@@ -1142,6 +1142,7 @@ public class FullNode : API
         log.dbg("{}: height {}", __PRETTY_FUNCTION__, block.header.height);
         this.pushBlock(block);
         this.registry.onAcceptedBlock(block, validators_changed);
+        this.network.updateKnownValidators(this.ledger.getEnrolledUTXOs());
     }
 
     /***************************************************************************
