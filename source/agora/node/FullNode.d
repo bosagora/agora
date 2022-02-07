@@ -286,7 +286,7 @@ public class FullNode : API
         this.enroll_man = this.makeEnrollmentManager();
         this.ledger = this.makeLedger();
 
-        this.network = this.makeNetworkManager(this.taskman, this.clock);
+        this.network = this.makeNetworkManager();
         this.transaction_relayer = this.makeTransactionRelayer();
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
@@ -752,19 +752,15 @@ public class FullNode : API
 
         Unittests can override this method and return a custom NetworkManager.
 
-        Params:
-            node_config = the node config
-            taskman = task manager
-            clock = clock instance
-
         Returns:
             an instance of a NetworkManager
 
     ***************************************************************************/
 
-    protected NetworkManager makeNetworkManager (ITaskManager taskman, Clock clock)
+    protected NetworkManager makeNetworkManager ()
     {
-        return new VibeNetworkManager(this.config, this.cacheDB, taskman, clock, this);
+        return new VibeNetworkManager(
+            this.config, this.cacheDB, this.taskman, this.clock, this);
     }
 
     protected TransactionRelayer makeTransactionRelayer ()

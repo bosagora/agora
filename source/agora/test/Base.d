@@ -1690,12 +1690,10 @@ private mixin template TestNodeMixin ()
     }
 
     /// Return an instance of the custom TestNetworkManager
-    protected override NetworkManager makeNetworkManager (
-        ITaskManager taskman, Clock clock)
+    protected override NetworkManager makeNetworkManager ()
     {
-        assert(taskman !is null);
         return new TestNetworkManager(
-            this.config, this.cacheDB, taskman, clock, this,
+            this.config, this.cacheDB, this.taskman, this.clock, this,
             this.config.interfaces[0].address,
             this.nregistry);
     }
