@@ -1040,7 +1040,7 @@ public class FullNode : API
             avail_height, utxo_finder, getPenaltyDeposit))
         {
             log.info("Accepted enrollment: {}", prettify(enroll));
-            this.network.peers.each!(p => p.client.sendEnrollment(enroll, avail_height));
+            this.network.peers.each!(p => p.sendEnrollment(enroll, avail_height));
         }
     }
 
@@ -1060,7 +1060,7 @@ public class FullNode : API
         if (this.ledger.addPreimage(preimage))
         {
             log.info("Accepted preimage: {}", prettify(preimage));
-            this.network.peers.each!(p => p.client.sendPreimage(preimage));
+            this.network.peers.each!(p => p.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }
 

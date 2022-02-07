@@ -70,31 +70,6 @@ import core.time;
 /// Ditto
 public class NetworkManager
 {
-    /// Node information
-    public static struct NodeConnInfo
-    {
-        /// Hash of the output used as collateral, only set if the node is a Validator
-        public Hash utxo () const scope @safe pure nothrow @nogc
-        {
-            return this.client.identity.utxo;
-        }
-
-        /// PublicKey of the node. TODO: Remove and just use utxo.
-        public PublicKey key () const scope @safe pure nothrow @nogc
-        {
-            return this.client.identity.key;
-        }
-
-        /// Client
-        NetworkClient client;
-
-        ///
-        public bool isAuthenticated () const scope @safe pure nothrow @nogc
-        {
-            return this.key != PublicKey.init;
-        }
-    }
-
     /***************************************************************************
 
         Establishes a connection with a Node address in a new task.
@@ -265,7 +240,7 @@ public class NetworkManager
     protected ConnectionTask[Address] connection_tasks;
 
     /// All connected nodes (Validators & FullNodes)
-    public DList!NodeConnInfo peers;
+    public DList!NetworkClient peers;
 
     /// All known addresses so far (used for getNodeInfo())
     protected Set!Address known_addresses;
@@ -330,13 +305,9 @@ public class NetworkManager
         if (!client.merge(address, api))
             assert(0);
 
-        NodeConnInfo node = {
-            client : client
-        };
-
         log.dbg("onHandshakeComplete: addresses: {}", client.addresses());
         client.connections.each!(conn => this.connection_tasks.remove(address));
-        if (this.tryMerge(node))
+        if (this.tryMerge(client))
         {
             this.required_peers.remove(utxo);
             return;
@@ -346,7 +317,7 @@ public class NetworkManager
 
         if (!client.connections.any!(conn => address == Address.init))
         {
-            this.peers.insertBack(node);
+            this.peers.insertBack(client);
 
             if (key !is PublicKey.init)
             {
@@ -367,15 +338,15 @@ public class NetworkManager
     }
 
     ///
-    private bool tryMerge (scope ref NodeConnInfo node)
+    private bool tryMerge (scope ref NetworkClient client)
     {
-        auto existing_peers = this.peers[].find!(p => p.key == node.key);
-        if (!node.isAuthenticated() || existing_peers.empty())
+        auto existing_peers = this.peers[].find!(p => p.identity.key == client.identity.key);
+        if (!client.isAuthenticated() || existing_peers.empty())
             return false;
 
-        assert(node.client.connections.length == 1);
-        existing_peers.front().client.setIdentity(node.utxo, node.key);
-        existing_peers.front().client.merge(node.client.connections[0].tupleof);
+        assert(client.connections.length == 1);
+        existing_peers.front().setIdentity(client.identity.utxo, client.identity.key);
+        existing_peers.front().merge(client.connections[0].tupleof);
         return true;
     }
 
@@ -490,18 +461,18 @@ public class NetworkManager
 
         foreach (node; this.validators())
         {
-            if (node.utxo !in this.quorum_set_keys)
+            if (node.identity.utxo !in this.quorum_set_keys)
                 continue;
 
             const req_start = this.clock.localTime();
-            const node_time = node.client.getLocalTime();
+            const node_time = node.getLocalTime();
             if (node_time == 0)
                 continue;  // request failed
 
             const req_delay = this.clock.localTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
             const offset = (node_time - dist_delay) - req_start;
-            offsets ~= TimeInfo(node.key, node_time, req_delay, offset.seconds);
+            offsets ~= TimeInfo(node.identity.key, node_time, req_delay, offset.seconds);
         }
 
         // we heard from at least one quorum slice
@@ -548,7 +519,7 @@ public class NetworkManager
         foreach (peer; required_peer_utxos.byKeyValue)
         {
             this.quorum_set_keys.put(peer.key);
-            if (!this.peers[].map!(ni => ni.utxo).canFind(peer.key))
+            if (!this.peers[].map!(c => c.identity.utxo).canFind(peer.key))
                 this.required_peers.put(peer.key);
         }
 
@@ -559,7 +530,7 @@ public class NetworkManager
         if (this.registry_client !is null)
         {
             foreach (utxo; last_known_validator_utxos.byKeyValue)
-            if (!this.peers[].map!(ni => ni.utxo).canFind(utxo.key))
+            if (!this.peers[].map!(ni => ni.identity.utxo).canFind(utxo.key))
             {
                 auto key = utxo.value.output.address;
                 // Do not query the registry about ourself
@@ -655,12 +626,12 @@ public class NetworkManager
 
     private bool shouldEstablishConnection (Address address) @safe
     {
-        auto existing_peer = this.peers[].find!(p => p.client.addresses.canFind(address));
+        auto existing_peer = this.peers[].find!(p => p.addresses.canFind(address));
         return !this.banman.isBanned(address) &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
             (existing_peer.empty || // either does not exist or a validator with no stake
-                (existing_peer.front.isAuthenticated() && existing_peer.front.utxo == Hash.init));
+                (existing_peer.front.isAuthenticated() && existing_peer.front.identity.utxo == Hash.init));
     }
 
     /// Received new set of addresses, put them in the todo address list
@@ -811,7 +782,7 @@ public class NetworkManager
         }
 
         this.peers[]
-            .map!(node => Pair(getHeight(node.client), node.client))
+            .map!(node => Pair(getHeight(node), node))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
 
@@ -872,7 +843,7 @@ public class NetworkManager
             auto hashes = unknown_txs[].map!((Hash h) => h).array; // can not be lazy so use array
             auto added = hashes.chunks(8)
                 .map!(chunk => Set!Hash.from(chunk))
-                .map!(hash_chunk => peer.client.getTransactions(hash_chunk))
+                .map!(hash_chunk => peer.getTransactions(hash_chunk))
                 .map!(txs => addTxs(ledger, txs))
                 .sum();
             log.trace("getUnknownTXs: Added {} txs to tx pool", added);
@@ -945,7 +916,7 @@ public class NetworkManager
                     log.trace("getMissingBlockSigs: detected missing signatures at heights {}", missing_heights);
                     foreach (peer; this.peers[])
                     {
-                        foreach (header; peer.client.getBlockHeaders(missing_heights))
+                        foreach (header; peer.getBlockHeaders(missing_heights))
                         {
                             auto sig_signed_validators = iota(enrolled_validators[header.height]).filter!(i =>
                                 header.validators[i] || header.preimages[i] is Hash.init).count();
@@ -983,7 +954,7 @@ public class NetworkManager
     public void shutdown () @trusted
     {
         foreach (peer; this.peers)
-            peer.client.shutdown();
+            peer.shutdown();
     }
 
     ///
@@ -1002,17 +973,17 @@ public class NetworkManager
 
         // We don't have an authenticated peer where all the addresses are banned
         return this.validators().filter!(
-            node => !node.client.addresses.all!(addr => this.banman.isBanned(addr)))
+            client => !client.addresses.all!(addr => this.banman.isBanned(addr)))
             .count != 0;
     }
 
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peers.length == 0 &&
-            this.peers[].filter!(node =>
-                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count >= this.config.node.max_listeners &&
-            this.validators().filter!(node =>
-                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
+            this.peers[].filter!(client =>
+                !client.addresses.all!(addr => this.banman.isBanned(addr))).count >= this.config.node.max_listeners &&
+            this.validators().filter!(client =>
+                !client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
     }
 
     /// Returns: the list of node IPs this node is connected to
@@ -1119,7 +1090,7 @@ public class NetworkManager
     {
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.utxo);
-        this.validators().each!(v => v.client.sendBlockSignature(block_sig));
+        this.validators().each!(v => v.sendBlockSignature(block_sig));
     }
 
     /***************************************************************************
@@ -1208,8 +1179,8 @@ public class NetworkManager
 
     public void whitelist (Hash utxo)
     {
-        this.peers[].filter!(p => p.utxo == utxo)
-            .each!(p => p.client.addresses.each!(addr => this.banman.whitelist(addr)));
+        this.peers[].filter!(p => p.identity.utxo == utxo)
+            .each!(p => p.addresses.each!(addr => this.banman.whitelist(addr)));
     }
 
     /***************************************************************************
@@ -1223,8 +1194,8 @@ public class NetworkManager
 
     public void unwhitelist (Hash utxo)
     {
-        this.peers[].filter!(p => p.utxo == utxo)
-            .each!(p => p.client.addresses.each!(addr => this.banman.unwhitelist(addr)));
+        this.peers[].filter!(p => p.identity.utxo == utxo)
+            .each!(p => p.addresses.each!(addr => this.banman.unwhitelist(addr)));
     }
 
     ///
