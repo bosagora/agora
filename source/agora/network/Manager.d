@@ -83,7 +83,7 @@ public class NetworkManager
         NetworkClient client;
 
         ///
-        public bool isValidator () const scope @safe pure nothrow @nogc
+        public bool isAuthenticated () const scope @safe pure nothrow @nogc
         {
             return this.key != PublicKey.init;
         }
@@ -344,7 +344,7 @@ public class NetworkManager
         {
             this.peers.insertBack(node);
 
-            if (node.isValidator())
+            if (node.isAuthenticated())
             {
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
                          client.addresses(), utxo, key);
@@ -366,7 +366,7 @@ public class NetworkManager
     private bool tryMerge (scope ref NodeConnInfo node)
     {
         auto existing_peers = this.peers[].find!(p => p.key == node.key);
-        if (!node.isValidator() || existing_peers.empty())
+        if (!node.isAuthenticated() || existing_peers.empty())
             return false;
 
         assert(node.client.connections.length == 1);
@@ -655,7 +655,7 @@ public class NetworkManager
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
             (existing_peer.empty || // either does not exist or a validator with no stake
-                (existing_peer.front.isValidator() && existing_peer.front.utxo == Hash.init));
+                (existing_peer.front.isAuthenticated() && existing_peer.front.utxo == Hash.init));
     }
 
     /// Received new set of addresses, put them in the todo address list
@@ -767,7 +767,7 @@ public class NetworkManager
 
     public auto validators () return @safe nothrow pure
     {
-        return this.peers[].filter!(p => p.isValidator());
+        return this.peers[].filter!(p => p.isAuthenticated());
     }
 
     /***************************************************************************
