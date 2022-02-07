@@ -414,7 +414,7 @@ public class FullNode : API
                     .each!((string address) {
                         auto url = Address(address);
                         this.block_handlers ~= typeof(this.block_handlers[0])(
-                            this.network.getBlockExternalizedHandler(url), url);
+                            this.network.makeBlockExternalizedHandler(url), url);
                     }));
 
             // Make `BlockHeaderUpdatedHandler`s from config
@@ -423,7 +423,7 @@ public class FullNode : API
                     .each!((string address) {
                         auto url = Address(address);
                         this.block_header_handlers ~= typeof(this.block_header_handlers[0])(
-                            this.network.getBlockHeaderUpdatedHandler(url), url);
+                            this.network.makeBlockHeaderUpdatedHandler(url), url);
                     }));
 
             // Make `PreImageReceivedHandler`s from config
@@ -432,7 +432,7 @@ public class FullNode : API
                     .each!((string address) {
                         auto url = Address(address);
                         this.preimage_handlers ~= typeof(this.preimage_handlers[0])(
-                            this.network.getPreImageReceivedHandler(url), url);
+                            this.network.makePreImageReceivedHandler(url), url);
                     }));
 
             // Make `TransactionReceivedHandler`s from config
@@ -441,7 +441,7 @@ public class FullNode : API
                     .each!((string address) {
                         auto url = Address(address);
                         this.transaction_handlers ~= typeof(this.transaction_handlers[0])(
-                            this.network.getTransactionReceivedHandler(url), url);
+                            this.network.makeTransactionReceivedHandler(url), url);
                     }));
         }
 

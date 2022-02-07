@@ -179,7 +179,7 @@ public class FlashNode : FlashControlAPI
     protected const(Block) delegate (ulong _height) @safe getBlock;
 
     ///
-    protected NameRegistryAPI delegate (string address) getRegistryClient;
+    protected NameRegistryAPI delegate (string address) makeRegistryClient;
 
     /***************************************************************************
 
@@ -201,7 +201,7 @@ public class FlashNode : FlashControlAPI
         Engine engine, ITaskManager taskman,
         TransactionResult delegate (in Transaction tx) postTransaction,
         const(Block) delegate (ulong _height) @safe getBlock,
-        NameRegistryAPI delegate (string address) getRegistryClient)
+        NameRegistryAPI delegate (string address) makeRegistryClient)
     {
         this.conf = conf;
         this.genesis_hash = genesis_hash;
@@ -213,7 +213,7 @@ public class FlashNode : FlashControlAPI
         this.db = this.getManagedDatabase(db_path);
         this.postTransaction = postTransaction;
         this.getBlock = getBlock;
-        this.getRegistryClient = getRegistryClient;
+        this.makeRegistryClient = makeRegistryClient;
 
         this.load();
 
@@ -250,13 +250,13 @@ public class FlashNode : FlashControlAPI
     public override void start () @trusted
     {
         if (this.conf.listener_address.length != 0)
-            this.listener = this.getFlashListenerClient(
+            this.listener = this.makeFlashListenerClient(
                 Address(this.conf.listener_address), this.conf.timeout);
         else  // avoid null checks & segfaults
             this.listener = new BlackHole!FlashListenerAPI();
 
         assert(this.conf.registry_address.length);
-        this.registry_client = this.getRegistryClient(this.conf.registry_address);
+        this.registry_client = this.makeRegistryClient(this.conf.registry_address);
         this.onRegisterName();  // avoid delay
 
         this.gossip_timer = this.taskman.setTimer(100.msecs,
@@ -602,7 +602,7 @@ public class FlashNode : FlashControlAPI
             address = payload.addresses[0];
         }
 
-        auto peer = this.createFlashClient(address, timeout);
+        auto peer = this.makeFlashClient(address, timeout);
         this.known_peers[peer_pk] = peer;
         if (this.known_channels.length > 0)
             peer.gossipChannelsOpen(this.channel_updates.byValue
@@ -613,7 +613,7 @@ public class FlashNode : FlashControlAPI
     }
 
     /// Ditto
-    protected FlashAPI createFlashClient (in Address address, in Duration timeout) @trusted
+    protected FlashAPI makeFlashClient (in Address address, in Duration timeout) @trusted
     {
         import vibe.http.client;
 
@@ -1490,7 +1490,7 @@ public class FlashNode : FlashControlAPI
 
     /***************************************************************************
 
-        Get an instance of a FlashListenerAPI client for the given address.
+        Make an instance of a FlashListenerAPI client for the given address.
 
         Params:
             address = the IP to use
@@ -1501,7 +1501,7 @@ public class FlashNode : FlashControlAPI
 
     ***************************************************************************/
 
-    protected FlashListenerAPI getFlashListenerClient (
+    protected FlashListenerAPI makeFlashListenerClient (
         Address address, Duration timeout) @trusted
     {
         import vibe.http.client;

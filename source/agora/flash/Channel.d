@@ -115,7 +115,7 @@ public class Channel
 
     /// Fetch the Flash Client for the peer
     private FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
-        Address address = Address.init) getFlashClient;
+        Address address = Address.init) makeFlashClient;
 
     /// Called when a channel update has been completed.
     private alias GetFeeUTXOs = FeeUTXOs delegate (ulong tx_size);
@@ -193,7 +193,7 @@ public class Channel
             onUpdateComplete = called when a channel update has completed
             getFeeUTXOs = called to get UTXOs for on-chain fees
             db = the database to load the channel metadata from
-            getFlashClient = delegate to get the FlashAPI client from
+            makeFlashClient = delegate to get the FlashAPI client from
 
     ***************************************************************************/
 
@@ -206,12 +206,12 @@ public class Channel
         OnUpdateComplete onUpdateComplete,
         GetFeeUTXOs getFeeUTXOs,
         FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
-            Address address = Address.init) getFlashClient,
+            Address address = Address.init) makeFlashClient,
         ManagedDatabase db)
     {
         this.db = db;
         this.flash_conf = flash_conf;
-        this.getFlashClient = getFlashClient;
+        this.makeFlashClient = makeFlashClient;
         this.load(key, chan_id);
 
         this.engine = engine;
@@ -233,7 +233,7 @@ public class Channel
         Params:
             flash_conf = the global flash configuration
             db = the DB to load from
-            getFlashClient = delegate to get the FlashAPI client from
+            makeFlashClient = delegate to make the FlashAPI client from
             engine = the execution engine
             taskman = used to spawn tasks
             txPublisher = used to publish transactions to the Agora network.
@@ -249,7 +249,7 @@ public class Channel
     public static Channel[Hash] loadChannels (FlashConfig flash_conf,
         ManagedDatabase db,
         FlashAPI delegate (in PublicKey peer_pk, Duration timeout,
-            Address address = Address.init) getFlashClient,
+            Address address = Address.init) makeFlashClient,
         Engine engine, ITaskManager taskman,
         TransactionResult delegate (in Transaction) txPublisher, PaymentRouter paymentRouter,
         OnChannelNotify onChannelNotify,
@@ -270,7 +270,7 @@ public class Channel
             const chan_id = deserializeFull!Hash(row.peek!(ubyte[])(1));
             auto chn = new Channel(key, chan_id, flash_conf, engine,
                 taskman, txPublisher, paymentRouter, onChannelNotify,
-                onPaymentComplete, onUpdateComplete, getFeeUTXOs, getFlashClient, db);
+                onPaymentComplete, onUpdateComplete, getFeeUTXOs, makeFlashClient, db);
             chn.start();
             channels[chan_id] = chn;
         }
@@ -542,7 +542,7 @@ public class Channel
         // the Channel, so we might need to re-try here in the event loop.
         if (this.peer is null)
         {
-            this.peer = getFlashClient(this.peer_pk, this.flash_conf.timeout);
+            this.peer = this.makeFlashClient(this.peer_pk, this.flash_conf.timeout);
 
             // this would mean some of the metadata on disk is missing (flash registry)
             // FIXME: add retry mechanism for loading this channel until peer is found,
