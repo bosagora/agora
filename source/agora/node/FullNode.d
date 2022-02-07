@@ -279,14 +279,14 @@ public class FullNode : API
 
         this.stateDB = this.makeStateDB();
         this.cacheDB = this.makeCacheDB();
+        this.storage = this.makeBlockStorage();
         this.taskman = this.makeTaskManager();
         this.clock = this.makeClock();
-        this.network = this.makeNetworkManager(this.taskman, this.clock);
-        this.storage = this.makeBlockStorage();
         this.pool = new TransactionPool(this.cacheDB, &getDoubleSpentSelector);
         this.enroll_man = this.makeEnrollmentManager();
         this.ledger = this.makeLedger();
-        // Note: Needs to be instantiated after `ledger` as it depends on it
+
+        this.network = this.makeNetworkManager(this.taskman, this.clock);
         this.transaction_relayer = this.makeTransactionRelayer();
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
