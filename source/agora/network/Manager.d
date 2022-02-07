@@ -454,6 +454,7 @@ public class NetworkManager
         time offset will be correct.
 
         Params:
+            threshold = The threshold of responses to expect (see `Returns`)
             time_offest = will contain the offset that should be applied to the
                           clock's local time to get the median clock time of the
                           node's quorum nodes (zero if return value is false)
