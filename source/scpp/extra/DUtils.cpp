@@ -147,14 +147,18 @@ CPPOBJECTINST(std::set<NodeID>);
 CPPOBJECTINST(std::set<SCPBallot>);
 CPPOBJECTINST(std::set<unsigned int>);
 
-CPPOBJECTINST(std::vector<unsigned char>);
-CPPOBJECTINST(std::vector<Value>);
-CPPOBJECTINST(std::vector<unsigned long>);
-CPPOBJECTINST(std::vector<unsigned long long>);
-CPPOBJECTINST(std::vector<SCPQuorumSet>);
-CPPOBJECTINST(std::vector<SCPEnvelope>);
-CPPOBJECTINST(std::vector<Slot::HistoricalStatement>);
 CPPOBJECTINST(stellar::SCPStatement::_pledges_t);
+
+#define CPPVECINST(T) template class T; \
+                      CPPOBJECTINST(T)
+
+CPPVECINST(std::vector<unsigned char>);
+CPPVECINST(std::vector<Value>);
+CPPVECINST(std::vector<unsigned long>);
+CPPVECINST(std::vector<unsigned long long>);
+CPPVECINST(std::vector<SCPQuorumSet>);
+CPPVECINST(std::vector<SCPEnvelope>);
+CPPVECINST(std::vector<Slot::HistoricalStatement>);
 
 #define CPPUNIQUEPTRINST(T) CPPDEFAULTCTORINST(std::unique_ptr<T>) \
                             CPPDTORINST(std::unique_ptr<T>)        \

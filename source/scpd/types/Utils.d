@@ -32,6 +32,7 @@ public inout(opaque_vec!()) toVec (scope ref inout(Hash) data) nothrow @nogc
 public inout(opaque_vec!()) toVec (scope inout ubyte[] data) nothrow @nogc
 {
     inout opaque_vec!() ret;
+    ret.reserve(data.length);
     foreach (elem; data)
         ret.base.push_back(cast(ubyte) elem);
     return ret;

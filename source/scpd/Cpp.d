@@ -367,6 +367,11 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             return this._end - this._start;
         }
 
+        public size_t capacity () const @safe pure nothrow @nogc
+        {
+            return this._end_of_storage - this._start;
+        }
+
         public ConstIterator constIterator () const pure nothrow @nogc @safe
         {
             return ConstIterator(0, &this);
@@ -429,6 +434,7 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
         {
             auto array = src.deserializeWithPolicy!(JsonStringSerializer!string, SerPolicy, T[]);
             typeof(this) vec;
+            vec.reserve(array.length);
             foreach (ref item; array)
                 vec.push_back(item);
             return vec;
@@ -455,6 +461,7 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             // `immutable` vector yet
             Unqual!(vector!(Unqual!(QT.ElementType))) ret;
             immutable len = deserializeLength(data, opts.maxLength);
+            ret.reserve(len);
             foreach (idx; 0 .. len)
             {
                 auto entry = deserializeFull!(QT.ElementType)(data, opts);
@@ -492,6 +499,9 @@ extern(C++, (StdNamespace)) extern(C++, class) struct vector (T, Alloc = allocat
             }
         }
     }
+
+    /// Set vector capacity
+    public void reserve (size_t new_cap) inout @trusted pure nothrow @nogc;
 }
 
 unittest
@@ -501,6 +511,8 @@ unittest
     import std.range : iota;
 
     vector!ubyte vec_ubyte;
+    vec_ubyte.reserve(1337);
+    assert(vec_ubyte.capacity() >= 1337);
     iota(5).each!((num) {ubyte b = cast(ubyte)num; vec_ubyte.push_back(b);});
     auto serialized = vec_ubyte.toString();
     assert(serialized == `"AAECAwQ="`, "actual serialized: " ~ serialized);
