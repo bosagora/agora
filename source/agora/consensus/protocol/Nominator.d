@@ -1133,7 +1133,7 @@ extern(D):
         }
 
         log.dbg("{}: peers are {}", __PRETTY_FUNCTION__, this.network.peers[]);
-        this.network.validators().each!(v => v.client.sendEnvelope(env));
+        this.network.validators().each!(c => c.sendEnvelope(env));
     }
 
     /***************************************************************************

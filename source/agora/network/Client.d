@@ -314,6 +314,12 @@ public class NetworkClient
         return Identity(this.identity_.key, this.identity_.utxo);
     }
 
+    ///
+    public bool isAuthenticated () const scope @safe pure nothrow @nogc
+    {
+        return this.identity.key != PublicKey.init;
+    }
+
     /***************************************************************************
 
         Params:
