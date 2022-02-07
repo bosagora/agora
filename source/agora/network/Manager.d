@@ -517,11 +517,8 @@ public class NetworkManager
             &this.onRegisterName, Periodic.Yes);
     }
 
-    /// Discover the network, connect to all required peers
-    /// Some nodes may want to connect to specific peers before
-    /// discovery() is considered complete
-    public void discover (NameRegistry registry, UTXO[Hash] last_known_validator_utxos,
-        UTXO[Hash] required_peer_utxos = null) nothrow
+    /// Update the list of required peers
+    public void updateRequiredPeers (UTXO[Hash] required_peer_utxos) @safe nothrow
     {
         this.quorum_set_keys.from(Set!Hash.init);
         this.required_peers.from(Set!Hash.init);
@@ -532,10 +529,17 @@ public class NetworkManager
             if (!this.peers[].map!(c => c.identity.utxo).canFind(peer.key))
                 this.required_peers.put(peer.key);
         }
+    }
 
+    /// Discover the network, connect to all required peers
+    /// Some nodes may want to connect to specific peers before
+    /// discovery() is considered complete
+    public void discover (NameRegistry registry, UTXO[Hash] last_known_validator_utxos)
+        nothrow
+    {
         log.info(
-            "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
-            required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
+            "Doing periodic network discovery: {} required peers missing, known {}",
+            this.required_peers.length, last_known_validator_utxos.length);
 
         if (this.registry_client !is null)
         {

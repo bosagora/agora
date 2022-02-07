@@ -257,13 +257,6 @@ public class Validator : FullNode, API
             this.checkAndEnroll(this.ledger.height());
     }
 
-    /// Ditto
-    protected override void discoveryTask ()
-    {
-        this.network.discover(this.registry, this.ledger.getEnrolledUTXOs(), this.required_peer_utxos);
-        this.timers[TimersIdx.Discovery].rearm(this.config.node.network_discovery_interval, false);
-    }
-
     ///
     public override Identity handshake (in PublicKey peer)
     {
@@ -601,6 +594,7 @@ public class Validator : FullNode, API
             if (this.enroll_man.isEnrolled(block.header.height + 1, &this.ledger.peekUTXO))
                 this.network.onRegisterName();
             this.regenerateQuorums(block.header.height);
+            this.network.updateRequiredPeers(this.required_peer_utxos);
         }
 
         // Re-enroll if our enrollment is about to expire and the block is recent enough
