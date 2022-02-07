@@ -300,20 +300,50 @@ public class NetworkManager
         in Address address, agora.api.Validator.API api,
         in Hash utxo, in PublicKey key)
     {
+        log.dbg("onHandshakeComplete: {} - (k: {}, utxo: {})", address, key, utxo);
+        this.connection_tasks.remove(address);
+
+        // We have an authenticated client, maybe we already have a client for it
+        if (key !is PublicKey.init)
+        {
+            auto existing_peers = this.peers[].find!(p => p.identity.key == key);
+            if (!existing_peers.empty())
+            {
+                auto prev = existing_peers.front();
+                // There's three possibilities:
+                // a) We don't have an UTXO for this peer and we just got one,
+                //    so record it.
+                // b) We have an UTXO for this peer and got one, don't do anything
+                // c) We have an UTXO for this peer and didn't get one (or got a different one),
+                //    drop the new connection, as it could be another node
+                //    (e.g. backup) not wanting to be known as validator
+                //
+                // Case (c) shows that using keys for identification is tricky,
+                // but we had to do so due to DNS limitations
+                if (prev.identity.utxo !is Hash.init)
+                {
+                    if (utxo != prev.identity.utxo)
+                        return; // Drop it
+                }
+                else if (utxo !is Hash.init)
+                {
+                    prev.setIdentity(utxo, key);
+                    this.required_peers.remove(utxo);
+                }
+                prev.merge(address, api);
+                return; // All done
+            }
+        }
+
+        if (utxo !is Hash.init)
+            this.required_peers.remove(utxo);
+        else if (this.peerLimitReached())
+            return;
+
         auto client = new NetworkClient(this.taskman, this.banman,
             this.config.node.retry_delay, this.config.node.max_retries);
         if (!client.merge(address, api))
             assert(0);
-
-        log.dbg("onHandshakeComplete: addresses: {}", client.addresses());
-        client.connections.each!(conn => this.connection_tasks.remove(address));
-        if (this.tryMerge(client))
-        {
-            this.required_peers.remove(utxo);
-            return;
-        }
-        if (this.peerLimitReached())
-            return;
 
         if (!client.connections.any!(conn => address == Address.init))
         {
@@ -323,7 +353,6 @@ public class NetworkManager
             {
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
                          client.addresses(), utxo, key);
-                this.required_peers.remove(utxo);
                 client.setIdentity(utxo, key);
             }
             else
@@ -335,19 +364,6 @@ public class NetworkManager
             auto node_info = client.getNodeInfo();
             this.addAddresses(node_info.addresses);
         }
-    }
-
-    ///
-    private bool tryMerge (scope ref NetworkClient client)
-    {
-        auto existing_peers = this.peers[].find!(p => p.identity.key == client.identity.key);
-        if (!client.isAuthenticated() || existing_peers.empty())
-            return false;
-
-        assert(client.connections.length == 1);
-        existing_peers.front().setIdentity(client.identity.utxo, client.identity.key);
-        existing_peers.front().merge(client.connections[0].tupleof);
-        return true;
     }
 
     /***************************************************************************
