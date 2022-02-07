@@ -987,10 +987,19 @@ public class NetworkManager
     {
         log.dbg("minPeersConnected: missing = {}, peers = {}, min = {}",
             this.required_peers.length, this.peers[].walkLength, this.config.node.min_listeners);
-        return this.required_peers.length == 0 &&
-            this.peers[].walkLength >= this.config.node.min_listeners &&
-            this.validators().filter!(node =>
-                !node.client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
+
+        // We need to establish connections to all peers we were explicitly asked for
+        if (this.required_peers.length)
+            return false;
+
+        // We need to establish a minimum number of connections
+        if (this.peers[].walkLength < this.config.node.min_listeners)
+            return false;
+
+        // We don't have an authenticated peer where all the addresses are banned
+        return this.validators().filter!(
+            node => !node.client.addresses.all!(addr => this.banman.isBanned(addr)))
+            .count != 0;
     }
 
     private bool peerLimitReached ()  nothrow @safe
