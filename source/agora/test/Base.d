@@ -1348,7 +1348,7 @@ public class TestAPIManager
     not do IO (or appear not to).
 
     In the current design, all nodes should be instantiated upfront,
-    registered via `geod24.Registry`, and located by `getClient`.
+    registered via `geod24.Registry`, and located by `makeClient`.
 
 *******************************************************************************/
 
@@ -1373,7 +1373,7 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override TestAPI getClient (Address address)
+    protected final override TestAPI makeClient (Address address)
     {
         auto tid = this.registry.locate!TestAPI(address.host);
         if (tid != typeof(tid).init)
@@ -1383,7 +1383,7 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    public override RemoteAPI!NameRegistryAPI getRegistryClient (string address)
+    public override RemoteAPI!NameRegistryAPI makeRegistryClient (string address)
     {
         assert(address != string.init, "Requested address for registry is empty");
         const url = Address(address);
@@ -1403,7 +1403,7 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override BlockExternalizedHandler getBlockExternalizedHandler
+    protected final override BlockExternalizedHandler makeBlockExternalizedHandler
         (Address address)
     {
         import std.typecons : BlackHole;
@@ -1415,21 +1415,21 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    protected final override BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler
+    protected final override BlockHeaderUpdatedHandler makeBlockHeaderUpdatedHandler
         (Address address)
     {
         assert(0, "Not supported");
     }
 
     ///
-    protected final override PreImageReceivedHandler getPreImageReceivedHandler
+    protected final override PreImageReceivedHandler makePreImageReceivedHandler
         (Address address)
     {
         assert(0, "Not supported");
     }
 
     ///
-    protected final override TransactionReceivedHandler getTransactionReceivedHandler
+    protected final override TransactionReceivedHandler makeTransactionReceivedHandler
         (Address address)
     {
         assert(0, "Not supported");

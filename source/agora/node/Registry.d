@@ -959,7 +959,7 @@ private struct ZoneData
                 // Since a secondary zone cannot transfer UTXO, sequence and signature
                 // fields of data from a primary, it redirects API calls to API of the
                 // configured primary
-                this.redirect_register = this.netman.getRegistryClient(
+                this.redirect_register = this.netman.makeRegistryClient(
                     this.config.redirect_register);
 
                 this.expire_timer = this.taskman.createTimer(&this.disable);

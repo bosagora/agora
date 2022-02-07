@@ -70,8 +70,8 @@ public final class VibeNetworkManager : NetworkManager
         return new VibeDNSResolver(peers.length ? peers : DefaultDNS);
     }
 
-    /// See `NetworkManager.getClient`
-    protected override agora.api.Validator.API getClient (Address url)
+    /// See `NetworkManager.makeClient`
+    protected override agora.api.Validator.API makeClient (Address url)
     {
         import std.algorithm.searching;
 
@@ -96,49 +96,49 @@ public final class VibeNetworkManager : NetworkManager
 
         if (url.schema.startsWith("http"))
             return new RestInterfaceClient!(agora.api.Validator.API)(
-                this.getRestInterfaceSettings(url));
+                this.makeRestInterfaceSettings(url));
 
         assert(0, "Unknown agora schema");
     }
 
-    /// See `NetworkManager.getRegistryClient`
-    public override NameRegistryAPI getRegistryClient (string address)
+    /// See `NetworkManager.makeRegistryClient`
+    public override NameRegistryAPI makeRegistryClient (string address)
     {
         return new RestInterfaceClient!NameRegistryAPI(
-            this.getRestInterfaceSettings(Address(address)));
+            this.makeRestInterfaceSettings(Address(address)));
     }
 
-    /// See `NetworkManager.getBlockExternalizedHandler`
-    public override BlockExternalizedHandler getBlockExternalizedHandler (Address address)
+    /// See `NetworkManager.makeBlockExternalizedHandler`
+    public override BlockExternalizedHandler makeBlockExternalizedHandler (Address address)
     {
         return new RestInterfaceClient!BlockExternalizedHandler(
-            this.getRestInterfaceSettings(address));
+            this.makeRestInterfaceSettings(address));
     }
 
-    /// See `NetworkManager.getBlockHeaderUpdatedHandler`
-    public override BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler (Address address)
+    /// See `NetworkManager.makeBlockHeaderUpdatedHandler`
+    public override BlockHeaderUpdatedHandler makeBlockHeaderUpdatedHandler (Address address)
     {
         return new RestInterfaceClient!BlockHeaderUpdatedHandler(
-            this.getRestInterfaceSettings(address));
+            this.makeRestInterfaceSettings(address));
     }
 
-    /// See `NetworkManager.getPreImageReceivedHandler`
-    public override PreImageReceivedHandler getPreImageReceivedHandler(Address address)
+    /// See `NetworkManager.makePreImageReceivedHandler`
+    public override PreImageReceivedHandler makePreImageReceivedHandler(Address address)
     {
         return new RestInterfaceClient!PreImageReceivedHandler(
-            this.getRestInterfaceSettings(address));
+            this.makeRestInterfaceSettings(address));
     }
 
-    /// See `NetworkManager.getTransactionReceivedHandler`
-    public override TransactionReceivedHandler getTransactionReceivedHandler (Address address)
+    /// See `NetworkManager.makeTransactionReceivedHandler`
+    public override TransactionReceivedHandler makeTransactionReceivedHandler (Address address)
     {
         return new RestInterfaceClient!TransactionReceivedHandler(
-            this.getRestInterfaceSettings(address));
+            this.makeRestInterfaceSettings(address));
     }
 
     /// Returns: A `RestInterfaceSettings` with the content of the `config`
     ///          pointing to `address`
-    private RestInterfaceSettings getRestInterfaceSettings (Address address)
+    private RestInterfaceSettings makeRestInterfaceSettings (Address address)
     {
         auto settings = new RestInterfaceSettings;
         settings.baseURL = address;

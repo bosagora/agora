@@ -156,9 +156,9 @@ public class TestFlashNode : FlashNode, TestFlashAPI
         auto engine = new Engine();
         this.allow_publish = true;
 
-        this.agora_node = this.getAgoraClient(agora_address, timeout);
+        this.agora_node = this.makeAgoraClient(agora_address, timeout);
         super(conf, storage, genesis_hash, engine, new LocalRestTaskManager(),
-            &this.postTransaction, &agora_node.getBlock, &this.getRegistryClient);
+            &this.postTransaction, &agora_node.getBlock, &this.makeRegistryClient);
     }
 
     /***************************************************************************
@@ -195,7 +195,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    protected FullNodeAPI getAgoraClient (Address address,
+    protected FullNodeAPI makeAgoraClient (Address address,
         Duration timeout)
     {
         auto tid = this.registry.locate!TestAPI(address.host);
@@ -204,7 +204,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    protected override FlashAPI createFlashClient (in Address address, in Duration timeout) @trusted
+    protected override FlashAPI makeFlashClient (in Address address, in Duration timeout) @trusted
     {
         // give some time to the other node to wake up and register
         Listener!TestFlashAPI tid;
@@ -224,7 +224,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    protected override TestFlashListenerAPI getFlashListenerClient (
+    protected override TestFlashListenerAPI makeFlashListenerClient (
         Address address, Duration timeout) @trusted
     {
         auto tid = this.registry.locate!TestFlashListenerAPI(address.host);
@@ -233,7 +233,7 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    public NameRegistryAPI getRegistryClient (string address)
+    public NameRegistryAPI makeRegistryClient (string address)
     {
         assert(address != string.init, "Empty address");
         const url = Address(address);

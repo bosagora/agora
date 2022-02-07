@@ -8,7 +8,7 @@
     first when a message has to be sent), etc... are handled here.
 
     In unittests, one can replace a `NetworkManager` with a `TestNetworkManager`
-    which provides a different client type (see `getClient`) in order to enable
+    which provides a different client type (see `makeClient`) in order to enable
     in-memory network communication.
 
     Copyright:
@@ -160,7 +160,7 @@ public class NetworkManager
         private void connect_canthrow ()
         {
             if (this.api is null)
-                this.api = this.outer.getClient(this.address);
+                this.api = this.outer.makeClient(this.address);
 
             PublicKey key;
             Hash utxo;
@@ -505,7 +505,7 @@ public class NetworkManager
         if (this.config.node.registry_address.length == 0)
             return null;
 
-        this.registry_client = this.getRegistryClient(
+        this.registry_client = this.makeRegistryClient(
             this.config.node.registry_address);
 
         this.onRegisterName();  // avoid delay
@@ -1016,7 +1016,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    protected abstract agora.api.Validator.API getClient (Address url);
+    protected abstract agora.api.Validator.API makeClient (Address url);
 
     /***************************************************************************
 
@@ -1030,7 +1030,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public abstract NameRegistryAPI getRegistryClient (string address);
+    public abstract NameRegistryAPI makeRegistryClient (string address);
 
     /***************************************************************************
 
@@ -1060,7 +1060,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public abstract BlockExternalizedHandler getBlockExternalizedHandler (Address address);
+    public abstract BlockExternalizedHandler makeBlockExternalizedHandler (Address address);
 
     /***************************************************************************
 
@@ -1074,7 +1074,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public abstract BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler (Address address);
+    public abstract BlockHeaderUpdatedHandler makeBlockHeaderUpdatedHandler (Address address);
 
     /***************************************************************************
 
@@ -1088,7 +1088,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public abstract PreImageReceivedHandler getPreImageReceivedHandler(Address address);
+    public abstract PreImageReceivedHandler makePreImageReceivedHandler(Address address);
 
     /***************************************************************************
 
@@ -1102,7 +1102,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public abstract TransactionReceivedHandler getTransactionReceivedHandler (Address address);
+    public abstract TransactionReceivedHandler makeTransactionReceivedHandler (Address address);
 
     /***************************************************************************
 
