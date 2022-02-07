@@ -110,6 +110,9 @@ public final class VibeDNSResolver : DNSResolver
                 continue;
             }
         }
+
+        log.trace("None of the {} peers had an answer for message: {}",
+            this.resolvers.length, msg);
         return Message.init;
     }
 
@@ -160,7 +163,11 @@ public final class VibeDNSResolver : DNSResolver
                     conn.read(buffer[0 .. size]);
                     conn.close();
 
-                    return deserializeFull!Message(buffer[0 .. size]);
+                    auto answer = deserializeFull!Message(buffer[0 .. size]);
+                    log.trace("Got response from '{}' for '{}' : {}",
+                          peer.address, msg, answer);
+
+                    return answer;
                 }
                 catch (Exception exc)
                 {
@@ -171,7 +178,8 @@ public final class VibeDNSResolver : DNSResolver
                 break;
             }
         }
-
+        log.trace("None of the {} peers had an answer for message: {}",
+            this.resolvers.length, msg);
         return Message.init;
     }
 }
