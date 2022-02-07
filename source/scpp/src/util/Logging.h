@@ -8,12 +8,12 @@
 #include <sstream>
 #include <iostream>
 
-#define TRACE 0
 #define DEBUG 0
-#define INFO  1
-#define WARN  2
-#define ERROR 3
-#define FATAL 4
+#define TRACE 1
+#define INFO  3
+#define WARN  4
+#define ERROR 5
+#define FATAL 6
 #define CLOG(LEVEL, MOD) stellar::DLogger(LEVEL, MOD)
 
 namespace agora {
