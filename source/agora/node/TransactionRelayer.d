@@ -220,7 +220,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     public void relayTransactions () @safe nothrow
     {
         log.dbg("{}: clients: {}", __PRETTY_FUNCTION__, (*this.clients)[].map!(v => v.key));
-        if ((*this.clients)[].canFind!(client => client.isValidator()))
+        if ((*this.clients)[].canFind!(client => client.isAuthenticated()))
             this.getRelayTransactions().each!(tx => (*this.clients).each!(node_info => node_info.client.sendTransaction(tx)));
     }
 
