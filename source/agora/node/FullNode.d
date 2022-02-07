@@ -1124,8 +1124,7 @@ public class FullNode : API
     {
         log.dbg("{}: height {}", __PRETTY_FUNCTION__, block.header.height);
         this.pushBlock(block);
-        if (this.registry)
-            this.registry.onAcceptedBlock(block, validators_changed);
+        this.registry.onAcceptedBlock(block, validators_changed);
     }
 
     /***************************************************************************
