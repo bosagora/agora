@@ -22,6 +22,7 @@
 		"stdx-allocator": {"path":"submodules/stdx-allocator/"},
 		"taggedalgebraic": {"path":"submodules/taggedalgebraic/"},
 		"tinyendian": {"path":"submodules/tinyendian/"},
+		"unit-threaded":{"path":"submodules/unit-threaded/"},
 		"vibe-core": {"path":"submodules/vibe-core/"},
 		"vibe-d": {"path":"submodules/vibe.d/"}
 	}
