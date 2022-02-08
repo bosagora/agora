@@ -487,7 +487,7 @@ public class NameRegistry: NameRegistryAPI
 
 /*******************************************************************************
 
-    Parse a PublicKey from the first label of a domain name
+    Parse a PublicKey from the a domain name
 
     Params:
       domain = The full domain name to parse
@@ -497,7 +497,7 @@ public class NameRegistry: NameRegistryAPI
 
 *******************************************************************************/
 
-private PublicKey extractPublicKey (in char[] domain) @safe
+private PublicKey extractPublicKey (in Domain domain) @safe
 {
     // In the future, we may allow things like:
     // `admin.$PUBKEY.domain`, but for the moment, restrict it to
@@ -512,8 +512,17 @@ private PublicKey extractPublicKey (in char[] domain) @safe
         catch (Exception exc) return PublicKey.init;
     }
 
-    if (auto str = domain.splitter('.').front)
+    auto splitted = domain.value.splitter('.');
+    if (auto str = splitted.front)
     {
+        // Check if `domain` includes service and protocol labels
+        if (domain.serviceAndProtocolLabels() != Domain.ServiceProtoTuple.init)
+        {
+            splitted.popFront(); // Pop service
+            splitted.popFront(); // Pop proto
+            str = splitted.front;
+        }
+
         if (str.length == PublicKeyStringLength)
             return tryParse(str);
         else if (str.length == NoHRPPublicKeyStringLength)
@@ -532,40 +541,40 @@ unittest
     const AStr = WK.Keys.A.address.toString();
 
     // Most likely case
-    assert(extractPublicKey(AStr ~ ".net.bosagora.io") ==
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".net.bosagora.io")) ==
            WK.Keys.A.address);
 
     // Technically, request may end with the null label (a dot), and the user
     // might also specify it, so test for it.
-    assert(extractPublicKey(AStr ~ ".net.bosagora.io.") ==
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".net.bosagora.io.")) ==
            WK.Keys.A.address);
 
     // Without the HRP
-    assert(extractPublicKey(AStr["boa1".length .. $] ~ ".net.bosagora.io") ==
+    assert(extractPublicKey(Domain.fromString(AStr["boa1".length .. $] ~ ".net.bosagora.io")) ==
            WK.Keys.A.address);
 
     // Only gTLD
-    assert(extractPublicKey(AStr ~ ".bosagora") == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".bosagora")) == WK.Keys.A.address);
 
     // Uppercase / lowercase doesn't matter, except for the key
-    assert(extractPublicKey(AStr ~ ".BOSAGORA") == WK.Keys.A.address);
-    assert(extractPublicKey(AStr ~ ".BoSAGorA") == WK.Keys.A.address);
-    assert(extractPublicKey(AStr ~ ".BOSAGORA") == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".BOSAGORA")) == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".BoSAGorA")) == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".BOSAGORA")) == WK.Keys.A.address);
 
     // Rejection tests
-    assert(extractPublicKey(AStr[1 .. $] ~ ".boa") is PublicKey.init);
-    assert(extractPublicKey(AStr ~ ".bosagora") == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr[1 .. $] ~ ".boa")) is PublicKey.init);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".bosagora")) == WK.Keys.A.address);
 
     // Uppercase / lowercase doesn't matter, except for the key
-    assert(extractPublicKey(AStr ~ ".BOSAGORA") == WK.Keys.A.address);
-    assert(extractPublicKey(AStr ~ ".BoSAGorA") == WK.Keys.A.address);
-    assert(extractPublicKey(AStr ~ ".BOSAGORA") == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".BOSAGORA")) == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".BoSAGorA")) == WK.Keys.A.address);
+    assert(extractPublicKey(Domain.fromString(AStr ~ ".BOSAGORA")) == WK.Keys.A.address);
 
     // Rejection tests
-    assert(extractPublicKey(AStr[1 .. $] ~ ".boa") is PublicKey.init);
+    assert(extractPublicKey(Domain.fromString(AStr[1 .. $] ~ ".boa")) is PublicKey.init);
     auto invalid = AStr.dup;
     invalid[0] = 'c';
-    assert(extractPublicKey(invalid ~ ".boa") is PublicKey.init);
+    assert(extractPublicKey(Domain.fromString(invalid ~ ".boa")) is PublicKey.init);
 }
 
 /// Converts a `ZoneConfig` to an `SOA` record
@@ -611,7 +620,7 @@ private struct TypedPayload
 
     public static TypedPayload make (ResourceRecord rr)
     {
-        auto public_key = rr.name.value.extractPublicKey();
+        auto public_key = rr.name.extractPublicKey();
         assert(public_key != PublicKey.init,
             "PublicKey cannot be extracted from domain");
 
@@ -1290,7 +1299,7 @@ private struct ZoneData
     private Header.RCode getKeyDNSRecord (
         const ref Question question, ref Message reply) @safe
     {
-        const public_key = question.qname.value.extractPublicKey();
+        const public_key = question.qname.extractPublicKey();
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
