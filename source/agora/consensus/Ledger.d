@@ -70,6 +70,8 @@ public class NodeLedger : Ledger
         TooManyMPVs = "More MPVs than active enrollments",
         NoUTXO = "Couldn't find UTXO for one or more Enrollment",
         NotInPool = "Transaction is not in the pool",
+        MissingCoinbase = "Missing Coinbase transaction",
+        MisMatchingCoinbase = "Missing matching Coinbase transaction",
     }
 
     /// A delegate to be called when a block was externalized (unless `null`)
@@ -335,9 +337,12 @@ public class NodeLedger : Ledger
             // Because CB TXs are never in the pool, they will always end up in
             // local_unknown_txs.
             if (local_unknown_txs.length == 0)
-                return "Missing Coinbase transaction";
+                return InvalidConsensusDataReason.MissingCoinbase;
             if (!local_unknown_txs.remove(coinbase_tx_hash))
-                return "Missing matching Coinbase transaction"; // Coinbase tx is missing or different
+            {
+                this.cached_coinbase = CachedCoinbase.init; // Clear cached value
+                return InvalidConsensusDataReason.MisMatchingCoinbase;
+            }
             tx_set ~= coinbase_tx;
         }
         if (local_unknown_txs.length > 0)

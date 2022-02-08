@@ -916,6 +916,11 @@ extern(D):
                 this.catchup_timer.rearm(CatchupTaskDelay, false);
                 return ValidationLevel.kMaybeValidValue;
             }
+            if (fail_reason == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)
+            {
+                log.error("validateValue(): Validation failed: {}. Will check for missing signatures", fail_reason);
+                this.catchup_timer.rearm(CatchupTaskDelay, false);
+            }
             else
             {
                 log.error("validateValue(): Validation failed: {}. Data: {}", fail_reason, data.prettify);
@@ -1271,9 +1276,15 @@ extern(D):
                 log.trace("Consensus data: {}", data.prettify);
 
                 if (auto msg = this.ledger.validateConsensusData(data, this.initial_missing_validators))
-                    assert(0, format!"combineCandidates: Invalid consensus data: %s"(
-                        msg));
-
+                {
+                    if (msg == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)
+                    {
+                        log.error("combineCandidates(): Validation failed: {}. Will attempt catchup to get missing signatures", msg);
+                        this.catchup_timer.rearm(CatchupTaskDelay, false);
+                    }
+                    else
+                        assert(0, format!"combineCandidates: Invalid consensus data: %s"( msg));
+                }
                 Amount total_rate;
                 foreach (const ref tx_hash; data.tx_set)
                 {
