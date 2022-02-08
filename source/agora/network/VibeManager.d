@@ -77,29 +77,17 @@ public final class VibeNetworkManager : NetworkManager
         }
 
         if (url.schema.startsWith("http"))
-        {
-            auto settings = new RestInterfaceSettings;
-            settings.baseURL = url;
-            settings.httpClientSettings = new HTTPClientSettings;
-            settings.httpClientSettings.connectTimeout = timeout;
-            settings.httpClientSettings.readTimeout = timeout;
-            settings.httpClientSettings.proxyURL = this.config.proxy.url;
-            return new RestInterfaceClient!(agora.api.Validator.API)(settings);
-        }
+            return new RestInterfaceClient!(agora.api.Validator.API)(
+                this.getRestInterfaceSettings(url));
+
         assert(0, "Unknown agora schema");
     }
 
     /// See `NetworkManager.getRegistryClient`
     public override NameRegistryAPI getRegistryClient (string address)
     {
-        auto settings = new RestInterfaceSettings();
-        settings.baseURL = Address(address);
-        settings.httpClientSettings = new HTTPClientSettings();
-        settings.httpClientSettings.connectTimeout = this.config.node.timeout;
-        settings.httpClientSettings.readTimeout = this.config.node.timeout;
-        settings.httpClientSettings.proxyURL = this.config.proxy.url;
-
-        return new RestInterfaceClient!NameRegistryAPI(settings);
+        return new RestInterfaceClient!NameRegistryAPI(
+            this.getRestInterfaceSettings(Address(address)));
     }
 
     /// See `NetworkManager.getBlockExternalizedHandler`
