@@ -913,6 +913,7 @@ extern(D):
             if (fail_reason == this.ledger.InvalidConsensusDataReason.NotInPool)
             {
                 log.trace("validateValue(): This node can not yet fully validate this value: {}. Data: {}", fail_reason, data.prettify);
+                this.catchup_timer.rearm(CatchupTaskDelay, false);
                 return ValidationLevel.kMaybeValidValue;
             }
             else
