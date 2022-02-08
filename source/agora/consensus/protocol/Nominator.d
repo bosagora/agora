@@ -480,8 +480,7 @@ extern(D):
             () @trusted
             {
                 foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
-                    if (env.statement.pledges.type_ != SCPStatementType.SCP_ST_NOMINATE)
-                        this.emitEnvelope(env);
+                    this.emitEnvelope(env);
             } ();
             return;
         }
