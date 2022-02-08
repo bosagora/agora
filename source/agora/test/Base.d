@@ -58,6 +58,7 @@ import agora.node.FullNode;
 import agora.node.Registry;
 import agora.node.TransactionRelayer;
 import agora.node.Validator;
+public static import agora.script.Lock;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
@@ -1138,7 +1139,8 @@ public class TestAPIManager
 
         if (!no_txs)
         {
-            auto utxo_pairs = first_client.getSpendables(1.coins, OutputType.Payment);
+            auto utxo_pairs = first_client.getSpendables(1.coins, OutputType.Payment,
+                agora.script.Lock.LockType.Key);
             auto tx = TxBuilder(utxo_pairs[0].utxo.output.address) // refund
                 .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
                 .sign();
@@ -1186,7 +1188,8 @@ public class TestAPIManager
         // Collect enough utxo for all to enroll
         Amount expected = Amount.MinFreezeAmount + 10_000.coins;
         assert(expected.mul(keys.length));
-        auto utxo_pairs = first_client.getSpendables(expected, OutputType.Payment);
+        auto utxo_pairs = first_client.getSpendables(expected, OutputType.Payment,
+            agora.script.Lock.LockType.Key);
 
         return TxBuilder(utxo_pairs[0].utxo.output.address) // refund
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
@@ -1555,6 +1558,7 @@ public interface TestAPI : API
         Params:
             minimum = minimum Amount needed in the returned unspent UTXOs
             output_type = output type (payment / freeze) of desired utxos
+            lock_type = lock type of desired utxos
 
         Returns:
             Array of `UTXOPair` that can be used by calling test code to create
@@ -1563,7 +1567,8 @@ public interface TestAPI : API
     ***************************************************************************/
 
     public UTXOPair[] getSpendables (Amount minimum,
-        OutputType output_type = OutputType.Payment);
+        OutputType output_type = OutputType.Payment,
+        agora.script.Lock.LockType lock_type = agora.script.Lock.LockType.Key);
 
     /***************************************************************************
 
@@ -1753,13 +1758,16 @@ private mixin template TestNodeMixin ()
 
     ///
     public override UTXOPair[] getSpendables (Amount minimum,
-        OutputType output_type = OutputType.Payment)
+        OutputType output_type = OutputType.Payment,
+        agora.script.Lock.LockType lock_type = agora.script.Lock.LockType.Key)
     {
         UTXOPair[] result;
         Amount accumulated;
         foreach (const ref Hash key, const ref UTXO value; this.ledger.utxos)
         {
-            if (value.output.type == output_type && !this.pool.spending(key))
+            if (value.output.type == output_type
+                    && value.output.lock.type == lock_type
+                    && !this.pool.spending(key))
             {
                 result ~= UTXOPair(key, value);
                 accumulated += value.output.value;
