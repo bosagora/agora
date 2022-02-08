@@ -44,7 +44,7 @@ import agora.crypto.Hash;
 import agora.crypto.Key;
 import agora.network.Client;
 import agora.network.Clock;
-import agora.network.Manager;
+import agora.network.VibeManager;
 import agora.node.Config;
 import agora.node.Registry;
 import agora.consensus.Ledger;
@@ -764,7 +764,7 @@ public class FullNode : API
 
     protected NetworkManager makeNetworkManager (ITaskManager taskman, Clock clock)
     {
-        return new NetworkManager(this.config, this.cacheDB, taskman, clock, this);
+        return new VibeNetworkManager(this.config, this.cacheDB, taskman, clock, this);
     }
 
     protected TransactionRelayer makeTransactionRelayer ()

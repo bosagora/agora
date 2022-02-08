@@ -22,15 +22,15 @@
 
 module agora.network.Manager;
 
+import agora.api.FullNode;
 import agora.api.Handlers;
 import agora.api.Registry;
 import agora.api.Validator;
-import agora.api.FullNode;
 import agora.common.BanManager;
-import agora.common.Types;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
+import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
@@ -42,18 +42,12 @@ import agora.crypto.Key;
 import agora.network.Clock;
 import agora.network.Client;
 import agora.network.DNSResolver;
-import agora.network.RPC;
 import agora.node.Config;
 import agora.node.Registry : NameRegistry;
 import agora.consensus.Ledger;
 import agora.utils.InetUtils;
 import agora.utils.Log;
 import agora.utils.Utility;
-
-import vibe.http.client;
-import vibe.http.common;
-import vibe.web.rest;
-import vibe.inet.url;
 
 import std.algorithm;
 import std.array;
@@ -706,12 +700,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public DNSResolver makeDNSResolver (Address[] peers = null)
-    {
-        if (peers.length == 0)
-            peers = [ Address(this.config.node.registry_address) ];
-        return new VibeDNSResolver(peers);
-    }
+    public abstract DNSResolver makeDNSResolver (Address[] peers = null);
 
     /// register network addresses into the name registry
     public void onRegisterName () @safe
@@ -1015,63 +1004,23 @@ public class NetworkManager
 
         Instantiates a client object implementing `API`
 
-        This function simply returns a client object implementing `API`.
-        In the default implementation, this returns either an `RPCClient`
-        or a `RestInterfaceClient` according to the address schema.
-        However, it can be overriden in test code to return an in-memory client.
+        This function simply returns a client object implementing `API`,
+        using the underlying I/O framework. The type of object might differ
+        based on the schema (e.g. `agora://` versus `http[s]://`).
 
         Params:
-          address = The address (IPv4, IPv6, hostname) of this node
+          address = The full address of this node
 
         Returns:
           An object to communicate with the node at `address`
 
     ***************************************************************************/
 
-    protected agora.api.Validator.API getClient (Address url)
-    {
-        import std.algorithm.searching;
-
-        const timeout = this.config.node.timeout;
-        if (url.schema == "agora")
-        {
-            auto owner_validator = cast (agora.api.Validator.API) this.owner_node;
-
-            return owner_validator ?
-                new RPCClient!(agora.api.Validator.API)(
-                url.host, url.port,
-                /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
-                owner_validator)
-                :
-                new RPCClient!(agora.api.Validator.API)(
-                url.host, url.port,
-                /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
-                this.owner_node);
-        }
-
-        if (url.schema.startsWith("http"))
-        {
-            auto settings = new RestInterfaceSettings;
-            settings.baseURL = url;
-            settings.httpClientSettings = new HTTPClientSettings;
-            settings.httpClientSettings.connectTimeout = timeout;
-            settings.httpClientSettings.readTimeout = timeout;
-            settings.httpClientSettings.proxyURL = this.config.proxy.url;
-            return new RestInterfaceClient!(agora.api.Validator.API)(settings);
-        }
-        assert(0, "Unknown agora schema");
-    }
+    protected abstract agora.api.Validator.API getClient (Address url);
 
     /***************************************************************************
 
         Instantiates a client object implementing `NameRegistryAPI`
-
-        This function simply returns a name registry object implementing
-        `NameRegistryAPI`. In the default implementation, this returns a
-        `RestInterfaceClient`. However, it can be overriden in test code to
-        return an in-memory client.
 
         Params:
           address = The address of the name registry server
@@ -1081,17 +1030,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public NameRegistryAPI getRegistryClient (string address)
-    {
-        auto settings = new RestInterfaceSettings();
-        settings.baseURL = Address(address);
-        settings.httpClientSettings = new HTTPClientSettings();
-        settings.httpClientSettings.connectTimeout = this.config.node.timeout;
-        settings.httpClientSettings.readTimeout = this.config.node.timeout;
-        settings.httpClientSettings.proxyURL = this.config.proxy.url;
-
-        return new RestInterfaceClient!NameRegistryAPI(settings);
-    }
+    public abstract NameRegistryAPI getRegistryClient (string address);
 
     /***************************************************************************
 
@@ -1114,75 +1053,56 @@ public class NetworkManager
         Instantiates a client object implementing the `BlockExternalizedHandler`
 
         Params:
-            address = The address (IPv4, IPv6, hostname) of target Server
+            address = The address of the target handler
+
         Returns:
             A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public BlockExternalizedHandler getBlockExternalizedHandler (Address address)
-    {
-        return new RestInterfaceClient!BlockExternalizedHandler(getRestInterfaceSettings(address));
-    }
+    public abstract BlockExternalizedHandler getBlockExternalizedHandler (Address address);
 
     /***************************************************************************
 
         Instantiates a client object implementing the `BlockHeaderUpdatedHandler`
 
         Params:
-            address = The address (IPv4, IPv6, hostname) of target Server
+            address = The address of the target handler
+
         Returns:
             A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler (Address address)
-    {
-        return new RestInterfaceClient!BlockHeaderUpdatedHandler(getRestInterfaceSettings(address));
-    }
+    public abstract BlockHeaderUpdatedHandler getBlockHeaderUpdatedHandler (Address address);
 
     /***************************************************************************
 
         Instantiates a client object implementing the `PreImageReceivedHandler`
 
         Params:
-            address = The address (IPv4, IPv6, hostname) of target Server
+            address = The address of the target handler
+
         Returns:
             A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public PreImageReceivedHandler getPreImageReceivedHandler(Address address)
-    {
-        return new RestInterfaceClient!PreImageReceivedHandler(getRestInterfaceSettings(address));
-    }
+    public abstract PreImageReceivedHandler getPreImageReceivedHandler(Address address);
 
     /***************************************************************************
 
         Instantiates a client object implementing the `TransactionReceivedHandler`
 
         Params:
-            address = The address (IPv4, IPv6, hostname) of target Server
+            address = The full address of the target handler
+
         Returns:
             A Handler to communicate with the server at `address`
 
     ***************************************************************************/
 
-    public TransactionReceivedHandler getTransactionReceivedHandler (Address address)
-    {
-        return new RestInterfaceClient!TransactionReceivedHandler(getRestInterfaceSettings(address));
-    }
-
-    private RestInterfaceSettings getRestInterfaceSettings (Address address)
-    {
-        auto settings = new RestInterfaceSettings;
-        settings.baseURL = address;
-        settings.httpClientSettings = new HTTPClientSettings;
-        settings.httpClientSettings.connectTimeout = this.config.node.timeout;
-        settings.httpClientSettings.readTimeout = this.config.node.timeout;
-        settings.httpClientSettings.proxyURL = this.config.proxy.url;
-        return settings;
-    }
+    public abstract TransactionReceivedHandler getTransactionReceivedHandler (Address address);
 
     /***************************************************************************
 
