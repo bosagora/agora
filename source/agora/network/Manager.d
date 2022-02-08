@@ -554,20 +554,20 @@ public class NetworkManager
                     retry!
                     ({
                         auto payload = this.registry_client.getValidator(ckey);
-                        if (payload == RegistryPayload.init)
+                        if (payload == RegistryPayloadData.init)
                         {
                             log.warn("Could not find mapping in registry for key {}", ckey);
                             return false;
                         }
 
-                        if (payload.data.public_key != ckey)
+                        if (payload.public_key != ckey)
                         {
                             log.error("Registry answered with the wrong key: {} => {}",
                                       ckey, payload);
                             return false;
                         }
 
-                        foreach (addr; payload.data.addresses)
+                        foreach (addr; payload.addresses)
                             this.addAddress(addr);
                         return true;
                     },

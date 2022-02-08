@@ -149,7 +149,7 @@ public interface NameRegistryAPI
 
     ***************************************************************************/
 
-    public const(RegistryPayload) getValidator (PublicKey public_key);
+    public const(RegistryPayloadData) getValidator (PublicKey public_key);
 
     /***************************************************************************
 
@@ -187,7 +187,7 @@ public interface NameRegistryAPI
 
     ***************************************************************************/
 
-    public const(RegistryPayload) getFlashNode (PublicKey public_key);
+    public const(RegistryPayloadData) getFlashNode (PublicKey public_key);
 
     /***************************************************************************
 

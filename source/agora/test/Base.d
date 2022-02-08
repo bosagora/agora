@@ -2547,7 +2547,7 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     mixin ForwardCtor!();
 
     /// Forwards to the registry's methods
-    public const(RegistryPayload) getValidator (PublicKey public_key) @safe
+    public const(RegistryPayloadData) getValidator (PublicKey public_key) @safe
     {
         return this.registry.getValidator(public_key);
     }
@@ -2559,7 +2559,7 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     }
 
     /// Ditto
-    public const(RegistryPayload) getFlashNode(PublicKey public_key) @safe
+    public const(RegistryPayloadData) getFlashNode(PublicKey public_key) @safe
     {
         return this.registry.getFlashNode(public_key);
     }
