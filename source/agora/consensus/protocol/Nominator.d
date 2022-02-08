@@ -914,6 +914,11 @@ extern(D):
                 log.trace("validateValue(): This node can not yet fully validate this value: {}. Data: {}", fail_reason, data.prettify);
                 return ValidationLevel.kMaybeValidValue;
             }
+            else if (fail_reason == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)
+            {
+                log.error("validateValue(): Validation failed: {}. Will check for missing signatures", fail_reason);
+                this.network.getMissingBlockSigs(this.ledger, this.acceptHeader);
+            }
             else
             {
                 log.error("validateValue(): Validation failed: {}. Data: {}", fail_reason, data.prettify);
@@ -1269,9 +1274,15 @@ extern(D):
                 log.trace("Consensus data: {}", data.prettify);
 
                 if (auto msg = this.ledger.validateConsensusData(data, this.initial_missing_validators))
-                    assert(0, format!"combineCandidates: Invalid consensus data: %s"(
-                        msg));
-
+                {
+                    if (msg == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)
+                    {
+                        log.error("combineCandidates(): Validation failed: {}. Will check for missing signatures", msg);
+                        this.network.getMissingBlockSigs(this.ledger, this.acceptHeader);
+                    }
+                    else
+                        assert(0, format!"combineCandidates: Invalid consensus data: %s"( msg));
+                }
                 Amount total_rate;
                 foreach (const ref tx_hash; data.tx_set)
                 {
