@@ -28,8 +28,6 @@ import scpd.types.Stellar_SCP;
 
 import agora.utils.Log;
 
-import vibe.http.client;
-
 import std.algorithm;
 import std.array;
 import std.container : DList;
@@ -625,15 +623,6 @@ public class NetworkClient
                     }
                     catch (Exception ex)
                     {
-                        import vibe.http.common : HTTPStatusException;
-                        if (auto http = cast(HTTPStatusException)ex)
-                        {
-                            static if (DT == Throw.Yes)
-                                throw http;  // e.g. getPublicKey() might not be implemented
-                            else
-                                break;
-                        }
-
                         try
                         {
                             this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED ({})",
