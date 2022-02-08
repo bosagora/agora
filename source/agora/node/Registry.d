@@ -53,6 +53,9 @@ import d2sqlite3 : ResultRange;
 import vibe.http.client;
 import vibe.web.rest;
 
+/// Service and protocol label format used for URI resource record name
+private immutable string uri_service_label = "_agora._tcp.%s";
+
 /// Implementation of `NameRegistryAPI` using associative arrays
 public class NameRegistry: NameRegistryAPI
 {
@@ -97,6 +100,7 @@ public class NameRegistry: NameRegistryAPI
     /// Supported DNS query types
     private immutable QTYPE[] supported_query_types = [
         QTYPE.A, QTYPE.AAAA, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA, QTYPE.NS,
+        QTYPE.URI,
     ];
 
     ///
@@ -180,7 +184,7 @@ public class NameRegistry: NameRegistryAPI
     /// Implementation of `NameRegistryAPI.getValidator`
     public override const(RegistryPayloadData) getValidator (PublicKey public_key)
     {
-        TypedPayload payload = this.zones[ZoneIndex.Validator].get(public_key);
+        TypedPayload payload = this.zones[ZoneIndex.Validator].getPayload(public_key);
         if (payload != TypedPayload.init)
         {
             log.trace("Successfull GET /validator: {} => {}", public_key, payload);
@@ -193,7 +197,7 @@ public class NameRegistry: NameRegistryAPI
     /// Internal endpoint, mimics `getValidator` but forward the query if needed
     public final const(RegistryPayloadData) getValidatorInternal (in PublicKey key)
     {
-        TypedPayload payload = this.zones[ZoneIndex.Validator].get(key);
+        TypedPayload payload = this.zones[ZoneIndex.Validator].getPayload(key);
         if (payload != TypedPayload.init)
             return payload.payload;
 
@@ -244,7 +248,7 @@ public class NameRegistry: NameRegistryAPI
     public void registerValidator (RegistryPayloadData data, Signature sig) @safe
     {
         TYPE payload_type = this.ensureValidPayload(data,
-            this.zones[ZoneIndex.Validator].get(data.public_key));
+            this.zones[ZoneIndex.Validator].getPayload(data.public_key));
 
         if (this.zones[ZoneIndex.Validator].type == ZoneType.secondary)
         {
@@ -263,7 +267,7 @@ public class NameRegistry: NameRegistryAPI
         const stake = this.getStake(data.public_key);
         ensure(stake !is Hash.init, "Couldn't find an existing stake to match this key");
 
-        this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, data, stake));
+        this.zones[ZoneIndex.Validator].updatePayload(TypedPayload(payload_type, data, stake));
         this.zones[ZoneIndex.Validator].updateSOA();
     }
 
@@ -285,7 +289,7 @@ public class NameRegistry: NameRegistryAPI
     /// Implementation of `NameRegistryAPI.getFlashNode`
     public override const(RegistryPayloadData) getFlashNode (PublicKey public_key)
     {
-        TypedPayload payload = this.zones[ZoneIndex.Flash].get(public_key);
+        TypedPayload payload = this.zones[ZoneIndex.Flash].getPayload(public_key);
         if (payload != TypedPayload.init)
         {
             log.trace("Successfull GET /flash_node: {} => {}", public_key, payload);
@@ -304,7 +308,7 @@ public class NameRegistry: NameRegistryAPI
         ensure(data.verify(sig), "Incorrect signature for payload");
 
         TYPE payload_type = this.ensureValidPayload(data,
-            this.zones[ZoneIndex.Flash].get(data.public_key));
+            this.zones[ZoneIndex.Flash].getPayload(data.public_key));
 
         if (this.zones[ZoneIndex.Flash].type == ZoneType.secondary)
         {
@@ -321,7 +325,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", data.addresses,
             data.public_key);
-        this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, data));
+        this.zones[ZoneIndex.Flash].updatePayload(TypedPayload(payload_type, data));
         this.zones[ZoneIndex.Flash].updateSOA();
     }
 
@@ -495,7 +499,13 @@ public class NameRegistry: NameRegistryAPI
 
         if (this.zones[ZoneIndex.Validator].type == ZoneType.primary)
         {
-            this.zones[ZoneIndex.Validator].each!((TypedPayload tpayload) {
+            this.zones[ZoneIndex.Validator].each!((ResourceRecord[] rrs) {
+                // That is not the performant way, until another approach this can
+                // help us to go through URI records
+                auto tpayload = this.zones[ZoneIndex.Validator].getPayload(
+                    // Query in `opApply` guarantees that `rrs` cannot be empty
+                    rrs[0].name.extractPublicKey()
+                );
                 if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
                     this.zones[ZoneIndex.Validator].remove(tpayload.payload.public_key);
             });
@@ -635,13 +645,9 @@ private struct TypedPayload
     /// UTXO
     public Hash utxo;
 
-    /// Timestamp for expiration
-    public uint expires;
-
     /***************************************************************************
 
-        Make an instance of an `TypedPayload` from DNS payload
-        (Resource record)
+        Make an instance of an `TypedPayload` from URI records
 
         Params:
             rr = DNS Resource record
@@ -649,33 +655,24 @@ private struct TypedPayload
 
     ***************************************************************************/
 
-    public static TypedPayload make (ResourceRecord rr)
+    public static TypedPayload make (ResourceRecord[] rrs)
     {
-        auto public_key = rr.name.extractPublicKey();
+        auto public_key = rrs[0].name.extractPublicKey();
         assert(public_key != PublicKey.init,
             "PublicKey cannot be extracted from domain");
 
         RegistryPayloadData reg_payload;
         reg_payload.public_key = public_key;
-        reg_payload.ttl = rr.ttl;
+        reg_payload.ttl = rrs[0].ttl;
 
-        if (rr.type == TYPE.CNAME)
-        {
-            auto address = rr.rdata.name;
+        foreach (rr; rrs)
+            if (rr.type == TYPE.URI)
+                reg_payload.addresses ~= rr.rdata.uri.target;
 
-            // TODO SRV is needed to keep intact
-            reg_payload.addresses ~= Address("http://" ~
-                                             cast(string) address.value);
-        }
-        else if (rr.type == TYPE.A)
-        {
-            // TODO SRV is needed to keep intact
-            reg_payload.addresses ~= Address(format("http://%s", IPv4(rr.rdata.a)));
-        }
+        ensure(reg_payload.addresses.length > 0,
+            "Only URI records are supported to make TypedPayload");
 
-        auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
-
-        return TypedPayload(rr.type, reg_payload, Hash.init, time + rr.ttl);
+        return TypedPayload(TYPE.URI, reg_payload, Hash.init);
     }
 
     /// Sink for writing ResourceRecord to a DNS Message buffer
@@ -711,6 +708,13 @@ private struct TypedPayload
             assert(this.payload.addresses.length == 1);
             dg(ResourceRecord.make!(TYPE.CNAME)(name, this.payload.ttl,
                 Domain.fromString(this.payload.addresses[0].host)));
+
+            // Add URI record along with
+            dg(ResourceRecord.make!(TYPE.URI)(
+                Domain.fromString(format(uri_service_label, name)),
+                this.payload.ttl,
+                this.payload.addresses[0],
+            ));
             break;
         case TYPE.A:
             foreach (idx, addr; this.payload.addresses)
@@ -721,6 +725,13 @@ private struct TypedPayload
                        addr, idx, this);
 
                 dg(ResourceRecord.make!(TYPE.A)(name, this.payload.ttl, iaddr));
+
+                // Add URI record along with
+                dg(ResourceRecord.make!(TYPE.URI)(
+                    Domain.fromString(format(uri_service_label, name)),
+                    this.payload.ttl,
+                    addr,
+                ));
             }
             break;
         default:
@@ -773,8 +784,14 @@ private struct ZoneData
     /// Query for getting all registries
     private string query_registry_get;
 
-    /// Query for getting payload
-    private string query_payload;
+    /// Query for getting records
+    private string query_records_get;
+
+    /// Query for getting records with matching QTYPE
+    private string query_records_get_typed;
+
+    /// Query for getting registry utxo
+    private string query_utxo_get;
 
     /// Query for adding registry utxo table
     private string query_utxo_add;
@@ -790,6 +807,9 @@ private struct ZoneData
 
     /// Query for clean up zone before AXFR, only for secondary zone
     private string query_axfr_cleanup;
+
+    /// Query for clean up stale addresses before updating from primary
+    private string query_stale_cleanup;
 
     /// Query for fetching records with expired TTLs
     private string query_ttl_expired;
@@ -871,10 +891,14 @@ private struct ZoneData
         this.query_registry_get = format("SELECT DISTINCT(pubkey) " ~
             "FROM registry_%s_addresses", zone_name);
 
-        this.query_payload = format("SELECT sequence, address, type, utxo, ttl, " ~
-            "expires FROM registry_%s_addresses l " ~
-            "INNER JOIN registry_%s_utxo r ON l.pubkey = r.pubkey " ~
-            "WHERE l.pubkey = ?", zone_name, zone_name);
+        this.query_records_get = format("SELECT address, type, ttl " ~
+            "FROM registry_%s_addresses WHERE pubkey = ?", zone_name);
+
+        this.query_records_get_typed = format("SELECT address, type, ttl " ~
+            "FROM registry_%s_addresses WHERE pubkey = ? AND type = ?", zone_name);
+
+        this.query_utxo_get = format("SELECT sequence, utxo " ~
+            "FROM registry_%s_utxo WHERE pubkey = ?", zone_name);
 
         this.query_utxo_add = format("REPLACE INTO registry_%s_utxo " ~
             "(pubkey, sequence, utxo) VALUES (?, ?, ?)", zone_name);
@@ -886,9 +910,12 @@ private struct ZoneData
             zone_name);
 
         this.query_addresses_get = format("SELECT address " ~
-            "FROM registry_%s_addresses", zone_name);
+            "FROM registry_%s_addresses WHERE type = 256", zone_name);
 
         this.query_axfr_cleanup = format("DELETE FROM registry_%s_addresses", zone_name);
+
+        this.query_stale_cleanup = format("DELETE FROM registry_%s_addresses " ~
+            "WHERE pubkey = ?", zone_name);
 
         this.query_ttl_expired = format("SELECT * FROM registry_%s_addresses " ~
             "WHERE expires <= ? ORDER BY expires ASC", zone_name);
@@ -903,11 +930,14 @@ private struct ZoneData
         string query_addr_create = format("CREATE TABLE IF NOT EXISTS registry_%s_addresses " ~
             "(pubkey TEXT, address TEXT NOT NULL, type INTEGER NOT NULL, " ~
             "ttl INTEGER NOT NULL, expires INTEGER, " ~
-            "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
-            "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
+            "PRIMARY KEY(pubkey, address))", zone_name);
+
+        // Creation of registry utxo table can be limited to only primary zones
+        // after REST (GET) interface is disabled, it is created for all now
+        // since caching registry uses this for adding payload to cache
+        this.db.execute(query_sig_create);
 
         // Initialize common fields
-        this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
         this.soa_ttl = 90;
     }
@@ -1064,8 +1094,7 @@ private struct ZoneData
                 continue;
             }
 
-            foreach (rr; answer)
-                this.update(TypedPayload.make(rr));
+            this.update(answer, time);
         }
 
         setTTLTimer();
@@ -1114,13 +1143,7 @@ private struct ZoneData
         // since Agora is single threaded, there is nothing to do
         this.db.execute(this.query_axfr_cleanup);
 
-        foreach (ResourceRecord rr; axfr_answer)
-        {
-            if (rr.type == TYPE.SOA)
-                continue;
-
-            this.update(TypedPayload.make(rr));
-        }
+        this.update(axfr_answer);
     }
 
     /***************************************************************************
@@ -1146,15 +1169,15 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    public int opApply (scope int delegate(ref const TypedPayload) dg) @trusted
+    public int opApply (scope int delegate(ResourceRecord[]) dg) @trusted
     {
         auto query_results = this.db.execute(this.query_registry_get);
 
         foreach (row; query_results)
         {
             auto registry_pub_key = PublicKey.fromString(row["pubkey"].as!string);
-            auto payload = this.get(registry_pub_key);
-            if (auto res = dg(payload))
+            auto rrs = this.get(registry_pub_key);
+            if (auto res = dg(rrs))
                 return res;
         }
 
@@ -1263,9 +1286,7 @@ private struct ZoneData
 
         r.answers = answers;
 
-        foreach (rr; answers)
-            if (rr.ttl > 0) // TTL value is not set, don't cache
-                this.update(TypedPayload.make(rr));
+        this.update(answers, cast(uint) Clock.currTime(UTC()).toUnixTime());
 
         setTTLTimer(); // DB updated, re-set timer to nearest expiring record
         return Header.RCode.NoError;
@@ -1292,13 +1313,8 @@ private struct ZoneData
         auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, this.soa_ttl, this.soa);
         reply.answers ~= soa;
 
-        scope rranswer = (ResourceRecord rr) @safe {
+        foreach (rr; this)
             reply.answers ~= rr;
-        };
-
-        foreach (const ref payload; this)
-            payload.toRR(Domain.fromString(format("%s.%s",
-                payload.payload.public_key, this.root.value)), rranswer);
 
         reply.answers ~= soa;
         return Header.RCode.NoError;
@@ -1334,16 +1350,9 @@ private struct ZoneData
         if (public_key is PublicKey.init)
             return Header.RCode.FormatError;
 
-        ResourceRecord[] answers;
-        scope rranswer = (ResourceRecord rr) @safe {
-            answers ~= rr;
-        };
-
-        TypedPayload payload = this.get(public_key, question.qtype);
-        if (payload == TypedPayload.init || !payload.payload.addresses.length)
+        auto answers = this.get(public_key, question.qtype);
+        if (answers is null)
             return Header.RCode.NameError;
-
-        payload.toRR(question.qname, rranswer);
 
         // Caching zone is non-authoritative
         if (this.type != ZoneType.caching)
@@ -1357,7 +1366,7 @@ private struct ZoneData
 
     /***************************************************************************
 
-         Get payload data from persistent storage
+         Get ResourceRecords from persistent storage
 
          Params:
            public_key = the public key that was used to register
@@ -1366,51 +1375,100 @@ private struct ZoneData
            type = the type of the record that was requested, default is `ALL`
 
         Returns:
-            TypedPayload with type `type` of name registry associated with
-            `public_key`. All records are returned when `type` is `ALL`
+            ResourceRecord array with type `type` of name registry associated with
+            `public_key`. All records for `public_key` are returned when `type`
+            is `ALL`
 
     ***************************************************************************/
 
-    public TypedPayload get (PublicKey public_key, QTYPE type = QTYPE.ALL) @trusted
+    public ResourceRecord[] get (PublicKey public_key, QTYPE type = QTYPE.ALL) @trusted
     {
-        auto results = this.db.execute(this.query_payload, public_key);
+        auto results = (type == QTYPE.ALL) ?
+            this.db.execute(this.query_records_get, public_key)
+            : this.db.execute(this.query_records_get_typed, public_key, type.to!ushort);
+
+        if (results.empty && type != QTYPE.CNAME)
+        {
+            // RFC#1034 : Section 3.6.2
+            // When a name server fails to find a desired RR in the resource set
+            // associated with the domain name, it checks to see if the resource
+            // set consists of a CNAME record with a matching class.
+            results = this.db.execute(this.query_records_get_typed, public_key,
+                QTYPE.CNAME.to!ushort);
+        }
 
         if (results.empty)
+            return null;
+
+        const dname = Domain.fromString(format("%s.%s", public_key, this.root.value));
+        return results.map!((r) {
+            const type = to!TYPE(r["type"].as!ushort);
+            const ttl =  r["ttl"].as!uint;
+            const address = r["address"].as!string;
+            switch (type)
+            {
+                case TYPE.A:
+                    const addr = InternetAddress.parse(address);
+                    ensure(addr != InternetAddress.ADDR_NONE, // TODO move this away
+                       "DNS: Address '{}' is not an A record", addr);
+
+                    return ResourceRecord.make!(TYPE.A)(
+                        dname, ttl, addr
+                    );
+                case TYPE.CNAME:
+                    return ResourceRecord.make!(TYPE.CNAME)(
+                        dname, ttl, Domain.fromString(address)
+                    );
+                case TYPE.URI:
+                    const url = Address(address);
+                    return ResourceRecord.make!(TYPE.URI)(
+                        Domain.fromString(format(uri_service_label, dname)),
+                        ttl, url
+                    );
+                default:
+                    assert(0);
+            }
+        }).array;
+    }
+
+    /***************************************************************************
+
+         Get TypedPayload from persistent storage
+
+         Params:
+           public_key = the public key that was used to register
+                         the network addresses
+
+        Returns:
+            TypedPayload including all URI addresses of `public_key`
+
+    ***************************************************************************/
+
+    public TypedPayload getPayload (PublicKey public_key) @trusted
+    {
+        auto records = this.get(public_key, QTYPE.URI);
+
+        if (records.length == 0)
             return TypedPayload.init;
 
-        // Address loop consumes data, gather following first
-        const TYPE node_type = to!TYPE(results.front["type"].as!ushort);
+        auto payload = TypedPayload.make(records);
 
-        // Check query type; QTYPE is superset of TYPE, casting is OK
-        // RFC#1034 : Section 3.6.2
-        if (node_type != TYPE.CNAME
-            && type != QTYPE.ALL && type != cast(QTYPE) node_type)
-            return TypedPayload.init;
-
-        const ulong sequence = (this.type == ZoneType.primary) ?
-            results.front["sequence"].as!ulong : 0;
-        Hash utxo = (this.type == ZoneType.primary) ?
-            Hash.fromString(results.front["utxo"].as!string) : Hash.init;
-        uint expires = (this.type == ZoneType.caching) ?
-            results.front["expires"].as!uint : 0;
-
-        const auto ttl = results.front["ttl"].as!uint;
-        const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
-        const RegistryPayloadData data =
+        if (this.type == ZoneType.primary)
         {
-            public_key : public_key,
-            addresses : addresses,
-            seq : sequence,
-            ttl : ttl,
-        };
+            auto result = this.db.execute(this.query_utxo_get, public_key);
+            ensure(!result.empty, "empty result from getpayload");
 
-        return TypedPayload(node_type, data, utxo, expires);
+            payload.payload.seq = result.front["sequence"].as!ulong;
+            payload.utxo = Hash.fromString(result.front["utxo"].as!string);
+        }
+
+        return payload;
     }
 
     /***************************************************************************
 
         Returns:
-          A range of addresses contained in this zone
+          A range of URI record addresses contained in this zone
 
     ***************************************************************************/
 
@@ -1422,7 +1480,7 @@ private struct ZoneData
 
     /***************************************************************************
 
-         Remove payload data from persistent storage
+         Remove data from persistent storage
 
          Params:
            public_key = the public key that was used to register
@@ -1432,6 +1490,7 @@ private struct ZoneData
 
     public void remove (PublicKey public_key) @trusted
     {
+        this.db.execute(this.query_stale_cleanup, public_key);
         this.db.execute(this.query_utxo_remove, public_key);
 
         if (this.db.changes)
@@ -1442,46 +1501,104 @@ private struct ZoneData
 
          Updates matching payload in the persistent storage. Payload is added
          to the persistent storage when no matching payload is found.
+         This can only be called within a primary zone.
 
          Params:
            payload = Payload to update
 
     ***************************************************************************/
 
-    public void update (TypedPayload payload) @trusted
+    public void updatePayload (TypedPayload payload) @trusted
     {
         if (payload.payload.addresses.length == 0)
             return;
 
-        if (this.type == ZoneType.primary)
+        // Payload is equal to Zone's data, no need to update
+        if (this.getPayload(payload.payload.public_key) == payload)
         {
-            // Payload is equal to Zone's data, no need to update
-            if (this.get(payload.payload.public_key) == payload)
-            {
-                log.info("{} sent same payload data, zone is not updated",
-                    payload.payload.public_key);
-                return;
-            }
-
-            log.info("Registering addresses {}: {} for public key: {}", payload.type,
-                payload.payload.addresses, payload.payload.public_key);
+            log.info("{} sent same payload data, zone is not updated",
+                payload.payload.public_key);
+            return;
         }
+
+        log.info("Registering addresses {}: {} for public key: {}", payload.type,
+            payload.payload.addresses, payload.payload.public_key);
+
+        // Remove stale addrs
+        db.execute(this.query_stale_cleanup, payload.payload.public_key);
 
         db.execute(this.query_utxo_add,
             payload.payload.public_key,
             payload.payload.seq,
             payload.utxo);
 
+        ResourceRecord[] rrs;
+        scope rranswer = (ResourceRecord rr) @safe {
+            rrs ~= rr;
+        };
+
+        payload.toRR(Domain.fromString(format("%s.%s",
+                payload.payload.public_key, this.root.value)), rranswer);
+
+        this.update(rrs);
+    }
+
+    /***************************************************************************
+
+         Updates matching records in the persistent storage. Records are added
+         to the persistent storage when no matching records are found.
+
+         Only records with type A, CNAME and URI is stored. If zone is caching,
+         only records with TTL is stored.
+
+         Params:
+           rrs = ResourceRecords to update
+           time = Current time, used during calculation for expiration time
+
+    ***************************************************************************/
+
+    public void update (ResourceRecord[] rrs, uint time = 0) @trusted
+    {
+        if (rrs is null)
+            return;
+
         // There is no need to check for stale addresses
         // since `REPLACE INTO` is used and `DELETE` is cascaded.
-        foreach (address; payload.payload.addresses)
+        foreach (rr; rrs)
         {
+            if (this.type == ZoneType.caching && rr.ttl <= 0)
+                continue;
+
+            string addr;
+
+            switch (rr.type)
+            {
+                case TYPE.A:
+                    import std.socket : InternetAddress;
+                    auto arr_addr = rr.rdata.a;
+                    scope in_addr = new InternetAddress(arr_addr,
+                                        InternetAddress.PORT_ANY);
+                    addr = in_addr.toAddrString();
+                    break;
+                case TYPE.CNAME:
+                    addr = to!string(rr.rdata.name.value); // TODO
+                    break;
+                case TYPE.URI:
+                    addr = rr.rdata.uri.target.toString();
+                    break;
+                case TYPE.SOA:
+                    // SOA is not stored in permenant storage, see `soa`
+                    continue;
+                default:
+                    assert(0, "RR type is not supported for permenant storage");
+            }
+
             db.execute(this.query_addresses_add,
-                payload.payload.public_key,
-                address,
-                payload.type.to!ushort,
-                payload.payload.ttl,
-                payload.expires);
+                rr.name.extractPublicKey(),
+                addr,
+                rr.type.to!ushort,
+                rr.ttl,
+                (time == 0) ? 0 : time + rr.ttl);
         }
     }
 }

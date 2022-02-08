@@ -58,14 +58,19 @@ unittest
     assert(result.length == 1);
     assert(result[0].type == TYPE.A);
 
+    // URI record
+    result = resolver.query("_agora._tcp." ~ node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.URI);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.URI);
+
     // CNAME record
     result = resolver.query(node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.CNAME);
     assert(result.length == 0);
 
     // AXFR zone transfer
     result = resolver.query("validators.unittest.bosagora.io.", QTYPE.AXFR);
-    // + 2 for starting and ending SOA records
-    assert(result.length == conf.node.test_validators + 2);
+    // * 2 for URI records and + 2 for starting and ending SOA records
+    assert(result.length == (conf.node.test_validators * 2) + 2);
     assert(result[0].type == TYPE.SOA);
     assert(result[$-1].type == TYPE.SOA);
 }
@@ -106,14 +111,19 @@ unittest
     assert(result.length == 1);
     assert(result[0].type == TYPE.A);
 
+    // URI record
+    result = resolver.query("_agora._tcp." ~ node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.URI);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.URI);
+
     // CNAME record
     result = resolver.query(node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.CNAME);
     assert(result.length == 0);
 
     // AXFR zone transfer
     result = resolver.query("validators.unittest.bosagora.io.", QTYPE.AXFR);
-    // + 2 for starting and ending SOA records
-    assert(result.length == conf.node.test_validators + 2);
+    // * 2 for URI records and + 2 for starting and ending SOA records
+    assert(result.length == (conf.node.test_validators * 2) + 2);
     assert(result[0].type == TYPE.SOA);
     assert(result[$-1].type == TYPE.SOA);
 }
@@ -153,6 +163,11 @@ unittest
     result = resolver.query(node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.A);
     assert(result.length == 1);
     assert(result[0].type == TYPE.A);
+
+    // URI record
+    result = resolver.query("_agora._tcp." ~ node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.URI);
+    assert(result.length == 1);
+    assert(result[0].type == TYPE.URI);
 
     // CNAME record
     result = resolver.query(node_addr ~ ".validators.unittest.bosagora.io.", QTYPE.CNAME);
