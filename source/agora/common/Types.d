@@ -92,6 +92,58 @@ public struct Address
     public alias inner this;
 }
 
+/// A simple wrapper struct to string-represent IPv4 without allocating
+public struct IPv4
+{
+    import std.format;
+
+    public uint value;
+
+    /// Returns: An IPv4 in network byte order
+    public static IPv4 fromHost (uint v) @safe pure nothrow @nogc
+    {
+        import core.sys.posix.arpa.inet : htonl;
+        return IPv4(htonl(v));
+    }
+
+    /// Provides a string representation of this IP
+    public void toString (scope void delegate(in char[]) @safe sink)
+        const scope @safe
+    {
+        formattedWrite!"%s.%s.%s.%s"(sink,
+            this.value >> 24 & 0xFF, this.value >> 16 & 0xFF,
+            this.value >>  8 & 0xFF, this.value >>  0 & 0xFF);
+    }
+
+    public string toString () const scope @safe
+    {
+        char["255.255.255.255".length] buffer;
+        size_t offset;
+        scope sink = (in char[] data) {
+            assert(offset + data.length <= buffer.length);
+            buffer[offset .. offset + data.length] = data[];
+            offset += data.length;
+        };
+        this.toString(sink);
+        return buffer[0 .. offset].idup;
+    }
+}
+
+///
+unittest
+{
+    IPv4 all = IPv4(0);
+    assert(all.toString() == "0.0.0.0");
+    IPv4 bc = IPv4(uint.max);
+    assert(bc.toString() == "255.255.255.255");
+
+    version (LittleEndian)
+        IPv4 home = IPv4.fromHost(0x0100_007F);
+    else
+        IPv4 home = IPv4.fromHost(0x7F00_0001);
+    assert(home.toString() == "127.0.0.1");
+}
+
 /// The definition of a Quorum
 public struct QuorumConfig
 {
