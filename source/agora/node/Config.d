@@ -194,7 +194,7 @@ public struct NodeConfig
     /// If set to true will run in testing mode and use different
     /// genesis block (agora.consensus.data.genesis.Test)
     /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
-    public bool testing;
+    public bool testing = true;
 
     /// Should only be set if `test` is set, can be set to the number of desired
     /// enrollment in the test Genesis block (1 - 6)
