@@ -154,6 +154,12 @@ public extern (C++) class Nominator : SCPDriver
     /// Envelope process task delay
     private enum EnvTaskDelay = 10.msecs;
 
+    // Timer used to enable catchup in background as task
+    private ITimer catchup_timer;
+
+    /// catchup task delay
+    private enum CatchupTaskDelay = 10.msecs;
+
     /// Hashes of Values we fully validated for a slot
     private Set!Hash fully_validated_value;
 
@@ -182,7 +188,8 @@ extern(D):
 
     public this (immutable(ConsensusParams) params, KeyPair key_pair,
         Clock clock, NetworkManager network, ValidatingLedger ledger,
-        EnrollmentManager enroll_man, ITaskManager taskman, ManagedDatabase cacheDB,
+        EnrollmentManager enroll_man, ITaskManager taskman, ITimer catchup_timer,
+        ManagedDatabase cacheDB,
         Duration nomination_interval,
         string delegate (in Block) @safe externalize)
     {
@@ -201,6 +208,7 @@ extern(D):
         this.envelope_timer = this.taskman.setTimer(EnvTaskDelay,
             &this.envelopeProcessTask, Periodic.No);
         this.envelope_timer.stop();
+        this.catchup_timer = catchup_timer;
         // Find the node id of this validator and create an SCPObject
         Hash[] utxo_keys;
         this.enroll_man.getEnrolledUTXOs(Height(1), utxo_keys);
@@ -470,6 +478,7 @@ extern(D):
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
                 this.ledger.height(), this.ledger.lastBlock().header.validators);
+            this.catchup_timer.rearm(CatchupTaskDelay, false);
             return;
         }
 

@@ -113,7 +113,8 @@ public class Validator : FullNode, API
         auto vledger = cast(ValidatingLedger) this.ledger;
         assert(vledger !is null);
         this.nominator = this.makeNominator(
-            this.clock, this.network, vledger, this.enroll_man, this.taskman);
+            this.clock, this.network, vledger, this.enroll_man, this.taskman,
+            this.timers[TimersIdx.BlockCatchup]);
         this.nominator.onInvalidNomination = &this.invalidNominationHandler;
 
         // Make sure our ValidatorSet has our pre-image
@@ -503,11 +504,12 @@ public class Validator : FullNode, API
     ***************************************************************************/
 
     protected Nominator makeNominator (Clock clock, NetworkManager network,
-        ValidatingLedger ledger, EnrollmentManager enroll_man, ITaskManager taskman)
+        ValidatingLedger ledger, EnrollmentManager enroll_man, ITaskManager taskman,
+        ITimer block_catchup_timer)
     {
         return new Nominator(
             this.params, this.config.validator.key_pair, clock, network, ledger,
-            enroll_man, taskman, this.cacheDB,
+            enroll_man, taskman, block_catchup_timer, this.cacheDB,
             this.config.validator.nomination_interval, &this.acceptBlock);
     }
 
