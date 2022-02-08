@@ -692,17 +692,8 @@ private struct TypedPayload
         }
         else if (rr.type == TYPE.A)
         {
-            import std.socket : InternetAddress;
-            auto addresses = rr.rdata.a;
-            reg_payload.addresses = addresses.map!(
-                (addr) {
-                    scope in_addr = new InternetAddress(addr,
-                                        InternetAddress.PORT_ANY);
-
-                    // TODO SRV is needed to keep intact
-                    return Address("http://" ~ in_addr.toAddrString());
-                }
-            ).array;
+            // TODO SRV is needed to keep intact
+            reg_payload.addresses ~= Address(format("http://%s", IPv4(rr.rdata.a)));
         }
 
         auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
@@ -710,12 +701,16 @@ private struct TypedPayload
         return TypedPayload(rr.type, reg_payload, Hash.init, time + rr.ttl);
     }
 
+    /// Sink for writing ResourceRecord to a DNS Message buffer
+    public alias ToRRDg = void delegate(ResourceRecord) @safe;
+
     /***************************************************************************
 
         Converts a `TypedPayload` to a valid `ResourceRecord`
 
         Params:
           name = The "question name", or the record name (e.g. in AXFR)
+          dg = Writing delegate
 
         Throws:
           If the type of `this` payload is not supported, which would be
@@ -723,7 +718,7 @@ private struct TypedPayload
 
     ***************************************************************************/
 
-    public ResourceRecord toRR (const Domain name) const scope
+    public void toRR (const Domain name, scope ToRRDg dg) const scope
         @safe
     {
         switch (this.type)
@@ -737,20 +732,20 @@ private struct TypedPayload
              * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
             assert(this.payload.addresses.length == 1);
-            return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.ttl,
-                Domain.fromString(this.payload.addresses[0].host));
-
+            dg(ResourceRecord.make!(TYPE.CNAME)(name, this.payload.ttl,
+                Domain.fromString(this.payload.addresses[0].host)));
+            break;
         case TYPE.A:
-            // FIXME: Remove allocation
-            scope uint[] tmp = new uint[](this.payload.addresses.length);
             foreach (idx, addr; this.payload.addresses)
             {
-                tmp[idx] = InternetAddress.parse(addr.host);
-                ensure(tmp[idx] != InternetAddress.ADDR_NONE,
+                auto iaddr = InternetAddress.parse(addr.host);
+                ensure(iaddr != InternetAddress.ADDR_NONE,
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, this);
+
+                dg(ResourceRecord.make!(TYPE.A)(name, this.payload.ttl, iaddr));
             }
-            return ResourceRecord.make!(TYPE.A)(name, this.payload.ttl, tmp);
+            break;
         default:
             ensure(0, "Unknown type: {} - {}", this.type, this);
             assert(0);
@@ -1346,11 +1341,13 @@ private struct ZoneData
         auto soa = ResourceRecord.make!(TYPE.SOA)(this.root, this.soa_ttl, this.soa);
         reply.answers ~= soa;
 
+        scope rranswer = (ResourceRecord rr) @safe {
+            reply.answers ~= rr;
+        };
+
         foreach (const ref payload; this)
-        {
-            reply.answers ~= payload.toRR(Domain.fromString(format("%s.%s",
-                payload.payload.public_key, this.root.value)));
-        }
+            payload.toRR(Domain.fromString(format("%s.%s",
+                payload.payload.public_key, this.root.value)), rranswer);
 
         reply.answers ~= soa;
         return Header.RCode.NoError;
@@ -1387,11 +1384,15 @@ private struct ZoneData
             return Header.RCode.FormatError;
 
         ResourceRecord[] answers;
+        scope rranswer = (ResourceRecord rr) @safe {
+            answers ~= rr;
+        };
+
         TypedPayload payload = this.get(public_key, question.qtype);
         if (payload == TypedPayload.init || !payload.payload.addresses.length)
             return Header.RCode.NameError;
 
-        answers ~= payload.toRR(question.qname);
+        payload.toRR(question.qname, rranswer);
 
         // Caching zone is non-authoritative
         if (this.type != ZoneType.caching)

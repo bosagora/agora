@@ -155,12 +155,9 @@ public abstract class DNSResolver
             // Prefer IPv4 as it's faster and less surprising to users
             if (res.type == TYPE.A)
             {
-                // Ignore broken record
-                if (res.rdata.a.length < 1) continue;
-                // Just pick the first record.
                 // TODO: What is expected when there's more than one record ?
                 // Should we use it as a fall back, round robin, something else?
-                const straddr = IPv4(res.rdata.a[0]).toString();
+                const straddr = IPv4(res.rdata.a).toString();
                 log.trace("Address '{}' resolved to A record '{}'", address, straddr);
                 address.host = straddr;
                 return address;
