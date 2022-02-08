@@ -173,8 +173,7 @@ public class Validator : FullNode, API
         this.rebuildQuorumConfig(quorums, utxo_keys, height);
         this.qc = quorums[node_id];
         this.nominator.setQuorumConfig(node_id, quorums);
-        buildRequiredKeys(this_utxo, this.qc, utxo_keys,
-            &this.ledger.peekUTXO, this.required_peer_utxos);
+        this.buildRequiredKeys(node_id, this.qc);
 
         if (this.started)
             this.nominator.startNominatingTimer();
@@ -615,22 +614,19 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    private static void buildRequiredKeys (in Hash filter_utxo,
-        in QuorumConfig quorum_conf, in Hash[] utxos,
-        scope UTXOFinder peekUTXO, ref UTXO[Hash] nodes)
-        @safe nothrow
+    private void buildRequiredKeys (NodeID self_id, in QuorumConfig quorum_conf) @safe
     {
-        import std.algorithm;
-
-        foreach (utxo; utxos.filter!(utxo => utxo != filter_utxo))
-        {
-            UTXO utxo_value;
-            assert(peekUTXO(utxo, utxo_value));
-            nodes[utxo] = utxo_value;
-        }
+        auto validators = this.getValidators();
+        quorum_conf.nodes.filter!(node_id => node_id != self_id)
+            .map!(node_id => validators[node_id].utxo)
+            .each!((utxo) {
+                UTXO utxo_value;
+                assert(this.ledger.peekUTXO(utxo, utxo_value));
+                this.required_peer_utxos[utxo] = utxo_value;
+            });
 
         foreach (sub_conf; quorum_conf.quorums)
-            buildRequiredKeys(filter_utxo, sub_conf, utxos, peekUTXO, nodes);
+            buildRequiredKeys(self_id, sub_conf);
     }
 
     /***************************************************************************
