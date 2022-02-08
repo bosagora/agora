@@ -447,7 +447,10 @@ public class Validator : FullNode, API
         this.recordReq("postBlockSignature");
         const new_header = this.nominator.receiveBlockSignature(block_sig);
         if (new_header != BlockHeader.init)
+        {
             this.pushBlockHeader(new_header);
+            network.gossipBlockSignature(block_sig);
+        }
     }
 
     /// Returns: The Logger to use for this class
