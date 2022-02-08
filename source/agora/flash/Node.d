@@ -590,16 +590,16 @@ public class FlashNode : FlashControlAPI
         if (address == Address.init)
         {
             auto payload = this.registry_client.getFlashNode(peer_pk);
-            if (payload == RegistryPayload.init)
+            if (payload == RegistryPayloadData.init)
             {
                 log.warn("Could not find mapping in registry for key {}", peer_pk);
                 return null;
             }
 
-            if (payload.data.addresses.length == 0)
+            if (payload.addresses.length == 0)
                 return null;
 
-            address = payload.data.addresses[0];
+            address = payload.addresses[0];
         }
 
         auto peer = this.createFlashClient(address, timeout);

@@ -153,7 +153,7 @@ public class NameRegistry: NameRegistryAPI
     {
         // check if we received stale data
         if (previous != TypedPayload.init)
-            ensure(previous.payload.data.seq <= payload.data.seq,
+            ensure(previous.payload.seq <= payload.data.seq,
                 "registry already has a more up-to-date version of the data");
 
         ensure(payload.data.addresses.length > 0,
@@ -189,7 +189,7 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    public override const(RegistryPayload) getValidator (PublicKey public_key)
+    public override const(RegistryPayloadData) getValidator (PublicKey public_key)
     {
         TypedPayload payload = this.zones[ZoneIndex.Validator].get(public_key);
         if (payload != TypedPayload.init)
@@ -198,7 +198,7 @@ public class NameRegistry: NameRegistryAPI
             return payload.payload;
         }
         log.trace("Unsuccessfull GET /validators: {}", public_key);
-        return RegistryPayload.init;
+        return RegistryPayloadData.init;
     }
 
     /***************************************************************************
@@ -264,7 +264,7 @@ public class NameRegistry: NameRegistryAPI
         const stake = this.getStake(registry_payload.data.public_key);
         ensure(stake !is Hash.init, "Couldn't find an existing stake to match this key");
 
-        this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, registry_payload, stake));
+        this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, registry_payload.data, stake));
         this.zones[ZoneIndex.Validator].updateSOA();
     }
 
@@ -300,7 +300,7 @@ public class NameRegistry: NameRegistryAPI
 
     ***************************************************************************/
 
-    public override const(RegistryPayload) getFlashNode (PublicKey public_key)
+    public override const(RegistryPayloadData) getFlashNode (PublicKey public_key)
     {
         TypedPayload payload = this.zones[ZoneIndex.Flash].get(public_key);
         if (payload != TypedPayload.init)
@@ -309,7 +309,7 @@ public class NameRegistry: NameRegistryAPI
             return payload.payload;
         }
         log.trace("Unsuccessfull GET /flash_node: {}", public_key);
-        return RegistryPayload.init;
+        return RegistryPayloadData.init;
     }
 
     /***************************************************************************
@@ -353,7 +353,7 @@ public class NameRegistry: NameRegistryAPI
         // register data
         log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
             registry_payload.data.public_key.toString());
-        this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, registry_payload));
+        this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, registry_payload.data));
         this.zones[ZoneIndex.Flash].updateSOA();
     }
 
@@ -529,7 +529,7 @@ public class NameRegistry: NameRegistryAPI
         {
             this.zones[ZoneIndex.Validator].each!((TypedPayload tpayload) {
                 if (this.ledger.getPenaltyDeposit(tpayload.utxo) == 0.coins)
-                    this.zones[ZoneIndex.Validator].remove(tpayload.payload.data.public_key);
+                    this.zones[ZoneIndex.Validator].remove(tpayload.payload.public_key);
             });
         }
         else if (validator_type == ZoneType.secondary
@@ -653,7 +653,7 @@ private struct TypedPayload
     public TYPE type;
 
     /// The payload itself
-    public RegistryPayload payload;
+    public RegistryPayloadData payload;
 
     /// UTXO
     public Hash utxo;
@@ -678,23 +678,23 @@ private struct TypedPayload
         assert(public_key != PublicKey.init,
             "PublicKey cannot be extracted from domain");
 
-        RegistryPayload reg_payload;
-        reg_payload.data.public_key = public_key;
-        reg_payload.data.ttl = rr.ttl;
+        RegistryPayloadData reg_payload;
+        reg_payload.public_key = public_key;
+        reg_payload.ttl = rr.ttl;
 
         if (rr.type == TYPE.CNAME)
         {
             auto address = rr.rdata.name;
 
             // TODO SRV is needed to keep intact
-            reg_payload.data.addresses ~= Address("http://" ~
-                                            cast(string) address.value);
+            reg_payload.addresses ~= Address("http://" ~
+                                             cast(string) address.value);
         }
         else if (rr.type == TYPE.A)
         {
             import std.socket : InternetAddress;
             auto addresses = rr.rdata.a;
-            reg_payload.data.addresses = addresses.map!(
+            reg_payload.addresses = addresses.map!(
                 (addr) {
                     scope in_addr = new InternetAddress(addr,
                                         InternetAddress.PORT_ANY);
@@ -729,28 +729,28 @@ private struct TypedPayload
         switch (this.type)
         {
         case TYPE.CNAME:
-            assert(this.payload.data.addresses.length == 1);
+            assert(this.payload.addresses.length == 1);
             // FIXME: Use a proper TTL
 
             /* If it's a CNAME, it has to be to another domain, as we don't
              * yet support aliases in the same zone, hence the algorithm in
              * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
              */
-            assert(this.payload.data.addresses.length == 1);
-            return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.data.ttl,
-                Domain.fromString(this.payload.data.addresses[0].host));
+            assert(this.payload.addresses.length == 1);
+            return ResourceRecord.make!(TYPE.CNAME)(name, this.payload.ttl,
+                Domain.fromString(this.payload.addresses[0].host));
 
         case TYPE.A:
             // FIXME: Remove allocation
-            scope uint[] tmp = new uint[](this.payload.data.addresses.length);
-            foreach (idx, addr; this.payload.data.addresses)
+            scope uint[] tmp = new uint[](this.payload.addresses.length);
+            foreach (idx, addr; this.payload.addresses)
             {
                 tmp[idx] = InternetAddress.parse(addr.host);
                 ensure(tmp[idx] != InternetAddress.ADDR_NONE,
                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
                        addr, idx, this);
             }
-            return ResourceRecord.make!(TYPE.A)(name, this.payload.data.ttl, tmp);
+            return ResourceRecord.make!(TYPE.A)(name, this.payload.ttl, tmp);
         default:
             ensure(0, "Unknown type: {} - {}", this.type, this);
             assert(0);
@@ -1349,7 +1349,7 @@ private struct ZoneData
         foreach (const ref payload; this)
         {
             reply.answers ~= payload.toRR(Domain.fromString(format("%s.%s",
-                payload.payload.data.public_key, this.root.value)));
+                payload.payload.public_key, this.root.value)));
         }
 
         reply.answers ~= soa;
@@ -1388,7 +1388,7 @@ private struct ZoneData
 
         ResourceRecord[] answers;
         TypedPayload payload = this.get(public_key, question.qtype);
-        if (payload == TypedPayload.init || !payload.payload.data.addresses.length)
+        if (payload == TypedPayload.init || !payload.payload.addresses.length)
             return Header.RCode.NameError;
 
         answers ~= payload.toRR(question.qname);
@@ -1455,7 +1455,7 @@ private struct ZoneData
             },
         };
 
-        return TypedPayload(node_type, payload, utxo, expires);
+        return TypedPayload(node_type, payload.data, utxo, expires);
     }
 
     /***************************************************************************
@@ -1501,37 +1501,37 @@ private struct ZoneData
 
     public void update (TypedPayload payload) @trusted
     {
-        if (payload.payload.data.addresses.length == 0)
+        if (payload.payload.addresses.length == 0)
             return;
 
         if (this.type == ZoneType.primary)
         {
             // Payload is equal to Zone's data, no need to update
-            if (this.get(payload.payload.data.public_key) == payload)
+            if (this.get(payload.payload.public_key) == payload)
             {
                 log.info("{} sent same payload data, zone is not updated",
-                    payload.payload.data.public_key);
+                    payload.payload.public_key);
                 return;
             }
 
             log.info("Registering addresses {}: {} for public key: {}", payload.type,
-                payload.payload.data.addresses, payload.payload.data.public_key);
+                payload.payload.addresses, payload.payload.public_key);
         }
 
         db.execute(this.query_utxo_add,
-            payload.payload.data.public_key,
-            payload.payload.data.seq,
+            payload.payload.public_key,
+            payload.payload.seq,
             payload.utxo);
 
         // There is no need to check for stale addresses
         // since `REPLACE INTO` is used and `DELETE` is cascaded.
-        foreach (address; payload.payload.data.addresses)
+        foreach (address; payload.payload.addresses)
         {
             db.execute(this.query_addresses_add,
-                payload.payload.data.public_key,
+                payload.payload.public_key,
                 address,
                 payload.type.to!ushort,
-                payload.payload.data.ttl,
+                payload.payload.ttl,
                 payload.expires);
         }
     }
