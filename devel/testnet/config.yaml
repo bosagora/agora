@@ -1,27 +1,20 @@
 #
 # This configuration file is intended to provide a full node that follows
-# the live system and just validates / outputs what it sees.
+# TestNet and just validates / outputs what it sees.
 #
-# This configuration is provided for the convenience of developers and should
-# not be used in production. See `doc/config.example.yaml` for a full,
+# This configuration is provided for the convenience of developers and testers
+# and should not be used where financial stakes are at stake.
+# See `doc/config.example.yaml` in the Agora repository for a full,
 # up to date example of the configuration options available
 #
-# Run from the root with:
-# ./build/agora -c devel/config-fullnode.yaml
+# Run from the root of Agora's repository, after building it, with:
+# ./build/agora -c devel/testnet/config.yaml
 
 node:
   realm: "testnet.bosagora.io"
   testing: true
   data_dir: .fullnode/data/
   registry_address: https://ns1.bosagora.io/
-
-interfaces:
-  - type:    http
-    address: 0.0.0.0
-    port:    2826
-  - type: stats
-    address: 0.0.0.0
-    port: 9111
 
 consensus:
   block_interval:
