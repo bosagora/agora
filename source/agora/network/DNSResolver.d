@@ -22,7 +22,6 @@ import agora.utils.Log;
 
 import std.array;
 import std.algorithm;
-import std.format;
 import std.random;
 static import std.socket;
 import core.time;
@@ -161,9 +160,7 @@ public abstract class DNSResolver
                 // Just pick the first record.
                 // TODO: What is expected when there's more than one record ?
                 // Should we use it as a fall back, round robin, something else?
-                const straddr = format("%d.%d.%d.%d",
-                    res.rdata.a[0] >> 24 & 0xFF, res.rdata.a[0] >> 16 & 0xFF,
-                    res.rdata.a[0] >>  8 & 0xFF, res.rdata.a[0] >>  0 & 0xFF);
+                const straddr = IPv4(res.rdata.a[0]).toString();
                 log.trace("Address '{}' resolved to A record '{}'", address, straddr);
                 address.host = straddr;
                 return address;

@@ -20,7 +20,7 @@
 module agora.common.DNS;
 
 import agora.common.Ensure;
-import agora.common.Types : Address;
+import agora.common.Types : Address, IPv4;
 import agora.serialization.Serializer;
 
 import std.algorithm.iteration;
@@ -738,21 +738,6 @@ public struct ResourceRecord
     public void toString (scope void delegate(in char[]) @safe sink)
         const scope @trusted
     {
-        import core.sys.posix.arpa.inet : htonl;
-
-        static struct IP
-        {
-            public uint value;
-
-            public void toString (scope void delegate(in char[]) @safe sink)
-                const scope
-            {
-                formattedWrite!"%s.%s.%s.%s"(sink,
-                    this.value >> 24 & 0xFF, this.value >> 16 & 0xFF,
-                    this.value >>  8 & 0xFF, this.value >>  0 & 0xFF);
-            }
-        }
-
         switch (this.type)
         {
         case TYPE.OPT:
@@ -761,7 +746,7 @@ public struct ResourceRecord
             break;
         case TYPE.A:
             formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
-                sink, this.name, this.type, this.rdata.a.map!(v => IP(htonl(v))));
+                sink, this.name, this.type, this.rdata.a.map!(v => IPv4.fromHost(v)));
             break;
         case TYPE.CNAME, TYPE.NS:
             formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
