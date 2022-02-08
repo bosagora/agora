@@ -613,7 +613,7 @@ public struct ResourceRecord
 
     /// Make a record of A type
     public static ResourceRecord make (TYPE type : TYPE.A) (
-        Domain name, uint ttl, uint[] ipv4...) @safe
+        Domain name, uint ttl, uint ipv4) @safe
     {
         return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, RDATA(ipv4));
     }
@@ -668,9 +668,9 @@ public struct ResourceRecord
         /// The binary data, if the `TYPE` is not known / implemented
         public ubyte[] binary;
 
-        /// An `A` record, meaning one or more IPv4 addresses
+        /// An `A` record, an IPv4 address
         /// https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
-        public uint[] a;
+        public uint a;
 
         /// A 128 bit IPv6 address is encoded in the data portion of an AAAA
         /// resource record in network byte order (high-order byte first).
@@ -708,7 +708,7 @@ public struct ResourceRecord
         }
 
         /// Ditto
-        public this (inout(uint)[] val) inout @safe pure nothrow @nogc
+        public this (inout(uint) val) inout @safe pure nothrow @nogc
         {
             this.a = val;
         }
@@ -746,7 +746,7 @@ public struct ResourceRecord
             break;
         case TYPE.A:
             formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
-                sink, this.name, this.type, this.rdata.a.map!(v => IPv4.fromHost(v)));
+                sink, this.name, this.type, IPv4.fromHost(this.rdata.a));
             break;
         case TYPE.CNAME, TYPE.NS:
             formattedWrite!"name: %s, TYPE: %s, RDATA: %s"(
@@ -786,8 +786,7 @@ public struct ResourceRecord
             switch (tmp.type)
             {
                 case TYPE.A:
-                    foreach (_; 0 .. (rdlength / uint.sizeof))
-                       tmp_data.a ~= deserializeFull!(uint)(&ctx.read, ctx.options);
+                    tmp_data.a = deserializeFull!(uint)(&ctx.read, ctx.options);
                     break;
                 case TYPE.CNAME, TYPE.NS:
                     tmp_data.name = Domain.fromBinary!(Domain)(ctx);
@@ -826,10 +825,7 @@ public struct ResourceRecord
             switch (this.type)
             {
                 case TYPE.A:
-                    ubyte[] tmp_ip;
-                    foreach (ip; this.rdata.a)
-                        tmp_ip ~= ip.serializeFull(CompactMode.No);
-                    return tmp_ip;
+                    return this.rdata.a.serializeFull(CompactMode.No);
                 case TYPE.CNAME, TYPE.NS:
                     return this.rdata.name.serializeFull();
                 case TYPE.SOA:
@@ -888,8 +884,7 @@ unittest
     import std.socket : InternetAddress;
 
     string test_ip = "127.0.0.1";
-    auto ips = new uint[](1);
-    ips[0] = InternetAddress.parse(test_ip);
+    auto ips = InternetAddress.parse(test_ip);
 
     ResourceRecord a_rr = ResourceRecord.make!(TYPE.A)(
         Domain.fromSafeString("localhost."), 0, ips);
@@ -910,7 +905,7 @@ unittest
     ResourceRecord msg_uri_rr = deserialized_msg.answers[1];
 
     assert(msg_a_rr.type == TYPE.A);
-    assert(msg_a_rr.rdata.a[0] == ips[0]);
+    assert(msg_a_rr.rdata.a == ips);
     assert(msg_uri_rr.type == TYPE.URI);
     assert(msg_uri_rr.rdata.uri.priority == 0);
     assert(msg_uri_rr.rdata.uri.target.port == 1234);
