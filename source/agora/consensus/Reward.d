@@ -153,7 +153,7 @@ public class Reward
         assert(height > 0, "We can not payout in Genesis block");
 
         auto validator_allocated = allocatedValRewards(height);
-        auto validator = reducedValRewards(validator_allocated, percent_signed);
+        auto validator = reducedValRewards(validator_allocated, percent_signed, height);
 
         // First initialize penalty as allocated and then subtract what is validator actual rewards
         auto penalty = validator_allocated;
@@ -254,7 +254,7 @@ public class Reward
 
     ***************************************************************************/
 
-    private Amount reducedValRewards (in Amount total_allocated, ubyte percent_signed) nothrow @safe
+    private Amount reducedValRewards (in Amount total_allocated, ubyte percent_signed, in Height height) nothrow @safe
     {
         assert(percent_signed >= 0 && percent_signed <= 100);
         if (percent_signed < 50)
@@ -271,7 +271,7 @@ public class Reward
             if (!actual.percentage(cast(ubyte) payout_percent))
                 assert(0, format!"Failed to get percentage %s of Amount %s"(payout_percent, actual));
 
-            log.info("Reduced validator reward is: {} as only {}% signed this block", actual, percent_signed);
+            log.info("Reduced validator reward is: {} as only {}% signed block #{}", actual, percent_signed, height);
             assert(actual.isValid());
         }
 
@@ -364,28 +364,28 @@ unittest
     auto reward = new Reward(144, 60.seconds);
 
     // 100% of the validators sign then full reward is paid to Validators
-    assert(reward.reducedValRewards(1_200.coins, 100) == 1_200.coins);
+    assert(reward.reducedValRewards(1_200.coins, 100, Height(1)) == 1_200.coins);
 
     // 1% missing then penalty is 2%
-    assert(reward.reducedValRewards(1_200.coins, 99) == 1_176.coins);
+    assert(reward.reducedValRewards(1_200.coins, 99, Height(1)) == 1_176.coins);
 
     // 2% missing then penalty is 4%
-    assert(reward.reducedValRewards(1_200.coins, 98) == 1_152.coins);
+    assert(reward.reducedValRewards(1_200.coins, 98, Height(1)) == 1_152.coins);
 
     // 10% missing then penalty is 20%
-    assert(reward.reducedValRewards(1_200.coins, 90) == 960.coins);
+    assert(reward.reducedValRewards(1_200.coins, 90, Height(1)) == 960.coins);
 
     // 25% missing then penalty is 50%
-    assert(reward.reducedValRewards(1_200.coins, 75) == 600.coins);
+    assert(reward.reducedValRewards(1_200.coins, 75, Height(1)) == 600.coins);
 
     // 49% missing then penalty is 98%
-    assert(reward.reducedValRewards(1_200.coins, 51) == 24.coins);
+    assert(reward.reducedValRewards(1_200.coins, 51, Height(1)) == 24.coins);
 
     // 50 percent signed then no reward is paid to Validators
-    assert(reward.reducedValRewards(1_200.coins, 50) == 0.coins);
+    assert(reward.reducedValRewards(1_200.coins, 50, Height(1)) == 0.coins);
 
     // less than half sign also no reward is paid to Validators
-    assert(reward.reducedValRewards(1_200.coins, 49) == 0.coins);
+    assert(reward.reducedValRewards(1_200.coins, 49, Height(1)) == 0.coins);
 }
 
 /// Testing Block Rewards payout to validators and Commons Budget
