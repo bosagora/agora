@@ -604,35 +604,51 @@ public class NetworkClient
         enum name = __traits(identifier, endpoint);
         alias T = ReturnType!(__traits(getMember, API, name));
 
-        foreach (idx; 1 .. this.max_retries + 1)
+        T onError ()
         {
-            foreach (conn; this.connections)
+            static if (DT == Throw.Yes)
+            {
+                this.exception.file = file;
+                this.exception.line = line;
+                throw this.exception;
+            }
+            else static if (!is(T == void))
+                return T.init;
+        }
+
+    RETRY: foreach (idx; 1 .. this.max_retries + 1)
+        {
+            // Clients without connections should not wait and instead error out
+            if (!this.connections.length)
+                return onError();
+
+            foreach (index, conn; this.connections)
             {
                 if (this.banman.isBanned(conn.address))
                 {
-                    log.dbg("Client.attemptRequest '{}' skipped as {} is banned: {}/{}", name, conn.address, idx, this.max_retries);
+                    this.connections.remove(index);
+                    log.warn("Removing banned address {} while performing {}, addresses left: {}",
+                             conn.address, name, this.addresses);
+                    continue RETRY;
                 }
-                else
+
+                try
+                {
+                    log.dbg("Client.attemptRequest '{}' to {}: {}/{}", name, conn.address, idx, this.max_retries);
+                    scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
+                        name, conn.address, idx, this.max_retries);
+                    return __traits(getMember, conn.api, name)(args);
+                }
+                catch (Exception ex)
                 {
                     try
                     {
-                        log.dbg("Client.attemptRequest '{}' to {}: {}/{}", name, conn.address, idx, this.max_retries);
-                        scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
-                            name, conn.address, idx, this.max_retries);
-                        return __traits(getMember, conn.api, name)(args);
+                        this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED ({})",
+                            name, conn.address, idx, this.max_retries, ex.message);
                     }
                     catch (Exception ex)
                     {
-                        try
-                        {
-                            this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED ({})",
-                                name, conn.address, idx, this.max_retries, ex.message);
-                        }
-                        catch (Exception ex)
-                        {
-                            // nothing we can do
-                        }
-
+                        // nothing we can do
                     }
                 }
             }
@@ -650,14 +666,7 @@ public class NetworkClient
         foreach (const ref conn; this.connections)
             this.banman.onFailedRequest(conn.address);
 
-        static if (DT == Throw.Yes)
-        {
-            this.exception.file = file;
-            this.exception.line = line;
-            throw this.exception;
-        }
-        else static if (!is(T == void))
-            return T.init;
+        return onError();
     }
 
     /// Merge connections of incoming client to this
