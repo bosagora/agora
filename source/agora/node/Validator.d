@@ -61,6 +61,13 @@ import core.time;
 
 public class Validator : FullNode, API
 {
+    protected enum ValidatorTimers
+    {
+        NameRegistration = super.FullNodeTimers.max + 1,
+        PreImageReveal,
+        PreImageCatchup
+    }
+
     /// Nominator instance
     protected Nominator nominator;
 
@@ -224,15 +231,15 @@ public class Validator : FullNode, API
         // Note: Switching the next two lines leads to test failure
         // It should not, and this needs to be fixed eventually
         if (auto timer = this.network.startPeriodicNameRegistration())
-            this.timers ~= timer;
+            this.timers[ValidatorTimers.NameRegistration] = timer;
         super.start();
 
         this.clock.startSyncing();
-        this.timers ~= this.taskman.setTimer(
+        this.timers[ValidatorTimers.PreImageReveal] = this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
             &this.onPreImageRevealTimer, Periodic.Yes);
 
-        this.timers ~= this.taskman.setTimer(
+        this.timers[ValidatorTimers.PreImageCatchup] = this.taskman.setTimer(
             this.config.validator.preimage_catchup_interval,
             &this.preImageCatchupTask, Periodic.Yes);
 
@@ -246,6 +253,7 @@ public class Validator : FullNode, API
     protected override void discoveryTask ()
     {
         this.network.discover(this.registry, this.ledger.getEnrolledUTXOs(), this.required_peer_utxos);
+        this.timers[FullNodeTimers.Discovery].rearm(this.config.node.network_discovery_interval, false);
     }
 
     ///
@@ -535,7 +543,7 @@ public class Validator : FullNode, API
                     time_offset);
             },
             (Duration duration, void delegate() cb) nothrow @trusted
-                { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
+                { this.timers[FullNodeTimers.ClockTick] = this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************

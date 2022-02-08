@@ -107,8 +107,14 @@ public class FullNode : API
     /// Task manager
     protected ITaskManager taskman;
 
-    /// Timer this node has started
-    protected ITimer[] timers;
+    protected enum FullNodeTimers
+    {
+        Discovery,
+        BlockCatchup,
+        ClockTick
+    }
+    /// Timers this node has started
+    protected ITimer[int] timers;
 
     /// Clock instance
     protected Clock clock;
@@ -310,6 +316,10 @@ public class FullNode : API
         this.registry = new NameRegistry(config.node.realm, config.registry,
                                          this.ledger, this.cacheDB, this.taskman,
                                          this.network);
+
+        // Create timers
+        this.timers[FullNodeTimers.Discovery] = this.taskman.createTimer(&this.discoveryTask);
+        this.timers[FullNodeTimers.BlockCatchup] = this.taskman.createTimer(&this.catchupTask);
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
@@ -455,13 +465,11 @@ public class FullNode : API
         if (this.block_handlers.length > 0 && this.ledger.height() == 0)
             this.pushBlock(this.params.Genesis);
 
-        this.timers ~= this.taskman.setTimer(
-            this.config.node.network_discovery_interval, &this.discoveryTask, Periodic.Yes);
-        this.timers ~= this.taskman.setTimer(
-            this.config.node.block_catchup_interval, &this.catchupTask, Periodic.Yes);
-
-        // Immediately run discovery to avoid delays at startup
+        // Immediately run discovery to avoid delays at startup (it will re-arm the timer)
         this.taskman.runTask(&this.discoveryTask);
+
+        // re-arm the other timers
+        this.timers[FullNodeTimers.BlockCatchup].rearm(this.config.node.block_catchup_interval, false);
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -504,6 +512,7 @@ public class FullNode : API
     protected void discoveryTask () nothrow
     {
         this.network.discover(this.registry, this.ledger.getEnrolledUTXOs());
+        this.timers[FullNodeTimers.Discovery].rearm(this.config.node.network_discovery_interval, false);
     }
 
     /***************************************************************************
@@ -518,6 +527,7 @@ public class FullNode : API
 
     protected void catchupTask () nothrow
     {
+        scope(exit) this.timers[FullNodeTimers.BlockCatchup].rearm(this.config.node.block_catchup_interval, false);
         if (this.network.peers.empty())  // no clients yet (discovery)
             return;
 
@@ -808,7 +818,7 @@ public class FullNode : API
         return new Clock(
             (out Duration time_offset) { return true; },
             (Duration duration, void delegate() cb) nothrow @trusted
-                { this.timers ~= this.taskman.setTimer(duration, cb, Periodic.Yes); });
+                 { this.timers[FullNodeTimers.ClockTick] = this.taskman.setTimer(duration, cb, Periodic.Yes); });
     }
 
     /***************************************************************************

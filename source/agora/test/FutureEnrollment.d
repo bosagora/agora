@@ -49,6 +49,8 @@ unittest
         {
             if (atomicLoad(*this.enable_catchup))
                 super.catchupTask();
+            else
+                this.timers[FullNodeTimers.BlockCatchup].rearm(this.config.node.block_catchup_interval, false);
         }
     }
 
