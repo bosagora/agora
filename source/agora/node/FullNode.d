@@ -523,10 +523,6 @@ public class FullNode : API
 
         const nextHeight = Height(this.ledger.height() + 1);
         log.dbg("catchupTask: getBlocksFrom height {}", nextHeight);
-        this.network.getBlocksFrom(
-            nextHeight,
-            &this.addBlocks);
-        this.network.getUnknownTXs(this.ledger);
         try
         {
             this.network.getMissingBlockSigs(this.ledger, &this.acceptHeader);
@@ -535,6 +531,10 @@ public class FullNode : API
         {
             log.error("Error sending updated block headers:{}", e);
         }
+        this.network.getBlocksFrom(
+            nextHeight,
+            &this.addBlocks);
+        this.network.getUnknownTXs(this.ledger);
     }
 
     /***************************************************************************
