@@ -1369,6 +1369,6 @@ public class FullNode : API
     ///
     public ValidatorInfo[] getValidators ()
     {
-        return this.getValidators(this.ledger.height());
+        return this.getValidators(this.ledger.height() + 1);
     }
 }
