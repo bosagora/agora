@@ -1282,6 +1282,47 @@ public class TestAPIManager
         }
     }
 
+    /***************************************************************************
+
+        Assert all the nodes contain the same signatures in the header
+
+        This is a helper function to confirm all nodes have the same signature
+        count from validators and the signature is the same value.
+        Note that the `from` and `to` are reversed to enable default value
+
+        Params:
+            client_idxs = client indices for the nodes to be checked
+            to = expected block height of the nodes
+            from = start of range for comparing the blocks
+
+    ***************************************************************************/
+
+    void assertSameSignatures (Height to, Height from = Height(1),
+        string file = __FILE__, int line = __LINE__)
+    {
+        assertSameSignatures(iota(this.test_conf.node.test_validators), to, from, file, line);
+    }
+
+    /// Ditto
+    void assertSameSignatures (Idxs)(Idxs client_idxs, Height to,
+        Height from = Height(1), string file = __FILE__, int line = __LINE__)
+    {
+        static assert (isInputRange!Idxs);
+        assert(to >= from,
+            format!"[%s:%s] Please provide valid heights as params. Not %s .. %s"
+            (file, line, from, to));
+
+        // Compare block headers one at a time
+        iota(from, to + 1).each!(h =>
+            retryFor(client_idxs.map!(idx =>
+                this.clients[idx].getBlocksFrom(h, 1).front.header.signature).uniq().count() == 1, 10.seconds,
+                format!"[%s:%s] Clients %s signatures are not all the same for block %s: %s"
+                (file, line, client_idxs, h, client_idxs.fold!((s, i) =>
+                    s ~ format!"\n\n========== Client #%s (%s) ==========%s"
+                        (i, this.nodes[i].address,
+                        prettify(this.clients[i].getBlocksFrom(h, 1).front.header)))(""))));
+    }
+
     /// Expect a TX to be externalized within certain number of blocks
     void expectTxExternalization (Transaction tx, ulong n_blocks = 3)
     {
