@@ -2551,25 +2551,25 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     mixin ForwardCtor!();
 
     /// Forwards to the registry's methods
-    public const(RegistryPayloadData) getValidator (PublicKey public_key) @safe
+    public override const(RegistryPayloadData) getValidator (PublicKey public_key) @safe
     {
         return this.registry.getValidator(public_key);
     }
 
     /// Ditto
-    public void postValidator(RegistryPayload registry_payload) @safe
+    public override void postValidator(RegistryPayload registry_payload) @safe
     {
         this.registry.postValidator(registry_payload);
     }
 
     /// Ditto
-    public const(RegistryPayloadData) getFlashNode(PublicKey public_key) @safe
+    public override const(RegistryPayloadData) getFlashNode(PublicKey public_key) @safe
     {
         return this.registry.getFlashNode(public_key);
     }
 
     /// Ditto
-    public void postFlashNode(RegistryPayload registry_payload, KnownChannel channel)
+    public override void postFlashNode(RegistryPayload registry_payload, KnownChannel channel)
         @safe
     {
         return this.registry.postFlashNode(registry_payload, channel);
