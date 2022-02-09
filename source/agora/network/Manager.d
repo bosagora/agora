@@ -253,7 +253,10 @@ public class NetworkManager
     /// Clock instance
     protected Clock clock;
 
-    /// Registry client
+    /// Our local caching (or more) registry
+    private NameRegistry registry;
+
+    /// Registry client to send registrations to
     private NameRegistryAPI registry_client;
 
     /// Maximum connection tasks to run in parallel
@@ -495,6 +498,16 @@ public class NetworkManager
         return false;
     }
 
+    /// Set the instance of the `NameRegistry` to use
+    public void setRegistry (NameRegistry registry)
+        scope @safe pure nothrow @nogc
+    {
+        assert(this.registry is null);
+        assert(registry !is null);
+
+        this.registry = registry;
+    }
+
     /// Periodically registers network addresses
     public ITimer startPeriodicNameRegistration ()
     {
@@ -515,7 +528,7 @@ public class NetworkManager
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
-    public void discover (NameRegistry registry, UTXO[Hash] last_known_validator_utxos,
+    public void discover (UTXO[Hash] last_known_validator_utxos,
         UTXO[Hash] required_peer_utxos = null) nothrow
     {
         this.quorum_set_keys.from(Set!Hash.init);
@@ -532,9 +545,8 @@ public class NetworkManager
             "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
             required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
 
-        if (this.registry_client !is null)
+        foreach (utxo; last_known_validator_utxos.byKeyValue)
         {
-            foreach (utxo; last_known_validator_utxos.byKeyValue)
             if (!this.peers[].map!(ni => ni.identity.utxo).canFind(utxo.key))
             {
                 auto key = utxo.value.output.address;
@@ -548,7 +560,7 @@ public class NetworkManager
                     const ckey = key;
                     retry!
                     ({
-                        auto payload = this.registry_client.getValidator(ckey);
+                        auto payload = this.registry.getValidatorInternal(ckey);
                         if (payload == RegistryPayloadData.init)
                         {
                             log.warn("Could not find mapping in registry for key {}", ckey);
@@ -586,7 +598,7 @@ public class NetworkManager
 
         try
         {
-            foreach (addr; registry.validatorsAddresses())
+            foreach (addr; this.registry.validatorsAddresses())
                 this.addAddress(addr);
         }
         catch (Exception ex)

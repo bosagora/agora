@@ -318,6 +318,7 @@ public class FullNode : API
         this.registry = new NameRegistry(config.node.realm, config.registry,
                                          this.ledger, this.cacheDB, this.taskman,
                                          this.network);
+        this.network.setRegistry(this.registry);
 
         // Create timers
         this.timers[TimersIdx.Discovery] = this.taskman.createTimer(&this.discoveryTask);
@@ -513,7 +514,7 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
-        this.network.discover(this.registry, this.ledger.getEnrolledUTXOs());
+        this.network.discover(this.ledger.getEnrolledUTXOs());
         this.timers[TimersIdx.Discovery].rearm(this.config.node.network_discovery_interval, false);
     }
 
