@@ -929,32 +929,6 @@ private struct ZoneData
             "FOREIGN KEY(pubkey) REFERENCES registry_%s_utxo(pubkey) ON DELETE CASCADE, " ~
             "PRIMARY KEY(pubkey, address))", zone_name, zone_name);
 
-        string query_prev_type = format("SELECT * FROM registry_%s_utxo " ~
-            "WHERE utxo = ?", zone_name);
-
-        bool was_primary;
-
-        try
-            was_primary = this.db.execute(query_prev_type, Hash.init).empty;
-        catch (Exception)
-            was_primary = false;
-
-        if (this.type == ZoneType.primary && !was_primary)
-        {
-            this.db.execute(
-                format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
-            this.db.execute(
-                format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
-        }
-        else if ((this.type == ZoneType.secondary
-                || this.type == ZoneType.caching) && was_primary)
-        {
-            this.db.execute(
-                format("DROP TABLE IF EXISTS registry_%s_utxo", zone_name));
-            this.db.execute(
-                format("DROP TABLE IF EXISTS registry_%s_addresses", zone_name));
-        }
-
         // Initialize common fields
         this.db.execute(query_sig_create);
         this.db.execute(query_addr_create);
