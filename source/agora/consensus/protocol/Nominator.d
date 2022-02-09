@@ -1376,6 +1376,20 @@ extern(D):
             log.info("Balloting started for slot idx {}", slot_idx);
         }
     }
+
+    // Returns internal SCP state for latest slot
+    public string[] getSCPState () @trusted
+    {
+        import agora.utils.SCPPrettyPrinter;
+        import std.conv;
+        string[] envs;
+        auto high_slot = this.scp.getHighSlotIndex();
+        foreach (const ref SCPEnvelope env; this.scp.getLatestMessagesSend(high_slot))
+            envs ~= to!string(scpPrettify(&env, &this.getQSet));
+        foreach (const ref SCPEnvelope env; this.scp.getExternalizingState(high_slot))
+            envs ~= to!string(scpPrettify(&env, &this.getQSet));
+        return envs;
+    }
 }
 
 /// Adds hashing support to SCPStatement

@@ -120,4 +120,22 @@ public interface API : agora.api.FullNode.API
     ***************************************************************************/
 
     public void postBlockSignature (ValidatorBlockSig block_sig);
+
+    /// Interfaces that are only enabled in debug builds
+    debug (AgoraDebugAPIs)
+    {
+
+        /***************************************************************************
+
+            Returns:
+                Returns the set of most recent envelopes node received
+
+            API:
+                GET /scp_state
+
+        ***************************************************************************/
+
+        public string[] getSCPState ();
+
+    }
 }

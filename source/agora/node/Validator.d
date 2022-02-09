@@ -478,6 +478,24 @@ public class Validator : FullNode, API
         }
     }
 
+    debug (AgoraDebugAPIs)
+    {
+        /***************************************************************************
+
+            Returns:
+                Returns the set of most recent envelopes node received
+
+            API:
+                GET /scp_state
+
+        ***************************************************************************/
+
+        public override string[] getSCPState ()
+        {
+            return this.nominator.getSCPState();
+        }
+    }
+
     /// Returns: The Logger to use for this class
     protected override Logger makeLogger ()
     {
