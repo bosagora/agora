@@ -67,9 +67,7 @@ public final class VibeNetworkManager : NetworkManager
     /// See `NetworkManager.makeDNSResolver`
     public override DNSResolver makeDNSResolver (Address[] peers = null)
     {
-        if (peers.length == 0)
-            peers = [ Address(this.config.node.registry_address) ];
-        return new VibeDNSResolver(peers);
+        return new VibeDNSResolver(peers.length ? peers : DefaultDNS);
     }
 
     /// See `NetworkManager.getClient`
@@ -171,8 +169,9 @@ private final class VibeDNSResolver : DNSResolver
 
     ***************************************************************************/
 
-    public this (const Address[] peers = DefaultDNS)
+    public this (const Address[] peers)
     {
+        assert(peers.length);
         this.resolvers.length = peers.length;
         // "Connect" to each of the resolvers
         // UDP is not connection-oriented, but this binds the socket to the
