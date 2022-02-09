@@ -148,24 +148,24 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /// Returns: throws if payload is not valid
-    protected TYPE ensureValidPayload (in RegistryPayload payload,
+    protected TYPE ensureValidPayload (in RegistryPayloadData payload,
         TypedPayload previous) @safe
     {
         // check if we received stale data
         if (previous != TypedPayload.init)
-            ensure(previous.payload.seq <= payload.data.seq,
+            ensure(previous.payload.seq <= payload.seq,
                 "registry already has a more up-to-date version of the data");
 
-        ensure(payload.data.addresses.length > 0,
+        ensure(payload.addresses.length > 0,
                 "Payload for '{}' should have addresses but have 0",
-                payload.data.public_key);
+                payload.public_key);
 
         // Check that there's either one CNAME, or multiple IPs
         TYPE payload_type;
-        foreach (idx, const ref addr; payload.data.addresses)
+        foreach (idx, const ref addr; payload.addresses)
         {
             const this_type = addr.host.guessAddressType();
-            ensure(this_type != TYPE.CNAME || payload.data.addresses.length == 1,
+            ensure(this_type != TYPE.CNAME || payload.addresses.length == 1,
                     "Can only have one domain name (CNAME) for payload, not: {}",
                     payload);
             payload_type = this_type;
@@ -201,25 +201,24 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /// Implementation of `NameRegistryAPI.postValidator`
-    public override void postValidator (RegistryPayload registry_payload)
+    public override void postValidator (RegistryPayloadData data, Signature sig)
     {
         ensure(this.zones[ZoneIndex.Validator].type != ZoneType.caching,
             "Couldn't register, server is not authoritative for the zone");
 
-        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
-               "Incorrect signature for payload");
-        this.registerValidator(registry_payload);
+        ensure(data.verify(sig), "Incorrect signature for payload");
+        this.registerValidator(data, sig);
     }
 
     /// Similar to `postValidator`, but does not perform signature verification
-    public void registerValidator (RegistryPayload registry_payload) @safe
+    public void registerValidator (RegistryPayloadData data, Signature sig) @safe
     {
-        TYPE payload_type = this.ensureValidPayload(registry_payload,
-            this.zones[ZoneIndex.Validator].get(registry_payload.data.public_key));
+        TYPE payload_type = this.ensureValidPayload(data,
+            this.zones[ZoneIndex.Validator].get(data.public_key));
 
         if (this.zones[ZoneIndex.Validator].type == ZoneType.secondary)
         {
-            this.zones[ZoneIndex.Validator].redirect_register.postValidator(registry_payload);
+            this.zones[ZoneIndex.Validator].redirect_register.postValidator(data, sig);
             return;
         }
 
@@ -230,10 +229,10 @@ public class NameRegistry: NameRegistryAPI
             this.validator_info = this.ledger.getValidators(last_height);
             this.validator_info_height = last_height;
         }
-        const stake = this.getStake(registry_payload.data.public_key);
+        const stake = this.getStake(data.public_key);
         ensure(stake !is Hash.init, "Couldn't find an existing stake to match this key");
 
-        this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, registry_payload.data, stake));
+        this.zones[ZoneIndex.Validator].update(TypedPayload(payload_type, data, stake));
         this.zones[ZoneIndex.Validator].updateSOA();
     }
 
@@ -266,20 +265,19 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /// Implementation of `NameRegistryAPI.postFlashNode`
-    public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
+    public override void postFlashNode (RegistryPayloadData data, Signature sig, KnownChannel channel)
     {
         ensure(this.zones[ZoneIndex.Flash].type != ZoneType.caching,
             "Couldn't register, server is not authoritative for the zone");
 
-        ensure(registry_payload.verifySignature(registry_payload.data.public_key),
-               "Incorrect signature for payload");
+        ensure(data.verify(sig), "Incorrect signature for payload");
 
-        TYPE payload_type = this.ensureValidPayload(registry_payload,
-            this.zones[ZoneIndex.Flash].get(registry_payload.data.public_key));
+        TYPE payload_type = this.ensureValidPayload(data,
+            this.zones[ZoneIndex.Flash].get(data.public_key));
 
         if (this.zones[ZoneIndex.Flash].type == ZoneType.secondary)
         {
-            this.zones[ZoneIndex.Flash].redirect_register.postFlashNode(registry_payload, channel);
+            this.zones[ZoneIndex.Flash].redirect_register.postFlashNode(data, sig, channel);
             return;
         }
 
@@ -290,9 +288,9 @@ public class NameRegistry: NameRegistryAPI
             ensure(0, "Channel is not valid or open: {}", err);
 
         // register data
-        log.info("Registering network addresses: {} for Flash public key: {}", registry_payload.data.addresses,
-            registry_payload.data.public_key.toString());
-        this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, registry_payload.data));
+        log.info("Registering network addresses: {} for Flash public key: {}", data.addresses,
+            data.public_key);
+        this.zones[ZoneIndex.Flash].update(TypedPayload(payload_type, data));
         this.zones[ZoneIndex.Flash].updateSOA();
     }
 
@@ -1358,18 +1356,15 @@ private struct ZoneData
 
         const auto ttl = results.front["ttl"].as!uint;
         const auto addresses = results.map!(r => Address(r["address"].as!string)).array;
-        const RegistryPayload payload =
+        const RegistryPayloadData data =
         {
-            data:
-            {
-                public_key : public_key,
-                addresses : addresses,
-                seq : sequence,
-                ttl : ttl,
-            },
+            public_key : public_key,
+            addresses : addresses,
+            seq : sequence,
+            ttl : ttl,
         };
 
-        return TypedPayload(node_type, payload.data, utxo, expires);
+        return TypedPayload(node_type, data, utxo, expires);
     }
 
     /***************************************************************************

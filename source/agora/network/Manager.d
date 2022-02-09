@@ -715,21 +715,18 @@ public class NetworkManager
         if (this.registry_client is null)
             return;
 
-        RegistryPayload payload =
+        RegistryPayloadData data =
         {
-            data:
-            {
-                public_key : this.config.validator.key_pair.address,
-                addresses : addresses,
-                seq : time(null)
-            }
+            public_key : this.config.validator.key_pair.address,
+            addresses : addresses,
+            seq : time(null),
         };
 
-        payload.signPayload(this.config.validator.key_pair);
+        auto sig = data.sign(this.config.validator.key_pair);
 
         try
         {
-            this.registry_client.postValidator(payload);
+            this.registry_client.postValidator(data, sig);
         }
         catch (Exception ex)
         {
