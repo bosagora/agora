@@ -42,6 +42,7 @@
             "name": "server",
             "targetName": "agora",
             "mainSourceFile": "source/agora/node/main.d",
+            "debugVersions": [ "AgoraDebugAPIs" ],
             "preGenerateCommands": [
                 "$DUB scripts/build_tracy.d",
             ],
