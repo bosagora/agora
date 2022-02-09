@@ -40,8 +40,7 @@ unittest
     void createAndExpectNewBlock (Height new_height)
     {
         // create tx for a single block
-        auto utxo_pairs = node_1.getSpendables(100.coins, OutputType.Payment,
-            agora.script.Lock.LockType.Key);
+        auto utxo_pairs = node_1.getSpendables(100.coins);
 
         // create and send tx to all nodes
         network.postAndEnsureTxInPool(
@@ -185,8 +184,7 @@ unittest
     void createAndExpectNewBlock (Height new_height)
     {
         // create tx for a single block
-        auto utxo_pairs = valid_nodes.front.getSpendables(100.coins, OutputType.Payment,
-            agora.script.Lock.LockType.Key);
+        auto utxo_pairs = valid_nodes.front.getSpendables(100.coins);
 
         // create and send tx to all nodes
         network.postAndEnsureTxInPool(

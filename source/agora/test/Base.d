@@ -58,7 +58,7 @@ import agora.node.FullNode;
 import agora.node.Registry;
 import agora.node.TransactionRelayer;
 import agora.node.Validator;
-public static import agora.script.Lock;
+import agora.script.Lock : LockType;
 import agora.utils.Log;
 import agora.utils.PrettyPrinter;
 public import agora.utils.Utility : retryFor;
@@ -1139,8 +1139,7 @@ public class TestAPIManager
 
         if (!no_txs)
         {
-            auto utxo_pairs = first_client.getSpendables(1.coins, OutputType.Payment,
-                agora.script.Lock.LockType.Key);
+            auto utxo_pairs = first_client.getSpendables(1.coins);
             auto tx = TxBuilder(utxo_pairs[0].utxo.output.address) // refund
                 .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
                 .sign();
@@ -1188,8 +1187,7 @@ public class TestAPIManager
         // Collect enough utxo for all to enroll
         Amount expected = Amount.MinFreezeAmount + 10_000.coins;
         assert(expected.mul(keys.length));
-        auto utxo_pairs = first_client.getSpendables(expected, OutputType.Payment,
-            agora.script.Lock.LockType.Key);
+        auto utxo_pairs = first_client.getSpendables(expected);
 
         return TxBuilder(utxo_pairs[0].utxo.output.address) // refund
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
@@ -1568,7 +1566,7 @@ public interface TestAPI : API
 
     public UTXOPair[] getSpendables (Amount minimum,
         OutputType output_type = OutputType.Payment,
-        agora.script.Lock.LockType lock_type = agora.script.Lock.LockType.Key);
+        LockType lock_type = LockType.Key);
 
     /***************************************************************************
 
@@ -1759,7 +1757,7 @@ private mixin template TestNodeMixin ()
     ///
     public override UTXOPair[] getSpendables (Amount minimum,
         OutputType output_type = OutputType.Payment,
-        agora.script.Lock.LockType lock_type = agora.script.Lock.LockType.Key)
+        LockType lock_type = LockType.Key)
     {
         UTXOPair[] result;
         Amount accumulated;
