@@ -173,22 +173,7 @@ public class NameRegistry: NameRegistryAPI
         return payload_type;
     }
 
-    /***************************************************************************
-
-        Get network addresses corresponding to a public key
-
-        Params:
-            public_key = the public key that was used to register
-                         the network addresses
-
-        Returns:
-            Network addresses associated with the `public_key`
-
-        API:
-            GET /validator
-
-    ***************************************************************************/
-
+    /// Implementation of `NameRegistryAPI.getValidator`
     public override const(RegistryPayloadData) getValidator (PublicKey public_key)
     {
         TypedPayload payload = this.zones[ZoneIndex.Validator].get(public_key);
@@ -215,23 +200,7 @@ public class NameRegistry: NameRegistryAPI
         return this.zones[ZoneIndex.Validator].getAddresses();
     }
 
-    /***************************************************************************
-
-        Register network addresses corresponding to a public key
-
-        Params:
-            registry_payload =
-                the data we want to register with the name registry server
-
-        Returns:
-            empty string, if the registration was successful, otherwise returns
-            the error message
-
-        API:
-            POST /validator
-
-    ***************************************************************************/
-
+    /// Implementation of `NameRegistryAPI.postValidator`
     public override void postValidator (RegistryPayload registry_payload)
     {
         ensure(this.zones[ZoneIndex.Validator].type != ZoneType.caching,
@@ -283,23 +252,7 @@ public class NameRegistry: NameRegistryAPI
         return Hash.init;
     }
 
-    /***************************************************************************
-
-        Get network addresses corresponding to a flash node that is controlling
-        given public_key
-
-        Params:
-            public_key = the public key that was used to register
-                         the network addresses
-
-        Returns:
-            Network addresses associated with the `public_key`
-
-        API:
-            GET /flash_node
-
-    ***************************************************************************/
-
+    /// Implementation of `NameRegistryAPI.getFlashNode`
     public override const(RegistryPayloadData) getFlashNode (PublicKey public_key)
     {
         TypedPayload payload = this.zones[ZoneIndex.Flash].get(public_key);
@@ -312,21 +265,7 @@ public class NameRegistry: NameRegistryAPI
         return RegistryPayloadData.init;
     }
 
-    /***************************************************************************
-
-        Register network addresses corresponding to a public key
-
-        Params:
-            registry_payload =
-                the data we want to register with the name registry server
-            channel =
-                a known channel of the registering public key
-
-        API:
-            POST /flash_node
-
-    ***************************************************************************/
-
+    /// Implementation of `NameRegistryAPI.postFlashNode`
     public override void postFlashNode (RegistryPayload registry_payload, KnownChannel channel)
     {
         ensure(this.zones[ZoneIndex.Flash].type != ZoneType.caching,
