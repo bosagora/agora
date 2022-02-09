@@ -276,7 +276,7 @@ public struct NodeConfig
     public @Optional Duration relay_tx_cache_exp;
 
     /// The realm to which this node belongs (a domain name)
-    public immutable(Domain) realm = Domain.fromSafeString("coinnet.bosagora.io.");
+    public immutable(Domain) realm = Domain.fromSafeString("testnet.bosagora.io.");
 
     // Registry address
     public @Optional string registry_address;
