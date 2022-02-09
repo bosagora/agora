@@ -37,6 +37,19 @@ public struct RegistryPayloadData
     /// TTL of the registry record
     public uint ttl = 600;
 
+    ///
+    public Signature sign (in KeyPair kp) const scope @safe nothrow
+    {
+        assert(this.public_key is kp.address);
+        return kp.sign(hashFull(this)[]);
+    }
+
+    ///
+    public bool verify (in Signature sig) const scope  @safe nothrow @nogc
+    {
+        return this.public_key.verify(sig, hashFull(this)[]);
+    }
+
     /// Compares payload data for equality, ignores `seq`
     /// and permutations of `addresses` are considered as equal, `ttl` is ignored
     bool opEquals (in RegistryPayloadData other) const nothrow @safe
@@ -87,47 +100,6 @@ public struct RegistryPayloadData
     }
 }
 
-///
-public struct RegistryPayload
-{
-    ///
-    public RegistryPayloadData data;
-
-    /// signature over the `data` member
-    public Signature signature;
-
-    /// Compares payload, ignores `signature` of the data since
-    /// `RegistryPayloadData` ignores `seq`
-    bool opEquals (in RegistryPayload other) const nothrow @safe
-    {
-        return this.data == other.data;
-    }
-
-    /// Required when `opEquals` is implemented
-    public size_t toHash () const scope @safe pure nothrow @nogc
-    {
-        return this.data.toHash();
-    }
-
-    /// Orders payload according to `data`
-    public int opCmp (in RegistryPayload other) const nothrow
-    {
-        return this.data.opCmp(other.data);
-    }
-
-    ///
-    public void signPayload (in KeyPair kp) @safe nothrow
-    {
-        this.signature = kp.sign(hashFull(this.data)[]);
-    }
-
-    ///
-    public bool verifySignature (in PublicKey public_key) const nothrow @nogc @safe
-    {
-        return public_key.verify(this.signature, hashFull(this.data)[]);
-    }
-}
-
 /// API allowing to store network addresses under a public key
 public interface NameRegistryAPI
 {
@@ -156,19 +128,15 @@ public interface NameRegistryAPI
         Register network addresses corresponding to a public key
 
         Params:
-            registry_payload =
-                the data we want to register with the name registry server
-
-        Returns:
-            empty string, if the registration was successful, otherwise returns
-            the error message
+            data = the addresses to register with the name registry server
+            sig = Signature matching `data`
 
         API:
             POST /validator
 
     ***************************************************************************/
 
-    public void postValidator (RegistryPayload registry_payload);
+    public void postValidator (RegistryPayloadData data, Signature sig);
 
     /***************************************************************************
 
@@ -194,15 +162,14 @@ public interface NameRegistryAPI
         Register network addresses corresponding to a public key
 
         Params:
-            registry_payload =
-                the data we want to register with the name registry server
-            channel =
-                a known channel of the registering public key
+            data = addresses to register with the name registry server
+            sig = Signature matching `data`
+            channel = a known channel of the registering public key
 
         API:
             POST /flash_node
 
     ***************************************************************************/
 
-    public void postFlashNode (RegistryPayload registry_payload, KnownChannel channel);
+    public void postFlashNode (RegistryPayloadData data, Signature sig, KnownChannel channel);
 }

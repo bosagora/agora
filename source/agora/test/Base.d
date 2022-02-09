@@ -33,6 +33,7 @@ import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
 import agora.common.Types;
+import agora.crypto.Schnorr : Signature;
 import agora.consensus.BlockStorage;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Params;
@@ -2557,9 +2558,9 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     }
 
     /// Ditto
-    public override void postValidator(RegistryPayload registry_payload) @safe
+    public override void postValidator(RegistryPayloadData data, Signature sig) @safe
     {
-        this.registry.postValidator(registry_payload);
+        this.registry.postValidator(data, sig);
     }
 
     /// Ditto
@@ -2569,10 +2570,10 @@ public class RegistryNode : TestFullNode, FullRegistryAPI
     }
 
     /// Ditto
-    public override void postFlashNode(RegistryPayload registry_payload, KnownChannel channel)
+    public override void postFlashNode(RegistryPayloadData data, Signature sig, KnownChannel channel)
         @safe
     {
-        return this.registry.postFlashNode(registry_payload, channel);
+        return this.registry.postFlashNode(data, sig, channel);
     }
 
     ///

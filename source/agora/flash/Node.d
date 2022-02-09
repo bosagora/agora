@@ -274,18 +274,15 @@ public class FlashNode : FlashControlAPI
     {
         foreach (pair; this.getManagedKeys())
         {
-            RegistryPayload payload =
+            RegistryPayloadData data =
             {
-                data:
-                {
-                    public_key : pair.key,
-                    addresses : this.conf.addresses_to_register,
-                    seq : time(null)
-                }
+                public_key : pair.key,
+                addresses : this.conf.addresses_to_register,
+                seq : time(null),
             };
 
             const key_pair = KeyPair.fromSeed(pair.value);
-            payload.signPayload(key_pair);
+            auto sig = data.sign(key_pair);
 
             // find a channel with this public key
             auto known_chan = this.known_channels.byValue.find!(chan =>
@@ -294,7 +291,7 @@ public class FlashNode : FlashControlAPI
                 continue;
 
             try
-                this.registry_client.postFlashNode(payload, known_chan.front());
+                this.registry_client.postFlashNode(data, sig, known_chan.front());
             catch (Exception ex)
                 log.info("Couldn't register our address: {}. Trying again later..",
                     ex);
