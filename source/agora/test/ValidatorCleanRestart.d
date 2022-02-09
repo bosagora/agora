@@ -124,6 +124,7 @@ unittest
     conf.consensus.quorum_threshold = 66;
     conf.node.block_catchup_interval = 100.msecs; // speed up catchup
     conf.node.network_discovery_interval = 200.msecs; // speed up discovery
+    conf.node.max_retries = 2; // We sleep some nodes so let's try less times
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -148,6 +149,8 @@ unittest
         // Wake up node_2
         scope (exit) node_2.ctrl.sleep(0.seconds);
 
+        Thread.sleep(5.seconds); // TODO: remove this issue #2971
+
         // Make 2 blocks
         network.generateBlocks(only(0, 1, 3), Height(3));
     }
@@ -157,12 +160,11 @@ unittest
         // Make sure we can print the logs
         scope (failure) node_1.ctrl.sleep(0.seconds);
 
+        // give time for node_2 to be discovered again
+       Thread.sleep(5.seconds); // TODO: remove this issue #2971
+
         // wait till node_2 catches up
         network.assertSameBlocks(only(0, 2, 3), Height(3));
-
-        // give time for node_2 to be discovered again
-        // as catchup for missing txs only occurs after nomination has started
-        Thread.sleep(conf.node.network_discovery_interval);
 
         // A new block is still inserted into the ledger with the approval
         // of node_2, although node_1 was sleeping.
