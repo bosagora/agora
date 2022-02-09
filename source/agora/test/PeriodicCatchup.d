@@ -108,12 +108,17 @@ private class NodeManager (): TestAPIManager
 /// All nodes should have same blocks given enough time for periodic catchup to take place
 unittest
 {
-    auto network = makeTestNetwork!(NodeManager!())(TestConf.init);
+    TestConf conf;
+    conf.node.test_validators = 4;  // limit to 4 Genesis validators
+    conf.full_nodes = 2;            // Add a couple of fullnodes
+    conf.node.block_catchup_interval = 500.msecs; // Speed up the test
+    auto network = makeTestNetwork!(NodeManager!())(conf);
     network.start();
     scope(exit) network.shutdown();
     scope(failure) network.printLogs();
     network.waitForDiscovery();
     auto target_height = Height(3);
     network.generateBlocks(target_height);
-    network.assertSameBlocks(target_height);
+    // Check all validators and fullnodes have all the same blocks to height 3
+    network.assertSameBlocks(iota(conf.node.test_validators + conf.full_nodes), target_height);
 }
