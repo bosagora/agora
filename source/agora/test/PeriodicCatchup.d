@@ -111,7 +111,7 @@ unittest
     TestConf conf;
     conf.node.test_validators = 4;  // limit to 4 Genesis validators
     conf.full_nodes = 2;            // Add a couple of fullnodes
-    conf.node.block_catchup_interval = 500.msecs; // Speed up the test
+    conf.node.block_catchup_interval = 300.msecs; // Speed up the test
     auto network = makeTestNetwork!(NodeManager!())(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -121,4 +121,6 @@ unittest
     network.generateBlocks(target_height);
     // Check all validators and fullnodes have all the same blocks to height 3
     network.assertSameBlocks(iota(conf.node.test_validators + conf.full_nodes), target_height);
+    // Check the signature counts are complete for block at height 1
+    network.assertSameSignatures(iota(conf.node.test_validators + conf.full_nodes), Height(1));
 }
