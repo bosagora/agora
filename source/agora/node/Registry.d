@@ -91,6 +91,9 @@ public class NameRegistry: NameRegistryAPI
     ///
     private ValidatorInfo[] validator_info;
 
+    /// Client to forward GET query to if we don't have a local match
+    private NameRegistryAPI client;
+
     /// Supported DNS query types
     private immutable QTYPE[] supported_query_types = [
         QTYPE.A, QTYPE.AAAA, QTYPE.CNAME, QTYPE.AXFR, QTYPE.ALL, QTYPE.SOA, QTYPE.NS,
@@ -126,6 +129,7 @@ public class NameRegistry: NameRegistryAPI
 
     public void start ()
     {
+        this.client = this.zones[0].netman.makeRegistryClient();
         foreach (ref zone; this.zones)
             zone.start();
     }
@@ -186,6 +190,32 @@ public class NameRegistry: NameRegistryAPI
         return RegistryPayloadData.init;
     }
 
+    /// Internal endpoint, mimics `getValidator` but forward the query if needed
+    public final const(RegistryPayloadData) getValidatorInternal (in PublicKey key)
+    {
+        TypedPayload payload = this.zones[ZoneIndex.Validator].get(key);
+        if (payload != TypedPayload.init)
+            return payload.payload;
+
+        // If we're not caching, we're either primary or secondary.
+        // If we're primary, there's obviously no upstream to ask.
+        // If we're secondary, we ask the primary, we do not want other zone data
+        // to get out of sync (e.g. the serial), so we only query,
+        // never store.
+        if (this.zones[ZoneIndex.Validator].type == ZoneType.primary)
+            return RegistryPayloadData.init;
+
+        // We might not have an upstream configured either
+        if (this.client is null)
+            return RegistryPayloadData.init;
+
+        auto upstream = this.client.getValidator(key);
+        if (upstream !is RegistryPayloadData.init &&
+            this.zones[ZoneIndex.Validator].type == ZoneType.caching)
+            this.registerValidator(upstream, Signature.init);
+        return upstream;
+    }
+
     /***************************************************************************
 
         Get all network addresses of all validators
@@ -218,6 +248,7 @@ public class NameRegistry: NameRegistryAPI
 
         if (this.zones[ZoneIndex.Validator].type == ZoneType.secondary)
         {
+            assert(sig !is Signature.init, "Secondary registry cannot perform local registration");
             this.zones[ZoneIndex.Validator].redirect_register.postValidator(data, sig);
             return;
         }
