@@ -144,16 +144,11 @@ public struct BlockHeader
     ***************************************************************************/
 
     public BlockHeader updateSignature (in Signature signature,
-        BitMask validators) const @safe
+        BitMask validators) @safe
     {
-        return BlockHeader(
-                this.prev_block,
-                this.merkle_root,
-                signature,
-                validators,
-                this.height,
-                this.preimages.dup,
-                this.enrollments.dup);
+        this.signature = signature;
+        this.validators = validators;
+        return this;
     }
 
     /***************************************************************************
@@ -273,31 +268,10 @@ public struct Block
     ***************************************************************************/
 
     public Block updateSignature (in Signature signature, BitMask validators)
-        const @safe
+        @safe
     {
-        return updateHeader(this.header.updateSignature(signature, validators));
-    }
-
-    /***************************************************************************
-
-        Returns:
-            a copy of this block with an updated header
-
-        Params:
-            signature = new signature
-            validators = mask to indicate who has signed
-
-    ***************************************************************************/
-
-    public Block updateHeader (in BlockHeader header)
-        const @safe
-    {
-        return Block(
-            header.clone(),
-            // TODO: Optimize this by using dup for txs also
-            this.txs.map!(tx =>
-                tx.serializeFull.deserializeFull!Transaction).array,
-            this.merkle_tree.dup);
+        this.header.updateSignature(signature, validators);
+        return this;
     }
 
     /***************************************************************************

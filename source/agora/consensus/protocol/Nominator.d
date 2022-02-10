@@ -124,6 +124,8 @@ public extern (C++) class Nominator : SCPDriver
         /// Timer passed in from FullNode or Validator to trigger block,
         /// signature and tx catchup
         Catchup,
+        /// Timer for attempting to externalize with a majority of signatures
+        Externalize,
     }
 
     /// Timers this node has started not including the SCP slot timers
@@ -172,6 +174,12 @@ public extern (C++) class Nominator : SCPDriver
     /// Hashes of envelopes we have processed already
     private Set!Hash seen_envs;
 
+    /// Envelope process task delay
+    private enum ExternalizeTaskDelay = 200.msecs;
+
+    /// Block ready to externalize once majority signatures are added
+    private Block pending_block;
+
 extern(D):
 
     /***************************************************************************
@@ -213,6 +221,7 @@ extern(D):
         // Create stopped timers
         this.timers[TimersIdx.Envelope] = this.taskman.createTimer(&this.envelopeProcessTask);
         this.timers[TimersIdx.Nomination] = this.taskman.createTimer(&this.checkNominate);
+        this.timers[TimersIdx.Externalize] = this.taskman.createTimer(&this.checkExternalize);
         this.timers[TimersIdx.Catchup] = catchup_timer; // Created in caller
 
         // Find the node id of this validator and create an SCPObject
@@ -465,7 +474,6 @@ extern(D):
         The function will return early if either one of these are true:
         - We're already in the asynchronous stage of nominating or balloting
         - The current time is < getExpectedBlockTime(slot_idx)
-        - There are not at least 50% of signatures for the previous block
 
     ***************************************************************************/
 
@@ -483,15 +491,6 @@ extern(D):
             this.log.trace(
                 "checkNominate(): Too early to nominate (current: {}, next: {})",
                 cur_time, next_nomination);
-            return;
-        }
-
-        if (!this.ledger.hasMajoritySignature(this.ledger.height()))
-        {
-            this.log.trace(
-                "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
-                this.ledger.height(), this.ledger.lastBlock().header.validators);
-            this.timers[TimersIdx.Catchup].rearm(CatchupTaskDelay, false);
             return;
         }
 
@@ -621,7 +620,10 @@ extern(D):
                 this.queued_envelopes.insertBack(copied);
             else
                 this.queued_envelopes.insertFront(copied);
-            this.timers[TimersIdx.Envelope].rearm(EnvTaskDelay, false);
+            if (pending_block == Block.init)
+                this.timers[TimersIdx.Envelope].rearm(EnvTaskDelay, false);
+            else
+                log.dbg("{}: We have a pending block to externalize so do not process envelopes for next slot yet");
             this.seen_envs.put(env_hash);
         }
     }
@@ -646,8 +648,8 @@ extern(D):
         // Don't use `height - tolerance` as it could underflow
         if (envelope.statement.slotIndex <= last_block.header.height)
         {
-            log.trace("receiveEnvelope: Ignoring envelope with slot id {} as ledger is at height {}",
-                envelope.statement.slotIndex, last_block.header.height.value);
+            log.trace("{}: Ignoring envelope with slot id {} as ledger is at height {}",
+                __PRETTY_FUNCTION__, envelope.statement.slotIndex, last_block.header.height.value);
             return;  // slot was already externalized
         }
 
@@ -740,13 +742,28 @@ extern(D):
         const cur_height = this.ledger.height();
         log.trace("Received BLOCK SIG {} from node {} for block {}",
                     block_sig.signature, block_sig.utxo, block_sig.height);
+
+        if (block_sig.height == pending_block.header.height)
+        {
+            if (this.collectBlockSignature(block_sig, pending_block.hashFull()))
+            {
+                log.dbg("{}: Add to next block #{} being externalized for utxo {}", __PRETTY_FUNCTION__, block_sig.height, block_sig.utxo);
+                log.dbg("{}: header was {}", __PRETTY_FUNCTION__, pending_block.header.validators);
+                this.updateMultiSignature(pending_block.header);
+                log.dbg("{}: header now {}", __PRETTY_FUNCTION__, pending_block.header.validators);
+            }
+            return BlockHeader.init; // We do not want the caller to push this header yet
+        }
+
+        // Adding signature to block already in the ledger
         if (block_sig.height > cur_height)
             return BlockHeader.init;
-
         const block = this.ledger.getBlocksFrom(Height(block_sig.height)).front;
         if (!this.collectBlockSignature(block_sig, block.hashFull()))
             return BlockHeader.init;
-        const updated_sig = this.updateMultiSignature(block.header);
+        BlockHeader header = block.header.clone();
+        this.updateMultiSignature(header);
+        const updated_sig = header;
         this.ledger.updateBlockMultiSig(updated_sig);
         return updated_sig;
     }
@@ -940,23 +957,6 @@ extern(D):
                 return ValidationLevel.kInvalidValue;
             }
         }
-
-        const last_height = this.ledger.height();
-        if (last_height + 1 == slot_idx) // Let's check last block is still one before this one
-        {
-            if (!this.ledger.hasMajoritySignature(last_height))
-            {
-                log.info("Waiting for more than half to sign the last block");
-                return ValidationLevel.kMaybeValidValue; // this node is not ready to continue but will not block progress
-            }
-        }
-        else if (slot_idx > last_height + 1)   // Too early for us to check for signatures
-        {
-            log.dbg("Too early to check signatures of last block. slot_idx: {}, ledger height: {}",
-                slot_idx, last_height);
-            return ValidationLevel.kMaybeValidValue;
-        }
-
         this.fully_validated_value.put(idx_value_hash);
         return ValidationLevel.kFullyValidatedValue;
     }
@@ -985,13 +985,6 @@ extern(D):
                 height, last_height);
             return;  // slot was already externalized or envelope is too new
         }
-        else if (!this.ledger.hasMajoritySignature(last_height))
-        {
-            log.trace("valueExternalized: Will not externalize envelope with slot id {} as we are " ~
-                "missing signagures for height {}", height, last_height);
-            return;
-        }
-
         ConsensusData data = void;
         try
             data = deserializeFull!ConsensusData(value[]);
@@ -1012,15 +1005,14 @@ extern(D):
                 return;
             }
 
-            const block = this.ledger.buildBlock(
+            pending_block = this.ledger.buildBlock(
                 externalized_tx_set, data.enrolls, data.missing_validators);
 
             // Now we add our signature and gossip to other nodes
             log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
             const self = this.enroll_man.getEnrollmentKey();
-            this.slot_sigs[height][self] = this.signBlock(block);
-            this.ledger.addHeightAsExternalizing(height);
-            this.verifyBlock(block.updateHeader(this.updateMultiSignature(block.header)));
+            this.slot_sigs[height][self] = this.signBlock(pending_block);
+            this.updateMultiSignature(pending_block.header);
         }
         catch (Exception exc)
         {
@@ -1031,6 +1023,45 @@ extern(D):
         log.trace("valueExternalized: added slot id {} to ledger at height {}", height, last_height);
         () @trusted { this.fully_validated_value.clear(); }();
         () @trusted { this.seen_envs.clear(); }();
+        this.timers[TimersIdx.Externalize].rearm(ExternalizeTaskDelay, false);
+    }
+
+    /// If we have majority signatures then externalize to the ledger otherwise try again later
+    extern(D) private void checkExternalize () nothrow
+    {
+        try
+        {
+            if (pending_block.header.height == this.ledger.height + 1)
+            {
+                this.updateMultiSignature(pending_block.header);
+                if (!this.ledger.hasMajoritySignature(pending_block.header))
+                {
+
+                    log.dbg("{}: Will not yet externalize block #{} as we only have {} / {} signatures",
+                        __FUNCTION__, pending_block.header.height, pending_block.header.validators.setCount,
+                        pending_block.header.validators.count);
+                    this.timers[TimersIdx.Catchup].rearm(CatchupTaskDelay, false);
+                    this.timers[TimersIdx.Externalize].rearm(ExternalizeTaskDelay, false);
+                    return;
+                }
+                else
+                {
+                    log.info("{}: Ready to externalize block #{} to the ledger", __FUNCTION__, pending_block.header.height);
+                    this.verifyBlock(pending_block);
+                }
+            }
+            else
+            {
+                log.info("{}: block #{} was already in the ledger (catchup task)", __FUNCTION__, pending_block.header.height);
+            }
+            pending_block = Block.init;
+            // Enable envelope processing again
+            this.timers[TimersIdx.Envelope].rearm(EnvTaskDelay, false);
+        }
+        catch (Exception exc)
+        {
+            log.warn("{}: Exception thrown: {}", __FUNCTION__, exc);
+        }
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
@@ -1069,14 +1100,14 @@ extern(D):
 
     ***************************************************************************/
 
-    public const(BlockHeader) updateMultiSignature (in BlockHeader header) @safe
+    public void updateMultiSignature (ref BlockHeader header) @safe
     {
         const validators = this.ledger.getValidators(header.height);
 
         if (header.height !in this.slot_sigs)
         {
             log.warn("No known signatures at height {}", header.height);
-            return header;
+            return;
         }
         const Signature[Hash] block_sigs = this.slot_sigs[header.height];
 
@@ -1096,11 +1127,10 @@ extern(D):
                 this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
             }
         }
-        const signed_header = header.updateSignature(multiSigCombine(sigs_to_add),
-            validator_mask);
+        header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
         log.trace("Updated block signature for block {}, mask: {}",
                 header.height, validator_mask);
-        return signed_header;
+        return;
     }
 
     /***************************************************************************

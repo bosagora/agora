@@ -99,9 +99,6 @@ public class Validator : FullNode, API
     /// The identity we present on `handshake`
     private Identity identity;
 
-    /// Signatures we received a early
-    private Set!ValidatorBlockSig early_sigs;
-
     /// Ctor
     public this (Config config)
     {
@@ -392,9 +389,7 @@ public class Validator : FullNode, API
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
-        acceptHeader(block.header);
-        early_sigs[].each!(sig => this.postBlockSignature(sig));
-        early_sigs.clear();
+        acceptHeader(block.header.clone());
 
         // In the case where a validator is restarted and frozen utxo is not in Genesis
         if (this.identity.utxo == Hash.init)
@@ -419,7 +414,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override void acceptHeader (const(BlockHeader) header) @safe
+    protected override void acceptHeader (BlockHeader header) @safe
     {
         // First we must validate the header
         if (auto err = this.ledger.validateBlockSignature(header))
@@ -428,9 +423,9 @@ public class Validator : FullNode, API
             return;
         }
         // Add any missing signatures we know
-        const updated_header = this.nominator.updateMultiSignature(header);
-        this.ledger.updateBlockMultiSig(updated_header);
-        super.acceptHeader(updated_header);
+        this.nominator.updateMultiSignature(header);
+        this.ledger.updateBlockMultiSig(header);
+        super.acceptHeader(header);
     }
 
     /***************************************************************************
@@ -471,10 +466,6 @@ public class Validator : FullNode, API
         {
             this.pushBlockHeader(new_header);
             network.gossipBlockSignature(block_sig);
-        }
-        else if(block_sig.height == this.ledger.height() + 1)
-        {
-            early_sigs.put(block_sig);
         }
     }
 
