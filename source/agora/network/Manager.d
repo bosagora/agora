@@ -521,8 +521,7 @@ public class NetworkManager
         enforce(this.config.node.registry_address.set,
                 "A validator should have a name registry configured");
 
-        this.registry_client = this.makeRegistryClient(
-            this.config.node.registry_address);
+        this.registry_client = this.makeRegistryClient();
 
         this.onRegisterName();  // avoid delay
         // We re-register at regular interval in order to cope with the situation below
@@ -1030,6 +1029,11 @@ public class NetworkManager
 
         Instantiates a client object implementing `NameRegistryAPI`
 
+        The parameter-less overload uses the address configured in the
+        configuration file, or `null` if there is none, while the overload
+        taking an `Address` will connect to an arbitrary registry and will
+        always return a non-`null` value.
+
         Params:
           address = The address of the name registry server
 
@@ -1039,6 +1043,14 @@ public class NetworkManager
     ***************************************************************************/
 
     public abstract NameRegistryAPI makeRegistryClient (Address address);
+
+    /// Ditto
+    public final NameRegistryAPI makeRegistryClient ()
+    {
+        if (!this.config.node.registry_address.set)
+            return null;
+        return this.makeRegistryClient(this.config.node.registry_address);
+    }
 
     /***************************************************************************
 
