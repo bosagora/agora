@@ -739,10 +739,6 @@ LOuter: while (1)
 
     public void onUpdateTxExternalized (in Transaction tx, in uint utxo_idx, in bool is_last)
     {
-        this.state = ChannelState.StartedUnilateralClose;
-        this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
-            ErrorCode.None);
-
         this.last_externalized_update_utxo = UTXO.getHash(tx.hashFull(), utxo_idx);
         if (is_last)
         {
@@ -753,7 +749,13 @@ LOuter: while (1)
         }
         else
         {
-            this.publishUpdateTx(this.channel_updates[$ - 1]);
+            this.taskman.setTimer(100.msecs,
+            {
+                this.publishUpdateTx(this.channel_updates[$ - 1]);
+                this.state = ChannelState.StartedUnilateralClose;
+                this.onChannelNotify(this.own_pk, this.conf.chan_id, this.state,
+                    ErrorCode.None, this.height);
+            });
         }
     }
 
@@ -2221,6 +2223,8 @@ LOuter: while (1)
 
     protected Transaction publishUpdateTx (in UpdatePair update)
     {
+        import agora.utils.PrettyPrinter;
+
         auto update_tx = update.update_tx.serializeFull.deserializeFull!Transaction();
         assert(update_tx.inputs.length == 1);
         assert(update_tx.outputs.length == 1);
@@ -2264,9 +2268,11 @@ LOuter: while (1)
                 update_tx.inputs[idx].unlock = genKeyUnlock(fee_sig);
 
         auto result = this.txPublisher(update_tx);
-        log.info("{}: Publishing update tx {}: {}. Result: {}",
+        // NOTE: Added the content of the update tx in the log for debugging
+        // about the failure on the CI build but will be removed after fixing it.
+        log.info("{}: Publishing update tx {}: {}. Result: {}. Tx: {}",
             this.own_pk.flashPrettify, update.seq_id, update_tx.hashFull().flashPrettify,
-            result);
+            result, update_tx.prettify);
         return update_tx;
     }
 
