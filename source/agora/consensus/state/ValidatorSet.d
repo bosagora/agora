@@ -72,6 +72,10 @@ public class ValidatorSet
     /// Parameters for consensus-critical constants
     private immutable(ConsensusParams) params;
 
+    /// Cached result to getValidator()
+    private Height cached_height;
+    private ValidatorInfo[] cached_validator_info;
+
     /***************************************************************************
 
         Constructor
@@ -157,6 +161,7 @@ public class ValidatorSet
                 enroll.enroll_sig.R,
                 stake);
         }();
+        cached_height = Height.init; // invalidate cache, just in case
         return null;
     }
 
@@ -177,6 +182,7 @@ public class ValidatorSet
         {
             log.error("Error while calling ValidatorSet.removeAll(): {}", ex);
         }
+        cached_height = Height.init;
     }
 
     /***************************************************************************
@@ -192,6 +198,7 @@ public class ValidatorSet
     public void slashValidator (in Hash enroll_hash, in Height height) @trusted
     {
         this.db.execute("UPDATE validator SET slashed_height = ? WHERE key = ?", height, enroll_hash);
+        cached_height = Height.init; // invalidate cache, just in case
     }
 
     /***************************************************************************
@@ -313,6 +320,9 @@ public class ValidatorSet
 
     public ValidatorInfo[] getValidators (in Height height) @trusted
     {
+        if (cached_height == height)
+            return cached_validator_info;
+
         auto results = this.db.execute(
             "SELECT enrolled_height, public_key, stake, validator.key,
             preimages.preimage, preimages.height " ~
@@ -336,6 +346,11 @@ public class ValidatorSet
                     ),
                 );
 
+        if (height > cached_height)
+        {
+            cached_validator_info = ret;
+            cached_height = height;
+        }
         return ret;
     }
 
@@ -546,6 +561,7 @@ public class ValidatorSet
             return false;
         }
 
+        cached_height = Height.init;
         return true;
     }
 
