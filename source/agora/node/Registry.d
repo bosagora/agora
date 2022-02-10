@@ -906,7 +906,7 @@ private struct ZoneData
                 // fields of data from a primary, it redirects API calls to API of the
                 // configured primary
                 this.redirect_register = this.netman.makeRegistryClient(
-                    this.config.redirect_register);
+                    Address(this.config.redirect_register));
 
                 this.expire_timer = this.taskman.createTimer(&this.disable);
             }

@@ -1384,14 +1384,13 @@ public class TestNetworkManager : NetworkManager
     }
 
     ///
-    public override RemoteAPI!NameRegistryAPI makeRegistryClient (string address)
+    public override RemoteAPI!NameRegistryAPI makeRegistryClient (Address address)
     {
-        assert(address != string.init, "Requested address for registry is empty");
-        const url = Address(address);
-        auto tid = this.registry.locate!NameRegistryAPI(url.host);
+        assert(address !is Address.init, "Requested address for registry is empty");
+        auto tid = this.registry.locate!NameRegistryAPI(address.host);
         if (tid != typeof(tid).init)
             return new RemoteAPI!NameRegistryAPI(tid, this.config.node.timeout);
-        assert(0, "Trying to access name registry at address '" ~ address ~
+        assert(0, "Trying to access name registry at address '" ~ address.toString() ~
                "' without first creating it");
     }
 
@@ -2211,7 +2210,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     {
         NodeConfig conf = test_conf.node;
         conf.testing = true;
-        conf.registry_address = "dns://10.8.8.8";
+        conf.registry_address = setField(Address("http://10.8.8.8"));
         const selfCount = 1;
         if (conf.min_listeners == size_t.max)
             conf.min_listeners = (test_conf.node.test_validators + test_conf.full_nodes) - selfCount;

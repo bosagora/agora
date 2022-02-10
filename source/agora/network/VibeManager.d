@@ -33,6 +33,7 @@ import agora.node.Config;
 import vibe.http.client;
 import vibe.web.rest;
 
+import std.algorithm.searching : startsWith;
 import core.time;
 
 /// The 'default' DNS resolver if none is provided
@@ -73,8 +74,6 @@ public final class VibeNetworkManager : NetworkManager
     /// See `NetworkManager.makeClient`
     protected override agora.api.Validator.API makeClient (Address url)
     {
-        import std.algorithm.searching;
-
         const timeout = this.config.node.timeout;
         if (url.schema == "agora")
         {
@@ -102,10 +101,11 @@ public final class VibeNetworkManager : NetworkManager
     }
 
     /// See `NetworkManager.makeRegistryClient`
-    public override NameRegistryAPI makeRegistryClient (string address)
+    public override NameRegistryAPI makeRegistryClient (Address address)
     {
+        assert(address.schema.startsWith("http"));
         return new RestInterfaceClient!NameRegistryAPI(
-            this.makeRestInterfaceSettings(Address(address)));
+            this.makeRestInterfaceSettings(address));
     }
 
     /// See `NetworkManager.makeBlockExternalizedHandler`

@@ -233,12 +233,12 @@ public class TestFlashNode : FlashNode, TestFlashAPI
     }
 
     ///
-    public NameRegistryAPI makeRegistryClient (string address)
+    public NameRegistryAPI makeRegistryClient (Address address)
     {
-        assert(address != string.init, "Empty address");
-        const url = Address(address);
-        auto tid = this.registry.locate!NameRegistryAPI(url.host);
-        assert(tid != typeof(tid).init, "Trying to access name registry at address '" ~ address ~
+        assert(address !is Address.init, "Empty address");
+        auto tid = this.registry.locate!NameRegistryAPI(address.host);
+        assert(tid != typeof(tid).init,
+               "Trying to access name registry at address '" ~ address.toString() ~
                "' without first creating it");
         return new RemoteAPI!NameRegistryAPI(tid, this.conf.timeout);
     }

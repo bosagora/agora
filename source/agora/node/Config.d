@@ -125,7 +125,7 @@ public struct Config
     {
         if (this.validator.enabled)
             enforce(this.network.length || this.registry.enabled ||
-                    this.node.registry_address != string.init ||
+                    this.node.registry_address.set ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.test_validators == 1,
                     "Either the network section must not be empty, or 'node.registry_address' must be set " ~
@@ -279,12 +279,20 @@ public struct NodeConfig
     public immutable(Domain) realm = Domain.fromSafeString("testnet.bosagora.io.");
 
     // Registry address
-    public @Optional string registry_address;
+    public SetInfo!Address registry_address;
 
     /// Validate this struct
     public void validate () const scope @safe
     {
+        import std.algorithm.searching : startsWith;
+
         ensure(this.realm != Domain.fromSafeString("."), "node.realm cannot be empty");
+        if (this.registry_address.set)
+        {
+            const schema = this.registry_address.schema;
+            ensure(schema.startsWith("http"),
+                   "Registry address schema must be http(s), not {}", schema);
+        }
     }
 }
 
