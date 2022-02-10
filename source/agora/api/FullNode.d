@@ -41,8 +41,27 @@ public struct NodeInfo
     /// Whether the node knows about the IPs of all its quorum set nodes
     public NetworkState state;
 
-    /// Partial or full view of the addresses of the node's quorum (based on is_complete)
-    public Set!Address addresses;
+    public struct PeerInfo
+    {
+        /// Public key of the node if present
+        public PublicKey key;
+
+        /// Frozen UTXO of the node if present
+        public Hash stake;
+
+        /// Connected addresses
+        public const(Address)[] addresses;
+    }
+
+    /// List of peers
+    PeerInfo[] peers;
+
+    /// convenience alias
+    public auto addresses () @safe
+    {
+        import std.algorithm;
+        return peers.map!(peer => peer.addresses).joiner();
+    }
 }
 
 /// Identity of a Validator node

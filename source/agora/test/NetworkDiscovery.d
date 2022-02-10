@@ -33,8 +33,8 @@ unittest
 
     foreach (key, node; network.nodes)
     {
-        auto addresses = node.client.getNodeInfo().addresses.keys.map!(addr => addr.host).array;
-        const expectedCount = network.nodes.count;
+        auto addresses = node.client.getNodeInfo().addresses.map!(addr => addr.host).array;
+        const expectedCount = key < GenesisValidators ? GenesisValidators - 1 : GenesisValidators;
         assert(addresses.sort.uniq.count == expectedCount,
             format("Node %s has %d peers but expected %d: %s",
                 key, addresses.length, expectedCount, addresses));

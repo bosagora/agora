@@ -236,9 +236,6 @@ public class NetworkManager
     /// All connected nodes (Validators & FullNodes)
     public DList!NetworkClient peers;
 
-    /// All known addresses so far (used for getNodeInfo())
-    protected Set!Address known_addresses;
-
     /// The list of addresses we have not yet tried to connect to
     protected Set!Address todo_addresses;
 
@@ -645,7 +642,7 @@ public class NetworkManager
     }
 
     /// Received new set of addresses, put them in the todo address list
-    private void addAddresses (Set!Address addresses) @safe
+    private void addAddresses (AddressSet) (AddressSet addresses) @safe
     {
         foreach (address; addresses)
             this.addAddress(address);
@@ -656,11 +653,6 @@ public class NetworkManager
     {
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
-
-        // We include banned addresses in known address,
-        // because while *we* cannot establish a connection with
-        // a node it's possible other nodes in the network might be able to.
-        this.known_addresses.put(address);
     }
 
     /***************************************************************************
@@ -989,12 +981,13 @@ public class NetworkManager
     }
 
     /// Returns: the list of node IPs this node is connected to
-    public NodeInfo getNetworkInfo () nothrow @safe
+    public NodeInfo getNetworkInfo () @safe
     {
         return NodeInfo(
             this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
-            this.known_addresses);
+            this.peers[].map!(peer => NodeInfo.PeerInfo(peer.identity.key,
+                peer.identity.utxo, peer.addresses.array)).array);
     }
 
     /***************************************************************************
