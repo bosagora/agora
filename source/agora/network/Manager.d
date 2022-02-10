@@ -750,6 +750,18 @@ public class NetworkManager
 
     /***************************************************************************
 
+        Returns:
+          A range of peers which are quorum peers
+
+    ***************************************************************************/
+
+    public auto quorum_peers () return @safe nothrow pure
+    {
+        return this.validators().filter!(v => v.identity().utxo in this.quorum_set_keys);
+    }
+
+    /***************************************************************************
+
         Retrieve blocks starting from height up to the highest block
         that's available from the connected nodes.
 
@@ -1042,7 +1054,7 @@ public class NetworkManager
     {
         log.trace("Gossip block signature {} for height #{} node {}",
             block_sig.signature, block_sig.height , block_sig.utxo);
-        this.validators().each!(v => v.sendBlockSignature(block_sig));
+        this.quorum_peers().each!(v => v.sendBlockSignature(block_sig));
     }
 
     /***************************************************************************

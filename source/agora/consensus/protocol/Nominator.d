@@ -1127,7 +1127,7 @@ extern(D):
         catch (Exception e)
             assert(0);
         log.dbg("{}: peers are {}", __PRETTY_FUNCTION__, this.network.peers[]);
-        this.network.validators().each!(v => v.sendEnvelope(copy));
+        this.network.quorum_peers().each!(v => v.sendEnvelope(copy));
     }
 
     /***************************************************************************
