@@ -91,14 +91,6 @@ unittest
         retryFor(node.getNodeInfo().state == NetworkState.Complete,
             5.seconds));
 
-    // Check if the validators in the set B have all the addresses for
-    // current validators and previous validators.
-    set_b.enumerate.each!((idx, node) =>
-        retryFor(node.getNodeInfo().addresses.length == allValidators,
-            10.seconds,
-            format("Node %s has addresses %s which is not expected count of %s",
-            idx + 5, node.getNodeInfo().addresses, allValidators)));
-
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.shutdown);
 
