@@ -179,7 +179,7 @@ public class FlashNode : FlashControlAPI
     protected const(Block) delegate (ulong _height) @safe getBlock;
 
     ///
-    protected NameRegistryAPI delegate (string address) makeRegistryClient;
+    protected NameRegistryAPI delegate (Address address) makeRegistryClient;
 
     /***************************************************************************
 
@@ -201,7 +201,7 @@ public class FlashNode : FlashControlAPI
         Engine engine, ITaskManager taskman,
         TransactionResult delegate (in Transaction tx) postTransaction,
         const(Block) delegate (ulong _height) @safe getBlock,
-        NameRegistryAPI delegate (string address) makeRegistryClient)
+        NameRegistryAPI delegate (Address address) makeRegistryClient)
     {
         this.conf = conf;
         this.genesis_hash = genesis_hash;
@@ -256,7 +256,7 @@ public class FlashNode : FlashControlAPI
             this.listener = new BlackHole!FlashListenerAPI();
 
         assert(this.conf.registry_address.length);
-        this.registry_client = this.makeRegistryClient(this.conf.registry_address);
+        this.registry_client = this.makeRegistryClient(Address(this.conf.registry_address));
         this.onRegisterName();  // avoid delay
 
         this.gossip_timer = this.taskman.setTimer(100.msecs,

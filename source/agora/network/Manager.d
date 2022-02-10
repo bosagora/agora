@@ -518,8 +518,7 @@ public class NetworkManager
     /// Periodically registers network addresses
     public ITimer startPeriodicNameRegistration ()
     {
-        // No configured registry, nothing to do
-        enforce(this.config.node.registry_address.length > 0,
+        enforce(this.config.node.registry_address.set,
                 "A validator should have a name registry configured");
 
         this.registry_client = this.makeRegistryClient(
@@ -1039,7 +1038,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public abstract NameRegistryAPI makeRegistryClient (string address);
+    public abstract NameRegistryAPI makeRegistryClient (Address address);
 
     /***************************************************************************
 
