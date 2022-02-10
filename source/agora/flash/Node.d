@@ -730,7 +730,7 @@ public class FlashNode : FlashControlAPI
         if (state == ChannelState.Open)  // todo: might not exist
             this.onChannelOpen(reg_pk, this.channels[chan_id].conf, height);
 
-        this.listener.onChannelNotify(reg_pk, chan_id, state, error);
+        this.listener.onChannelNotify(reg_pk, chan_id, state, error, height);
     }
 
     ///

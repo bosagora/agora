@@ -498,6 +498,7 @@ private class FlashListener : TestFlashListenerAPI
     {
         ChannelState state;
         ErrorCode error;
+        Height height;
     }
 
     State[PublicKey][Hash] channel_state;
@@ -565,12 +566,12 @@ private class FlashListener : TestFlashListenerAPI
     }
 
     public void onChannelNotify (PublicKey pk, Hash chan_id, ChannelState state,
-        ErrorCode error, Height = Height(0))
+        ErrorCode error, Height height = Height(0))
     {
         log.info("Channel event {}, id {}", state, chan_id.flashPrettify);
         if (chan_id !in this.channel_state)
             this.channel_state[chan_id] = typeof(this.channel_state[chan_id]).init;
-        this.channel_state[chan_id][pk] = State(state, error);
+        this.channel_state[chan_id][pk] = State(state, error, height);
     }
 
     public Result!ChannelUpdate onRequestedChannelOpen (PublicKey pk, ChannelConfig conf)
