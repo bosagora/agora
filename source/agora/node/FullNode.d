@@ -556,7 +556,7 @@ public class FullNode : API
 
         try
         {
-            this.network.getMissingBlockSigs(this.ledger, &this.acceptHeader);
+            this.network.getMissingBlockSigs(this.ledger, &this.extra_sigs, &this.acceptHeader);
         }
         catch (Exception e)
         {
@@ -580,6 +580,27 @@ public class FullNode : API
         // Otherwise we don't print a message, as the Ledger is up to date.
 
         this.network.getUnknownTXs(this.ledger);
+    }
+
+    /***************************************************************************
+
+        Count extra signatures that could be added to the provided header.
+
+        For Validators this is overridden as it stores signatures and could add
+        them to the header if missing.
+
+        Params:
+            header = the block header fetched from another node
+
+        Returns:
+            The number of signatures that could be added to the given header,
+            FullNode does not store signatures so will return 0
+
+    ***************************************************************************/
+
+    protected ulong extra_sigs (BlockHeader header) @safe
+    {
+        return 0;
     }
 
     /***************************************************************************
