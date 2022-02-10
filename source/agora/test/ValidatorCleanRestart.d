@@ -141,8 +141,6 @@ unittest
         // Wake up node_2
         scope (exit) node_2.ctrl.sleep(0.seconds);
 
-        Thread.sleep(5.seconds); // TODO: remove this issue #2971
-
         // Make 2 blocks
         network.generateBlocks(only(0, 1, 3), Height(3));
     }
@@ -151,9 +149,6 @@ unittest
         node_1.ctrl.sleep(1.hours, true);
         // Make sure we can print the logs
         scope (failure) node_1.ctrl.sleep(0.seconds);
-
-        // give time for node_2 to be discovered again
-       Thread.sleep(5.seconds); // TODO: remove this issue #2971
 
         // wait till node_2 catches up
         network.assertSameBlocks(only(0, 2, 3), Height(3));
