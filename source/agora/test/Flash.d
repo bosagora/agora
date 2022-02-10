@@ -74,9 +74,10 @@ public interface TestFlashListenerAPI : FlashListenerAPI
     /// has succeeded / failed, and return true / false for success
     ErrorCode waitUntilNotified (Invoice);
 
-    /// wait until we get a notification about the given channel state,
-    /// and return any associated error codes
-    ErrorCode waitUntilChannelState (Hash, ChannelState, PublicKey node = PublicKey.init);
+    /// wait until we get a notification about the given channel state
+    /// with the specified height and return any associated error codes
+    ErrorCode waitUntilChannelState (Hash, ChannelState, PublicKey node = PublicKey.init,
+        Height height = Height(0), bool erase_state = true);
 
     /// Print out the contents of the log
     public void printLog ();
@@ -542,16 +543,24 @@ private class FlashListener : TestFlashListenerAPI
     }
 
     public ErrorCode waitUntilChannelState (Hash chan_id, ChannelState state,
-        PublicKey node = PublicKey.init)
+        PublicKey node = PublicKey.init, Height height = Height(0),
+        bool erase_state = true)
     {
-        scope (exit) this.channel_state.remove(chan_id);
+        // There is no case where we check the state with a specified
+        // height and no public key.
+        assert(height == Height(0) || node != PublicKey.init);
+
+        scope (exit) if (erase_state) this.channel_state.remove(chan_id);
         while (1)
         {
             if (auto chan_states = chan_id in this.channel_state)
             {
                 if (auto chan_state = node in *chan_states)
-                    if ((*chan_state).state >= state)
+                {
+                    if ((*chan_state).state >= state &&
+                        (*chan_state).height >= height)
                         return (*chan_state).error;
+                }
                 if (node == PublicKey.init)
                 {
                     auto states = chan_states.byValue
@@ -1924,6 +1933,13 @@ unittest
     update_tx = alice.getPublishUpdateIndex(WK.Keys.A.address, chan_id, 1);
     network.clients[0].postTransaction(update_tx);
     assert(!network.clients[0].hasTransactionHash(update_tx.hashFull()));
+
+    // wait until all the flash nodes skip publishing `update tx` before
+    // the `setPublishEnable` is called.
+    network.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose, WK.Keys.A.address, Height(4), false);
+    network.listener.waitUntilChannelState(chan_id,
+        ChannelState.StartedUnilateralClose, WK.Keys.C.address, Height(4));
 
     // allow normal node operation again
     alice.setPublishEnable(true);
