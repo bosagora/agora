@@ -59,7 +59,7 @@ will completely wipe out the state: the next time you start the node, it will re
 A simple way to avoid re-downloading the blockchain is to "mount" the current directory inside Docker
 with the following command:
 ```shell
-docker -v $(pwd):/agora/ bosagora/agora -c /dev/null
+docker run -v $(pwd):/agora/ bosagora/agora -c /dev/null
 ```
 
 As long as you use this command to start Agora, you will not have to always re-download the chain.
@@ -77,9 +77,9 @@ using the directives listed in the [example configuration file](/doc/config.exam
 To use it, simply copy it in the directory where you run Agora and use the following command:
 ```shell
 # Use this if your file is named `config.yaml`
-docker -v $(pwd):/agora/ bosagora/agora
+docker run -v $(pwd):/agora/ bosagora/agora
 # Or use the following for a file named `my_config.yaml`:
-docker -v $(pwd):/agora/ bosagora/agora -c my_config.yaml
+docker run -v $(pwd):/agora/ bosagora/agora -c my_config.yaml
 ```
 
 ## Running a validator
