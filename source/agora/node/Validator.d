@@ -430,6 +430,25 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
+        Count extra signatures that could be added to the provided header.
+
+        Params:
+            header = the block header fetched from another node
+
+        Returns:
+            The number of signatures that could be added to the given header
+
+    ***************************************************************************/
+
+    protected override ulong extra_sigs (BlockHeader header) @safe
+    {
+        const currentCount = header.validators.setCount;
+        this.nominator.updateMultiSignature(header);
+        return header.validators.setCount - currentCount;
+    }
+
+    /***************************************************************************
+
         Receive an SCP envelope.
 
         API:

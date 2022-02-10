@@ -900,7 +900,8 @@ public class NetworkManager
     ***************************************************************************/
 
     public void getMissingBlockSigs (Ledger ledger,
-        scope void delegate (BlockHeader) @safe acceptHeader) @safe nothrow
+        scope ulong delegate(BlockHeader) @safe extra_sigs,
+        scope void delegate(BlockHeader) @safe acceptHeader) @safe nothrow
     {
         import std.algorithm;
         import std.conv;
@@ -939,9 +940,10 @@ public class NetworkManager
                     {
                         foreach (header; peer.getBlockHeaders(missing_heights))
                         {
-                            auto sig_signed_validators = iota(enrolled_validators[header.height]).filter!(i =>
-                                header.validators[i] || header.preimages[i] is Hash.init).count();
-                            if (sig_signed_validators > signed_validators[header.height])
+                            auto potential_sig_count = iota(enrolled_validators[header.height]).filter!(i =>
+                                header.validators[i] || header.preimages[i] is Hash.init).count()
+                                + extra_sigs(header);
+                            if (potential_sig_count > signed_validators[header.height])
                             {
                                 try
                                 {
