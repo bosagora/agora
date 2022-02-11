@@ -23,6 +23,7 @@ version (unittest) {}
 else:
 
 import agora.common.FileBasedLock;
+import agora.common.Types;
 import agora.node.admin.Setup;
 import agora.node.Config;
 import agora.node.FullNode;
@@ -135,6 +136,27 @@ private int main (string[] args)
 
     Nullable!Config configN = ()
     {
+        if (cmdln.testnet)
+        {
+            import agora.common.DNS;
+            import core.time;
+
+            Config defaultConfig = {
+                node: {
+                    testing: true,
+                    realm: Domain.fromSafeString("testnet.bosagora.io."),
+                    registry_address: Address("http://ns1.bosagora.io"),
+                },
+                network: TestNetNodes,
+                consensus: {
+                    validator_cycle: 20,
+                    block_interval: 1.minutes,
+                    genesis_timestamp: 1640995200,
+                },
+            };
+            return Nullable!Config(defaultConfig);
+        }
+
         if (cmdln.config_path == "/dev/null")
             return Nullable!Config(Config.init);
         return cmdln.parseConfigFileSimple!Config();
@@ -284,3 +306,18 @@ private void handleAssertion (string file, size_t line, string msg) nothrow
 
 /// A statically allocated instance to avoid invalid memory errors in destructors
 private AssertError stAssertError;
+
+/// Work around issue #3030 and allow internal testing
+private immutable Address[] TestNetNodes;
+
+shared static this ()
+{
+    TestNetNodes = [
+        Address("http://boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2.validators.testnet.bosagora.io/"),
+        Address("http://boa1xzval3ah8z7ewhuzx6mywveyr79f24w49rdypwgurhjkr8z2ke2mycftv9n.validators.testnet.bosagora.io/"),
+        Address("http://boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy.validators.testnet.bosagora.io/"),
+        Address("http://boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8.validators.testnet.bosagora.io/"),
+        Address("http://boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5.validators.testnet.bosagora.io/"),
+        Address("http://boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh.validators.testnet.bosagora.io/"),
+    ];
+}
