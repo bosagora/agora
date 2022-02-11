@@ -61,7 +61,7 @@ private extern(C++) class BadBlockSigningNominator : Nominator
         }
     }
 
-    extern(D) override protected void verifyBlock (in Block signed_block)
+    extern(D) override protected void verifyBlock (in Block signed_block) @safe
     {
         // Do nothing for this byzantine node
     }

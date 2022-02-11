@@ -351,8 +351,8 @@ public class Ledger
                 ? null
                 : "Trying to externalize a different block for the latest height";
 
-        if (!this.hasMajoritySignature(this.height()))
-            return "Previous height does not have majority signature";
+        assert(this.hasMajoritySignature(this.last_block.header),
+            "Previous height does not have majority signature");
 
         if (auto fail_reason = this.validateBlock(block))
         {
@@ -820,7 +820,7 @@ public class Ledger
         }
 
         // Check that more than half have signed
-        if (!this.hasMajoritySignature(header, validators))
+        if (!this.hasMajoritySignature(header))
             if (auto fail_msg = this.handleNotSignedByMajority(header, validators))
                 return fail_msg;
 
@@ -899,35 +899,12 @@ public class Ledger
 
     ***************************************************************************/
 
-    protected bool hasMajoritySignature (in BlockHeader header,
-        in ValidatorInfo[] validators) @safe nothrow
+   public bool hasMajoritySignature (in BlockHeader header) @safe nothrow
     {
         if (header.height == 0)  // Genesis block is not signed
             return true;
-        const num_validators = validators.length;
-        assert(num_validators == header.validators.count);
         // Check that more than half have signed
-        const signed = header.validators.setCount;
-        return signed > (num_validators / 2);
-    }
-
-    /// Ditto
-    public bool hasMajoritySignature (Height height) @safe nothrow
-    {
-        ValidatorInfo[] validators;
-        try
-            validators = this.getValidators(height);
-        catch (Exception exc)
-            return false;
-        if (height > this.height())
-            return false;
-        else if (height == this.last_block.header.height) // most common case
-            return this.hasMajoritySignature(this.last_block.header, validators);
-
-        try
-            return this.hasMajoritySignature(this.storage.readBlock(height).header, validators);
-        catch (Exception exc)
-            return false;
+        return  header.validators.percentage > 50;
     }
 
     /***************************************************************************

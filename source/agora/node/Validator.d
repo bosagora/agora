@@ -100,9 +100,6 @@ public class Validator : FullNode, API
     /// The identity we present on `handshake`
     private Identity identity;
 
-    /// Signatures we received a early
-    private Set!ValidatorBlockSig early_sigs;
-
     /// Ctor
     public this (Config config)
     {
@@ -394,8 +391,6 @@ public class Validator : FullNode, API
             return fail_msg;
 
         acceptHeader(block.header.clone());
-        early_sigs[].each!(sig => this.postBlockSignature(sig));
-        early_sigs.clear();
 
         // In the case where a validator is restarted and frozen utxo is not in Genesis
         if (this.identity.utxo == Hash.init)
@@ -472,10 +467,6 @@ public class Validator : FullNode, API
         {
             this.pushBlockHeader(new_header);
             network.gossipBlockSignature(block_sig);
-        }
-        else if(block_sig.height == this.ledger.height() + 1)
-        {
-            early_sigs.put(block_sig);
         }
     }
 

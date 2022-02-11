@@ -688,87 +688,6 @@ public class ValidatingLedger : NodeLedger
         super(params, database, storage, enroll_man, pool, onAcceptedBlock);
     }
 
-    // dynamic array to keep track of blocks we are externalizing so can allow
-    //  less signatures than majority when validating
-    // TODO: We need to clear out old entries to reduce memory footprint
-    private Height[] externalizing;
-
-    public void addHeightAsExternalizing (Height height) @safe nothrow
-    {
-        this.externalizing ~= height;
-    }
-
-    /***************************************************************************
-
-        Used to handle behaviour when less than half the validators have signed
-        the block. If we are in process of externalizing blocks we ignore when
-        there is less than half signed as we are waiting to recieve the other
-        signatures.
-
-        Params:
-            header = header of block we checked
-            validators = validator info for the ones that did sign
-
-    ***************************************************************************/
-
-    protected override string handleNotSignedByMajority (in BlockHeader header,
-        in ValidatorInfo[] validators) @safe nothrow
-    {
-        if (!externalizing.canFind(header.height))
-            return super.handleNotSignedByMajority(header, validators);
-
-        log.trace("Block#{}: Externalizing so ignore Signatures are not majority: {}/{}, signers: {}.",
-            header.height, header.validators.setCount, header.validators.count, validators);
-        return null;
-    }
-
-    /***************************************************************************
-
-        Override so that if this validator has not yet signed it is not included
-
-        Params:
-            header = header to check the signatures of
-            validators = validator info for the active validators
-            height = block height we are checking (used in second overload)
-
-        Returns:
-            If the signatures have reached majority
-
-    ***************************************************************************/
-
-    protected override bool hasMajoritySignature (in BlockHeader header,
-        in ValidatorInfo[] validators) @safe nothrow
-    {
-        if (header.height == 0)  // Genesis block is not signed
-            return true;
-        const num_validators = validators.length;
-        assert(num_validators == header.validators.count);
-        // Check that more than half have signed
-        try
-        {
-            const self_utxo = this.enroll_man.getEnrollmentKey();
-            if (self_utxo != Hash.init)
-            {
-                // If this node has not signed yet then assume it will
-                const self_idx = validators.map!(v => v.utxo).countUntil(self_utxo);
-                if (self_idx >= 0 && !header.validators[self_idx])
-                    return header.validators.setCount + 1 > (num_validators / 2);
-            }
-        }
-        catch (Exception e)
-        {
-            log.dbg("[{}:{}]: ValidatingLedger.hasMajoritySignature: {}",
-                __FILE__, __LINE__, e.msg);
-        }
-        return header.validators.setCount > (num_validators / 2);
-    }
-
-    /// Ditto
-    public override bool hasMajoritySignature (Height height) @safe nothrow
-    {
-        return super.hasMajoritySignature(height);
-    }
-
     /***************************************************************************
 
         Collect up to a maximum number of transactions to nominate
@@ -866,7 +785,7 @@ public class ValidatingLedger : NodeLedger
 
     version (unittest):
 
-    private string externalize (ConsensusData data, bool sign_all = true) @trusted
+    private string externalize (ConsensusData data, size_t signed = genesis_validator_keys.length) @trusted
     {
         const height = Height(this.last_block.header.height + 1);
         auto utxo_finder = this.utxo_set.getUTXOFinder();
@@ -882,14 +801,7 @@ public class ValidatingLedger : NodeLedger
         auto block = this.buildBlock(externalized_tx_set,
             data.enrolls, data.missing_validators);
 
-        auto validators = this.getValidators(height);
-        if (!sign_all)
-        {
-            this.addHeightAsExternalizing(height);
-            validators.length = 1;
-        }
-
-        validators.enumerate.each!((i, v)
+        this.getValidators(height).take(signed).enumerate.each!((i, v)
         {
             if (!data.missing_validators.canFind(i))
             {
@@ -903,7 +815,7 @@ public class ValidatingLedger : NodeLedger
     }
 
     /// simulate block creation as if a nomination and externalize round completed
-    public void forceCreateBlock (bool sign_all = true)
+    public void forceCreateBlock ()
     {
         const next_block = this.height() + 1;
         this.simulatePreimages(next_block);
@@ -925,7 +837,7 @@ public class ValidatingLedger : NodeLedger
             }
         }
 
-        if (auto reason = this.externalize(data, sign_all))
+        if (auto reason = this.externalize(data))
         {
             assert(0, format!"Failure in unit test. Block %s should have been externalized: %s"(
                        this.height() + 1, reason));
@@ -1791,6 +1703,7 @@ unittest
     scope ledger = new TestLedger(WK.Keys.A, [GenesisBlock], params);
 }
 
+// test block is only externalized with a majority of block signatures
 unittest
 {
     import agora.consensus.data.genesis.Test;
@@ -1800,34 +1713,21 @@ unittest
     scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
     ledger.simulatePreimages(Height(params.ValidatorCycle));
 
-    KeyPair kp = WK.Keys.A;
-    auto freeze_tx = genesisSpendable().front().refund(kp.address).sign(OutputType.Freeze);
-    assert(ledger.acceptTransaction(freeze_tx) is null);
-    ledger.forceCreateBlock(false);
-
-    Block block = ledger.lastBlock().clone();
-    assert(block.header.height == 1);
-    assert(block.header.validators.setCount < block.header.validators.count);
-    assert(!ledger.hasMajoritySignature(block.header.height));
-    assert(ledger.externalize(ConsensusData.init) == "Previous height does not have majority signature");
-
-    auto validators = ledger.getValidators(block.header.height);
-    foreach (i; block.header.validators.setCount..validators.length)
+    auto expected_height = 0;
+    // if less than 4 out of 6 validators sign it should not externalize
+    iota(4).each!((signed)
     {
-        block.header.validators[i] = true;
-        auto tmp = block.header.sign(WK.Keys[validators[i].address].secret, block.header.preimages[i]);
-        block.header.signature.R += tmp.R;
-        block.header.signature.s += tmp.s;
+        assert(ledger.externalize(ConsensusData.init, signed)
+            == "The majority of validators hasn't signed this block");
+        assert(ledger.height == expected_height);
+    });
 
-        ledger.updateBlockMultiSig(block.header);
-
-        auto majority = block.header.validators.setCount > block.header.validators.count / 2;
-        assert(majority == ledger.hasMajoritySignature(block.header.height));
-    }
-
-    // should be able to create a new block after previous height receives majority signatures
-    ledger.forceCreateBlock();
-    assert(ledger.height() == 2);
+    // if at least 4 out of 6 validators sign it should externalize
+    iota(4, 7).each!((signed)
+    {
+        assert(!ledger.externalize(ConsensusData.init, signed));
+        assert(ledger.height == ++expected_height);
+    });
 }
 
 // test enrollment sigs and request for a future height
