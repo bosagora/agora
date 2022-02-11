@@ -289,7 +289,9 @@ public class NetworkManager
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
         // Workaround #3030
-        if (config.network.length == 0 && config.node.testing && !config.validator.enabled)
+        import agora.common.DNS;
+        if (config.network.length == 0 && config.node.testing && !config.validator.enabled &&
+            config.node.realm == Domain.fromSafeString("testnet.bosagora.io."))
             this.addAddresses(Set!Address.from(TestNetNodes));
 
         // add the DNS seeds
