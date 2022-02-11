@@ -618,6 +618,13 @@ public struct ResourceRecord
         return ResourceRecord(name, TYPE.A, CLASS.IN, ttl, RDATA(ipv4));
     }
 
+    /// Make a record of AAAA type
+    public static ResourceRecord make (TYPE type : TYPE.AAAA) (
+        Domain name, uint ttl, ubyte[16] ipv6) @safe
+    {
+        return ResourceRecord(name, TYPE.AAAA, CLASS.IN, ttl, RDATA(ipv6));
+    }
+
     /// Make a record of NS type
     public static ResourceRecord make (TYPE type : TYPE.NS) (
         Domain name, uint ttl, Domain server) @safe
@@ -675,7 +682,7 @@ public struct ResourceRecord
         /// A 128 bit IPv6 address is encoded in the data portion of an AAAA
         /// resource record in network byte order (high-order byte first).
         /// https://datatracker.ietf.org/doc/html/rfc3596#section-2.2
-        public ulong[2] aaaa;
+        public ubyte[16] aaaa;
 
         /// A domain name: this is used by various record types,
         /// for example as CNAME, MX, NS...
