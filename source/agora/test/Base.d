@@ -71,6 +71,8 @@ static import geod24.LocalRest;
 import geod24.Registry;
 import geod24.concurrency;
 
+import configy.Attributes : SetInfo;
+
 import std.array;
 import std.exception;
 import std.range;
@@ -2146,6 +2148,12 @@ public struct TestConf
     public immutable(EventHandlerConfig)[] event_handlers;
 }
 
+/// Helper function to mark a `SetInfo!T` field as `set`
+private SetInfo!T setField (T) (T value)
+{
+    return SetInfo!T(value, true);
+}
+
 /*******************************************************************************
 
     Creates a test network with the desired topology
@@ -2353,8 +2361,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
 
     Config makeRegistryConfig (string addr, bool authoritative, bool set_soa)
     {
-        import configy.Attributes : SetInfo;
-
         Config registry_config = {
             banman : ban_conf,
             node : makeNodeConfig(),
@@ -2366,13 +2372,13 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             registry: {
                 enabled: true,
                 realm: {
-                    authoritative: SetInfo!bool(true, true),
-                    primary: SetInfo!string("name.registry", true),
-                    soa: { email: SetInfo!string("test@testnet", true), },
+                    authoritative: setField(true),
+                    primary: setField("name.registry"),
+                    soa: { email: setField("test@testnet"), },
                 },
                 validators: {
-                    authoritative: SetInfo!bool(authoritative, true),
-                    primary: SetInfo!string("name.registry", true),
+                    authoritative: setField(authoritative),
+                    primary: setField("name.registry"),
                     allow_transfer: [ZoneConfig.IPAddress("127.0.0.127")],
                     query_servers: ["10.8.8.8"],
                     redirect_register: "http://10.8.8.8",
@@ -2380,9 +2386,9 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                         refresh: 2.seconds, },
                 },
                 flash: {
-                    authoritative: SetInfo!bool(true, true),
-                    primary: SetInfo!string("name.registry", true),
-                    soa: { email: SetInfo!string("test@testnet", true), },
+                    authoritative: setField(true),
+                    primary: setField("name.registry"),
+                    soa: { email: setField("test@testnet"), },
                 },
             },
         };
