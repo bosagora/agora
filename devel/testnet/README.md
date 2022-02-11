@@ -43,7 +43,7 @@ and cannot be used to run a node.
 
 ## Running a full node under Docker
 
-Open a terminal and use the command `docker run bosagora/agora -c /dev/null`.
+Open a terminal and use the command `docker run bosagora/agora --testnet`.
 
 The node should start, and print a bunch of messages to the screen. It should start synchronizing
 with the network about a few seconds, downloading the current state of the chain.
@@ -59,7 +59,7 @@ will completely wipe out the state: the next time you start the node, it will re
 A simple way to avoid re-downloading the blockchain is to "mount" the current directory inside Docker
 with the following command:
 ```shell
-docker run -v $(pwd):/agora/ bosagora/agora -c /dev/null
+docker run -v $(pwd):/agora/ bosagora/agora --testnet
 ```
 
 As long as you use this command to start Agora, you will not have to always re-download the chain.
@@ -69,7 +69,7 @@ As long as you use this command to start Agora, you will not have to always re-d
 Agora can be extensively configured via the use of a configuration file.
 By default, Agora will look for `config.yaml` in the directory it is started in, but using the `-c`
 command line option, you can give Agora any configuration file.
-Using `-c /dev/null` is a special way to make Agora start without a configuration file.
+Using `--testnet` is a special way to make Agora start without a configuration file.
 
 You can find a [simple configuration file in this directory](./config.yaml), which you may modify to suit your own needs,
 using the directives listed in the [example configuration file](/doc/config.example.yaml)

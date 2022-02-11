@@ -50,6 +50,9 @@ public struct AgoraCLIArgs
     ///
     public alias base this;
 
+    /// Special mode to run a TestNet full node
+    public bool testnet = false;
+
     /// If non-`null`, what address to bind the setup interface to
     public string initialize;
 
@@ -194,7 +197,7 @@ public struct NodeConfig
     /// If set to true will run in testing mode and use different
     /// genesis block (agora.consensus.data.genesis.Test)
     /// and TODO: addresses should be different prefix (e.g. TN... for TestNet)
-    public bool testing = true;
+    public bool testing;
 
     /// Should only be set if `test` is set, can be set to the number of desired
     /// enrollment in the test Genesis block (1 - 6)
@@ -408,6 +411,9 @@ public GetoptResult parseCommandLine (ref AgoraCLIArgs cmdline, string[] args)
 
     return getopt(
         args,
+        "testnet",
+            "Run the mode in standalone TestNet mode",
+           &cmdline.testnet,
         "initialize",
             "The address at which to offer a web-based configuration interface",
             &cmdline.initialize,

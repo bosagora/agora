@@ -61,21 +61,6 @@ import std.range;
 import core.stdc.time;
 import core.time;
 
-/// Work around issue #3030 and allow internal testing
-private immutable Address[] TestNetNodes;
-
-shared static this ()
-{
-    TestNetNodes = [
-        Address("http://boa1xzval2a3cdxv28n6slr62wlczslk3juvk7cu05qt3z55ty2rlfqfc6egsh2.validators.testnet.bosagora.io/"),
-        Address("http://boa1xzval3ah8z7ewhuzx6mywveyr79f24w49rdypwgurhjkr8z2ke2mycftv9n.validators.testnet.bosagora.io/"),
-        Address("http://boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy.validators.testnet.bosagora.io/"),
-        Address("http://boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8.validators.testnet.bosagora.io/"),
-        Address("http://boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5.validators.testnet.bosagora.io/"),
-        Address("http://boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh.validators.testnet.bosagora.io/"),
-    ];
-}
-
 /// Ditto
 public class NetworkManager
 {
@@ -288,11 +273,6 @@ public class NetworkManager
 
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
-        // Workaround #3030
-        import agora.common.DNS;
-        if (config.network.length == 0 && config.node.testing && !config.validator.enabled &&
-            config.node.realm == Domain.fromSafeString("testnet.bosagora.io."))
-            this.addAddresses(Set!Address.from(TestNetNodes));
 
         // add the DNS seeds
         if (config.dns_seeds.length > 0)

@@ -13,7 +13,7 @@
 node:
   realm: "testnet.bosagora.io"
   testing: true
-  data_dir: .fullnode/data/
+  data_dir: data/
   registry_address: http://ns1.bosagora.io/
 
 consensus:
