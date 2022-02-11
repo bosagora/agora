@@ -42,7 +42,7 @@ import std.conv;
 import std.datetime;
 import std.format;
 import std.range;
-import std.socket : InternetAddress;
+import std.socket : InternetAddress, Internet6Address;
 import std.string;
 
 import core.time;
@@ -716,15 +716,22 @@ private struct TypedPayload
                 this.payload.addresses[0],
             ));
             break;
-        case TYPE.A:
+        case TYPE.A: case TYPE.AAAA:
             foreach (idx, addr; this.payload.addresses)
             {
-                auto iaddr = InternetAddress.parse(addr.host);
-                ensure(iaddr != InternetAddress.ADDR_NONE,
-                       "DNS: Address '{}' (index: {}) is not an A record (record: {})",
-                       addr, idx, this);
+                const type = addr.host.guessAddressType();
+                if (type == TYPE.A)
+                {
+                    auto iaddr = InternetAddress.parse(addr.host);
+                    ensure(iaddr != InternetAddress.ADDR_NONE,
+                        "DNS: Address '{}' (index: {}) is not an A record (record: {})",
+                        addr, idx, this);
 
-                dg(ResourceRecord.make!(TYPE.A)(name, this.payload.ttl, iaddr));
+                    dg(ResourceRecord.make!(TYPE.A)(name, this.payload.ttl, iaddr));
+                }
+                else
+                    dg(ResourceRecord.make!(TYPE.AAAA)(name, this.payload.ttl,
+                        Internet6Address.parse(addr.host)));
 
                 // Add URI record along with
                 dg(ResourceRecord.make!(TYPE.URI)(
@@ -1415,6 +1422,11 @@ private struct ZoneData
                     return ResourceRecord.make!(TYPE.A)(
                         dname, ttl, addr
                     );
+                case TYPE.AAAA:
+                    const addr = Internet6Address.parse(address);
+                    return ResourceRecord.make!(TYPE.AAAA)(
+                        dname, ttl, addr
+                    );
                 case TYPE.CNAME:
                     return ResourceRecord.make!(TYPE.CNAME)(
                         dname, ttl, Domain.fromString(address)
@@ -1578,6 +1590,12 @@ private struct ZoneData
                     auto arr_addr = rr.rdata.a;
                     scope in_addr = new InternetAddress(arr_addr,
                                         InternetAddress.PORT_ANY);
+                    addr = in_addr.toAddrString();
+                    break;
+                case TYPE.AAAA:
+                    import std.socket : Internet6Address;
+                    scope in_addr = new Internet6Address(rr.rdata.aaaa,
+                                        Internet6Address.PORT_ANY);
                     addr = in_addr.toAddrString();
                     break;
                 case TYPE.CNAME:
