@@ -519,8 +519,8 @@ public class NetworkManager
     public ITimer startPeriodicNameRegistration ()
     {
         // No configured registry, nothing to do
-        if (this.config.node.registry_address.length == 0)
-            return null;
+        enforce(this.config.node.registry_address.length > 0,
+                "A validator should have a name registry configured");
 
         this.registry_client = this.makeRegistryClient(
             this.config.node.registry_address);
@@ -717,15 +717,14 @@ public class NetworkManager
     /// register network addresses into the name registry
     public void onRegisterName () @safe
     {
+        assert(this.registry_client !is null);
+
         const(Address)[] addresses = this.config.validator.addresses_to_register;
         if (!addresses.length)
             addresses = InetUtils.getPublicIPs().map!(
                 ip => Address("agora://"~ip)
             ).array;
         this.addAddresses(Set!Address.from(addresses));
-
-        if (this.registry_client is null)
-            return;
 
         RegistryPayloadData data =
         {
