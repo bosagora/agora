@@ -600,7 +600,7 @@ Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
     const signature = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
-    const block2 = second_block.updateSignature(signature, validators);
+    const block2 = second_block.clone().updateSignature(signature, validators);
     const(Block)[] blocks = [GenesisBlock, block2];
     const actual = format("%s", prettify(blocks));
     assert(ResultStr == actual);

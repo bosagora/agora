@@ -899,7 +899,7 @@ public class Ledger
 
     ***************************************************************************/
 
-    protected bool hasMajoritySignature (const BlockHeader header,
+    protected bool hasMajoritySignature (in BlockHeader header,
         in ValidatorInfo[] validators) @safe nothrow
     {
         if (header.height == 0)  // Genesis block is not signed

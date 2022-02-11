@@ -751,11 +751,12 @@ extern(D):
                     block_sig.signature, block_sig.utxo, block_sig.height);
         if (block_sig.height > cur_height)
             return BlockHeader.init;
-
         const block = this.ledger.getBlocksFrom(Height(block_sig.height)).front;
         if (!this.collectBlockSignature(block_sig, block.hashFull()))
             return BlockHeader.init;
-        const updated_sig = this.updateMultiSignature(block.header);
+        BlockHeader header = block.header.clone();
+        this.updateMultiSignature(header);
+        const updated_sig = header;
         this.ledger.updateBlockMultiSig(updated_sig);
         return updated_sig;
     }
@@ -1021,7 +1022,7 @@ extern(D):
                 return;
             }
 
-            const block = this.ledger.buildBlock(
+            Block block = this.ledger.buildBlock(
                 externalized_tx_set, data.enrolls, data.missing_validators);
 
             // Now we add our signature and gossip to other nodes
@@ -1029,7 +1030,8 @@ extern(D):
             const self = this.enroll_man.getEnrollmentKey();
             this.slot_sigs[height][self] = this.signBlock(block);
             this.ledger.addHeightAsExternalizing(height);
-            this.verifyBlock(block.updateHeader(this.updateMultiSignature(block.header)));
+            this.updateMultiSignature(block.header);
+            this.verifyBlock(block);
         }
         catch (Exception exc)
         {
@@ -1073,19 +1075,16 @@ extern(D):
         Params:
             header = header to be updated
 
-        Returns:
-            the updated header or `BlockHeader.init`` if we have no signatures
-
     ***************************************************************************/
 
-    public const(BlockHeader) updateMultiSignature (in BlockHeader header) @safe
+    public void updateMultiSignature (ref BlockHeader header) @safe
     {
         const validators = this.ledger.getValidators(header.height);
 
         if (header.height !in this.slot_sigs)
         {
             log.warn("No known signatures at height {}", header.height);
-            return header;
+            return;
         }
         const Signature[Hash] block_sigs = this.slot_sigs[header.height];
 
@@ -1105,11 +1104,10 @@ extern(D):
                 this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
             }
         }
-        const signed_header = header.updateSignature(multiSigCombine(sigs_to_add),
-            validator_mask);
+        header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
         log.trace("Updated block signature for block {}, mask: {}",
                 header.height, validator_mask);
-        return signed_header;
+        return;
     }
 
     /***************************************************************************

@@ -736,7 +736,7 @@ public class ValidatingLedger : NodeLedger
 
     ***************************************************************************/
 
-    protected override bool hasMajoritySignature (const BlockHeader header,
+    protected override bool hasMajoritySignature (in BlockHeader header,
         in ValidatorInfo[] validators) @safe nothrow
     {
         if (header.height == 0)  // Genesis block is not signed
