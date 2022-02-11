@@ -220,7 +220,7 @@ public struct NodeConfig
     public Duration timeout = 5000.msecs;
 
     /// Path to the data directory to store metadata and blockchain data
-    public string data_dir = ".cache";
+    public string data_dir = "data";
 
     /// The duration between requests for doing periodic network discovery
     public Duration network_discovery_interval = 5.seconds;
