@@ -392,7 +392,7 @@ public class Validator : FullNode, API
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
-        acceptHeader(block.header);
+        acceptHeader(block.header.clone());
         early_sigs[].each!(sig => this.postBlockSignature(sig));
         early_sigs.clear();
 
@@ -419,7 +419,7 @@ public class Validator : FullNode, API
 
     ***************************************************************************/
 
-    protected override void acceptHeader (const(BlockHeader) header) @safe
+    protected override void acceptHeader (BlockHeader header) @safe
     {
         // First we must validate the header
         if (auto err = this.ledger.validateBlockSignature(header))
@@ -428,9 +428,9 @@ public class Validator : FullNode, API
             return;
         }
         // Add any missing signatures we know
-        const updated_header = this.nominator.updateMultiSignature(header);
-        this.ledger.updateBlockMultiSig(updated_header);
-        super.acceptHeader(updated_header);
+        this.nominator.updateMultiSignature(header);
+        this.ledger.updateBlockMultiSig(header);
+        super.acceptHeader(header);
     }
 
     /***************************************************************************

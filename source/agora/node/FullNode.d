@@ -576,7 +576,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void acceptHeader (const(BlockHeader) header) @safe
+    protected void acceptHeader (BlockHeader header) @safe
     {
         this.pushBlockHeader(header);
     }
@@ -1208,7 +1208,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected void pushBlockHeader (const BlockHeader header) @trusted
+    protected void pushBlockHeader (in BlockHeader header) @trusted
     {
         const now = StdClock.currTime();
         foreach (index, ref handler; this.block_header_handlers)

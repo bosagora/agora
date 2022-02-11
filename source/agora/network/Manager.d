@@ -887,7 +887,7 @@ public class NetworkManager
     ***************************************************************************/
 
     public void getMissingBlockSigs (Ledger ledger,
-        scope void delegate(const(BlockHeader)) @safe acceptHeader) @safe nothrow
+        scope void delegate (BlockHeader) @safe acceptHeader) @safe nothrow
     {
         import std.algorithm;
         import std.conv;
