@@ -264,8 +264,12 @@ public class NetworkManager
 
     protected agora.api.FullNode.API owner_node;
 
+    /// Ledger handle
+    protected Ledger ledger;
+
     /// Ctor
-    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
+    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock,
+        agora.api.FullNode.API owner_node, Ledger ledger)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
@@ -273,6 +277,7 @@ public class NetworkManager
         this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
+        this.ledger = ledger;
 
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
@@ -739,14 +744,26 @@ public class NetworkManager
     /***************************************************************************
 
         Returns:
-          A range of peers which are validators. Each element of the range
+          A range of peers which are active validators. Each element of the range
           contains a `PublicKey key` and a `NetworkClient client` member.
 
     ***************************************************************************/
 
-    public auto validators () return @safe nothrow pure
+    public auto validators () return @safe nothrow
     {
-        return this.peers[].filter!(p => p.isAuthenticated());
+        static Set!Hash val_utxo_set;
+        static Height utxo_set_height;
+
+        if (this.ledger.height() + 1 > utxo_set_height)
+        {
+            utxo_set_height = this.ledger.height() + 1;
+            try
+                val_utxo_set = Set!Hash.from(this.ledger
+                    .getValidators(utxo_set_height, true)
+                    .map!(vals => vals.utxo));
+            catch (Exception e) assert(0);
+        }
+        return this.peers[].filter!(p => p.identity().utxo in val_utxo_set);
     }
 
     /***************************************************************************
