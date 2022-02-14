@@ -768,7 +768,7 @@ public class FlashNode : FlashControlAPI
                         open.conf.chan_id.flashPrettify);
 
                 try
-                    if (auto err = open.conf.isNotValidOpenReason(this.getBlock(open.height).txs))
+                    if (auto err = open.conf.isNotValidOpenReason(blockAt(open.height).txs))
                     {
                         log.warn("Skipping gossipping of {} because is not valid/open: {}",
                                  open.conf.chan_id, err);
@@ -777,7 +777,7 @@ public class FlashNode : FlashControlAPI
                 catch (Exception exc)
                 {
                     log.error(
-                        "Exception thrown from `getBlock` while gossipping: {} - Channel: {}",
+                        "Exception thrown from `blockAt` while gossipping: {} - Channel: {}",
                         exc, open.conf);
                     continue;
                 }
@@ -804,6 +804,14 @@ public class FlashNode : FlashControlAPI
                 log.info("gossipChannelUpdates() rejected missing channel update: {}",
                     update);
         }
+    }
+
+    ///
+    private Block blockAt (in Height height) @safe
+    {
+        if (height == this.last_block.header.height)
+            return this.last_block;
+        return this.getBlock(height).clone();
     }
 
     ///
@@ -987,10 +995,10 @@ public class FlashNode : FlashControlAPI
     {
         if (auto channel = chan_id in this.channels)
         {
-            if (height != this.last_height)
+            if (height != this.last_block.header.height + 1)
                 return Result!PublicNonce(ErrorCode.MismatchingBlockHeight,
                     format("Mismatching block height! Our: %s Their %s",
-                        this.last_height, height));
+                        this.last_block.header.height + 1, height));
 
             return channel.onProposedUpdate(seq_id, secrets, rev_htlcs,
                 peer_nonce, height);
@@ -1083,12 +1091,12 @@ public class FlashNode : FlashControlAPI
         if (auto secret = payment_hash in this.secrets)
         {
             assert(!error); // Payee should never fail to receive
-            channel.learnSecrets([*secret], [], this.last_height);
+            channel.learnSecrets([*secret], [], this.last_block.header.height + 1);
         }
         else if (error)
         {
             foreach (id, chan; this.channels)
-                chan.learnSecrets([], [payment_hash], this.last_height);
+                chan.learnSecrets([], [payment_hash], this.last_block.header.height + 1);
             this.reportPaymentError(reg_pk, chan_id, OnionError(payment_hash,
                 chan_id, error));
         }
@@ -1142,7 +1150,7 @@ public class FlashNode : FlashControlAPI
         foreach (chan_id, channel; this.channels)
         {
             log.info("Calling learnSecrets for {}", chan_id);
-            channel.learnSecrets(secrets, rev_htlcs, this.last_height);
+            channel.learnSecrets(secrets, rev_htlcs, this.last_block.header.height + 1);
         }
     }
 
@@ -1169,7 +1177,7 @@ public class FlashNode : FlashControlAPI
     {
         if (auto channel = chan_id in this.channels)
             return channel.queueNewPayment(payment_hash, amount, lock_height,
-                packet, this.last_height);
+                packet, this.last_block.header.height + 1);
 
         log.info("{} Could not find this channel ID: {}",
             reg_pk.flashPrettify, chan_id);
@@ -1388,7 +1396,7 @@ public class FlashNode : FlashControlAPI
         use_lock_height = max(use_lock_height,
             Height(first_conf.settle_time + first_update.htlc_delta));
 
-        use_lock_height = Height(use_lock_height + this.last_height);
+        use_lock_height = Height(use_lock_height + this.last_block.header.height + 1);
 
         this.paymentRouter(reg_pk, path.front.chan_id, invoice.payment_hash,
             total_amount, use_lock_height, packet);
@@ -1444,11 +1452,11 @@ public class FlashNode : FlashControlAPI
     /// Called by a FullNode once a block has been externalized
     public void pushBlock (const Block block)
     {
-        if (this.last_height != block.header.height)
+        if (block.header.height != this.last_block.header.height + 1)
             return;
 
         log.info("Block #{} is externalized...", block.header.height);
-        this.last_height++;
+        this.last_block = block.clone();
         foreach (channel; this.channels.byValue())
             channel.onBlockExternalized(block);
         this.dump();
@@ -1472,8 +1480,8 @@ public class FlashNode : FlashControlAPI
         {
             while (true)
             {
-                auto block = this.getBlock(this.last_height);
-                if (block.header.height != this.last_height)
+                auto block = this.getBlock(this.last_block.header.height + 1);
+                if (block.header.height != this.last_block.header.height + 1)
                     break;
                 this.pushBlock(block);
             }
@@ -1526,8 +1534,8 @@ private mixin template NodeMetadata ()
     /// Most recent update received for this channel
     protected ChannelUpdate[PaymentDirection][Hash] channel_updates;
 
-    /// The last read block height.
-    protected Height last_height;
+    /// The last received block.
+    protected Block last_block;
 
     /// secret hash => secret (preimage)
     /// Only the Payee initially knows about the secret,
