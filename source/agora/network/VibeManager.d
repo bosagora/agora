@@ -34,6 +34,7 @@ import vibe.http.client;
 import vibe.web.rest;
 
 import std.algorithm.searching : startsWith;
+import std.traits : Parameters;
 import core.time;
 
 /// The 'default' DNS resolver if none is provided
@@ -59,10 +60,9 @@ shared static this ()
 public final class VibeNetworkManager : NetworkManager
 {
     /// Construct an instance of this object
-    public this (in Config config, ManagedDatabase cache, ITaskManager taskman,
-                 Clock clock, agora.api.FullNode.API owner_node)
+    public this (Parameters!(NetworkManager.__ctor) args)
     {
-        super(config, cache, taskman, clock, owner_node);
+        super(args);
     }
 
     /// See `NetworkManager.makeDNSResolver`
