@@ -74,6 +74,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Logger instance
     protected Logger log;
 
+    /// Node is shutting down
+    protected bool is_shutting_down;
+
     /// Consensus parameters
     protected immutable(ConsensusParams) params;
 
@@ -229,11 +232,14 @@ extern(D):
     /// Shut down the timers
     public void shutdown () @safe
     {
+        this.is_shutting_down = true;
+        log.info("{}: Shutdown timers", __FUNCTION__);
         this.timers[].chain(this.active_timers[]).each!((t)
         {
             if (t !is null)
                 t.stop();
         });
+        this.storeLatestState();
     }
 
     /// Processes incoming queued envelopes
@@ -347,17 +353,24 @@ extern(D):
 
     /***************************************************************************
 
-        Begins the nomination timer
+        Arm the nomination timer
 
         This should be called once when a Node's enrollment has been confirmed
-        on the blockchain.
+        on the blockchain or after checkNominate task completes.
 
     ***************************************************************************/
 
-    public void startNominatingTimer () @trusted nothrow
+    public void startNominatingTimer () @safe nothrow
     {
         log.info("Starting nominating timer..");
-        this.timers[TimersIdx.Nomination].rearm(this.nomination_interval, false);
+        this.startTaskTimer(TimersIdx.Nomination, this.nomination_interval);
+    }
+
+    private void startTaskTimer (in TimersIdx timer_id, in Duration interval) @trusted nothrow
+    {
+        log.dbg("{}: re-arm timer index {}", __FUNCTION__, timer_id);
+        if (!this.is_shutting_down)
+            this.timers[timer_id].rearm(interval, false);
     }
 
     /***************************************************************************
@@ -466,7 +479,7 @@ extern(D):
     {
         scope (exit)
         {
-            this.timers[TimersIdx.Nomination].rearm(this.nomination_interval, false);
+            this.startNominatingTimer();
         }
         const slot_idx = this.ledger.height() + 1;
         const cur_time = this.clock.networkTime();
@@ -484,7 +497,7 @@ extern(D):
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
                 this.ledger.height(), this.ledger.lastBlock().header.validators);
-            this.timers[TimersIdx.Catchup].rearm(CatchupTaskDelay, false);
+            this.startTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
             return;
         }
 
@@ -583,7 +596,7 @@ extern(D):
             if (!proc)
             {
                 this.queued_envelopes.insertBack(envelope.serializeFull.deserializeFull!SCPEnvelope());
-                this.timers[TimersIdx.Envelope].rearm(EnvTaskDelay, false);
+                this.startTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
                 continue;
             }
             auto shared_env = this.wrapEnvelope(envelope);
@@ -614,7 +627,7 @@ extern(D):
                 this.queued_envelopes.insertBack(copied);
             else
                 this.queued_envelopes.insertFront(copied);
-            this.timers[TimersIdx.Envelope].rearm(EnvTaskDelay, false);
+            this.startTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
             this.seen_envs.put(env_hash);
         }
     }
@@ -928,7 +941,7 @@ extern(D):
             if (fail_reason == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)
             {
                 log.error("validateValue(): Validation failed: {}. Will check for missing signatures", fail_reason);
-                this.timers[TimersIdx.Catchup].rearm(CatchupTaskDelay, false);
+                this.startTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
             }
             else
             {
