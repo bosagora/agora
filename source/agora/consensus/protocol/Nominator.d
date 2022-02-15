@@ -357,9 +357,6 @@ extern(D):
     public void startNominatingTimer () @trusted nothrow
     {
         log.info("Starting nominating timer..");
-        if (this.timers[TimersIdx.Nomination] is null)
-            this.timers[TimersIdx.Nomination] = this.taskman.createTimer(&this.checkNominate);
-
         this.timers[TimersIdx.Nomination].rearm(this.nomination_interval, false);
     }
 
@@ -374,11 +371,7 @@ extern(D):
     public void stopNominatingTimer () @safe nothrow
     {
         log.info("Stopping nominating timer.");
-        if (this.timers[TimersIdx.Nomination] !is null)
-        {
-            this.timers[TimersIdx.Nomination].stop();
-            this.timers[TimersIdx.Nomination] = null;
-        }
+        this.timers[TimersIdx.Nomination].stop();
     }
 
     /***************************************************************************
@@ -637,11 +630,6 @@ extern(D):
 
     private void handleSCPEnvelope (in SCPEnvelope envelope) @trusted
     {
-        // ignore messages if `startNominatingTimer` was never called or
-        // if `stopNominatingTimer` was called
-        if (this.timers[TimersIdx.Nomination] is null)
-            return;
-
         const Block last_block = this.ledger.lastBlock();
         // Don't use `height - tolerance` as it could underflow
         if (envelope.statement.slotIndex <= last_block.header.height)
@@ -649,6 +637,14 @@ extern(D):
             log.trace("receiveEnvelope: Ignoring envelope with slot id {} as ledger is at height {}",
                 envelope.statement.slotIndex, last_block.header.height.value);
             return;  // slot was already externalized
+        }
+
+        // If the node is not enrolled at the height then return early
+        const env_height = Height(envelope.statement.slotIndex);
+        if (!this.enroll_man.isEnrolled(env_height, &this.ledger.peekUTXO))
+        {
+            log.dbg("{}: Skip this envelope as this node is not enrolled at height {}", __FUNCTION__, env_height);
+            return;
         }
 
         Hash utxo = this.getNodeUTXO(envelope.statement.slotIndex, envelope.statement.nodeID);
