@@ -19,6 +19,7 @@ import agora.common.Types;
 import agora.common.Set;
 import agora.consensus.data.Block;
 import agora.consensus.data.Enrollment;
+import agora.consensus.data.Params;
 import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.ValidatorInfo;
@@ -411,4 +412,21 @@ public interface API
 
     @method(HTTPMethod.GET)
     public Enrollment getEnrollment (in Hash enroll_hash);
+
+    /***************************************************************************
+
+        Get the node's consensus parameter
+
+        This endpoint is not used for consensus, but to allow a smoother
+        experience for test networks that need frequents updates.
+
+        API:
+            GET /consensus_params
+
+        Returns:
+            The `ConsensusParams` for this node
+
+    ***************************************************************************/
+
+    public WrappedConsensusParams getConsensusParams ();
 }
