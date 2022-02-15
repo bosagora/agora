@@ -155,7 +155,7 @@ public class NetworkClient
     private Logger log;
 
     /// The identity associated with this node - may be empty
-    private Identity identity_;
+    public Identity identity_;
 
     /// Gossip delay
     private enum GossipDelay = 10.msecs;
@@ -234,6 +234,11 @@ public class NetworkClient
             break;
 
         case Preimage:
+            // import agora.utils.PrettyPrinter;
+            // if (event.preimage.height == Height(26))
+            //     this.log.info("###### handleGossip Preimage: {} for {}",
+            //         prettify(event.preimage), prettify(identity_));
+
             // Clean up the `last_preimages` periodically
             // Note: It clears `last_preimages` everyday based on the CoinNet.
             if (event.preimage.height % Height(144) == 0)

@@ -1117,7 +1117,7 @@ public class FullNode : API
     public override Height postPreimage (in PreImageInfo preimage) @safe
     {
         this.recordReq("postPreimage");
-        log.trace("Received Preimage: {}", prettify(preimage));
+        log.info("Received Preimage: {}", prettify(preimage));
 
         if (this.ledger.addPreimage(preimage))
         {
@@ -1125,8 +1125,9 @@ public class FullNode : API
             this.network.peers.each!(p => p.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }
-
-        return this.enroll_man.getValidatorPreimage(preimage.utxo).height;
+        auto postHeight = this.enroll_man.getValidatorPreimage(preimage.utxo).height;
+        log.info("Received Preimage Height: {}", prettify(postHeight));
+        return postHeight;
     }
 
     /// GET: /preimages
@@ -1140,10 +1141,13 @@ public class FullNode : API
                 .map!(vi => vi.preimage).array();
 
 
+
         PreImageInfo[] preimage_infos;
         foreach (const enroll_key; enroll_keys)
         {
             auto preimage_info = this.enroll_man.getValidatorPreimage(enroll_key);
+            if (this.ledger.height() >= Height(20))
+                log.info("@@@@@@ getPreimages: {}", prettify(preimage_info));
             if (preimage_info != PreImageInfo.init)
                 preimage_infos ~= preimage_info;
         }
@@ -1193,6 +1197,8 @@ public class FullNode : API
         this.registry.onAcceptedBlock(block, validators_changed);
         if (validators_changed)
         {
+            log.info("###### validator_set changed onAccepedBlock at #{}",
+                block.header.height);
             auto validator_set = this.ledger.getEnrolledUTXOs();
             this.network.onValidatorSetChanged(validator_set);
         }

@@ -138,11 +138,18 @@ public class ValidatorSet
             return "A validator with the same public key is already enrolled";
 
         () @trusted {
+            auto preimage = this.getPreimage(enroll.utxo_key);
+            if (preimage == PreImageInfo.init)
+            {
+                preimage.utxo = enroll.utxo_key;
+                preimage.height = height;
+                preimage.hash = enroll.commitment;
+            }
             this.db.execute("INSERT OR REPLACE INTO preimages " ~
                 "(key, height, preimage) " ~
                 "VALUES (?, ?, ?)",
-                enroll.utxo_key, height.value,
-                enroll.commitment);
+                preimage.utxo, preimage.height,
+                preimage.hash);
             this.db.execute("INSERT INTO validator " ~
                 "(key, public_key, enrolled_height, nonce, stake) " ~
                 "VALUES (?, ?, ?, ?, ?)",

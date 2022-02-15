@@ -129,6 +129,8 @@ public class Validator : FullNode, API
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
         this.regenerateQuorums(this.ledger.height());
+
+        log.info("Validator identity: {}", identity);
     }
 
     /***************************************************************************
@@ -687,6 +689,12 @@ public class Validator : FullNode, API
             max(this.ledger.height(), this.ledger.expectedHeight(this.clock.utcTime()))))
         {
             this.ledger.addPreimage(preimage);
+            if (preimage.height == Height(20) || preimage.height == Height(26))
+            {
+                auto addrs = this.network.peers.map!(p => p.identity_.key).array;
+                log.info("###### calling sendPreimage: {}, peers: {}", prettify(preimage),
+                    addrs);
+            }
             this.network.peers.each!(p => p.sendPreimage(preimage));
             this.pushPreImage(preimage);
         }

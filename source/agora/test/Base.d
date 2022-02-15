@@ -796,8 +796,8 @@ public class TestAPIManager
                     scope node = this.nodes[idx];
                     retryFor(node.client.getPreimages(Set!Hash.from(enroll.utxo_key.only))
                         .any!(preimage => preimage.height >= height),
-                            timeout, format!"Client #%s (%s) has no preimage for client #%s (%s) at height %s"
-                                (idx, node.address, idx_enroll, this.nodes[idx_enroll].address, height));
+                            timeout, format!"Client #%s (%s) has no preimage for client #%s (%s) for enroll(%s) at height %s"
+                                (idx, node.address, idx_enroll, this.nodes[idx_enroll].address, enroll.utxo_key, height));
                 }
     }
 
@@ -1065,6 +1065,7 @@ public class TestAPIManager
     public void waitForDiscovery (Duration timeout = 5.seconds,
         string file = __FILE__, int line = __LINE__)
     {
+        // writeln("waitForDiscovery: ", this.nodes);
         foreach (idx, ref node; this.nodes)
         {
             NodeInfo ni;

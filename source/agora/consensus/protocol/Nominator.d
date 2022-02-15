@@ -505,6 +505,8 @@ extern(D):
 
     protected void checkNominate () @safe
     {
+        // log.info("###### checkNominate START~~~");
+
         scope (exit)
         {
             this.armTaskTimer(TimersIdx.Nomination, this.nomination_interval);
@@ -514,15 +516,15 @@ extern(D):
         const next_nomination = this.getExpectedBlockTime();
         if (cur_time < next_nomination)
         {
-            this.log.trace(
-                "checkNominate(): Too early to nominate (current: {}, next: {})",
-                cur_time, next_nomination);
+            this.log.info(
+                "checkNominate(): Too early to nominate (current: {}, next: {}, signed={})",
+                cur_time, next_nomination, this.ledger.lastBlock().header.validators);
             return;
         }
 
         if (this.heighest_ballot_height >= slot_idx)
         {
-            this.log.trace("checkNominate(): Balloting already started for height {}" ~
+            this.log.info("checkNominate(): Balloting already started for height {}" ~
                 " skipping new nomination", slot_idx);
             () @trusted
             {
