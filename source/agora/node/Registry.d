@@ -1040,7 +1040,7 @@ private struct ZoneData
                 this.axfrTransfer();
         }
         else
-            this.log.info("{}: Zone SOA is up-to-date", this.root.value);
+            this.log.trace("{}: Zone SOA is up-to-date", this.root.value);
 
         auto refresh = (this.type == ZoneType.secondary)
                         ? this.soa.refresh.seconds : this.soa_ttl.seconds;
