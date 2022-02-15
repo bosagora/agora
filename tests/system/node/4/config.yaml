@@ -38,6 +38,17 @@ consensus:
   validator_cycle: 20
   genesis_timestamp: 1640995200
 
+registry:
+  realm:
+    query_servers:
+      - node-0:8053
+  validators:
+    query_servers:
+      - node-0:8053
+  flash:
+    query_servers:
+      - node-0:8053
+
 ################################################################################
 ##                             Validator configuration                        ##
 ## The server can operate in two modes: full node and validator node.         ##

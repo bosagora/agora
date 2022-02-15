@@ -195,29 +195,17 @@ public class NameRegistry: NameRegistryAPI
     }
 
     /// Internal endpoint, mimics `getValidator` but forward the query if needed
-    public final const(RegistryPayloadData) getValidatorInternal (in PublicKey key)
+    public final void getValidatorInternal (in PublicKey key,
+        scope void delegate (in Message) @safe dg)
     {
-        TypedPayload payload = this.zones[ZoneIndex.Validator].getPayload(key);
-        if (payload != TypedPayload.init)
-            return payload.payload;
+        Message msg;
+        msg.questions ~= Question(
+            Domain.fromString(format("%s.%s", key, this.validators)),
+            QTYPE.URI, QCLASS.IN
+        );
+        msg.fill(msg.header);
 
-        // If we're not caching, we're either primary or secondary.
-        // If we're primary, there's obviously no upstream to ask.
-        // If we're secondary, we ask the primary, we do not want other zone data
-        // to get out of sync (e.g. the serial), so we only query,
-        // never store.
-        if (this.zones[ZoneIndex.Validator].type == ZoneType.primary)
-            return RegistryPayloadData.init;
-
-        // We might not have an upstream configured either
-        if (this.client is null)
-            return RegistryPayloadData.init;
-
-        auto upstream = this.client.getValidator(key);
-        if (upstream !is RegistryPayloadData.init &&
-            this.zones[ZoneIndex.Validator].type == ZoneType.caching)
-            this.registerValidator(upstream, Signature.init);
-        return upstream;
+        this.answerQuestions(msg, "0.0.0.0", dg);
     }
 
     /***************************************************************************
