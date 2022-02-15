@@ -609,8 +609,12 @@ public class NetworkManager
         {
             if (this.connection_tasks.length >= MaxConnectionTasks)
             {
-                log.info("Connection task limit reached. Will trying again in {}..",
-                    this.config.node.network_discovery_interval);
+                log.info("Connection task limit reached ({}/{}). Will try again in {}. {} addresses in queue.",
+                         this.connection_tasks.length, MaxConnectionTasks,
+                         this.config.node.network_discovery_interval,
+                         this.todo_addresses.length);
+                log.info("Pending connections: {} - Waiting: {}",
+                         this.connection_tasks.byKey(), this.todo_addresses);
                 break;
             }
 
