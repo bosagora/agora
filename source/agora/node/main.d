@@ -338,7 +338,7 @@ private Nullable!Config makeTestNetConfig (AgoraCLIArgs cmdln)
             flash: config.flash,
             admin: config.admin,
             registry: config.registry,
-            network: config.network.length ? config.network : TestNetNodes,
+            network: config.network,
             dns_seeds: config.dns_seeds,
             logging: config.logging,
             event_handlers: config.event_handlers,
@@ -356,7 +356,6 @@ private Nullable!Config makeTestNetConfig (AgoraCLIArgs cmdln)
             realm: Domain.fromSafeString("testnet.bosagora.io."),
             registry_address: SetInfo!Address(Address("http://ns1.bosagora.io"), true),
         },
-        network: TestNetNodes,
         consensus: params.data.config,
     };
     return Nullable!Config(defaultConfig);
