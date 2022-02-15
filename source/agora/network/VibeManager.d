@@ -98,7 +98,7 @@ public final class VibeNetworkManager : NetworkManager
             return new RestInterfaceClient!(agora.api.Validator.API)(
                 this.makeRestInterfaceSettings(url));
 
-        assert(0, "Unknown agora schema");
+        assert(0, "Unknown agora schema: " ~ url.toString());
     }
 
     /// See `NetworkManager.makeRegistryClient`
