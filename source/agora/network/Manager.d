@@ -27,6 +27,7 @@ import agora.api.Handlers;
 import agora.api.Registry;
 import agora.api.Validator;
 import agora.common.BanManager;
+import agora.common.DNS;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
 import agora.common.Task;
@@ -599,22 +600,27 @@ public class NetworkManager
                     const ckey = key;
                     try
                     {
-                        auto payload = this.registry.getValidatorInternal(ckey);
-                        if (payload == RegistryPayloadData.init)
-                        {
-                            log.warn("Could not find mapping in registry for key {}", ckey);
-                            return;
-                        }
+                        this.registry.getValidatorInternal(ckey,
+                            (in Message msg) @trusted {
+                                if (msg.header.RCODE != Header.RCode.NoError)
+                                {
+                                    log.warn("Could not find mapping in registry for key {}", ckey);
+                                    return;
+                                }
 
-                        if (payload.public_key != ckey)
-                        {
-                            log.error("Registry answered with the wrong key: {} => {}",
-                                      ckey, payload);
-                            return;
-                        }
+                                foreach (rr; msg.answers)
+                                {
+                                    if (rr.type != TYPE.URI)
+                                    {
+                                        log.warn("Registry returned non-URI record ({}), ignoring",
+                                            rr.type);
+                                        continue;
+                                    }
 
-                        foreach (addr; payload.addresses)
-                            this.addAddress(addr);
+                                    this.addAddress(rr.rdata.uri.target);
+                                }
+                            }
+                        );
                     }
                     catch (Exception exc)
                         log.error("Exception happened while looking up address for {}: {}",
