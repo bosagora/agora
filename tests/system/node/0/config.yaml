@@ -53,7 +53,7 @@ validator:
 ##                             Registry configuration                         ##
 ################################################################################
 registry:
-  enabled: true
+  public: true
   address: 0.0.0.0
   port: 8053
   realm:

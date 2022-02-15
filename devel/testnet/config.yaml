@@ -22,7 +22,7 @@ consensus:
   validator_cycle: 20
 
 registry:
-  enabled: true
+  public: true
 
 logging:
   root:
