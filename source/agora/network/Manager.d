@@ -554,31 +554,32 @@ public class NetworkManager
                 if (key == this.config.validator.key_pair.address)
                     continue;
 
-                taskman.runTask
-                ({
+                taskman.runTask(
+                () nothrow {
                     // https://github.com/bosagora/agora/issues/2197
                     const ckey = key;
-                    retry!
-                    ({
+                    try
+                    {
                         auto payload = this.registry.getValidatorInternal(ckey);
                         if (payload == RegistryPayloadData.init)
                         {
                             log.warn("Could not find mapping in registry for key {}", ckey);
-                            return false;
+                            return;
                         }
 
                         if (payload.public_key != ckey)
                         {
                             log.error("Registry answered with the wrong key: {} => {}",
                                       ckey, payload);
-                            return false;
+                            return;
                         }
 
                         foreach (addr; payload.addresses)
                             this.addAddress(addr);
-                        return true;
-                    },
-                    )(taskman, 3, 2.seconds, "Exception happened while trying to get validator addresses");
+                    }
+                    catch (Exception exc)
+                        log.error("Exception happened while looking up address for {}: {}",
+                                  ckey, exc);
                 });
             }
         }
