@@ -135,7 +135,7 @@ public Listeners runNode (Config config)
     }
 
     scope (exit)
-        if (config.registry.enabled)
+        if (config.registry.public_interface)
         {
             // Here, we might need to interrupt the task to correctly shut down,
             // however this throws an exception in the task that needs to be explicitly
@@ -152,7 +152,7 @@ public Listeners runNode (Config config)
 
     result.node.start();
 
-    if (config.registry.enabled)
+    if (config.registry.public_interface)
     {
         auto reg = result.node.getRegistry();
         assert(reg !is null);

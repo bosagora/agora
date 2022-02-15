@@ -127,15 +127,15 @@ public struct Config
     public void validate () @safe const scope
     {
         if (this.validator.enabled)
-            enforce(this.network.length || this.registry.enabled ||
+            enforce(this.network.length || this.registry.public_interface ||
                     this.node.registry_address.set ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.test_validators == 1,
                     "Either the network section must not be empty, or 'node.registry_address' must be set " ~
-                    ", or registry must be enabled");
+                    ", or registry public interface must be enabled");
         else
-            enforce(this.network.length || this.registry.enabled,
-                    "Either the network section must not be empty, or registry must be enabled");
+            enforce(this.network.length || this.registry.public_interface,
+                    "Either the network section must not be empty, or registry public interface must be enabled");
 
         if (!this.node.testing && this.node.test_validators)
             throw new Exception("Cannot use 'node.test_validators' without 'node.testing' set to 'true'");
@@ -435,8 +435,9 @@ public GetoptResult parseCommandLine (ref AgoraCLIArgs cmdline, string[] args)
 /// Configuration for the name registry
 public struct RegistryConfig
 {
-    /// If this node should also act as a registry
-    public bool enabled;
+    /// If this node should provide registry interface to public
+    @Name("public")
+    public bool public_interface;
 
     /***************************************************************************
 

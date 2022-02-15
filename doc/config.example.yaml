@@ -297,8 +297,8 @@ event_handlers:
 ## extra API for registration, and a DNS server (on port 53 by default).      ##
 ################################################################################
 registry:
-  # If this node should also act as a registry
-  enabled: true
+  # If this node should provide public registry interface
+  public: true
 
   # The address to bind the DNS server to (default: 0.0.0.0)
   # On Linux system with systemd, one might want to specify the local IP,

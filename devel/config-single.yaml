@@ -37,7 +37,7 @@ validator:
     - http://127.0.0.1:2826/
 
 registry:
-  enabled: true
+  public: true
   address: 127.0.0.1
   # Use a non-priviledged port to avoid a clash with the system resolver
   port: 5335

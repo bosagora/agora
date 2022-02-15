@@ -2369,7 +2369,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
             logging: test_conf.logging,
             event_handlers : test_conf.event_handlers,
             registry: {
-                enabled: true,
+                public_interface: true,
                 realm: {
                     authoritative: setField(true),
                     primary: setField("name.registry"),
