@@ -9,6 +9,10 @@
 
 Node implementation for BOA CoinNet
 
+# TestNet access
+
+If you are looking for the instructions to access TestNet, please follow [this link](./devel/testnet/README.md).
+
 # Docker usage
 
 We provide a public build of this repository (see above).
