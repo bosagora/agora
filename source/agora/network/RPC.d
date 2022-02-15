@@ -267,10 +267,10 @@ public class RPCClient (API) : API
                     // Send the method type
 
                     conn.wlock.lock();
-                    serializePart(method, &conn.write);
+                    conn.write(serializeFull(method));
                     // List of parameters
                     foreach (ref p; params)
-                        serializePart(p, &conn.write);
+                        conn.write(serializeFull(p));
                     conn.flush();
                     conn.wlock.unlock();
 
@@ -640,7 +640,7 @@ private void handleThrow (API) (scope API api, RPCConnection stream, Duration ti
             {
                 mixin("auto foo = ", CallMixin);
                 log.trace("[SERVER] Returning {}", foo);
-                serializePart(foo, (in ubyte[] v) { stream.write(v); });
+                stream.write(serializeFull(foo));
                 log.trace("[SERVER] Done writing...");
             }
             return;
