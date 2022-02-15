@@ -641,7 +641,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    private bool shouldEstablishConnection (Address address) @safe
+    private bool shouldEstablishConnection (Address address) @safe nothrow
     {
         auto existing_peer = this.peers[].find!(p => p.addresses.canFind(address));
         return !this.banman.isBanned(address) &&
@@ -652,14 +652,14 @@ public class NetworkManager
     }
 
     /// Received new set of addresses, put them in the todo address list
-    private void addAddresses (AddressSet) (AddressSet addresses) @safe
+    private void addAddresses (AddressSet) (AddressSet addresses) @safe nothrow
     {
         foreach (address; addresses)
             this.addAddress(address);
     }
 
     /// Ditto
-    private void addAddress (Address address) @safe
+    private void addAddress (Address address) @safe nothrow
     {
         if (this.shouldEstablishConnection(address))
             this.todo_addresses.put(address);
