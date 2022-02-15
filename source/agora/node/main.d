@@ -354,7 +354,7 @@ private Nullable!Config makeTestNetConfig (AgoraCLIArgs cmdln)
         node: {
             testing: true,
             realm: Domain.fromSafeString("testnet.bosagora.io."),
-            registry_address: Address("http://ns1.bosagora.io"),
+            registry_address: SetInfo!Address(Address("http://ns1.bosagora.io"), true),
         },
         network: TestNetNodes,
         consensus: params.data.config,
