@@ -137,26 +137,7 @@ private int main (string[] args)
     Nullable!Config configN = ()
     {
         if (cmdln.testnet)
-        {
-            import agora.common.DNS;
-            import core.time;
-
-            Config defaultConfig = {
-                node: {
-                    testing: true,
-                    realm: Domain.fromSafeString("testnet.bosagora.io."),
-                    registry_address: Address("http://ns1.bosagora.io"),
-                },
-                network: TestNetNodes,
-                consensus: {
-                    validator_cycle: 20,
-                    block_interval: 1.minutes,
-                    // Mon Feb 14 2022 04:30:00 GMT.
-                    genesis_timestamp: 1644_813_000,
-                },
-            };
-            return Nullable!Config(defaultConfig);
-        }
+            return makeTestNetConfig(cmdln);
 
         if (cmdln.config_path == "/dev/null")
             return Nullable!Config(Config.init);
@@ -321,4 +302,62 @@ shared static this ()
         Address("http://boa1xrval6hd8szdektyz69fnqjwqfejhu4rvrpwlahh9rhaazzpvs5g6lh34l5.validators.testnet.bosagora.io/"),
         Address("http://boa1xrval7gwhjz4k9raqukcnv2n4rl4fxt74m2y9eay6l5mqdf4gntnzhhscrh.validators.testnet.bosagora.io/"),
     ];
+}
+
+/// Helper function for TestNet configuration
+private Nullable!Config makeTestNetConfig (AgoraCLIArgs cmdln)
+{
+    import agora.api.FullNode;
+    import agora.common.DNS;
+    import vibe.web.rest;
+    static import std.file;
+    import core.time;
+
+    // If the user provided a configuration, they likely want to run
+    // a validator, or have some special config (e.g. interfaces, logging...).
+    // In this case, we just override the `consensus` part, and set `network`
+    // if it is not.
+    if (std.file.exists(cmdln.config_path))
+    {
+        auto configN = cmdln.parseConfigFileSimple!Config();
+        // If an error happened while parsing the file, just stop
+        if (configN.isNull())
+            return configN;
+
+        auto config = configN.get();
+        scope client = new RestInterfaceClient!API(config.node.registry_address.toString());
+        auto params = client.getConsensusParams();
+
+        Config defaultConfig = {
+            banman: config.banman,
+            node: config.node,
+            interfaces: config.interfaces,
+            proxy: config.proxy,
+            consensus: params.data.config,
+            validator: config.validator,
+            flash: config.flash,
+            admin: config.admin,
+            registry: config.registry,
+            network: config.network.length ? config.network : TestNetNodes,
+            dns_seeds: config.dns_seeds,
+            logging: config.logging,
+            event_handlers: config.event_handlers,
+        };
+        return Nullable!Config(defaultConfig);
+    }
+
+    // Otherwise, this is the default config for TestNet when
+    // no config file is provided.
+    scope client = new RestInterfaceClient!API("http://ns1.bosagora.io");
+    auto params = client.getConsensusParams();
+    Config defaultConfig = {
+        node: {
+            testing: true,
+            realm: Domain.fromSafeString("testnet.bosagora.io."),
+            registry_address: Address("http://ns1.bosagora.io"),
+        },
+        network: TestNetNodes,
+        consensus: params.data.config,
+    };
+    return Nullable!Config(defaultConfig);
 }

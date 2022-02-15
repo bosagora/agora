@@ -27,6 +27,8 @@ import geod24.bitblob;
 
 import std.algorithm.comparison : among;
 
+import core.time;
+
 /// Clone any type via the serializer
 public T clone (T)(in T input)
 {
@@ -256,3 +258,33 @@ unittest
 
 /// Delegate type to query the penalty deposit of a utxo
 public alias GetPenaltyDeposit = Amount delegate (Hash utxo) @safe nothrow;
+
+/// Wraps `core.time : Duration` but can be used with the serializer
+public struct SerializableDuration
+{
+    ///
+    public alias data this;
+
+    ///
+    public Duration data;
+
+
+    /// Support for network (de)serialization
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.data.total!"hnsecs", dg);
+    }
+
+    /// Ditto
+    public static QT fromBinary (QT) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        return QT(deserializeFull!long(dg, opts).hnsecs);
+    }
+}
+
+unittest
+{
+    checkFromBinary!SerializableDuration();
+    testSymmetry!SerializableDuration();
+}

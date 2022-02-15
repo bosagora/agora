@@ -1384,4 +1384,10 @@ public class FullNode : API
     {
         return this.getValidators(this.ledger.height() + 1);
     }
+
+    ///
+    public override WrappedConsensusParams getConsensusParams ()
+    {
+        return WrappedConsensusParams(this.params);
+    }
 }

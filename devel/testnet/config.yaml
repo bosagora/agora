@@ -16,11 +16,6 @@ node:
   data_dir: data/
   registry_address: http://ns1.bosagora.io/
 
-consensus:
-  block_interval:
-    seconds: 20
-  validator_cycle: 20
-
 registry:
   public: true
 

@@ -54,8 +54,8 @@ public immutable class ConsensusParams
     /// The address of commons budget
     public PublicKey CommonsBudgetAddress;
 
-    /// Underlying data
-    private ConsensusConfig data;
+    /// Underlying configuration
+    public ConsensusConfig config;
 
     /// The amount of a penalty for slashed validators
     public Amount SlashPenaltyAmount = 10_000.coins;
@@ -87,10 +87,11 @@ public immutable class ConsensusParams
     public this (immutable(Block) genesis,
                  in PublicKey commons_budget_address,
                  ConsensusConfig config = ConsensusConfig.init)
+        @safe pure nothrow @nogc
     {
         this.Genesis = genesis;
         this.CommonsBudgetAddress = commons_budget_address;
-        this.data = config;
+        this.config = config;
     }
 
     /// Default for unittest, uses the test genesis block
@@ -173,6 +174,81 @@ public struct ConsensusConfig
 private mixin template ROProperty (string to, string from)
 {
     mixin (
-        "public typeof(this.data.", from, ") ", to,
-        " () @safe pure nothrow @nogc { return this.data.", from, "; }");
+        "public typeof(this.config.", from, ") ", to,
+        " () @safe pure nothrow @nogc { return this.config.", from, "; }");
+}
+
+/// Wrapper for serialization, as serializing an `immutable class` is not well supported
+public struct WrappedConsensusParams
+{
+    import agora.serialization.Serializer;
+
+    ///
+    public alias data this;
+
+    ///
+    public immutable(ConsensusParams) data;
+
+    /// Support for network (de)serialization
+    public void serialize (scope SerializeDg dg) const @safe
+    {
+        serializePart(this.data.Genesis, dg);
+        serializePart(this.data.CommonsBudgetAddress, dg);
+        foreach (ref field; this.data.config.tupleof)
+        {
+            static if (is(immutable(typeof(field)) == immutable(Duration)))
+                serializePart(SerializableDuration(field), dg);
+            else
+                serializePart(field, dg);
+        }
+    }
+
+    /// Ditto
+    public static QT fromBinary (QT) (
+        scope DeserializeDg dg, in DeserializerOptions opts) @safe
+    {
+        // We need this because `configy` would trip on `SerializableDuration`,
+        // and the serialized trips on `Duration`.
+        static assert (ConsensusConfig.tupleof.length == 13);
+        return QT(
+            new typeof(QT.data)(
+                deserializeFull!(typeof(QT.Genesis))(dg, opts),
+                deserializeFull!(typeof(QT.CommonsBudgetAddress))(dg, opts),
+                typeof(QT.data.config)(
+                    deserializeFull!TimePoint(dg, opts),            // genesis_timestamp
+                    deserializeFull!uint(dg, opts),                 // validator_cycle
+                    deserializeFull!ulong(dg, opts),                // chain_id
+                    deserializeFull!uint(dg, opts),                 // max_quorum_nodes
+                    deserializeFull!uint(dg, opts),                 // quorum_threshold
+                    deserializeFull!uint(dg, opts),                 // quorum_shuffle_interval
+                    deserializeFull!uint(dg, opts),                 // tx_payload_max_size
+                    deserializeFull!uint(dg, opts),                 // tx_payload_fee_factor
+                    deserializeFull!ubyte(dg, opts),                // validator_tx_fee_cut
+                    deserializeFull!uint(dg, opts),                 // payout_period
+                    deserializeFull!Amount(dg, opts),               // min_fee
+                    deserializeFull!SerializableDuration(dg, opts), // block_interval
+                    deserializeFull!uint(dg, opts),                 // max_tx_set_size_kbs
+                ),
+            ),
+        );
+    }
+
+    /// Support for Vibe.d (de)serialization
+    public ubyte[] toRepresentation () const @safe
+    {
+        return serializeFull(this);
+    }
+
+    /// Ditto
+	public static WrappedConsensusParams fromRepresentation (scope ubyte[] data)
+        @safe
+    {
+        return deserializeFull!WrappedConsensusParams(data);
+    }
+
+    /// The Logger errors without this
+    public string toString () const @safe pure nothrow @nogc
+    {
+        return "ConsensusParams";
+    }
 }
