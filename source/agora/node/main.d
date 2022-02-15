@@ -151,7 +151,8 @@ private int main (string[] args)
                 consensus: {
                     validator_cycle: 20,
                     block_interval: 1.minutes,
-                    genesis_timestamp: 1640995200,
+                    // Mon Feb 14 2022 04:30:00 GMT.
+                    genesis_timestamp: 1644_813_000,
                 },
             };
             return Nullable!Config(defaultConfig);
