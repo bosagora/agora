@@ -113,9 +113,21 @@ to the following:
 validator:
   enabled: true
   seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3
+  addresses_to_register:
+    - "agora://my-address.example.com:2826"
 ```
 
 Make sure you use the **seed** for the configuration and the **public key** for Faucet.
+
+The address to put in `addresses_to_register` should match the **public address** of your validator.
+This can be an IP address or an hostname. The above example uses port `2826` explicitly,
+but you may elect to change it by using an interface entry, for example:
+```yaml
+interfaces:
+  - type: tcp
+    address: "0.0.0.0"
+    port: 3000
+```
 
 Once you start the node, and wait up to a few minutes, it should enroll by itself
 and start validating. You can also make sure your node is accessible by checking
