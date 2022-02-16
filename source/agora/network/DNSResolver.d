@@ -30,7 +30,7 @@ import core.time;
 public abstract class DNSResolver
 {
     /// Logger instance
-    protected Logger log;
+    public Logger log;
 
     /***************************************************************************
 
