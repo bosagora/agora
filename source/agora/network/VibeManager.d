@@ -303,8 +303,8 @@ private struct PeerInfo
 
 version (AgoraStandaloneDNSResolver)
 {
+    import agora.common.DNS;
     import vibe.core.core;
-
     import std.stdio;
 
     private int main (string[] args)
@@ -313,7 +313,7 @@ version (AgoraStandaloneDNSResolver)
 
         runTask(() @trusted nothrow {
             scope (failure) assert(0);
-            DNSResolver resolver = new VibeDNSResolver();
+            DNSResolver resolver = new VibeDNSResolver(DefaultDNS);
             resolver.log.enableConsole();
 
             foreach (host; args[1 .. $])
