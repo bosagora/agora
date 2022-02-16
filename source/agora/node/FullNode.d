@@ -98,6 +98,9 @@ public class FullNode : API
     /// Logger instance
     protected Logger log;
 
+    /// Node is shutting down
+    protected bool is_shutting_down;
+
     /// Config instance
     protected Config config;
 
@@ -472,7 +475,14 @@ public class FullNode : API
         this.taskman.runTask(&this.discoveryTask);
 
         // re-arm the other timers
-        this.timers[TimersIdx.BlockCatchup].rearm(this.config.node.block_catchup_interval, false);
+        this.startTaskTimer(TimersIdx.BlockCatchup, this.config.node.block_catchup_interval);
+    }
+
+    private void startTaskTimer (in TimersIdx timer_id, in Duration interval) @trusted nothrow
+    {
+        log.dbg("{}: re-arm timer index {}", __FUNCTION__, timer_id);
+        if (!this.is_shutting_down)
+            this.timers[timer_id].rearm(interval, false);
     }
 
     /// Returns an already instantiated version of the BanManager
@@ -515,7 +525,7 @@ public class FullNode : API
     protected void discoveryTask () nothrow
     {
         this.network.discover(this.ledger.getEnrolledUTXOs());
-        this.timers[TimersIdx.Discovery].rearm(this.config.node.network_discovery_interval, false);
+        this.startTaskTimer(TimersIdx.Discovery, this.config.node.network_discovery_interval);
     }
 
     /***************************************************************************
@@ -532,8 +542,7 @@ public class FullNode : API
     {
         scope (exit)
         {
-            this.timers[TimersIdx.BlockCatchup]
-                .rearm(this.config.node.block_catchup_interval, false);
+            this.startTaskTimer(TimersIdx.BlockCatchup, this.config.node.block_catchup_interval);
         }
 
         if (this.network.peers.empty())  // no clients yet (discovery)
@@ -657,6 +666,7 @@ public class FullNode : API
 
     public void shutdown () @safe
     {
+        this.is_shutting_down = true;
         log.info("Shutting down..");
         this.taskman.logStats();
 
