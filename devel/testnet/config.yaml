@@ -13,7 +13,6 @@
 node:
   realm: "testnet.bosagora.io"
   testing: true
-  data_dir: data/
   registry_address: http://ns1.bosagora.io/
 
 registry:
@@ -25,4 +24,4 @@ logging:
     level: Info
     console: true
     propagate: true
-    file: .fullnode/log/root.log
+    file: log/root.log
