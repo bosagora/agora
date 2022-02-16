@@ -20,6 +20,7 @@ import agora.test.Base;
 unittest
 {
     TestConf conf = { configure_network : false };  // use name registry instead
+    conf.node.network_discovery_interval = 2.seconds;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
