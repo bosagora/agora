@@ -28,7 +28,7 @@ Docker 사용자의 경우 Docker가 아직 설치되지 않은 경우 [여기�
 아고라 다운로드는 첫 실행 시 자동으로 이루어집니다.
 
 네이티브 바이너리의 경우 [Agora의 릴리스 페이지로](https://github.com/bosagora/agora/releases) 이동하여 시스템과 일치하는 바이너리를 가져오시면 됩니다.
-예를 들어, 이 기록의 마지막 릴리스는 `v0.35.0` 입니다. 시스템과 일치하는 `agora` 바이너리를 찾으세요.
+최신 릴리스는 [이 페이지](https://github.com/bosagora/agora/releases/latest)에서 찾을 수 있습니다. 시스템과 일치하는 `agora` 바이너리를 찾으세요.
 
 ![0.33.0 버전을 위한 파일 목록](./Release.v0.33.0.png)
 

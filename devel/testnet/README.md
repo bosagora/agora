@@ -34,7 +34,8 @@ For Docker users, if Docker is not yet installed, head [here](https://www.docker
 Agora download will be automatically done on first run, you do not have anything to do at this point.
 
 For native binaries, head over to [Agora's release page](https://github.com/bosagora/agora/releases) and grab the binary matching your system.
-For example, as of this writing, the last release is `v0.34.1`. Look for the `agora` binary matching your system:
+You can find the latest release [here](https://github.com/bosagora/agora/releases/latest).
+Look for the `agora` binary matching your system:
 
 ![Asset list for v0.33.0](./Release.v0.33.0.png)
 
