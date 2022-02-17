@@ -1057,6 +1057,28 @@ public class Ledger
     {
         return this.utxo_set.getUTXOFinder();
     }
+
+    /***************************************************************************
+
+        Get the `Height` this `Ledger` should be at if fully synchronized
+
+        Params:
+          utcTime = The current time at UTC (in number of seconds since epoch)
+
+        Returns:
+          The block height that is expected at the provided `utcTime`.
+          If `utcTime` is before Genesis, `0` is returned.
+
+    ***************************************************************************/
+
+    public Height expectedHeight (in TimePoint utcTime)
+    {
+        if (utcTime <= this.params.GenesisTimestamp)
+            return Height.init;
+        size_t offset = utcTime - this.params.GenesisTimestamp;
+        // TimePoint is a `ulong` consisting of a number of seconds
+        return Height(offset / this.params.BlockInterval.total!"seconds");
+    }
 }
 
 /// This is the last block height that has had fees and rewards paid before the current block
@@ -1168,4 +1190,22 @@ unittest
     // was attempting to re-add the same block.
     assert(ledger.acceptBlock(ledger.lastBlock()) is null);
     assert(ledger.height() == 0);
+}
+
+// Unittests for `Ledger.expectedHeight`
+unittest
+{
+    scope ledger = new Ledger();
+    assert(ledger.expectedHeight(0) == Height(0));
+
+    const GTS = ledger.params.GenesisTimestamp;
+    const BIS = ledger.params.BlockInterval.total!"seconds";
+    assert(BIS >= 2);
+
+    assert(ledger.expectedHeight(GTS) == Height(0));
+    assert(ledger.expectedHeight(GTS + BIS - 1) == Height(0));
+    assert(ledger.expectedHeight(GTS + BIS    ) == Height(1));
+    assert(ledger.expectedHeight(GTS + BIS + 1) == Height(1));
+
+    assert(ledger.expectedHeight(GTS + (BIS * 200)) == Height(200));
 }
