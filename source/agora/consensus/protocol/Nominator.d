@@ -353,24 +353,44 @@ extern(D):
 
     /***************************************************************************
 
-        Arm the nomination timer
+        Arm a task timer
 
-        This should be called once when a Node's enrollment has been confirmed
-        on the blockchain or after checkNominate task completes.
+        Helper function to arm a task timer unless we are shutting down.
+        Our timers are non-periodic, so we achieve periodic behavior
+        by re-arming manually.
+
+        Params:
+          timer_id = The index of the timer
+          interval = The interval to rearm the timer with.
 
     ***************************************************************************/
 
-    public void startNominatingTimer () @safe nothrow
+    private void armTaskTimer (in TimersIdx timer_id, in Duration interval)
+        @trusted nothrow
     {
-        log.info("Starting nominating timer..");
-        this.startTaskTimer(TimersIdx.Nomination, this.nomination_interval);
+        if (!this.is_shutting_down)
+        {
+            this.log.dbg("Re-arming timer {} for {}", timer_id, interval);
+            this.timers[timer_id].rearm(interval, false);
+        }
+        else
+            this.log.dbg("Not re-arming timer {} for {} because we are shutting down",
+                         timer_id, interval);
     }
 
-    private void startTaskTimer (in TimersIdx timer_id, in Duration interval) @trusted nothrow
+    /***************************************************************************
+
+        Start nominating.
+
+        This is called from the Validator class when we first detect we are
+        a validator.
+
+    ***************************************************************************/
+
+    public void start () @safe nothrow
     {
-        log.dbg("{}: re-arm timer index {}", __FUNCTION__, timer_id);
-        if (!this.is_shutting_down)
-            this.timers[timer_id].rearm(interval, false);
+        log.info("Starting nominating timer..");
+        this.armTaskTimer(TimersIdx.Nomination, this.nomination_interval);
     }
 
     /***************************************************************************
@@ -479,7 +499,7 @@ extern(D):
     {
         scope (exit)
         {
-            this.startNominatingTimer();
+            this.armTaskTimer(TimersIdx.Nomination, this.nomination_interval);
         }
         const slot_idx = this.ledger.height() + 1;
         const cur_time = this.clock.networkTime();
@@ -497,7 +517,7 @@ extern(D):
             this.log.trace(
                 "checkNominate(): Last block ({}) doesn't have majority signatures, signed={}",
                 this.ledger.height(), this.ledger.lastBlock().header.validators);
-            this.startTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
+            this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
             return;
         }
 
@@ -596,7 +616,7 @@ extern(D):
             if (!proc)
             {
                 this.queued_envelopes.insertBack(envelope.serializeFull.deserializeFull!SCPEnvelope());
-                this.startTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
+                this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
                 continue;
             }
             auto shared_env = this.wrapEnvelope(envelope);
@@ -627,7 +647,7 @@ extern(D):
                 this.queued_envelopes.insertBack(copied);
             else
                 this.queued_envelopes.insertFront(copied);
-            this.startTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
+            this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
             this.seen_envs.put(env_hash);
         }
     }
@@ -942,7 +962,7 @@ extern(D):
             if (fail_reason == this.ledger.InvalidConsensusDataReason.MisMatchingCoinbase)
             {
                 log.error("validateValue(): Validation failed: {}. Will check for missing signatures", fail_reason);
-                this.startTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
+                this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
             }
             else
             {

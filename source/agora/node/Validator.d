@@ -191,7 +191,7 @@ public class Validator : FullNode, API
         this.buildRequiredKeys(node_id, this.qc);
 
         if (this.started)
-            this.nominator.startNominatingTimer();
+            this.nominator.start();
     }
 
     /***************************************************************************
@@ -252,7 +252,7 @@ public class Validator : FullNode, API
             &this.preImageCatchupTask, Periodic.Yes);
 
         if (this.enroll_man.isEnrolled(this.ledger.height() + 1, &this.ledger.peekUTXO))
-            this.nominator.startNominatingTimer();
+            this.nominator.start();
         if (this.config.validator.recurring_enrollment)
             this.checkAndEnroll(this.ledger.height());
     }
