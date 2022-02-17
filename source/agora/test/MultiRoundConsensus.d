@@ -93,14 +93,15 @@ unittest
     auto nodes = network.clients;
     auto validator = network.clients[0];
 
+    auto sleep_dur = 2.seconds;
     // Make one of six validators stop responding for a while
-    nodes.drop(1).take(1).each!(node => node.ctrl.sleep(conf.node.timeout, true));
+    nodes.drop(1).take(1).each!(node => node.ctrl.sleep(sleep_dur, true));
 
     // Block 1 with multiple consensus rounds
     auto txs = genesisSpendable().map!(txb => txb.sign()).array();
     txs.each!(tx => validator.postTransaction(tx));
 
-    network.expectHeightAndPreImg(Height(1), network.blocks[0].header, conf.node.timeout + 5.seconds);
+    network.expectHeightAndPreImg(Height(1), network.blocks[0].header, sleep_dur + 5.seconds);
     assert(CustomNominator.round_number >= 2,
         format("The validator's round number is %s. Expected: above %s",
             CustomNominator.round_number, 2));

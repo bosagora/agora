@@ -184,6 +184,9 @@ public extern (C++) class Nominator : SCPDriver
     /// Block ready to externalize once majority signatures are added
     private Block pending_block;
 
+    /// Meaningful nomination timer ticks for the latest height
+    private uint nom_fire_count;
+
 extern(D):
 
     /***************************************************************************
@@ -448,6 +451,8 @@ extern(D):
         }
 
         this.active_timers[] = null;
+        this.nom_fire_count = 0;
+        this.armTaskTimer(TimersIdx.Nomination, this.nomination_interval);
     }
 
     /***************************************************************************
@@ -507,7 +512,8 @@ extern(D):
     {
         scope (exit)
         {
-            this.armTaskTimer(TimersIdx.Nomination, this.nomination_interval);
+            this.armTaskTimer(TimersIdx.Nomination,
+                this.nomination_interval + this.computeTimeout(this.nom_fire_count).msecs);
         }
         const slot_idx = this.ledger.height() + 1;
         const cur_time = this.clock.networkTime();
@@ -520,6 +526,7 @@ extern(D):
             return;
         }
 
+        this.nom_fire_count++;
         if (this.heighest_ballot_height >= slot_idx)
         {
             this.log.trace("checkNominate(): Balloting already started for height {}" ~
@@ -1469,7 +1476,7 @@ extern(D):
 
     ***************************************************************************/
 
-    protected override milliseconds computeTimeout (uint32_t roundNumber)
+    protected override milliseconds computeTimeout (uint32_t roundNumber) @safe
     {
         auto base = 1.seconds;
         // double the timeout every 16 validators
