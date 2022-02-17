@@ -97,7 +97,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     private immutable Config config;
 
     ///
-    private DList!NetworkClient* clients;
+    private PeerRange delegate () @safe nothrow clients;
 
     ///
     private ITaskManager taskman;
@@ -144,7 +144,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
 
     ***************************************************************************/
 
-    public this (TransactionPool pool, immutable Config config, DList!NetworkClient* clients,
+    public this (TransactionPool pool, immutable Config config, PeerRange delegate () @safe nothrow clients,
           ITaskManager taskman, Clock clock, GetFeeRateDg getTxFeeRate, bool start_timers = true)
     {
         this.pool = pool;
@@ -217,9 +217,9 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     /// Sends an array of transactions ordered by fee to known network clients.
     public void relayTransactions () @safe nothrow
     {
-        log.dbg("{}: clients: {}", __PRETTY_FUNCTION__, (*this.clients)[].map!(v => v.identity.key));
-        if ((*this.clients)[].canFind!(client => client.isAuthenticated()))
-            this.getRelayTransactions().each!(tx => (*this.clients).each!(c => c.sendTransaction(tx)));
+        log.dbg("{}: clients: {}", __PRETTY_FUNCTION__, this.clients().map!(v => v.identity.key));
+        if (this.clients().canFind!(client => client.isAuthenticated()))
+            this.getRelayTransactions().each!(tx => this.clients().each!(c => c.sendTransaction(tx)));
     }
 
     /// Cleans expired entries from the internal datastructures.
@@ -360,6 +360,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         import agora.common.ManagedDatabase;
         import agora.consensus.Fee;
         import agora.consensus.data.Params;
+        import std.functional;
 
         this.utxo_set = new MemoryUTXOSet();
         auto getPenaltyDeposit = (Hash utxo)
@@ -371,13 +372,13 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         auto cacheDB = new ManagedDatabase(":memory:");
         immutable params = new immutable(ConsensusParams)();
         auto fee_man = new FeeManager(stateDB, params);
-        auto noclients = new DList!NetworkClient();
+        auto noclients = () { return PeerRange(new uint, new DList!NetworkClient()); };
         GetFeeRateDg wrapper = (in Transaction tx, out Amount rate)
         {
             return fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, getPenaltyDeposit, rate);
         };
 
-        this(new TransactionPool(cacheDB), config, noclients, null, new MockClock(0), wrapper, false);
+        this(new TransactionPool(cacheDB), config, toDelegate(noclients), null, new MockClock(0), wrapper, false);
     }
 
     /***************************************************************************

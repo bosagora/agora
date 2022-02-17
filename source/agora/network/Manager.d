@@ -234,7 +234,11 @@ public class NetworkManager
     protected ConnectionTask[Address] connection_tasks;
 
     /// All connected nodes (Validators & FullNodes)
-    public DList!NetworkClient peers;
+    private DList!NetworkClient peer_list;
+
+    /// Version of peer_list
+    /// incremented to signal PeerRanges that they are invalidated
+    private uint peer_list_version;
 
     /// The list of addresses we have not yet tried to connect to
     protected Set!Address todo_addresses;
@@ -282,6 +286,12 @@ public class NetworkManager
             this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
     }
 
+    ///
+    public auto peers () @safe nothrow pure
+    {
+        return PeerRange(&this.peer_list_version, &this.peer_list);
+    }
+
     /// Returns an already instantiated version of the BanManager
     /// (please also see `NetworkManager.getBanMananger()`)
     public BanManager getBanManager () @safe @nogc nothrow pure
@@ -300,7 +310,7 @@ public class NetworkManager
         // We have an authenticated client, maybe we already have a client for it
         if (key !is PublicKey.init)
         {
-            auto existing_peers = this.peers[].find!(p => p.identity.key == key);
+            auto existing_peers = this.peers.find!(p => p.identity.key == key);
             if (!existing_peers.empty())
             {
                 auto prev = existing_peers.front();
@@ -341,7 +351,7 @@ public class NetworkManager
 
         if (!client.connections.any!(conn => address == Address.init))
         {
-            this.peers.insertBack(client);
+            this.peer_list.insertBack(client);
 
             if (key !is PublicKey.init)
             {
@@ -537,7 +547,7 @@ public class NetworkManager
         foreach (peer; required_peer_utxos.byKeyValue)
         {
             this.quorum_set_keys.put(peer.key);
-            if (!this.peers[].map!(c => c.identity.utxo).canFind(peer.key))
+            if (!this.peers.map!(c => c.identity.utxo).canFind(peer.key))
                 this.required_peers.put(peer.key);
         }
 
@@ -547,7 +557,7 @@ public class NetworkManager
 
         foreach (utxo; last_known_validator_utxos.byKeyValue)
         {
-            if (!this.peers[].map!(ni => ni.identity.utxo).canFind(utxo.key))
+            if (!this.peers.map!(ni => ni.identity.utxo).canFind(utxo.key))
             {
                 auto key = utxo.value.output.address;
                 // Do not query the registry about ourself
@@ -648,7 +658,7 @@ public class NetworkManager
 
     private bool shouldEstablishConnection (Address address) @safe nothrow
     {
-        auto existing_peer = this.peers[].find!(p => p.addresses.canFind(address));
+        auto existing_peer = this.peers.find!(p => p.addresses.canFind(address));
         return !this.banman.isBanned(address) &&
             address !in this.connection_tasks &&
             address !in this.todo_addresses &&
@@ -751,7 +761,7 @@ public class NetworkManager
 
     public auto validators () return @safe nothrow pure
     {
-        return this.peers[].filter!(p => p.isAuthenticated());
+        return this.peers.filter!(p => p.isAuthenticated());
     }
 
     /***************************************************************************
@@ -789,7 +799,7 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        this.peers[]
+        this.peers
             .map!(node => Pair(getHeight(node), node))
             .filter!(pair => pair.height != ulong.max)  // request failed
             .each!(pair => node_pairs ~= pair);
@@ -842,7 +852,7 @@ public class NetworkManager
         auto unknown_txs = ledger.getUnknownTXHashes();
         log.trace("getUnknownTXs: detected {} unknown txs", unknown_txs.length);
 
-        foreach (peer; this.peers[])
+        foreach (peer; this.peers)
         {
             if (unknown_txs.length == 0)
                 break;
@@ -922,7 +932,7 @@ public class NetworkManager
                 if (!missing_heights.empty)
                 {
                     log.trace("getMissingBlockSigs: detected missing signatures at heights {}", missing_heights);
-                    foreach (peer; this.peers[])
+                    foreach (peer; this.peers)
                     {
                         foreach (header; peer.getBlockHeaders(missing_heights))
                         {
@@ -969,14 +979,14 @@ public class NetworkManager
     private bool minPeersConnected () nothrow @safe
     {
         log.dbg("minPeersConnected: missing = {}, peers = {}, min = {}",
-            this.required_peers.length, this.peers[].walkLength, this.config.node.min_listeners);
+            this.required_peers.length, this.peers.walkLength, this.config.node.min_listeners);
 
         // We need to establish connections to all peers we were explicitly asked for
         if (this.required_peers.length)
             return false;
 
         // We need to establish a minimum number of connections
-        if (this.peers[].walkLength < this.config.node.min_listeners)
+        if (this.peers.walkLength < this.config.node.min_listeners)
             return false;
 
         // We don't have an authenticated peer where all the addresses are banned
@@ -988,7 +998,7 @@ public class NetworkManager
     private bool peerLimitReached ()  nothrow @safe
     {
         return this.required_peers.length == 0 &&
-            this.peers[].filter!(client =>
+            this.peers.filter!(client =>
                 !client.addresses.all!(addr => this.banman.isBanned(addr))).count >= this.config.node.max_listeners &&
             this.validators().filter!(client =>
                 !client.addresses.all!(addr => this.banman.isBanned(addr))).count != 0;
@@ -1000,7 +1010,7 @@ public class NetworkManager
         return NodeInfo(
             this.minPeersConnected()
                 ? NetworkState.Complete : NetworkState.Incomplete,
-            this.peers[].map!(peer => NodeInfo.PeerInfo(peer.identity.key,
+            this.peers.map!(peer => NodeInfo.PeerInfo(peer.identity.key,
                 peer.identity.utxo, peer.addresses.array)).array);
     }
 
@@ -1132,7 +1142,7 @@ public class NetworkManager
 
     public void whitelist (Hash utxo)
     {
-        this.peers[].filter!(p => p.identity.utxo == utxo)
+        this.peers.filter!(p => p.identity.utxo == utxo)
             .each!(p => p.addresses.each!(addr => this.banman.whitelist(addr)));
     }
 
@@ -1147,7 +1157,7 @@ public class NetworkManager
 
     public void unwhitelist (Hash utxo)
     {
-        this.peers[].filter!(p => p.identity.utxo == utxo)
+        this.peers.filter!(p => p.identity.utxo == utxo)
             .each!(p => p.addresses.each!(addr => this.banman.unwhitelist(addr)));
     }
 
@@ -1212,4 +1222,57 @@ private Set!Address resolveDNSSeeds (in string[] dns_seeds, ref Logger log)
     }
 
     return resolved_ips;
+}
+
+/// A range over the list of peers that can be invalidated
+public struct PeerRange
+{
+    // Pointer to the `peers` version
+    private uint* manager_version;
+
+    // Pointer to the peers list NetworkManager maintains
+    private DList!NetworkClient* peers;
+
+    // version of `peers` that we sliced
+    private uint range_version;
+
+    // Range over the `peers` with version `range_version`
+    private DList!NetworkClient.Range range;
+
+    this (uint* manager_version, DList!NetworkClient* peers) nothrow @safe pure
+    {
+        this.manager_version = manager_version;
+        this.peers = peers;
+        this.range_version = *this.manager_version;
+        this.range = (*this.peers)[];
+    }
+
+    public void popFront () nothrow @safe
+    {
+        if (!this.checkIfInvalidated())
+            this.range.popFront();
+    }
+
+    public bool empty () nothrow @safe
+    {
+        this.checkIfInvalidated();
+        return this.range.empty();
+    }
+
+    public auto front () nothrow @safe
+    {
+        this.checkIfInvalidated();
+        return this.range.front();
+    }
+
+    private bool checkIfInvalidated () nothrow @safe
+    {
+        if (*this.manager_version > this.range_version)
+        {
+            this.range_version = *this.manager_version;
+            this.range = (*this.peers)[];
+            return true;
+        }
+        return false;
+    }
 }

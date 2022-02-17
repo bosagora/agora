@@ -315,7 +315,7 @@ public class Validator : FullNode, API
         log.warn("Currently missing pre-images for next height ({}): {}",
                  next_height, missing);
 
-        auto query = this.network.peers[]
+        auto query = this.network.peers
             .map!(peer => peer.getPreimages(missing));
 
         foreach (preimages; query)
