@@ -591,7 +591,7 @@ Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
         return Unlock.init;
     }
 
-    const Block second_block = makeNewBlock(GenesisBlock,
+    Block second_block = makeNewBlock(GenesisBlock,
         genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()),
         WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys));
 
@@ -600,8 +600,8 @@ Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
     const signature = Signature.fromString("0x000000000000000000016f605ea9638d7bff58d2c0c" ~
                               "c2467c18e38b36367be78000000000000000000016f60" ~
                               "5ea9638d7bff58d2c0cc2467c18e38b36367be78");
-    const block2 = second_block.clone().updateSignature(signature, validators);
-    const(Block)[] blocks = [GenesisBlock, block2];
+    second_block.updateSignature(signature, validators);
+    const(Block)[] blocks = [GenesisBlock, second_block];
     const actual = format("%s", prettify(blocks));
     assert(ResultStr == actual);
 }
