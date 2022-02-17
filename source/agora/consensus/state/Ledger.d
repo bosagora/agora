@@ -1071,7 +1071,8 @@ public class Ledger
 
     ***************************************************************************/
 
-    public Height expectedHeight (in TimePoint utcTime)
+    public Height expectedHeight (in TimePoint utcTime) const scope
+        @safe pure nothrow @nogc
     {
         if (utcTime <= this.params.GenesisTimestamp)
             return Height.init;
