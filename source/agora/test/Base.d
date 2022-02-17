@@ -1823,7 +1823,7 @@ public class TestClock : Clock
     }
 
     ///
-    public override TimePoint localTime ()
+    public override TimePoint utcTime ()
     {
         return atomicLoad(*this.cur_time);
     }

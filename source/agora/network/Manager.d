@@ -467,19 +467,19 @@ public class NetworkManager
         () @trusted { assumeSafeAppend(offsets); }();
         // must include our own assumed clock drift (zero)
         offsets ~= TimeInfo(this.config.validator.key_pair.address,
-            this.clock.localTime());
+            this.clock.utcTime());
 
         foreach (node; this.validators())
         {
             if (node.identity.utxo !in this.quorum_set_keys)
                 continue;
 
-            const req_start = this.clock.localTime();
+            const req_start = this.clock.utcTime();
             const node_time = node.getLocalTime();
             if (node_time == 0)
                 continue;  // request failed
 
-            const req_delay = this.clock.localTime() - req_start;
+            const req_delay = this.clock.utcTime() - req_start;
             const dist_delay = req_delay / 2;  // divide evently
             const offset = (node_time - dist_delay) - req_start;
             offsets ~= TimeInfo(node.identity.key, node_time, req_delay, offset.seconds);

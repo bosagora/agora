@@ -51,7 +51,8 @@ module agora.network.Clock;
 import agora.common.Types : TimePoint;
 import agora.utils.Log;
 
-import core.stdc.time;
+import std.datetime.systime : StdClock = Clock;
+import std.datetime.timezone : UTC;
 import core.time;
 
 /// Delegate used to calculate the time offset to apply in `networkTime`
@@ -107,7 +108,7 @@ public class Clock
 
     public TimePoint networkTime () @safe nothrow
     {
-        return this.localTime() + this.net_time_offset.total!"seconds";
+        return this.utcTime() + this.net_time_offset.total!"seconds";
     }
 
     /***************************************************************************
@@ -117,9 +118,11 @@ public class Clock
 
     ***************************************************************************/
 
-    public TimePoint localTime () @safe nothrow @nogc
+    public TimePoint utcTime () @safe nothrow
     {
-        return .time(null);
+        auto ut = StdClock.currTime(UTC()).toUnixTime;
+        assert(ut > 0);
+        return TimePoint(ut);
     }
 
     /***************************************************************************
@@ -174,7 +177,7 @@ public class MockClock : Clock
     public override TimePoint networkTime () @safe nothrow { return time;}
 
     /// returns time set by constructor
-    public override TimePoint localTime () @safe nothrow @nogc { return time;}
+    public override TimePoint utcTime () @safe nothrow @nogc { return time;}
 
     /// do nothing
     public override void startSyncing () @safe nothrow {}

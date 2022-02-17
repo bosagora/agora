@@ -1131,7 +1131,7 @@ public class FullNode : API
     public override TimePoint getLocalTime () @safe nothrow
     {
         this.recordReq("local_time");
-        return this.clock.localTime();
+        return this.clock.utcTime();
     }
 
     /***************************************************************************
