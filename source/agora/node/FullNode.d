@@ -1186,6 +1186,8 @@ public class FullNode : API
 
     private void pushBlock (const Block block) @trusted
     {
+        if (this.is_shutting_down)
+            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.block_handlers)
         {
@@ -1227,6 +1229,8 @@ public class FullNode : API
 
     protected void pushBlockHeader (in BlockHeader header) @trusted
     {
+        if (this.is_shutting_down)
+            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.block_header_handlers)
         {
@@ -1266,6 +1270,8 @@ public class FullNode : API
 
     protected void pushPreImage (const PreImageInfo pre_image) @trusted
     {
+        if (this.is_shutting_down)
+            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.preimage_handlers)
         {
@@ -1304,6 +1310,8 @@ public class FullNode : API
 
     protected void pushTransaction (const Transaction tx) @trusted
     {
+        if (this.is_shutting_down)
+            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.transaction_handlers)
         {
