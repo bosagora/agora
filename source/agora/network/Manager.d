@@ -551,7 +551,7 @@ public class NetworkManager
                 this.required_peers.put(peer.key);
         }
 
-        log.info(
+        log.trace(
             "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
             required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
 

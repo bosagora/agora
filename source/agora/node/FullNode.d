@@ -545,11 +545,14 @@ public class FullNode : API
             this.startTaskTimer(TimersIdx.BlockCatchup, this.config.node.block_catchup_interval);
         }
 
-        if (this.network.peers.empty())  // no clients yet (discovery)
+        if (this.network.peers.empty())
+        {
+            // TODO: Iff the node is the single validator for the network,
+            // this should not be printed, or at least not be `warn`.
+            this.log.warn("Could not perform catchup yet because we have no peer");
             return;
+        }
 
-        const nextHeight = Height(this.ledger.height() + 1);
-        log.dbg("catchupTask: getBlocksFrom height {}", nextHeight);
         try
         {
             this.network.getMissingBlockSigs(this.ledger, &this.acceptHeader);
@@ -558,9 +561,23 @@ public class FullNode : API
         {
             log.error("Error sending updated block headers:{}", e);
         }
-        this.network.getBlocksFrom(
-            nextHeight,
-            &this.addBlocks);
+
+        const Height expected = this.ledger.expectedHeight(this.clock.utcTime());
+        if (expected < this.ledger.height)
+            this.log.warn("Our current Ledger state is ahead of the expected height (current: {}, expected: {}",
+                          this.ledger.height, expected);
+        else if (expected > this.ledger.height)
+        {
+            const size_t missing = expected - this.ledger.height;
+            this.log.info("Ledger out of sync, missing {} blocks (current height: {}, delay: {})",
+                          missing, this.ledger.height, this.ledger.params.BlockInterval * missing);
+
+            this.network.getBlocksFrom(
+                this.ledger.height + 1,
+                &this.addBlocks);
+        }
+        // Otherwise we don't print a message, as the Ledger is up to date.
+
         this.network.getUnknownTXs(this.ledger);
     }
 
