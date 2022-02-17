@@ -440,11 +440,10 @@ public class BanManager
 
     ***************************************************************************/
 
-    protected TimePoint getCurTime () @safe nothrow @nogc
+    protected TimePoint getCurTime () @safe nothrow
     {
-        return this.clock.localTime();
+        return this.clock.utcTime();
     }
-
 }
 
 ///
