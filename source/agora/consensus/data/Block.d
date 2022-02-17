@@ -133,21 +133,17 @@ public struct BlockHeader
 
     /***************************************************************************
 
-        Returns:
-            this block header with an updated signature and validators bitmask
-
         Params:
             signature = new signature
             validators = mask to indicate who has signed
 
     ***************************************************************************/
 
-    public BlockHeader updateSignature (in Signature signature,
-        BitMask validators) @safe
+    public void updateSignature (in Signature signature,
+        BitMask validators) @safe pure nothrow @nogc
     {
         this.signature = signature;
         this.validators = validators;
-        return this;
     }
 
     /***************************************************************************
@@ -256,20 +252,16 @@ public struct Block
 
     /***************************************************************************
 
-        Returns:
-            this block with updated header
-
         Params:
             signature = new signature
             validators = mask to indicate who has signed
 
     ***************************************************************************/
 
-    public Block updateSignature (in Signature signature, BitMask validators)
-        @safe
+    public void updateSignature (in Signature signature, BitMask validators)
+        @safe pure nothrow @nogc
     {
         this.header.updateSignature(signature, validators);
-        return this;
     }
 
     /***************************************************************************
@@ -635,8 +627,8 @@ version (unittest)
                     sigs ~= block.header.sign(k.secret, pre_images[i]);
                 }
             });
-            auto signed_block = block.updateSignature(multiSigCombine(sigs), validators);
-            return signed_block;
+            block.updateSignature(multiSigCombine(sigs), validators);
+            return block;
         }
         catch (Exception e)
         {
@@ -646,7 +638,6 @@ version (unittest)
                 assert(0, format!"makeNewTestBlock exception thrown during test: %s"(e));
             }();
         }
-        return Block.init;
     }
 }
 

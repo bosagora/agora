@@ -1054,13 +1054,13 @@ private void testStorage (IBlockStorage storage)
             txs = last_txs.length ? last_txs.map!(tx => TxBuilder(tx).sign()).array()
                 : genesisSpendable().map!(txb => txb.sign()).array();
             last_block = makeNewTestBlock(blocks[$ - 1], txs);
-            auto signed_block = last_block.updateSignature(
+            last_block.updateSignature(
                 Signature.fromString("0x0000000000000000000000000000000000000000000000000000000000000001" ~
                     "0000000000000000000000000000000000000000000000000000000000000002"), signed);
             last_txs = txs;
-            blocks ~= signed_block;
-            block_hashes ~= hashFull(signed_block.header);
-            storage.saveBlock(signed_block);
+            blocks ~= last_block;
+            block_hashes ~= hashFull(last_block.header);
+            storage.saveBlock(last_block);
         }
     }
 
@@ -1082,11 +1082,11 @@ private void testStorage (IBlockStorage storage)
         format!"validator bit %s should be set"(i)));
     assert(!block.header.validators[5], "validator bit 5 should not be set");
     signed[5] = true; // Last validator signs
-    Block signed_block = block.updateSignature(
+    block.updateSignature(
         Signature.fromString("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1" ~
             "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1"), signed);
-    storage.updateBlockSig(signed_block.header.height, signed_block.hashFull(),
-        signed_block.header.signature, signed_block.header.validators);
+    storage.updateBlockSig(block.header.height, block.hashFull(),
+        block.header.signature, block.header.validators);
     block = storage.readBlock(Height(BlockCount - 1));
     iota(0, 6).each!(i => assert(block.header.validators[i],
         format!"validator bit %s should be set after update"(i)));
