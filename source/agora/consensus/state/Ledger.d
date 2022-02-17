@@ -1057,9 +1057,6 @@ public class Ledger
     {
         return this.utxo_set.getUTXOFinder();
     }
-
-    version (unittest):
-
 }
 
 /// This is the last block height that has had fees and rewards paid before the current block
