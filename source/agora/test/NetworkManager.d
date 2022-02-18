@@ -165,8 +165,7 @@ unittest
     last_txs = txs;
 
     // the validator node has 2 blocks, but bad node pretends to have 3
-    assert(node_validators[0].getBlockHeight() == 2,
-        node_validators[0].getBlockHeight().to!string);
+    assert(node_validators[0].getBlockHeight() == 2);
     assert(node_bad.getBlockHeight() == 3);
     assert(node_test.getBlockHeight() == 0);  // only genesis
 
