@@ -105,12 +105,14 @@ public mixin template SyncFunction (alias Func, string identifier = __traits(ide
 
 /*******************************************************************************
 
-    Keeps retrying the 'check' condition until it is true,
-    or until the timeout expires. It will sleep the main
-    thread for 100 msecs between each re-try.
+    Retry the 'check' condition until it is true, or the timeout expires.
+
+    This is a test-only utility, as it will sleep the main thread for 100 msecs
+    between each re-try. Retry utilities should use `TaskManager.sleep` for
+    sleep as it will yield the task but not block the thread.
 
     If the timeout expires, and the 'check' condition is still false,
-    it throws an AssertError.
+    it throws an AssertError, which is an unrecoverable error.
 
     Params:
         Exc = a custom exception type, in case we want to catch it
@@ -126,9 +128,8 @@ public mixin template SyncFunction (alias Func, string identifier = __traits(ide
 
 *******************************************************************************/
 
-public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
-    Duration timeout, lazy string msg = "",
-    string file = __FILE__, size_t line = __LINE__)
+public void retryFor (lazy bool check, Duration timeout, lazy string msg = "",
+                      string file = __FILE__, size_t line = __LINE__)
 {
     // wait 100 msecs between attempts
     const SleepTime = 100;
@@ -138,13 +139,11 @@ public void retryFor (Exc : Throwable = AssertError) (lazy bool check,
     if (!retry!check(thread_waiter, TotalAttempts, SleepTime.msecs).isNull)
         return;
 
-    auto message = format("Check condition failed after timeout of %s " ~
-        "and %s attempts", timeout, TotalAttempts);
+    auto message = format(
+        "Check condition failed after timeout of %s and %s attempts%s%s",
+        timeout, TotalAttempts, msg.length ? ": " : "", msg);
 
-    if (msg.length)
-        message ~= ": " ~ msg;
-
-    throw new Exc(message, file, line);
+    throw new AssertError(message, file, line);
 }
 
 ///
