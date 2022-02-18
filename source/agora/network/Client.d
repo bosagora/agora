@@ -139,6 +139,9 @@ public class NetworkClient
     /// The list of clients that we can communicate with
     package ConnectionInfo[] connections;
 
+    ///
+    private uint connections_version;
+
     /// Reusable exception
     private Exception exception;
 
@@ -316,6 +319,12 @@ public class NetworkClient
     public bool isAuthenticated () const scope @safe pure nothrow @nogc
     {
         return this.identity.key != PublicKey.init;
+    }
+
+    ///
+    public bool isConnected () const scope @safe pure nothrow @nogc
+    {
+        return this.connections.length > 0;
     }
 
     /***************************************************************************
@@ -603,6 +612,7 @@ public class NetworkClient
         import std.traits;
         enum name = __traits(identifier, endpoint);
         alias T = ReturnType!(__traits(getMember, API, name));
+        auto curr_conn_version = this.connections_version;
 
         T onError ()
         {
@@ -622,34 +632,45 @@ public class NetworkClient
             if (!this.connections.length)
                 return onError();
 
-            foreach (index, conn; this.connections)
+            foreach (conn; this.connections)
             {
                 if (this.banman.isBanned(conn.address))
                 {
-                    this.connections.remove(index);
-                    log.warn("Removing banned address {} while performing {}, addresses left: {}",
-                             conn.address, name, this.addresses);
-                    continue RETRY;
+                    try
+                    {
+                        this.connections.remove!(c => c == conn);
+                        this.connections_version++;
+                        log.warn("Removing banned address {} while performing {}, addresses left: {}",
+                                    conn.address, name, this.addresses);
+                    } catch (Exception e) {}
                 }
-
-                try
-                {
-                    log.dbg("Client.attemptRequest '{}' to {}: {}/{}", name, conn.address, idx, this.max_retries);
-                    scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
-                        name, conn.address, idx, this.max_retries);
-                    return __traits(getMember, conn.api, name)(args);
-                }
-                catch (Exception ex)
+                else
                 {
                     try
                     {
-                        this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED ({})",
-                            name, conn.address, idx, this.max_retries, ex.message);
+                        log.dbg("Client.attemptRequest '{}' to {}: {}/{}", name, conn.address, idx, this.max_retries);
+                        scope (success) this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} SUCCESS",
+                            name, conn.address, idx, this.max_retries);
+                        return __traits(getMember, conn.api, name)(args);
                     }
                     catch (Exception ex)
                     {
-                        // nothing we can do
+                        try
+                        {
+                            this.log.format(log_level, "Client.attemptRequest '{}' to {}: {}/{} FAILED ({})",
+                                name, conn.address, idx, this.max_retries, ex.message);
+                        }
+                        catch (Exception ex)
+                        {
+                            // nothing we can do
+                        }
                     }
+                }
+
+                if (this.connections_version > curr_conn_version)
+                {
+                    curr_conn_version = this.connections_version;
+                    continue RETRY;
                 }
             }
             if (idx < this.max_retries) // wait after each failure except last
@@ -664,7 +685,7 @@ public class NetworkClient
 
         // request considered failed after max retries reached
         foreach (const ref conn; this.connections)
-            this.banman.onFailedRequest(conn.address);
+            this.banman.onFailedRequest(conn.address); // assumed wont context switch
 
         return onError();
     }
