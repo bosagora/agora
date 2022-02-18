@@ -714,10 +714,11 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         this.setTimeFor(height);
-        clients_idxs.each!(idx =>
+        foreach (idx; clients_idxs)
             retryFor(clients[idx].getBlockHeight() == height, timeout,
                 format("Node %s has block height %s. Expected: %s",
-                    idx, clients[idx].getBlockHeight(), height), file, line));
+                    idx, clients[idx].getBlockHeight(), height),
+                file, line);
     }
 
     /***************************************************************************
@@ -788,14 +789,16 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
         import std.algorithm.searching : any;
 
-        clients_idxs.each!(idx =>
-            enrolls.enumerate.each!((idx_enroll, enroll) {
+        foreach (idx; clients_idxs)
+            foreach (idx_enroll, enroll; enrolls)
                 if (clients_idxs.canFind(idx_enroll))
-                    retryFor(this.clients[idx].getPreimages(Set!Hash.from(enroll.utxo_key.only))
+                {
+                    scope node = this.nodes[idx];
+                    retryFor(node.client.getPreimages(Set!Hash.from(enroll.utxo_key.only))
                         .any!(preimage => preimage.height >= height),
-                            timeout, format!"Client #%s has no preimage for client #%s at distance %s"
-                            (idx, idx_enroll, height));
-            }));
+                            timeout, format!"Client #%s (%s) has no preimage for client #%s (%s) at height %s"
+                                (idx, node.address, idx_enroll, this.nodes[idx_enroll].address, height));
+                }
     }
 
     /***************************************************************************
@@ -1149,10 +1152,10 @@ public class TestAPIManager
 
             first_client.postTransaction(tx);
             // Wait for tx gossipping before setting time for block
-            client_idxs.each!(idx =>
+            foreach (idx; client_idxs)
                 retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
-                    4.seconds, format!"[%s:%s] Client #%s did not receive tx in expected time for height %s"
-                        (file, line, idx, target_height)));
+                    4.seconds, format!"Client #%s (%s) did not receive tx in expected time for height %s"
+                        (idx, this.nodes[idx].address, target_height), file, line);
         }
 
         // Get preimage height from enrollment to this next block
@@ -1223,11 +1226,12 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         auto enroll = clients[client_idx].setRecurringEnrollment(true);
-        client_idxs.each!(idx =>
+        foreach (idx; client_idxs)
             retryFor(this.clients[idx].getEnrollment(enroll.utxo_key) == enroll,
                 5.seconds,
-                format!"[%s:%s] Client #%s enrollment not in pool of client #%s"
-                    (file, line, client_idx, idx)));
+                format!"Client #%s (%s) enrollment not in pool of client #%s (%s)"
+                     (client_idx, this.nodes[client_idx].address, idx, this.nodes[idx].address),
+                file, line);
     }
 
     /***************************************************************************
@@ -1255,26 +1259,27 @@ public class TestAPIManager
         Height from = Height(0), string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
-        assert(to >= from,
-            format!"[%s:%s] Please provide valid heights as params. Not %s .. %s"
-            (file, line, from, to));
+        assert(to >= from);
 
-        client_idxs.each!(idx =>
-            retryFor(Height(this.clients[idx].getBlockHeight()) == to,
-                5.seconds,
-                format!"[%s:%s] Expected height %s for client #%s not %s"
-                    (file, line, to, idx,
-                        this.clients[idx].getBlockHeight())));
+        foreach (idx; client_idxs)
+        {
+            retryFor(Height(this.clients[idx].getBlockHeight()) == to, 5.seconds,
+                format!"Expected height %s for client #%s (%s) not %s"
+                     (to, idx, this.nodes[idx].address,  this.clients[idx].getBlockHeight()),
+                file, line);
+        }
 
         // Compare blocks one at a time
-        iota(from, to + 1).each!(h =>
+        foreach (h; from .. to + 1)
+        {
             retryFor(client_idxs.map!(idx =>
                 this.clients[idx].getBlocksFrom(h, 1).hashFull).uniq().count() == 1, 5.seconds,
                 format!"[%s:%s] Clients %s blocks are not all the same for block %s: %s"
                 (file, line, client_idxs, h, client_idxs.fold!((s, i) =>
                     s ~ format!"\n\n========== Client #%s (%s) ==========%s"
                         (i, this.nodes[i].address,
-                        prettify(this.clients[i].getBlocksFrom(h, 1))))(""))));
+                        prettify(this.clients[i].getBlocksFrom(h, 1))))("")));
+        }
     }
 
     /// Expect a TX to be externalized within certain number of blocks
