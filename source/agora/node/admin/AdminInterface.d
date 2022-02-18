@@ -365,7 +365,7 @@ unittest
     struct S { int a = 1; }
     S x;
     const KeyPair kp = KeyPair.random();
-    auto clock = new Clock(null, null);
+    auto clock = new MockClock(TimePoint.init);
     auto qRCodeInterface = new AdminInterface(kp, clock, null);
     string qr_svg = qRCodeInterface.createQRcode(x);
     string sample_svg =
