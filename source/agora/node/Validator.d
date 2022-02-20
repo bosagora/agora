@@ -242,7 +242,7 @@ public class Validator : FullNode, API
             this.network.startPeriodicNameRegistration();
         super.start();
 
-        this.clock.start();
+        this.timers[TimersIdx.ClockTick] = this.clock.start(this.taskman);
         this.timers[TimersIdx.PreImageReveal] = this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
             &this.onPreImageRevealTimer, Periodic.Yes);
@@ -568,9 +568,7 @@ public class Validator : FullNode, API
             {
                 return this.network.getNetTimeOffset(this.qc.threshold,
                     time_offset);
-            },
-            (Duration duration, void delegate() cb) nothrow @trusted
-                { this.timers[TimersIdx.ClockTick] = this.taskman.setTimer(duration, cb, Periodic.Yes); });
+            });
     }
 
     /***************************************************************************

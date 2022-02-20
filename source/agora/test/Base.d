@@ -1818,12 +1818,9 @@ public class TestClock : Clock
     private shared(TimePoint)* cur_time;
 
     ///
-    public this (ITaskManager taskman, GetNetTimeOffset getNetTimeOffset,
-        shared(TimePoint)* cur_time)
+    public this (GetNetTimeOffset getNetTimeOffset, shared(TimePoint)* cur_time)
     {
-        super(getNetTimeOffset,
-            (Duration duration, void delegate() cb) nothrow @trusted
-                { taskman.setTimer(duration, cb, Periodic.Yes); });
+        super(getNetTimeOffset);
         this.cur_time = cur_time;
     }
 
@@ -1834,9 +1831,9 @@ public class TestClock : Clock
     }
 
     /// we manually sync the clocks in the tests, not using the timer
-    public override void start () @safe nothrow
+    public override ITimer start (ITaskManager taskman) @safe nothrow
     {
-
+        return null;
     }
 }
 
@@ -1868,7 +1865,7 @@ public class TestFullNode : FullNode, TestAPI
     /// Provides a unittest-adjusted clock source for the node
     protected override TestClock makeClock ()
     {
-        return new TestClock(this.taskman,
+        return new TestClock(
             (out Duration time_offset) { return true; }, this.cur_time);
     }
 
@@ -1956,7 +1953,7 @@ public class TestValidatorNode : Validator, TestAPI
     /// Provides a unittest-adjusted clock source for the node
     protected override TestClock makeClock ()
     {
-        return new TestClock(this.taskman,
+        return new TestClock(
             (out Duration time_offset)
             {
                 return this.network.getNetTimeOffset(this.qc.threshold,

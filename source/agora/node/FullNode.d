@@ -694,7 +694,8 @@ public class FullNode : API
 
         // Shut down our timers (discovery, catchup)
         foreach (timer; this.timers)
-            timer.stop();
+            if (timer !is null) // Clock timer is `null` in FullNode
+                timer.stop();
         this.timers = null;
 
         // The handlers are just arrays on which we iterate,
@@ -846,10 +847,7 @@ public class FullNode : API
     protected Clock makeClock ()
     {
         // non-synchronizing clock (for now)
-        return new Clock(
-            (out Duration time_offset) { return true; },
-            (Duration duration, void delegate() cb) nothrow @trusted
-                { this.timers[TimersIdx.ClockTick] = this.taskman.setTimer(duration, cb, Periodic.Yes); });
+        return new Clock((out Duration time_offset) { return true; });
     }
 
     /***************************************************************************
