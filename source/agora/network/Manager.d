@@ -799,10 +799,13 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        this.peers
-            .map!(node => Pair(getHeight(node), node))
-            .filter!(pair => pair.height != ulong.max)  // request failed
-            .each!(pair => node_pairs ~= pair);
+        foreach (node; this.peers)
+        {
+            auto pair = Pair(getHeight(node), node);
+            if (pair.height == ulong.max)  // request failed
+                continue;
+            node_pairs ~= pair;
+        }
 
         node_pairs.sort!((a, b) => a.height > b.height);
 
