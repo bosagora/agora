@@ -1263,7 +1263,7 @@ public class TestAPIManager
 
         foreach (idx; client_idxs)
         {
-            retryFor(Height(this.clients[idx].getBlockHeight()) == to, 5.seconds,
+            retryFor(Height(this.clients[idx].getBlockHeight()) == to, 15.seconds,
                 format!"Expected height %s for client #%s (%s) not %s"
                      (to, idx, this.nodes[idx].address,  this.clients[idx].getBlockHeight()),
                 file, line);
