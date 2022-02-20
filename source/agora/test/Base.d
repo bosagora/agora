@@ -1829,7 +1829,7 @@ public class TestClock : Clock
     }
 
     /// we manually sync the clocks in the tests, not using the timer
-    public override void startSyncing () @safe nothrow
+    public override void start () @safe nothrow
     {
 
     }
