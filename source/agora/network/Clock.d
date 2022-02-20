@@ -48,6 +48,7 @@
 
 module agora.network.Clock;
 
+import agora.common.Task;
 import agora.common.Types : TimePoint;
 import agora.utils.Log;
 
@@ -57,10 +58,6 @@ import core.time;
 
 /// Delegate used to calculate the time offset to apply in `networkTime`
 public alias GetNetTimeOffset = bool delegate (out Duration) @safe nothrow;
-
-/// Delegate used to set timer for synchronizing the clock with the network
-public alias SetPeriodicTimer = void delegate (Duration, void delegate())
-        @trusted nothrow;
 
 /// Ditto
 public class Clock
@@ -74,9 +71,6 @@ public class Clock
     /// how often the clock should be synchronized with the network
     public const Duration ClockSyncInterval = 1.minutes;
 
-    /// used to set timer for syncing
-    private SetPeriodicTimer setPeriodicTimerDg;
-
     /***************************************************************************
 
         Instantiate the clock.
@@ -87,16 +81,12 @@ public class Clock
         Params:
             getNetTimeOffset = delegate to call to calculate a net time offset
                                which will be used in the call to `networkTime`
-            setPeriodicTimerDg = delegate to set timer for synchronizing
-                                the clock with the network
 
     ***************************************************************************/
 
-    public this (GetNetTimeOffset getNetTimeOffset,
-        SetPeriodicTimer setPeriodicTimerDg) @safe @nogc nothrow pure
+    public this (GetNetTimeOffset getNetTimeOffset) @safe @nogc nothrow pure
     {
         this.getNetTimeOffset = getNetTimeOffset;
-        this.setPeriodicTimerDg = setPeriodicTimerDg;
     }
 
     /***************************************************************************
@@ -134,10 +124,10 @@ public class Clock
 
     ***************************************************************************/
 
-    public void start () @safe nothrow
+    public ITimer start (ITaskManager taskman) @safe nothrow
     {
         this.synchronize();
-        this.setPeriodicTimerDg(ClockSyncInterval, &this.synchronize);
+        return taskman.setTimer(ClockSyncInterval, &this.synchronize);
     }
 
     /***************************************************************************
@@ -163,7 +153,7 @@ public class MockClock : Clock
     ///
     public this (TimePoint time)
     {
-        super(null, null);
+        super(null);
         this.time = time;
     }
 
@@ -180,7 +170,7 @@ public class MockClock : Clock
     public override TimePoint utcTime () @safe nothrow @nogc { return time;}
 
     /// do nothing
-    public override void start () @safe nothrow {}
+    public override ITimer start (ITaskManager) @safe nothrow { return null; }
 
     /// do nothing
     public override void synchronize () @safe nothrow {}
