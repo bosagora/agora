@@ -81,7 +81,7 @@ public class Clock
 
         Instantiate the clock.
 
-        The startSyncing() routine must be called when the task manager is
+        The `start` routine must be called when the task manager is
         ready to set up timers.
 
         Params:
@@ -134,7 +134,7 @@ public class Clock
 
     ***************************************************************************/
 
-    public void startSyncing () @safe nothrow
+    public void start () @safe nothrow
     {
         this.synchronize();
         this.setPeriodicTimerDg(ClockSyncInterval, &this.synchronize);
@@ -180,7 +180,7 @@ public class MockClock : Clock
     public override TimePoint utcTime () @safe nothrow @nogc { return time;}
 
     /// do nothing
-    public override void startSyncing () @safe nothrow {}
+    public override void start () @safe nothrow {}
 
     /// do nothing
     public override void synchronize () @safe nothrow {}

@@ -242,7 +242,7 @@ public class Validator : FullNode, API
             this.network.startPeriodicNameRegistration();
         super.start();
 
-        this.clock.startSyncing();
+        this.clock.start();
         this.timers[TimersIdx.PreImageReveal] = this.taskman.setTimer(
             this.config.validator.preimage_reveal_interval,
             &this.onPreImageRevealTimer, Periodic.Yes);
