@@ -1824,12 +1824,6 @@ public class TestClock : Clock
     {
         return atomicLoad(*this.cur_time);
     }
-
-    /// we manually sync the clocks in the tests, not using the timer
-    public override ITimer start (ITaskManager taskman) @safe nothrow
-    {
-        return null;
-    }
 }
 
 /// A FullNode which also implements test routines in TestAPI

@@ -461,6 +461,7 @@ public class FullNode : API
                     }));
         }
 
+        this.timers[TimersIdx.ClockTick] = this.clock.start(this.taskman);
         this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
 
@@ -677,8 +678,7 @@ public class FullNode : API
 
         // Shut down our timers (discovery, catchup)
         foreach (timer; this.timers)
-            if (timer !is null) // Clock timer is `null` in FullNode
-                timer.stop();
+            timer.stop();
         this.timers = null;
 
         // The handlers are just arrays on which we iterate,
