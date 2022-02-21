@@ -638,11 +638,8 @@ public class Validator : FullNode, API
         Supports recalling `sub_quorums` config structures.
 
         Params:
-            filter_utxo = the UTXO to filter out (UTXO of the self node)
+            self_id = the index this node in the validators sorted by utxo
             quorum_conf = The SCP quorum set configuration
-            utxos = The UTXO hashes of all the validators
-            peekUTXO = An `UTXOFinder` without replay-protection
-            nodes = Will contain the set of public keys to connect to
 
     ***************************************************************************/
 
