@@ -899,7 +899,7 @@ public class Ledger
 
     ***************************************************************************/
 
-   public bool hasMajoritySignature (in BlockHeader header) @safe nothrow
+   public bool hasMajoritySignature (in BlockHeader header) @safe nothrow @nogc
     {
         if (header.height == 0)  // Genesis block is not signed
             return true;

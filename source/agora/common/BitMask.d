@@ -109,12 +109,6 @@ public struct BitMask
         this.bytes[] = rhs.bytes;
     }
 
-    /// return the indices of bits set
-    public auto setIndices () const
-    {
-        return iota(this.length).filter!(i => this[i]);
-    }
-
     /// return the indices of bits not set
     public auto notSetIndices () const
     {
@@ -122,13 +116,18 @@ public struct BitMask
     }
 
     /// return the count of bits set to `true`
-    public size_t setCount () const
+    public size_t setCount () const @nogc
     {
-        return this.setIndices.count!(i => this[i]);
+        size_t c;
+        // foreach used otherwise we would allocate in lambda
+        foreach (i; 0 .. this.length)
+            if (this[i])
+                c++;
+        return c;
     }
 
     /// return the percentage of bits set to `true`
-    public ubyte percentage () const
+    public ubyte percentage () const @nogc
     {
         assert(this.length > 0);
         ulong percentage = 100 * this.setCount / this.length;
