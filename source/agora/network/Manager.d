@@ -154,6 +154,7 @@ public class NetworkManager
             catch (Exception exc)
                 log.error("Unexpected exception while contacting {}: {}",
                           this.address, exc);
+            this.outer.connection_tasks.remove(this.address);
         }
 
         /// Ditto, just behind a trampoline to avoid function-wide try/catch
@@ -211,7 +212,6 @@ public class NetworkManager
                 {
                     // either we connected to ourself, or someone else is pretending
                     // to be us
-                    this.outer.connection_tasks.remove(address);
                     this.outer.banman.ban(address);
                     return;
                 }
@@ -305,7 +305,6 @@ public class NetworkManager
         in Hash utxo, in PublicKey key)
     {
         log.dbg("onHandshakeComplete: {} - (k: {}, utxo: {})", address, key, utxo);
-        this.connection_tasks.remove(address);
 
         // We have an authenticated client, maybe we already have a client for it
         if (key !is PublicKey.init)
@@ -598,13 +597,7 @@ public class NetworkManager
         /// else false if the address was banned
         bool onFailedRequest (in Address address) nothrow
         {
-            if (this.banman.isBanned(address))
-            {
-                this.connection_tasks.remove(address);
-                return false;
-            }
-
-            return true;
+            return !this.banman.isBanned(address);
         }
 
         try
