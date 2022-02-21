@@ -46,6 +46,7 @@ import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : NodeID;
 
 import std.algorithm;
+import std.format;
 import std.range : array, enumerate;
 
 import core.time;
@@ -646,6 +647,9 @@ public class Validator : FullNode, API
     private void buildRequiredKeys (NodeID self_id, in QuorumConfig quorum_conf) @safe
     {
         auto validators = this.getValidators();
+        assert(quorum_conf.nodes.length <= validators.length,
+            format!"Too many quorum nodes for next block #%s (%s > %s)"
+                (this.ledger.height() + 1, quorum_conf.nodes.length, validators.length));
         quorum_conf.nodes.filter!(node_id => node_id != self_id)
             .map!(node_id => validators[node_id].utxo)
             .each!((utxo) {
