@@ -972,6 +972,20 @@ private final class FrozenUTXOTracker : UTXOTracker
     {
         return this.ledger.isStake(hash, utxo);
     }
+
+    /// Process all transactions in this `Block`
+    public override void externalize (in Block block) @safe
+    {
+        super.externalize(block);
+        auto slashed = block.header.preimages.enumerate
+            .filter!(en => en.value is Hash.init).map!(en => en.index);
+        if (!slashed.empty)
+        {
+            auto validators = this.ledger.getValidators(block.header.height);
+            foreach (idx; slashed)
+                this.data_.remove(Tracked(validators[idx].utxo));
+        }
+    }
 }
 
 version (unittest)
@@ -1724,9 +1738,11 @@ unittest
     ConsensusData data;
     ledger.prepareNominatingSet(data);
     assert(data.missing_validators.canFind(missing_validator));
+    assert(UTXOTracker.Tracked(GenesisBlock.header.enrollments[missing_validator].utxo_key) in ledger.getStakes());
     assert(ledger.externalize(data) is null);
     // slashed stake should not have penalty deposit
     assert(ledger.getPenaltyDeposit(GenesisBlock.header.enrollments[missing_validator].utxo_key) == 0.coins);
+    assert(UTXOTracker.Tracked(GenesisBlock.header.enrollments[missing_validator].utxo_key) !in ledger.getStakes());
 }
 
 unittest
