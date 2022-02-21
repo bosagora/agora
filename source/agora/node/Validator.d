@@ -257,7 +257,7 @@ public class Validator : FullNode, API
     /// Ditto
     protected override void discoveryTask ()
     {
-        this.network.discover(this.ledger.getEnrolledUTXOs(), this.required_peer_utxos);
+        this.network.discover(this.required_peer_utxos);
         this.timers[TimersIdx.Discovery].rearm(this.config.node.network_discovery_interval, false);
     }
 

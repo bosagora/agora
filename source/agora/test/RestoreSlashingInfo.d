@@ -32,8 +32,9 @@ unittest
         recurring_enrollment : false
     };
     conf.node.timeout = 10.seconds;
-    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.network_discovery_interval = 1.seconds;
     conf.node.retry_delay = 250.msecs;
+    conf.node.min_listeners = 4;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
