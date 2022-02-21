@@ -685,7 +685,7 @@ public class Validator : FullNode, API
     {
         PreImageInfo preimage;
         if (this.enroll_man.getNextPreimage(preimage,
-            this.ledger.height()))
+            max(this.ledger.height(), this.ledger.expectedHeight(this.clock.utcTime()))))
         {
             this.ledger.addPreimage(preimage);
             this.network.peers.each!(p => p.sendPreimage(preimage));
