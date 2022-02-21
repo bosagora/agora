@@ -619,6 +619,7 @@ public class Validator : FullNode, API
             // Try to register immediately if we are a validator for the next cycle
             if (this.enroll_man.isEnrolled(block.header.height + 1, &this.ledger.peekUTXO))
                 this.network.onRegisterName();
+            assert(block.header.height == this.ledger.height);
             this.regenerateQuorums(block.header.height);
         }
 
