@@ -105,6 +105,10 @@ public void ensure (Args...) (bool exp, string fmt, lazy Args args,
     if (!exp)
     {
         auto res = instance.buffer.snformat(fmt, args);
+        // Instance info is filled on first throw and runtime doesn't update info
+        // when throwing same instance again
+        // https://issues.dlang.org/show_bug.cgi?id=22774
+        instance.info = null;
         instance.end = res.length;
         instance.file = file;
         instance.line = line;
