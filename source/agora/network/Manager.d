@@ -163,9 +163,7 @@ public class NetworkManager
             if (this.api is null)
                 this.api = this.outer.makeClient(this.address);
 
-            PublicKey key;
-            Hash utxo;
-            while (1)
+            foreach (_; 0 .. this.outer.config.node.max_retries)
             {
                 try
                 {
@@ -175,25 +173,30 @@ public class NetworkManager
                     const ephemeral_kp = KeyPair.random();
                     auto id = this.api.handshake(ephemeral_kp.address);
 
-                    // No identity, either a full node or not enrolled
-                    if (id.key == PublicKey.init)
-                        break;
-
-                    Hash shared_sec = generateSharedSecret(true,
-                        ephemeral_kp.secret, id.key).hashFull();
-                    static assert(shared_sec.sizeof >= crypto_auth_KEYBYTES);
-
-                    if (id.mac.length != crypto_auth_KEYBYTES ||
-                        crypto_auth_verify(id.mac.ptr, id.key[].ptr,
-                            id.key[].length, shared_sec[].ptr) != 0)
+                    if (id.key != PublicKey.init)
                     {
-                        this.outer.banman.ban(this.address);
-                        return;
+                        Hash shared_sec = generateSharedSecret(true,
+                            ephemeral_kp.secret, id.key).hashFull();
+                        static assert(shared_sec.sizeof >= crypto_auth_KEYBYTES);
+
+                        if (this.address !is Address.init
+                            && id.key == this.outer.config.validator.key_pair.address)
+                        {
+                            // either we connected to ourself, or someone else is pretending
+                            // to be us
+                            break;
+                        }
+
+                        if (id.mac.length != crypto_auth_KEYBYTES ||
+                            crypto_auth_verify(id.mac.ptr, id.key[].ptr,
+                                id.key[].length, shared_sec[].ptr) != 0)
+                        {
+                            break;
+                        }
                     }
 
-                    utxo = id.utxo;
-                    key = id.key;
-                    break;
+                    this.onHandshakeComplete(this.address, this.api, id.utxo, id.key);
+                    return;
                 }
                 catch (Exception ex)
                 {
@@ -204,20 +207,8 @@ public class NetworkManager
                     this.outer.taskman.wait(this.outer.config.node.retry_delay);
                 }
             }
-
-            if (key != PublicKey.init)
-            {
-                if (this.address !is Address.init
-                    && key == this.outer.config.validator.key_pair.address)
-                {
-                    // either we connected to ourself, or someone else is pretending
-                    // to be us
-                    this.outer.banman.ban(address);
-                    return;
-                }
-            }
-
-            this.onHandshakeComplete(this.address, this.api, utxo, key);
+            // failed to connect, try to ban (if not whitelisted)
+            this.outer.banman.ban(address);
         }
     }
 
