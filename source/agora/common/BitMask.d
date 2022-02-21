@@ -130,6 +130,7 @@ public struct BitMask
     /// return the percentage of bits set to `true`
     public ubyte percentage () const
     {
+        assert(this.length > 0);
         ulong percentage = 100 * this.setCount / this.length;
         assert(percentage <= 100);
         return cast(ubyte)percentage;
