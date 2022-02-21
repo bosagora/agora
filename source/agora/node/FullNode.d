@@ -298,6 +298,8 @@ public class FullNode : API
         this.ledger = this.makeLedger();
 
         this.network = this.makeNetworkManager();
+        auto validator_set = this.ledger.getEnrolledUTXOs();
+        this.network.onValidatorSetChanged(validator_set);
         this.transaction_relayer = this.makeTransactionRelayer();
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
@@ -525,7 +527,7 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
-        this.network.discover(this.ledger.getEnrolledUTXOs());
+        this.network.discover();
         this.startTaskTimer(TimersIdx.Discovery, this.config.node.network_discovery_interval);
     }
 
@@ -1189,6 +1191,11 @@ public class FullNode : API
         log.dbg("{}: height {}", __FUNCTION__, block.header.height);
         this.pushBlock(block);
         this.registry.onAcceptedBlock(block, validators_changed);
+        if (validators_changed)
+        {
+            auto validator_set = this.ledger.getEnrolledUTXOs();
+            this.network.onValidatorSetChanged(validator_set);
+        }
     }
 
     /***************************************************************************

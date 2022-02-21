@@ -27,7 +27,7 @@ unittest
     TestConf conf = { outsider_validators : 3,
         recurring_enrollment : false,
     };
-    conf.node.network_discovery_interval = 2.seconds;
+    conf.node.network_discovery_interval = 1.seconds;
     conf.node.retry_delay = 250.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();

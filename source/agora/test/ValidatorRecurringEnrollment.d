@@ -116,6 +116,7 @@ unittest
 
     TestConf conf;
     conf.consensus.quorum_threshold = 100;
+    conf.node.network_discovery_interval = 1.seconds;
 
     auto network = makeTestNetwork!(TestNetwork!SocialDistancingValidator)(conf);
     network.start();

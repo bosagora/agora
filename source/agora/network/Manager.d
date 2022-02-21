@@ -259,6 +259,9 @@ public class NetworkManager
 
     protected agora.api.FullNode.API owner_node;
 
+    /// Most recent validator set
+    protected UTXO[Hash] last_known_validator_utxos;
+
     /// Ctor
     public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
     {
@@ -525,11 +528,24 @@ public class NetworkManager
             &this.onRegisterName, Periodic.Yes);
     }
 
+    /// Called when validator set is changed
+    public void onValidatorSetChanged (UTXO[Hash] validator_utxos) @trusted
+    {
+        this.last_known_validator_utxos = validator_utxos;
+
+        foreach (val; this.validators())
+            if (val.identity.utxo !in this.last_known_validator_utxos)
+                if (this.peer_list.linearRemoveElement(val))
+                {
+                    this.peer_list_version++;
+                    val.shutdown();
+                }
+    }
+
     /// Discover the network, connect to all required peers
     /// Some nodes may want to connect to specific peers before
     /// discovery() is considered complete
-    public void discover (UTXO[Hash] last_known_validator_utxos,
-        UTXO[Hash] required_peer_utxos = null) nothrow
+    public void discover (UTXO[Hash] required_peer_utxos = null) nothrow
     {
         this.quorum_set_keys.from(Set!Hash.init);
         this.required_peers.from(Set!Hash.init);
@@ -543,9 +559,9 @@ public class NetworkManager
 
         log.trace(
             "Doing periodic network discovery: {} required peers requested, {} missing, known {}",
-            required_peer_utxos.length, this.required_peers.length, last_known_validator_utxos.length);
+            required_peer_utxos.length, this.required_peers.length, this.last_known_validator_utxos.length);
 
-        foreach (utxo; last_known_validator_utxos.byKeyValue)
+        foreach (utxo; this.last_known_validator_utxos.byKeyValue)
         {
             if (!this.peers.map!(ni => ni.identity.utxo).canFind(utxo.key))
             {
