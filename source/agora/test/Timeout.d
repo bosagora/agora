@@ -23,7 +23,6 @@ unittest
     TestConf conf = {
         max_failed_requests : 1000, // never ban
     };
-    conf.node.max_retries = 2;
     conf.node.retry_delay = 1.msecs;
     conf.node.timeout = 500.msecs;
 
