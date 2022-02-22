@@ -95,6 +95,28 @@
             ]
         },
         {
+            "name": "ut",
+            "preBuildCommands": ["$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"],
+            "mainSourceFile": "bin/ut.d",
+            "excludedSourceFiles": [
+                "source/agora/cli/*/main.d",
+                "source/agora/utils/gc/*"
+            ],
+            "sourceFiles-posix": [
+                "source/scpp/build/DSizeChecks.o",
+                "source/scpp/build/DLayoutChecks.o"
+            ],
+            "sourceFiles-windows": [
+                "source/scpp/build/DSizeChecks.obj",
+                "source/scpp/build/DLayoutChecks.obj"
+            ],
+            "dflags": [ "-checkaction=context" ],
+            "dflags-ldc": [ "--link-defaultlib-debug" ],
+            "dependencies": {
+                "unit-threaded": "*"
+            }
+        },
+        {
             "name": "unittest",
             "targetName": "agora-unittests",
             "excludedSourceFiles": [
