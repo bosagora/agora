@@ -217,7 +217,7 @@ unittest
 unittest
 {
     auto amounts = iota(16)
-        .map!(idx => 40_000.coins + (10_000.coins * idx)));
+        .map!(idx => 40_000.coins + (10_000.coins * idx));
     auto keys = getKeys(16);
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 8);
@@ -280,6 +280,7 @@ unittest
     assert(count_2[31] >= 30);
     assert(count_1 != count_2);
 }
+
 
 // 64 nodes where two nodes own 66% of the stake
 unittest
@@ -354,6 +355,21 @@ unittest
     quorums_2.byValue.each!(qc => assert(qc.nodes.length <= 8));
     quorums_2.byValue.each!(qc => assert(qc.threshold == 5));
     assertCounts(countNodeInclusions(quorums_2, keys), count_1);
+}
+
+// verifyQuorumsIntersect up to 32 nodes
+unittest
+{
+    iota(1, 33).each!((nodes)
+    {
+        auto keys = getKeys(nodes);
+        auto amounts = Amount(40.coins).repeat(nodes).array;
+        auto quorums = buildTestQuorums(amounts, keys, hashFull(1),
+            QuorumParams.init, 50 + nodes);
+        verifyQuorumsSanity(quorums);
+        const printTimings = false; // set to print time spent for checking SCP quorum intersection
+        verifyQuorumsIntersect(quorums, printTimings);
+    });
 }
 
 version (unittest)
@@ -607,9 +623,17 @@ private void verifyQuorumsIntersect (QuorumConfig[NodeID])
     // @bug@: Need to fix linking issues with QuorumIntersectionChecker.create()
 }
 else
-private void verifyQuorumsIntersect (QuorumConfig[NodeID] quorums)
+private void verifyQuorumsIntersect (QuorumConfig[NodeID] quorums,
+    bool print = false, string file = __FILE__, int line = __LINE__)
 {
     import scpd.quorum.QuorumIntersectionChecker;
+
+    import std.stdio : writefln;
+    import std.datetime.stopwatch;
+    auto watch = StopWatch(AutoStart.yes);
+    if (print)
+        try { writefln!"verifyQuorumsIntersect: line %s:%s, quorum: (threshold: %s of size: %s) total nodes: %s"
+            (file, line, quorums.values.front.threshold, quorums.values.front.nodes.length, quorums.keys.maxElement + 1); } catch (Exception) {}
 
     ulong idx = 0;
     auto qm = QuorumTracker.QuorumMap(CppCtor.Use);
@@ -626,4 +650,8 @@ private void verifyQuorumsIntersect (QuorumConfig[NodeID] quorums)
 
     auto splits = qic.getPotentialSplit();
     assert(splits.first.length == 0 && splits.second.length == 0);
+    watch.stop();
+    if (print)
+        writefln!"  took %s msecs\n"
+            (watch.peek.total!"msecs");
 }
