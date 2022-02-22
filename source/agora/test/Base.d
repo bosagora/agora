@@ -1154,7 +1154,7 @@ public class TestAPIManager
             // Wait for tx gossipping before setting time for block
             foreach (idx; client_idxs)
                 retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
-                    4.seconds, format!"Client #%s (%s) did not receive tx in expected time for height %s"
+                    10.seconds, format!"Client #%s (%s) did not receive tx in expected time for height %s"
                         (idx, this.nodes[idx].address, target_height), file, line);
         }
 
