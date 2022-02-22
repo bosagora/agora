@@ -146,7 +146,7 @@ unittest
     assert(countNodeInclusions(quorums, keys) == [3, 3, 3]);
 }
 
-// 4 nodes with equal stakes
+// 4 nodes with equal stakes (should show even distribution)
 unittest
 {
     auto keys = getKeys(4);
@@ -157,7 +157,7 @@ unittest
     assert(countNodeInclusions(quorums, keys) == [4, 4, 4, 4]);
 }
 
-// 8 nodes with equal stakes
+// 8 nodes with equal stakes (should show even distribution)
 unittest
 {
     auto keys = getKeys(8);
@@ -174,7 +174,7 @@ unittest
     assert(countNodeInclusions(quorums_2, keys) == [7, 5, 7, 8, 8, 8, 7, 6]);
 }
 
-// 16 nodes with equal stakes
+// 16 nodes with equal stakes (should show even distribution)
 unittest
 {
     auto keys = getKeys(16);
@@ -193,7 +193,7 @@ unittest
         [8, 8, 5, 6, 7, 8, 8, 7, 6, 6, 7, 9, 9, 7, 7, 4]);
 }
 
-// 16 nodes with linearly ascending stakes
+// 16 nodes with linearly ascending stakes (should show general increase from left to right in counts)
 unittest
 {
     auto amounts = iota(16)
@@ -214,7 +214,7 @@ unittest
         [4, 2, 3, 4, 6, 9, 8, 9, 7, 8, 9, 9, 9, 7, 6, 12]);
 }
 
-// 16 nodes where two nodes own 66% of the stake
+// 16 nodes where two nodes own 66% of the stake (should show first and last heavily weighted)
 unittest
 {
     auto keys = getKeys(16);
