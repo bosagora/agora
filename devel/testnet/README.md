@@ -130,6 +130,9 @@ interfaces:
     port: 3000
 ```
 
+If docker is being used, it also needs to be instructed to expose the port.
+This is done with the `-p` option, e.g. `docker run -p 2826 [...]`.
+
 Once you start the node, and wait up to a few minutes, it should enroll by itself
 and start validating. You can also make sure your node is accessible by checking
 that `boa1xrwuel4csj4acdfdr5c6xufewa7r5l5g83cp5uax2lyxaakkhwc27aghk7m.validators.testnet.bosagora.io`

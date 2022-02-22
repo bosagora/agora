@@ -13,10 +13,17 @@
 node:
   realm: "testnet.bosagora.io"
   testing: true
-  registry_address: http://ns1.bosagora.io/
+  registry_address: https://ns1.bosagora.io/
 
 registry:
   public: true
+
+# If you want to be a validator, use the following:
+# validator:
+#   enabled: true
+#   seed: YOUR_SEED_HERE
+#   addresses_to_register:
+#     - "agora://my-address.example.com"
 
 logging:
   root:
