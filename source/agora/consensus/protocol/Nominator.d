@@ -1457,6 +1457,25 @@ extern(D):
             envs ~= to!string(scpPrettify(&env, &this.getQSet));
         return envs;
     }
+
+    /***************************************************************************
+
+        `computeTimeout` computes a timeout given a round number
+        it should be sufficiently large such that nodes in a
+        quorum can exchange 4 messages
+
+        Params:
+            roundNumber = round number
+
+    ***************************************************************************/
+
+    protected override milliseconds computeTimeout(uint32_t roundNumber)
+    {
+        auto base = 1.seconds;
+        // double the timeout every 16 validators
+        auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 16;
+        return milliseconds((base * val_multipler * roundNumber).total!"msecs".to!long);
+    }
 }
 
 /// Adds hashing support to SCPStatement
