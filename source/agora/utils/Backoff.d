@@ -28,7 +28,8 @@ import std.algorithm : min;
 
     The algorithm is simply:
     ```
-    sleep_time = random(0, min(max_delay, base * (2 ^^ attempt));
+    base_sleep = random(0, min(max_delay, base * (2 ^^ attempt));
+    sleep_time = base_sleep + random(0, base_sleep / 20)
     ```
 
     Params:
@@ -44,14 +45,14 @@ import std.algorithm : min;
 
 *******************************************************************************/
 
-public uint getDelay (alias RandomFunc = getRandom)
+public uint getDelay (alias JitterFunc = getJitter)
     (uint attempt, uint base, uint max_delay)
 {
     // must clamp to 2 ^^ 32 - 1 as this is the highest uint32 we can use.
     attempt = min(32, attempt);
     const uint delay = min(max_delay,
                            base * cast(uint)((ulong(2) ^^ attempt) - 1));
-    return RandomFunc(delay);
+    return delay + JitterFunc(delay);
 }
 
 /*******************************************************************************
@@ -62,13 +63,14 @@ public uint getDelay (alias RandomFunc = getRandom)
       value = the input value
 
     Returns:
-      A random value between [0, value], inclusive
+      A random value between [0, value / 20], inclusive
 
 *******************************************************************************/
 
-public uint getRandom (uint value) @safe nothrow @nogc
+public int getJitter (uint value) @safe nothrow @nogc
 {
-    return () @trusted { return randombytes_uniform(value); }();
+    auto abs_jitter = () @trusted { return randombytes_uniform(value); }() / 20;
+    return abs_jitter % 2 ? -abs_jitter : abs_jitter;
 }
 
 ///
@@ -78,11 +80,11 @@ unittest
     import std.range;
 
     /// Uses a static Jitter (for testing)
-    static uint deterministicRandom (uint value)
+    static uint deterministicJitter (uint value)
     {
-        return value + 2;
+        return 2;
     }
-    alias testDelay = getDelay!deterministicRandom;
+    alias testDelay = getDelay!deterministicJitter;
 
     const del_1 = iota(0, 100).map!(attempt => testDelay(attempt, 5, 2000)).array;
     assert(del_1 == [2, 7, 17, 37, 77, 157, 317, 637, 1277, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002, 2002]);
