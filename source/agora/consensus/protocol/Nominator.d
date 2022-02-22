@@ -1469,7 +1469,7 @@ extern(D):
 
     ***************************************************************************/
 
-    protected override milliseconds computeTimeout(uint32_t roundNumber)
+    protected override milliseconds computeTimeout (uint32_t roundNumber)
     {
         auto base = 1.seconds;
         // double the timeout every 16 validators
