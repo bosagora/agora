@@ -197,7 +197,7 @@ unittest
 unittest
 {
     auto amounts = iota(16)
-        .map!(idx => Amount(400000000000uL + (100000000000uL * idx)));
+        .map!(idx => 40_000.coins + (10_000.coins * idx)));
     auto keys = getKeys(16);
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 8);
@@ -218,8 +218,8 @@ unittest
 unittest
 {
     auto keys = getKeys(16);
-    auto amounts = Amount(400000000000uL).repeat(16).array;
-    amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 14);
+    auto amounts = 40_000.coins.repeat(16).array;
+    amounts[0] = amounts[$ - 1] = 40_000.coins * 14;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 10);
     verifyQuorumsSanity(quorums_1);
@@ -244,8 +244,8 @@ unittest
 unittest
 {
     auto keys = getKeys(32);
-    auto amounts = Amount(400000000000uL).repeat(32).array;
-    amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 30);
+    auto amounts = 40_000.coins.repeat(32).array;
+    amounts[0] = amounts[$ - 1] = 40_000.coins * 30;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 12);
     verifyQuorumsSanity(quorums_1);
@@ -271,8 +271,8 @@ unittest
 unittest
 {
     auto keys = getKeys(64);
-    auto amounts = Amount(400000000000uL).repeat(64).array;
-    amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 62);
+    auto amounts = 40_000.coins.repeat(64).array;
+    amounts[0] = amounts[$ - 1] = 40_000.coins * 62;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 14);
     verifyQuorumsSanity(quorums_1);
@@ -298,8 +298,8 @@ unittest
 unittest
 {
     auto keys = getKeys(128);
-    auto amounts = Amount(400000000000uL).repeat(128).array;
-    amounts[0] = amounts[$ - 1] = Amount(400000000000uL * 126);
+    auto amounts = 40_000.coins.repeat(128).array;
+    amounts[0] = amounts[$ - 1] = 40_000.coins * 126;
     auto quorums_1 = buildTestQuorums(amounts, keys, hashFull(1),
         QuorumParams.init, 16);
     verifyQuorumsSanity(quorums_1);
