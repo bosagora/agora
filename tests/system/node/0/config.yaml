@@ -36,6 +36,7 @@ consensus:
   block_interval:
     seconds: 5
   validator_cycle: 20
+  genesis_timestamp: 1640995200
 
 ################################################################################
 ##                             Validator configuration                        ##

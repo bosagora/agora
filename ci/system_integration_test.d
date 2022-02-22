@@ -4,8 +4,11 @@ module system_integration_test;
 private:
 
 import std.algorithm;
+import std.array;
+import std.conv;
 import std.file;
 import std.format;
+import std.datetime;
 import std.path;
 import std.process;
 import std.stdio;
@@ -49,6 +52,17 @@ immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
                       IntegrationPath.buildPath("node/6/.cache/"),
                       IntegrationPath.buildPath("node/7/.cache/"),
 ];
+auto SetGenesisTimestamp = ["sed", "-i",
+    "s/genesis_timestamp: [0-9]\\+/genesis_timestamp: curr_time/g",
+    IntegrationPath.buildPath("node/0/config.yaml"),
+    IntegrationPath.buildPath("node/2/config.yaml"),
+    IntegrationPath.buildPath("node/3/config.yaml"),
+    IntegrationPath.buildPath("node/4/config.yaml"),
+    IntegrationPath.buildPath("node/5/config.yaml"),
+    IntegrationPath.buildPath("node/6/config.yaml"),
+    IntegrationPath.buildPath("node/7/config.yaml"),
+    IntegrationPath.buildPath("node/faucet/config.yaml"),
+];
 
 private int main (string[] args)
 {
@@ -67,6 +81,10 @@ private int main (string[] args)
     // First make sure that there we start from a clean slate,
     // as the docker-compose bind volumes
     runCmd(Cleanup);
+
+    auto now = (Clock.currTime(UTC()).toUnixTime + 10).to!string;
+    // Update genesis timestamps
+    runCmd(SetGenesisTimestamp.map!(str => str.replace("curr_time", now)).array);
 
     // We need to have a "foreground" process to use `--abort-on-container-exit`
     // This option allows us to detect when the node stops / crash even before
