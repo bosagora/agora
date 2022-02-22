@@ -94,6 +94,10 @@ unittest
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.shutdown);
 
+    // give time for the outsiders to be added as validators before sending tx for next block
+    // as catchup for missing txs only occurs after nomination has started
+    Thread.sleep(conf.node.network_discovery_interval);
+
     // Block 21 with the new validators in the set B
     network.generateBlocks(iota(GenesisValidators, allValidators),
         Height(GenesisValidatorCycle + 1));
