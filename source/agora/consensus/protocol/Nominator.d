@@ -857,23 +857,109 @@ extern(D):
             this.enroll_man.getOurPreimage(block.header.height));
     }
 
-    extern (C++):
+    /// If we have majority signatures then externalize to the ledger otherwise check again after receiving signatures
+    private void checkExternalize () @safe nothrow
+    {
+        const block = this.pending_block;
+        try
+        {
+            if (block.header.height == this.ledger.height + 1)
+            {
+                if (block.header.validators.percentage > 50)
+                {
+                    log.info("{}: Ready to externalize block #{} to the ledger", __FUNCTION__, block.header.height);
+                    this.verifyBlock(block);
+                }
+                else
+                {
+                    log.dbg("{}: Will not yet externalize block #{} as we only have {} / {} signatures",
+                        __FUNCTION__, block.header.height, block.header.validators.setCount,
+                        block.header.validators.count);
+                    this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
+                    return;
+                }
+            }
+            else
+            {
+                log.info("{}: block #{} was already in the ledger (catchup task)", __FUNCTION__, block.header.height);
+            }
+            this.pending_block = Block.init;
+            // Enable envelope processing again
+            this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
+        }
+        catch (Exception exc)
+        {
+            log.warn("{}: Exception thrown: {}", __FUNCTION__, exc);
+        }
+    }
+
+    /// function for verifying the block which can be overriden in byzantine unit tests
+    protected void verifyBlock (in Block signed_block) @safe
+    {
+        // We call `{Validator,FullNode}.acceptBlock` here (via delegate),
+        // instead of calling `Ledger.acceptBlock` directly.
+        // The reason for that is that those classes have some special logic
+        // which applies when a block is externalize (for example if the quorum
+        // config changes or the list of validators change,
+        // new network connections might need to be established).
+        if (auto fail_msg = this.acceptBlock(signed_block))
+        {
+            log.error("Block was not accepted by node {}: {}", this.kp.address, fail_msg);
+            assert(0, "Block was not accepted: " ~ fail_msg);
+        }
+    }
+
+    /// function for gossip of block sig which can be overriden in byzantine unit tests
+    protected void gossipBlockSignature (in ValidatorBlockSig block_sig)
+        @safe nothrow
+    {
+        // Send to other nodes in the network
+        this.network.gossipBlockSignature(block_sig);
+    }
 
     /***************************************************************************
 
-        Signs the SCPEnvelope with the node's private key.
+        Add missing block signatures to provided block header if known
 
         Params:
-            envelope = the SCPEnvelope to sign
+            header = header to be updated
 
     ***************************************************************************/
 
-    public override void signEnvelope (ref SCPEnvelope envelope)
+    public void updateMultiSignature (ref BlockHeader header) @safe
     {
-        const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
-        envelope.signature = this.kp.sign(challenge).toBlob();
-        log.trace("SIGN Envelope signature {}: {}", envelope.signature,
-                  scpPrettify(&envelope, &this.getQSet));
+        const validators = this.ledger.getValidators(header.height);
+
+        if (header.height !in this.slot_sigs)
+        {
+            log.warn("No known signatures at height {}", header.height);
+            return;
+        }
+        log.dbg("{}: Before updating block signature for block {}, mask: {}",
+            __FUNCTION__, header.height, header.validators);
+        const Signature[Hash] block_sigs = this.slot_sigs[header.height];
+
+        auto validator_mask = BitMask(validators.length);
+        auto sigs_to_add = [ header.signature ];
+        foreach (idx, const ref val; validators)
+        {
+            if (header.validators[idx]) // in the header already
+                validator_mask[idx] = true;
+            else if (val.utxo() in block_sigs) // We have the missing signature
+            {
+                validator_mask[idx] = true;
+                const sig = block_sigs[val.utxo()];
+                sigs_to_add ~= sig;
+                log.trace("updateMultiSignature: Adding missing signature for {} at height {}",
+                    val.address, header.height);
+                this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
+            }
+        }
+        header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
+        log.trace("{}: Updated block signature for block {}, mask: {}",
+                __FUNCTION__, header.height, header.validators);
+        this.checkExternalize();
+        return;
     }
 
     /***************************************************************************
@@ -890,7 +976,7 @@ extern(D):
 
     ***************************************************************************/
 
-    extern (D) private bool collectBlockSignature (in ValidatorBlockSig block_sig,
+    private bool collectBlockSignature (in ValidatorBlockSig block_sig,
         in Hash block_hash) @safe nothrow
     {
         auto sigs = block_sig.height in this.slot_sigs;
@@ -941,6 +1027,25 @@ extern(D):
         const Scalar s = validator.preimage[block_sig.height];
         this.slot_sigs[block_sig.height][block_sig.utxo] = Signature(block_sig.signature, s);
         return true;
+    }
+
+    extern (C++):
+
+    /***************************************************************************
+
+        Signs the SCPEnvelope with the node's private key.
+
+        Params:
+            envelope = the SCPEnvelope to sign
+
+    ***************************************************************************/
+
+    public override void signEnvelope (ref SCPEnvelope envelope)
+    {
+        const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
+        envelope.signature = this.kp.sign(challenge).toBlob();
+        log.trace("SIGN Envelope signature {}: {}", envelope.signature,
+                  scpPrettify(&envelope, &this.getQSet));
     }
 
     /***************************************************************************
@@ -1063,111 +1168,6 @@ extern(D):
         log.trace("valueExternalized: added slot id {} to ledger at height {}", height, last_height);
         () @trusted { this.fully_validated_value.clear(); }();
         () @trusted { this.seen_envs.clear(); }();
-    }
-
-    /// If we have majority signatures then externalize to the ledger otherwise check again after receiving signatures
-    extern(D) private void checkExternalize () @safe nothrow
-    {
-        const block = this.pending_block;
-        try
-        {
-            if (block.header.height == this.ledger.height + 1)
-            {
-                if (block.header.validators.percentage > 50)
-                {
-                    log.info("{}: Ready to externalize block #{} to the ledger", __FUNCTION__, block.header.height);
-                    this.verifyBlock(block);
-                }
-                else
-                {
-                    log.dbg("{}: Will not yet externalize block #{} as we only have {} / {} signatures",
-                        __FUNCTION__, block.header.height, block.header.validators.setCount,
-                        block.header.validators.count);
-                    this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
-                    return;
-                }
-            }
-            else
-            {
-                log.info("{}: block #{} was already in the ledger (catchup task)", __FUNCTION__, block.header.height);
-            }
-            this.pending_block = Block.init;
-            // Enable envelope processing again
-            this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
-        }
-        catch (Exception exc)
-        {
-            log.warn("{}: Exception thrown: {}", __FUNCTION__, exc);
-        }
-    }
-
-    /// function for verifying the block which can be overriden in byzantine unit tests
-    extern(D) protected void verifyBlock (in Block signed_block) @safe
-    {
-        // We call `{Validator,FullNode}.acceptBlock` here (via delegate),
-        // instead of calling `Ledger.acceptBlock` directly.
-        // The reason for that is that those classes have some special logic
-        // which applies when a block is externalize (for example if the quorum
-        // config changes or the list of validators change,
-        // new network connections might need to be established).
-        if (auto fail_msg = this.acceptBlock(signed_block))
-        {
-            log.error("Block was not accepted by node {}: {}", this.kp.address, fail_msg);
-            assert(0, "Block was not accepted: " ~ fail_msg);
-        }
-    }
-
-    /// function for gossip of block sig which can be overriden in byzantine unit tests
-    extern(D) protected void gossipBlockSignature (in ValidatorBlockSig block_sig)
-        @safe nothrow
-    {
-        // Send to other nodes in the network
-        this.network.gossipBlockSignature(block_sig);
-    }
-
-    /***************************************************************************
-
-        Add missing block signatures to provided block header if known
-
-        Params:
-            header = header to be updated
-
-    ***************************************************************************/
-
-    extern(D) public void updateMultiSignature (ref BlockHeader header) @safe
-    {
-        const validators = this.ledger.getValidators(header.height);
-
-        if (header.height !in this.slot_sigs)
-        {
-            log.warn("No known signatures at height {}", header.height);
-            return;
-        }
-        log.dbg("{}: Before updating block signature for block {}, mask: {}",
-            __FUNCTION__, header.height, header.validators);
-        const Signature[Hash] block_sigs = this.slot_sigs[header.height];
-
-        auto validator_mask = BitMask(validators.length);
-        auto sigs_to_add = [ header.signature ];
-        foreach (idx, const ref val; validators)
-        {
-            if (header.validators[idx]) // in the header already
-                validator_mask[idx] = true;
-            else if (val.utxo() in block_sigs) // We have the missing signature
-            {
-                validator_mask[idx] = true;
-                const sig = block_sigs[val.utxo()];
-                sigs_to_add ~= sig;
-                log.trace("updateMultiSignature: Adding missing signature for {} at height {}",
-                    val.address, header.height);
-                this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
-            }
-        }
-        header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
-        log.trace("{}: Updated block signature for block {}, mask: {}",
-                __FUNCTION__, header.height, header.validators);
-        this.checkExternalize();
-        return;
     }
 
     /***************************************************************************
