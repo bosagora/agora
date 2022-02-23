@@ -2250,7 +2250,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         conf.registry_address = setField(Address("http://10.8.8.8"));
         const selfCount = 1;
         if (conf.min_listeners == size_t.max)
-            conf.min_listeners = (test_conf.node.test_validators + test_conf.full_nodes) - selfCount;
+            conf.min_listeners = test_conf.node.test_validators - selfCount;
         if (conf.max_listeners == size_t.max)
             conf.max_listeners = TotalNodes - selfCount;
         return conf;
