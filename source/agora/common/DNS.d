@@ -805,7 +805,9 @@ public struct ResourceRecord
                     tmp_data.uri = URIRDATA(
                         deserializeFull!(typeof(URIRDATA.priority))(&ctx.read, ctx.options),
                         deserializeFull!(typeof(URIRDATA.weight))(&ctx.read, ctx.options),
-                        Address(cast(string) ctx.read(rdlength - (URIRDATA.priority.sizeof + URIRDATA.weight.sizeof)))
+                        Address(deserializeArray!(string)(
+                            rdlength - (URIRDATA.priority.sizeof + URIRDATA.weight.sizeof),
+                            &ctx.read, ctx.options))
                     );
                     break;
                 default:
