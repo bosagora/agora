@@ -139,6 +139,9 @@ public class NetworkClient
     /// The list of clients that we can communicate with
     package ConnectionInfo[] connections;
 
+    ///
+    private uint connections_version;
+
     /// Reusable exception
     private Exception exception;
 
@@ -316,6 +319,12 @@ public class NetworkClient
     public bool isAuthenticated () const scope @safe pure nothrow @nogc
     {
         return this.identity.key != PublicKey.init;
+    }
+
+    ///
+    public bool isConnected () const scope @safe pure nothrow @nogc
+    {
+        return this.connections.length > 0;
     }
 
     /***************************************************************************
@@ -603,14 +612,37 @@ public class NetworkClient
         import std.traits;
         enum name = __traits(identifier, endpoint);
         alias T = ReturnType!(__traits(getMember, API, name));
+        auto curr_conn_version = this.connections_version;
 
-        foreach (idx; 1 .. this.max_retries + 1)
+        T onError ()
         {
+            static if (DT == Throw.Yes)
+            {
+                this.exception.file = file;
+                this.exception.line = line;
+                throw this.exception;
+            }
+            else static if (!is(T == void))
+                return T.init;
+        }
+
+    RETRY: foreach (idx; 1 .. this.max_retries + 1)
+        {
+            // Clients without connections should not wait and instead error out
+            if (!this.connections.length)
+                return onError();
+
             foreach (conn; this.connections)
             {
                 if (this.banman.isBanned(conn.address))
                 {
-                    log.dbg("Client.attemptRequest '{}' skipped as {} is banned: {}/{}", name, conn.address, idx, this.max_retries);
+                    try
+                    {
+                        this.connections.remove!(c => c == conn);
+                        this.connections_version++;
+                        log.warn("Removing banned address {} while performing {}, addresses left: {}",
+                                    conn.address, name, this.addresses);
+                    } catch (Exception e) {}
                 }
                 else
                 {
@@ -632,8 +664,13 @@ public class NetworkClient
                         {
                             // nothing we can do
                         }
-
                     }
+                }
+
+                if (this.connections_version > curr_conn_version)
+                {
+                    curr_conn_version = this.connections_version;
+                    continue RETRY;
                 }
             }
             if (idx < this.max_retries) // wait after each failure except last
@@ -648,16 +685,9 @@ public class NetworkClient
 
         // request considered failed after max retries reached
         foreach (const ref conn; this.connections)
-            this.banman.onFailedRequest(conn.address);
+            this.banman.onFailedRequest(conn.address); // assumed wont context switch
 
-        static if (DT == Throw.Yes)
-        {
-            this.exception.file = file;
-            this.exception.line = line;
-            throw this.exception;
-        }
-        else static if (!is(T == void))
-            return T.init;
+        return onError();
     }
 
     /// Merge connections of incoming client to this
