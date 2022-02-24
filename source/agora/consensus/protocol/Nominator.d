@@ -713,31 +713,7 @@ extern(D):
         }
 
         log.trace("Received signed envelope: {}", scpPrettify(&envelope, &this.getQSet));
-        // we check confirmed statements before validating with
-        // 'scp.receiveEnvelope()'
-        // There are two reasons why:
-        // 1. in the example of { N: 6, T: 4 }, we may
-        //    receive 4 confimed messages and decide to externalize.
-        //    then the 2 additional confirmations would be rejected because the
-        //    ledger state has changed and the 2 messages now contain only
-        //    double-spend transactions.
-        //    so we must collect confirm signatures regardless.
-        if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_CONFIRM)
-        {
-            ConsensusData con_data;
-            try
-            {
-                con_data = deserializeFull!ConsensusData(
-                    envelope.statement.pledges.confirm_.ballot.value[]);
-            }
-            catch (Exception ex)
-            {
-                log.error("Validated envelope has an invalid ballot value: {}. {}",
-                    envelope.statement.pledges.confirm_.ballot.value, ex);
-                return;
-            }
-        }
-        else if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
+        if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
             // show some tolerance to early nominations
             ulong tolerance = this.params.BlockInterval.total!"seconds" / 20; // 5%
