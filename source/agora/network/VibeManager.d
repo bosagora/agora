@@ -24,6 +24,7 @@ import agora.common.Ensure;
 import agora.common.Task;
 import agora.common.Types;
 import agora.common.ManagedDatabase;
+import agora.consensus.state.Ledger;
 import agora.network.Clock;
 import agora.network.DNSResolver;
 public import agora.network.Manager;
@@ -60,9 +61,9 @@ public final class VibeNetworkManager : NetworkManager
 {
     /// Construct an instance of this object
     public this (in Config config, ManagedDatabase cache, ITaskManager taskman,
-                 Clock clock, agora.api.FullNode.API owner_node)
+                 Clock clock, agora.api.FullNode.API owner_node, Ledger ledger)
     {
-        super(config, cache, taskman, clock, owner_node);
+        super(config, cache, taskman, clock, owner_node, ledger);
     }
 
     /// See `NetworkManager.makeDNSResolver`

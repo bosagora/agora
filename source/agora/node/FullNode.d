@@ -843,8 +843,8 @@ public class FullNode : API
 
     protected NetworkManager makeNetworkManager ()
     {
-        return new VibeNetworkManager(
-            this.config, this.cacheDB, this.taskman, this.clock, this);
+        return new VibeNetworkManager(this.config, this.cacheDB,
+            this.taskman, this.clock, this, this.ledger);
     }
 
     protected TransactionRelayer makeTransactionRelayer ()

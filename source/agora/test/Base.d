@@ -1760,7 +1760,7 @@ private mixin template TestNodeMixin ()
     {
         return new TestNetworkManager(
             this.config, this.cacheDB, this.taskman, this.clock, this,
-            this.config.interfaces[0].address,
+            this.ledger, this.config.interfaces[0].address,
             this.nregistry);
     }
 

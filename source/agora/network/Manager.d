@@ -193,6 +193,16 @@ public class NetworkManager
                         {
                             break;
                         }
+
+                        if (id.utxo != Hash.init)
+                        {
+                            UTXO stake;
+                            // check if stake is valid and belongs to id.key
+                            if (!this.outer.ledger.peekUTXO(id.utxo, stake) ||
+                                stake.output.address != id.key ||
+                                !this.outer.ledger.isStake(id.utxo, stake.output))
+                                break;
+                        }
                     }
 
                     this.onHandshakeComplete(this.address, this.api, id.utxo, id.key);
@@ -262,8 +272,12 @@ public class NetworkManager
     /// Most recent validator set
     protected UTXO[Hash] last_known_validator_utxos;
 
+    /// Ledger
+    protected Ledger ledger;
+
     /// Ctor
-    public this (in Config config, ManagedDatabase cache, ITaskManager taskman, Clock clock, agora.api.FullNode.API owner_node)
+    public this (in Config config, ManagedDatabase cache, ITaskManager taskman,
+        Clock clock, agora.api.FullNode.API owner_node, Ledger ledger)
     {
         this.log = Logger(__MODULE__);
         this.taskman = taskman;
@@ -271,6 +285,7 @@ public class NetworkManager
         this.banman = this.makeBanManager(config.banman, clock, cache);
         this.clock = clock;
         this.owner_node = owner_node;
+        this.ledger = ledger;
 
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
