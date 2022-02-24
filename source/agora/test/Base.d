@@ -1349,7 +1349,7 @@ public class TestAPIManager
             if (hashes.length == 0)
                 return;
         }
-        throw new Exception(format!"TXs %s were not externalized in %d blocks!"(tx_hashes, n_blocks));
+        throw new Exception(format!"TXs %s were not externalized in %d blocks!"(hashes, n_blocks));
     }
 
     /// Post a transaction to clients and ensure it is accepted by them (put in the tx pool)
