@@ -71,6 +71,7 @@ Agora can be extensively configured via the use of a configuration file.
 By default, Agora will look for `config.yaml` in the directory it is started in, but using the `-c`
 command line option, you can give Agora any configuration file.
 Using `--testnet` is a special way to make Agora start without a configuration file.
+Consensus configuration of a node must be compatible with preferred network to be participated thus `--testnet` flag is always required to fetch consensus configuration of the test network, even if a configuration file is provided.
 
 You can find a [simple configuration file in this directory](./config.yaml), which you may modify to suit your own needs,
 using the directives listed in the [example configuration file](/doc/config.example.yaml)
