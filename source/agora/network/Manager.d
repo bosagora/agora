@@ -1254,6 +1254,11 @@ public struct PeerRange
         return this.range.front();
     }
 
+    public auto save () nothrow @safe
+    {
+        return this;
+    }
+
     private bool checkIfInvalidated () nothrow @safe
     {
         if (*this.manager_version > this.range_version)
@@ -1265,3 +1270,4 @@ public struct PeerRange
         return false;
     }
 }
+static assert (isForwardRange!PeerRange);
