@@ -1212,8 +1212,6 @@ public class FullNode : API
 
     private void pushBlock (const Block block) @trusted
     {
-        if (this.is_shutting_down)
-            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.block_handlers)
         {
@@ -1223,6 +1221,9 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
+                if (this.block_handlers.length <= idx)
+                    return;
+
                 try
                 {
                     this.block_handlers[idx].client.pushBlock(block);
@@ -1255,8 +1256,6 @@ public class FullNode : API
 
     protected void pushBlockHeader (in BlockHeader header) @trusted
     {
-        if (this.is_shutting_down)
-            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.block_header_handlers)
         {
@@ -1266,6 +1265,9 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
+                if (this.block_header_handlers.length <= idx)
+                    return;
+
                 try
                 {
                     this.block_header_handlers[idx].client.pushBlockHeader(header);
@@ -1296,8 +1298,6 @@ public class FullNode : API
 
     protected void pushPreImage (const PreImageInfo pre_image) @trusted
     {
-        if (this.is_shutting_down)
-            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.preimage_handlers)
         {
@@ -1307,6 +1307,9 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
+                if (this.preimage_handlers.length <= idx)
+                    return;
+
                 try
                 {
                     this.preimage_handlers[idx].client.pushPreImage(pre_image);
@@ -1336,8 +1339,6 @@ public class FullNode : API
 
     protected void pushTransaction (const Transaction tx) @trusted
     {
-        if (this.is_shutting_down)
-            return;
         const now = StdClock.currTime();
         foreach (index, ref handler; this.transaction_handlers)
         {
@@ -1347,6 +1348,9 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
+                if (this.transaction_handlers.length <= idx)
+                    return;
+
                 try
                 {
                     this.transaction_handlers[idx].client.pushTransaction(tx);
