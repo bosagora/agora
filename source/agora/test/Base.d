@@ -1145,12 +1145,7 @@ public class TestAPIManager
 
         if (!no_txs)
         {
-            auto utxo_pairs = first_client.getSpendables(1.coins);
-            auto tx = TxBuilder(utxo_pairs[0].utxo.output.address) // refund
-                .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
-                .sign();
-
-            first_client.postTransaction(tx);
+            auto tx = this.sendTransaction(first_client);
             // Wait for tx gossipping before setting time for block
             foreach (idx; client_idxs)
                 retryFor(this.clients[idx].hasTransactionHash(tx.hashFull()),
@@ -1168,6 +1163,31 @@ public class TestAPIManager
         const enroll_block = first_client.getBlock(enrolled_height);
         this.expectHeightAndPreImg(client_idxs, target_height,
             enroll_block.header, 10.seconds, file, line);
+    }
+
+
+    /**************************************************************************
+
+        Send a transaction
+
+        Create a transaction from unspent utxo and send it to the client.
+        It asserts that the transaction is accepted by the client.
+
+        Params:
+            client = client to receive the transaction
+
+        Returns:
+            The transaction that was sent
+    ***************************************************************************/
+
+    public Transaction sendTransaction (scope RemoteAPI!TestAPI client)
+    {
+        auto utxo_pairs = client.getSpendables(1.coins);
+        auto tx = TxBuilder(utxo_pairs[0].utxo.output.address) // refund
+            .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash))).sign();
+        auto result = client.postTransaction(tx);
+        assert(result.status == TransactionResult.status.Accepted);
+        return tx;
     }
 
     /**************************************************************************
