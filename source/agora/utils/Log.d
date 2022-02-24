@@ -403,6 +403,11 @@ unittest
 
     // Make sure we don't trip on stray format specifiers
     assert(get_log_output("Thou shalt ignore random %s in the string") == " string");
+
+    // log a map over a range
+    import std.algorithm;
+    import std.range;
+    assert(get_log_output(format("{}", iota(2).map!(i => i + 1))) == "[1, 2]");
 }
 
 /// A file appender that uses Phobos
