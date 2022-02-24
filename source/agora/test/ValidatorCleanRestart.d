@@ -94,13 +94,14 @@ unittest
     // Make all the validators of the set A disable to respond
     set_a.each!(node => node.ctrl.shutdown);
 
-    // give time for the outsiders to be added as validators before sending tx for next block
-    // as catchup for missing txs only occurs after nomination has started
-    Thread.sleep(1.seconds);
+    // Block 21 with the new validators in the set B without relying on tx gossip
+    network.sendTransaction(set_b.front);
+    const enroll_block = set_b.front.getBlock(Height(20));
+    network.expectHeightAndPreImg(iota(GenesisValidators, allValidators), Height(GenesisValidatorCycle + 1),
+        enroll_block.header);
 
-    // Block 21 with the new validators in the set B
-    network.generateBlocks(iota(GenesisValidators, allValidators),
-        Height(GenesisValidatorCycle + 1));
+    // assert that all set_b have same block at height 21
+    network.assertSameBlocks(iota(GenesisValidators, allValidators), Height(GenesisValidatorCycle + 1));
 }
 
 /// Situation: A validator is stopped and wiped clean after the block height
