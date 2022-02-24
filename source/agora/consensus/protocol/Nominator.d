@@ -1206,7 +1206,7 @@ extern(D):
             copy = envelope.serializeFull.deserializeFull!SCPEnvelope();
         catch (Exception e)
             assert(0);
-        log.dbg("{}: peers are {}", __PRETTY_FUNCTION__, this.network.peers);
+        log.dbg("{}: peers are {}", __FUNCTION__, this.network.peers);
         this.network.validators().each!(v => v.sendEnvelope(copy));
     }
 

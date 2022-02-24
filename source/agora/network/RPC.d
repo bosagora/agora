@@ -279,8 +279,8 @@ public class RPCClient (API) : API
                             if (size >= tmp.length)
                             {
                                 this.log.warn("{}: Read size {} is too large for buffer size {}, closing connection",
-                                         __PRETTY_FUNCTION__, size, tmp.length);
-                                ensure(0, "{}: Out of bound read: {} >= {}", __PRETTY_FUNCTION__, size, tmp.length);
+                                         __FUNCTION__, size, tmp.length);
+                                ensure(0, "{}: Out of bound read: {} >= {}", __FUNCTION__, size, tmp.length);
                             }
                             conn.read(tmp[0 .. size]);
                             return tmp[0 .. size];
@@ -299,7 +299,7 @@ public class RPCClient (API) : API
                         version (all)
                         {
                             auto retval = deserializeFull!(typeof(return))(dg);
-                            this.log.trace("[CLIENT] {}: Returning {}", __PRETTY_FUNCTION__, retval);
+                            this.log.trace("[CLIENT] {}: Returning {}", __FUNCTION__, retval);
                             return retval;
                         }
                         else

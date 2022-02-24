@@ -1186,7 +1186,7 @@ public class FullNode : API
     protected void onAcceptedBlock (in Block block, bool validators_changed)
         @safe
     {
-        log.dbg("{}: height {}", __PRETTY_FUNCTION__, block.header.height);
+        log.dbg("{}: height {}", __FUNCTION__, block.header.height);
         this.pushBlock(block);
         this.registry.onAcceptedBlock(block, validators_changed);
     }

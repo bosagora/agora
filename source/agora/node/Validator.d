@@ -610,7 +610,7 @@ public class Validator : FullNode, API
     protected override void onAcceptedBlock (in Block block,
         bool validators_changed) @safe
     {
-        log.dbg("{}: height {}", __PRETTY_FUNCTION__);
+        log.dbg("{}: height {}", __FUNCTION__);
         assert(block.header.height >= this.last_shuffle_height);
 
         // block received either via externalize or getBlocksFrom(),
