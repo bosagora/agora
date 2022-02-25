@@ -729,6 +729,8 @@ extern(D):
         auto shared_env = this.wrapEnvelope(envelope);
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
             log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope, &this.getQSet));
+        else
+            this.emitEnvelope(envelope);
     }
 
     /***************************************************************************
