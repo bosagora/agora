@@ -846,8 +846,8 @@ extern(D):
     public const(BlockHeader) receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
         const cur_height = this.ledger.height();
-        log.trace("Received BLOCK SIG {} from node {} for block {} at ledger height {}",
-            block_sig.signature, block_sig.utxo, block_sig.height, cur_height);
+        log.trace("{}: Received Signature {} for Validator with staked utxo {} for block {} at ledger height {}",
+            __FUNCTION__, block_sig.signature, block_sig.utxo, block_sig.height, cur_height);
 
         if (block_sig.height == 0 || block_sig.height > cur_height + EarlySignatureThreshold)
             return BlockHeader.init; // We want the caller to ignore this signature
@@ -864,17 +864,14 @@ extern(D):
 
         if (this.collectBlockSignature(block_sig, block.hashFull()))
         {
-            log.dbg("{}: Stored signature for block #{} for utxo {}", __FUNCTION__, block_sig.height, block_sig.utxo);
+            log.dbg("{}: Signature is for {} block #{}",
+                __FUNCTION__, pendingBlockSig ? "pending" : "ledger", block.header.height);
             if (pendingBlockSig)
             {
-                log.dbg("{}: Signature is for pending block #{} still to be externalized",
-                    __FUNCTION__, block.header.height);
                 this.updateMultiSignature(this.pending_block.header);
             }
             else
             {
-                log.dbg("{}: Signature is for block #{} already in the ledger",
-                    __FUNCTION__, block.header.height);
                 this.updateMultiSignature(block.header);
                 this.ledger.updateBlockMultiSig(block.header);
                 return block.header;
