@@ -936,7 +936,7 @@ extern(D):
         }
         header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
         log.trace("{}: Updated block signature for block {}, mask: {}",
-            __FUNCTION__, header.height, header.validators);
+                __FUNCTION__, header.height, header.validators);
         this.checkExternalize();
         return;
     }
