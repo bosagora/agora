@@ -753,6 +753,7 @@ extern(D):
             return BlockHeader.init; // We want the caller to ignore this signature
 
         const pendingBlockSig = (block_sig.height == this.pending_block.header.height);
+        log.dbg("{}: Signature is for pending block #{} still to be externalized", __FUNCTION__, this.pending_block.header.height);
 
         if (!pendingBlockSig && block_sig.height > cur_height) // Too early for this signature
         {
@@ -767,15 +768,12 @@ extern(D):
             log.dbg("{}: Stored signature for block #{} for utxo {}", __FUNCTION__, block_sig.height, block_sig.utxo);
             if (pendingBlockSig)
             {
-                log.dbg("{}: Signature is for pending block #{} still to be externalized",
-                    __FUNCTION__, block.header.height);
                 this.updateMultiSignature(this.pending_block.header);
             }
             else
             {
-                log.dbg("{}: Signature is for block #{} already in the ledger",
-                    __FUNCTION__, block.header.height);
                 this.updateMultiSignature(block.header);
+                // updating existing ledger block
                 this.ledger.updateBlockMultiSig(block.header);
                 return block.header;
             }
@@ -913,7 +911,7 @@ extern(D):
 
         if (header.height !in this.slot_sigs)
         {
-            log.warn("No signatures in memory at height {}", header.height);
+            log.warn("No known signatures at height {}", header.height);
             return;
         }
         log.dbg("{}: Before updating block signature for block {}, mask: {}",
