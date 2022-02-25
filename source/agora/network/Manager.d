@@ -565,6 +565,14 @@ public class NetworkManager
         this.quorum_set_keys.from(Set!Hash.init);
         this.required_peers.from(Set!Hash.init);
 
+        foreach (peer; this.peers)
+            if (!peer.isConnected() &&
+                assumeWontThrow(this.peer_list.linearRemoveElement(peer)))
+            {
+                this.peer_list_version++;
+                peer.shutdown();
+            }
+
         foreach (peer; required_peer_utxos.byKeyValue)
         {
             this.quorum_set_keys.put(peer.key);

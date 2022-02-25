@@ -193,7 +193,7 @@ public class NetworkClient
     }
 
     /// Shut down the gossiping timer
-    public void shutdown () @safe
+    public void shutdown () @safe nothrow
     {
         this.gossip_timer.stop();
     }
@@ -638,7 +638,7 @@ public class NetworkClient
                 {
                     try
                     {
-                        this.connections.remove!(c => c == conn);
+                        this.connections = this.connections.remove!(c => c == conn);
                         this.connections_version++;
                         log.warn("Removing banned address {} while performing {}, addresses left: {}",
                                     conn.address, name, this.addresses);
