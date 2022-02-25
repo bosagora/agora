@@ -867,9 +867,7 @@ extern(D):
             log.dbg("{}: Signature is for {} block #{}",
                 __FUNCTION__, pendingBlockSig ? "pending" : "ledger", block.header.height);
             if (pendingBlockSig)
-            {
                 this.updateMultiSignature(this.pending_block.header);
-            }
             else
             {
                 this.updateMultiSignature(block.header);
