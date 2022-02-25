@@ -957,10 +957,6 @@ extern(D):
                     return;
                 }
             }
-            else
-            {
-                log.info("{}: block #{} was already in the ledger (catchup task)", __FUNCTION__, block.header.height);
-            }
             this.pending_block = Block.init;
             // Reset the nomination timer
             this.round_timeout = this.nomination_interval;
