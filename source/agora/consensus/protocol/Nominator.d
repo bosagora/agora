@@ -837,6 +837,9 @@ extern(D):
     private void checkExternalize () @safe nothrow
     {
         const block = this.pending_block;
+        if (block.header.height == 0)
+            return; // pending block has been reset already
+
         try
         {
             if (block.header.height == this.ledger.height + 1)
