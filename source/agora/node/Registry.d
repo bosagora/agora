@@ -623,7 +623,7 @@ private SOA fromConfig (in ZoneConfig zone, Domain name) @safe
 {
     return SOA(
         // mname, rname
-        Domain.fromString(zone.primary), Domain.fromString(zone.soa.email.value.replace('@', '.')),
+        Domain.fromString(zone.nameservers[0]), Domain.fromString(zone.soa.email.value.replace('@', '.')),
         cast(uint) Clock.currTime(UTC()).toUnixTime(),
         // Casts are safe as the values are validated during config parsing
         cast(int) zone.soa.refresh.total!"seconds",
@@ -764,6 +764,16 @@ private enum ZoneType
 /// Contains infos related to either `validators` or `flash`
 private struct ZoneData
 {
+    /// Manage ResourceRecord caching for in-memory storage
+    private struct CachedResourceRecord
+    {
+        /// Stored ResourceRecord
+        ResourceRecord rr;
+
+        /// Absolute time for cache expiration
+        uint expires;
+    }
+
     /// Type of the zone
     public ZoneType type = ZoneType.caching;
 
@@ -776,8 +786,8 @@ private struct ZoneData
     /// The SOA record
     public SOA soa;
 
-    /// The NS record
-    public ResourceRecord nsRecord;
+    /// NS records
+    public CachedResourceRecord[Domain] ns_records;
 
     /// TTL of the SOA RR
     private uint soa_ttl;
@@ -886,12 +896,6 @@ private struct ZoneData
         this.log.info("Registry is {} DNS server for zone '{}'",
             serverType(this.type), this.root.value);
 
-        if (this.config.primary.set)
-            // FIXME: Make it a Domain in the config
-            this.nsRecord = ResourceRecord.make!(TYPE.NS)(root, 600, Domain.fromString(this.config.primary.value));
-        else
-            this.nsRecord = ResourceRecord.init;
-
         this.query_count = format("SELECT COUNT(DISTINCT pubkey) FROM registry_%s_addresses",
             zone_name);
 
@@ -958,7 +962,17 @@ private struct ZoneData
     public void start ()
     {
         if (this.type == ZoneType.primary)
+        {
+            foreach (ns_cname; this.config.nameservers)
+            {
+                auto dcname = Domain.fromString(ns_cname);
+                this.ns_records[dcname] = CachedResourceRecord(
+                    ResourceRecord.make!(TYPE.NS)(root, 600, dcname), 0
+                );
+            }
+
             this.soa = this.config.fromConfig(this.root);
+        }
         else if (this.type == ZoneType.secondary
                 || this.type == ZoneType.caching)
         {
@@ -1104,6 +1118,22 @@ private struct ZoneData
             this.update(answer, time);
         }
 
+        foreach (rr; this.ns_records.byKeyValue)
+        {
+            if (time < rr.value.expires)
+                continue;
+
+            auto answer = this.resolver.query(this.root.value, QTYPE.NS);
+
+            if (!answer.length)
+            {
+                this.ns_records.remove(rr.key);
+                continue;
+            }
+
+            this.update(answer, time);
+        }
+
         setTTLTimer();
     }
 
@@ -1123,13 +1153,23 @@ private struct ZoneData
 
         this.expire_timer.stop();
 
+        uint expires = (this.ns_records.length > 0) ?
+            this.ns_records.values.minElement!(a => a.expires).expires
+            : uint.max;
+
         auto expires_res = this.db.execute(this.query_ttl_timer);
 
-        if (expires_res.empty())
+        if (!expires_res.empty())
+        {
+            auto expires_db = expires_res.front["expires"].as!uint;
+            if (expires_db < expires)
+                expires = expires_db;
+        }
+
+        if (expires == uint.max)
             return;
 
         auto time = cast(uint) Clock.currTime(UTC()).toUnixTime();
-        auto expires = expires_res.front["expires"].as!uint;
         this.expire_timer.rearm((expires - time).seconds, false);
     }
 
@@ -1233,7 +1273,11 @@ private struct ZoneData
         {
             if (!matches)
                 return Header.RCode.Refused;
-            reply.answers ~= this.nsRecord;
+
+            if (this.ns_records.length == 0 && this.type == ZoneType.caching)
+                return this.getAndCacheRecords(q, reply);
+
+            reply.answers = this.ns_records.values.map!(a => a.rr).array();
             return Header.RCode.NoError;
         }
         else if (!matches)
@@ -1322,6 +1366,9 @@ private struct ZoneData
 
         foreach (rr; this)
             reply.answers ~= rr;
+
+        foreach (crr; this.ns_records.byValue)
+            reply.answers ~= crr.rr;
 
         reply.answers ~= soa;
         return Header.RCode.NoError;
@@ -1606,6 +1653,12 @@ private struct ZoneData
                     break;
                 case TYPE.SOA:
                     // SOA is not stored in permenant storage, see `soa`
+                    continue;
+                case TYPE.NS:
+                    this.ns_records[rr.rdata.name] = CachedResourceRecord(
+                        rr, time + rr.ttl
+                    );
+                    // NS is not stored in permenant storage
                     continue;
                 default:
                     assert(0, "RR type is not supported for permenant storage");

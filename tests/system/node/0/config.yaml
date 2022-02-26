@@ -59,16 +59,19 @@ registry:
   port: 8053
   realm:
     authoritative: true
-    primary: node-0.
+    nameservers:
+      - node-0.
     soa:
       email: dev@bosagora.io
   validators:
     authoritative: true
-    primary: node-0.
+    nameservers:
+      - node-0.
     soa:
       email: dev@bosagora.io
   flash:
     authoritative: true
-    primary: node-0.
+    nameservers:
+      - node-0.
     soa:
       email: dev@bosagora.io
