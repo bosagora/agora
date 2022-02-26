@@ -329,7 +329,9 @@ registry:
     # should have `authoritative` unset or set to `true`, and `primary` and `email` set.
     authoritative: true
 
-    # The *hostname* (not IP address) of the primary name server for this zone
+    # The *hostname* (not IP address) of authoritative name servers for this zone
+    # The first entry will be used as primary name server
+    # for the zone (MNAME field of the SOA record)
     #
     # If this is set, `email` must be set too. If this isn't set, `email` must be unset.
     #
@@ -337,7 +339,8 @@ registry:
     # For example, if the node that read this configuration will be reachable via
     # `agora.example.com`, then this string can be used.
     # However, the typical naming convention would be to use `ns1.example.com`.
-    primary: ns1.bosagora.io
+    nameservers:
+      - ns1.bosagora.io
 
     # Whitelist for AXFR zone transfers
     #

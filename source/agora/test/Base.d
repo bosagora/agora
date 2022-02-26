@@ -2427,12 +2427,12 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 public_interface: true,
                 realm: {
                     authoritative: setField(true),
-                    primary: setField("name.registry"),
+                    nameservers: ["name.registry"],
                     soa: { email: setField("test@testnet"), },
                 },
                 validators: {
                     authoritative: setField(authoritative),
-                    primary: setField("name.registry"),
+                    nameservers: ["name.registry"],
                     allow_transfer: [ZoneConfig.IPAddress("127.0.0.127")],
                     query_servers: ["10.8.8.8"],
                     redirect_register: "http://10.8.8.8",
@@ -2441,7 +2441,7 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
                 },
                 flash: {
                     authoritative: setField(true),
-                    primary: setField("name.registry"),
+                    nameservers: ["name.registry"],
                     soa: { email: setField("test@testnet"), },
                 },
             },

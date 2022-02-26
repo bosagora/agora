@@ -472,17 +472,12 @@ public struct RegistryConfig
         {
             import std.socket : parseAddress;
 
-            // Those two fields must be both set or both unset
-            ensure(zone.primary.set == zone.soa.email.set,
-                   "registry.{}: Authoritative zones require both 'primary' and " ~
-                   "'email' fields to be set", name);
-
             // Caching registry, nothing to validate
             if (!zone.authoritative.set || zone.authoritative.value == false)
                 return;
 
             // Secondary registry
-            if (!zone.primary.set && zone.authoritative.set)
+            if (!zone.soa.email.set && zone.authoritative.set)
             {
                 ensure(zone.query_servers.length > 0,
                     "registry.{} is secondary and at least one primary is required",
@@ -499,8 +494,9 @@ public struct RegistryConfig
             ensure(!zone.authoritative.set || zone.authoritative.value == true,
                    "registry.{}.authoritative: Cannot be false for primary server", name);
 
-            ensure(zone.primary.length > 0,
-                   "registry.{}.primary: Field must be set for primary server", name);
+            ensure(zone.nameservers.length > 0,
+                   "registry.{}.nameservers: At least one NS record is required for primary server", name);
+
             ensure(zone.soa.email.length > 0,
                    "registry.{}.email: Field must be set for primary server", name);
 
@@ -561,8 +557,9 @@ public struct ZoneConfig
     /// Whether this server is authoritative
     public SetInfo!bool authoritative;
 
-    /// CNAME of the primary server for this zone
-    public SetInfo!string primary;
+    /// CNAMEs of authoritative nameservers for this zone
+    /// First entry will be MNAME of the SOA record
+    public @Optional immutable string[] nameservers;
 
     /// Servers that are allowed to do AXFR queries, applicable for authoritatives
     public @Optional immutable IPAddress[] allow_transfer;
