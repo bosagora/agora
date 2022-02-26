@@ -855,6 +855,40 @@ public struct ResourceRecord
         serializePart!ushort(rdata.length % ushort.max, dg, CompactMode.No);
         dg(rdata);
     }
+
+    /// Compare ResourceRecord with its data according to their types
+    bool opEquals (in ResourceRecord other) const nothrow @trusted
+    {
+        bool etypes = this.type == other.type;
+        if (!etypes)
+            return false;
+
+        bool edata = false;
+
+        switch (this.type)
+        {
+        case TYPE.A:
+            edata = (this.rdata.a == other.rdata.a);
+            break;
+        case TYPE.CNAME, TYPE.NS:
+            edata = (this.rdata.name == other.rdata.name);
+            break;
+        case TYPE.SOA:
+            edata = (this.rdata.soa == other.rdata.soa);
+            break;
+        case TYPE.URI:
+            edata = (this.rdata.uri == other.rdata.uri);
+            break;
+        default:
+            edata = (this.rdata.binary == other.rdata.binary);
+            break;
+        }
+
+        return this.name == other.name
+            && this.class_ == other.class_
+            && this.ttl == other.ttl
+            && edata;
+    }
 }
 
 unittest
@@ -919,6 +953,22 @@ unittest
     assert(msg_uri_rr.rdata.uri.priority == 0);
     assert(msg_uri_rr.rdata.uri.target.port == 1234);
     assert(msg_uri_rr.rdata.uri.target == uri_target);
+}
+
+unittest
+{
+    auto a = ResourceRecord.make!(TYPE.NS) (Domain.fromString("bosagora.io."),
+                                    600, Domain.fromString("ns1.bosagora.io."));
+    auto b = ResourceRecord.make!(TYPE.NS) (Domain.fromString("bosagora.io."),
+                                    600, Domain.fromString("ns1.bosagora.io."));
+    auto c = ResourceRecord.make!(TYPE.NS) (Domain.fromString("bosagora.io."),
+                                    300, Domain.fromString("ns1.bosaora.io."));
+    auto d = ResourceRecord.make!(TYPE.NS) (Domain.fromString("bosagora.io."),
+                                    300, Domain.fromString("ns2.bosaora.io."));
+
+    assert(a == b);
+    assert(a != c);
+    assert(c != d);
 }
 
 /// The OPT opcode is a special ResourceRecord with its own semantic
