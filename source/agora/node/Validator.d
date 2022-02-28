@@ -100,10 +100,14 @@ public class Validator : FullNode, API
     /// The identity we present on `handshake`
     private Identity identity;
 
+    /// The validator configuration
+    private ValidatorConfig validatorConfig;
+
     /// Ctor
     public this (Config config)
     {
-        assert(config.validator.enabled);
+        this.validatorConfig = config.validator;
+        assert(this.validatorConfig.enabled);
         super(config);
         this.quorum_params = QuorumParams(this.params.QuorumThreshold);
 
@@ -118,7 +122,7 @@ public class Validator : FullNode, API
         // This is especially important on initialization, as replaying blocks
         // does not call `onAcceptedBlock`.
         PreImageInfo self;
-        if (this.enroll_man.getNextPreimage(self, this.ledger.height()))
+        if (this.getNextPreimage(self))
         {
             this.ledger.addPreimage(self);
             this.setIdentity(self.utxo);
@@ -129,6 +133,20 @@ public class Validator : FullNode, API
         // currently we are not saving preimage info,
         // we only have the commitment in the genesis block
         this.regenerateQuorums(this.ledger.height());
+    }
+
+    private bool getNextPreimage (out PreImageInfo preimage) @safe
+    {
+        const expectedHeight = this.ledger.expectedHeight(this.clock.utcTime());
+        const ledgerHeight = this.ledger.height();
+        const nextReveal = min(
+            max(ledgerHeight, expectedHeight) + this.validatorConfig.max_preimage_reveal,
+            ledgerHeight + this.params.ValidatorCycle);
+        if (nextReveal <= ledgerHeight)
+            return false;
+
+        preimage = this.enroll_man.getPreimage(nextReveal);
+        return true;
     }
 
     /***************************************************************************
@@ -688,8 +706,7 @@ public class Validator : FullNode, API
             __FUNCTION__, height, expected_height);
 
         PreImageInfo preimage;
-        if (this.enroll_man.getNextPreimage(preimage,
-            max(height, expected_height)))
+        if (this.getNextPreimage(preimage))
         {
             this.ledger.addPreimage(preimage);
             this.network.peers.each!(p => p.sendPreimage(preimage));
