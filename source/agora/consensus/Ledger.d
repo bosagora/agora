@@ -284,6 +284,21 @@ public class NodeLedger : Ledger
 
     /***************************************************************************
 
+        Params:
+            hashes = set of tx hashes
+
+        Returns:
+            Transactions in the pool that match one of the hashes in the list
+
+     ***************************************************************************/
+
+    public auto getUnknownTXsFromSet (Set!Hash hashes) @trusted nothrow
+    {
+        return this.pool.getUnknownTXsFromSet(hashes);
+    }
+
+    /***************************************************************************
+
         Get a set of all the stakes currently active at this height
 
         Returns:

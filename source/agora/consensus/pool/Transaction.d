@@ -92,6 +92,9 @@ public class TransactionPool
     /// Keeps track of which TXs spend which inputs
     private Set!Hash[Hash] spenders;
 
+    /// Known TXs and their input set
+    private Set!Hash[Hash] known_txs;
+
     /// A delegate to select one of the double spent TXs
     public DoubleSpentSelector selector;
 
@@ -121,6 +124,7 @@ public class TransactionPool
             this.updateSpenderList(tx);
             auto tx_hash = tx.hashFull();
             iota(tx.outputs.length).each!(idx => utxo_set[UTXO.getHash(tx_hash, idx)] = tx.outputs[idx]);
+            this.known_txs[tx_hash] = Set!Hash.from(tx.inputs.map!(input => input.utxo));
         }
 
         // Set selector after rebuilding the spender list, so nothing gets
@@ -165,6 +169,7 @@ public class TransactionPool
             db.execute("INSERT INTO tx_pool (key, val, fee) VALUES (?, ?, ?)",
                 hashFull(tx), buffer, fee);
         }();
+        this.known_txs[tx_hash] = Set!Hash.from(tx.inputs.map!(input => input.utxo));
 
         return true;
     }
@@ -184,6 +189,7 @@ public class TransactionPool
         auto tx_hash = tx.hashFull();
 
         this.db.execute("DELETE FROM tx_pool WHERE key = ?", tx_hash);
+        this.known_txs.remove(tx_hash);
         iota(tx.outputs.length).each!(idx => this.utxo_set.remove(UTXO.getHash(tx_hash, idx)));
 
         if (rm_double_spent)
@@ -407,10 +413,9 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public bool hasTransactionHash (in Hash tx) @trusted
+    public bool hasTransactionHash (in Hash tx) @trusted nothrow
     {
-        return this.db.execute("SELECT EXISTS(SELECT 1 FROM " ~
-            "tx_pool WHERE key = ?)", tx).front.peek!bool(0);
+        return !(tx !in this.known_txs);
     }
 
     /***************************************************************************
@@ -539,6 +544,36 @@ public class TransactionPool
 
     /***************************************************************************
 
+        Params:
+            hashes = set of tx hashes
+
+        Returns:
+            Hashes of unknown TXs
+
+     ***************************************************************************/
+
+    public Hash[] getUnknownTXsFromSet (Set!Hash hashes) @trusted nothrow
+    {
+        return hashes[].filter!(hash => !this.hasTransactionHash(hash)).array;
+    }
+
+    /***************************************************************************
+
+        Params:
+            hashes = set of tx hashes
+
+        Returns:
+            If all TXs in the hash set is in the pool
+
+     ***************************************************************************/
+
+    public bool hasTxSet (Hashes) (Hashes hashes) @safe nothrow
+    {
+        return hashes[].all!(hash => this.hasTransactionHash(hash));
+    }
+
+    /***************************************************************************
+
         Take the specified number of transactions and remove them from the pool.
 
         Params:
@@ -634,6 +669,10 @@ unittest
 
     txs.each!(tx => pool.add(tx, 0.coins));
     assert(pool.length == txs.length);
+    assert(pool.hasTxSet(Set!Hash.from(txs.map!(tx => tx.hashFull))));
+    assert(!pool.hasTxSet(Set!Hash.from([txs.front().hashFull(), hashFull(1), hashFull(2)])));
+    auto unknowns = [hashFull(1), hashFull(2)];
+    assert(unknowns == pool.getUnknownTXsFromSet(Set!Hash.from([txs.front().hashFull()] ~ unknowns)));
 
     auto from_txs = pool.getFrom(Hash.init, pool.length + 1);
     assert(pool.length == from_txs.length);
