@@ -456,22 +456,19 @@ public class EnrollmentManager
         Params:
             preimage = will contain the PreImageInfo if exists
             height = current block height
+            expected_height = height based on time offset from Genesis time
 
         Returns:
             true if the pre-image exists
 
     ***************************************************************************/
 
-    public bool getNextPreimage (out PreImageInfo preimage, in Height height)
+    public bool getNextPreimage (out PreImageInfo preimage, in Height height,
+        in Height expected_height)
         @safe
     {
-        const enrolled = this.validator_set.getEnrolledHeight(height, this.enroll_key);
-        if (enrolled == ulong.max)
-            return false;
-
-        assert(height >= enrolled);
-        const next_reveal = min(height + this.max_preimage_reveal,
-                                enrolled + this.params.ValidatorCycle);
+        const next_reveal = min(max(height, expected_height) + this.max_preimage_reveal,
+                                height + this.params.ValidatorCycle);
 
         if (next_reveal <= height)
             return false;
@@ -787,7 +784,7 @@ unittest
     PreImageInfo preimage;
     assert(man.addValidator(enroll, WK.Keys[0].address, Height(10),
             &utxo_set.peekUTXO, getPenaltyDeposit, utxos) is null);
-    assert(man.getNextPreimage(preimage, Height(10)));
+    assert(man.getNextPreimage(preimage, Height(10), Height(10)));
     assert(preimage.height >= Height(10));
     assert(preimage.hash == man.cycle[preimage.height]);
 
@@ -1087,7 +1084,8 @@ unittest
     assert(state.preimage.height == 0);
 
     PreImageInfo preimage;
-    assert(man.getNextPreimage(preimage, Height(params.ValidatorCycle / 2)));
+    assert(man.getNextPreimage(preimage, Height(params.ValidatorCycle / 2),
+        Height(params.ValidatorCycle / 2)));
     assert(man.validator_set.addPreimage(preimage));
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.preimage.hash == preimage.hash);

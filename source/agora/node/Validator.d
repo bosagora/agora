@@ -118,7 +118,8 @@ public class Validator : FullNode, API
         // This is especially important on initialization, as replaying blocks
         // does not call `onAcceptedBlock`.
         PreImageInfo self;
-        if (this.enroll_man.getNextPreimage(self, this.ledger.height()))
+        if (this.enroll_man.getNextPreimage(self, this.ledger.height(),
+            this.ledger.expectedHeight(this.clock.utcTime())))
         {
             this.ledger.addPreimage(self);
             this.setIdentity(self.utxo);
@@ -688,8 +689,7 @@ public class Validator : FullNode, API
             __FUNCTION__, height, expected_height);
 
         PreImageInfo preimage;
-        if (this.enroll_man.getNextPreimage(preimage,
-            max(height, expected_height)))
+        if (this.enroll_man.getNextPreimage(preimage, height, expected_height))
         {
             this.ledger.addPreimage(preimage);
             this.network.peers.each!(p => p.sendPreimage(preimage));
