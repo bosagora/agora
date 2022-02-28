@@ -131,7 +131,17 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    network.generateBlocks(Height(GenesisValidatorCycle + 2), true);
+    // We check for preimages in generateBlocks so only generate to last of cycle
+    // Some enrollments are ignorred in block 20 so the preimages may not be known.
+    network.generateBlocks(Height(GenesisValidatorCycle), true);
+
+    // Block 21 without checking for preimages
+    network.expectHeight(Height(GenesisValidatorCycle + 1));
+
+    // Block 22 without checking for preimages
+    network.expectHeight(Height(GenesisValidatorCycle + 2));
+
+    // Now we can check that all the enrollments were included
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 2));
     auto last_enrolls = blocks.retro.take(3).map!(block => block.header.enrollments.length);
