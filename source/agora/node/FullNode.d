@@ -684,10 +684,12 @@ public class FullNode : API
             old_validators.map!(vi => vi.utxo),
             validators.map!(vi => vi.utxo));
 
-        log.dbg("Fullnode.acceptBlock: unwhitelist = {}", expired);
+        log.dbg("{}: accepted block #{}, unwhitelist = {}",
+            __FUNCTION__, block.header.height, expired);
         expired.each!(utxo => this.network.unwhitelist(utxo));
         // Just whitelist them all to be sure, no need for `setDifference`
-        log.dbg("Fullnode.acceptBlock: whitelist = {}", validators.map!(v => v.utxo));
+        log.dbg("{}: accepted block #{}, whitelist = {}",
+            __FUNCTION__, block.header.height, validators.map!(v => v.utxo));
         validators.each!(validator => this.network.whitelist(validator.utxo));
 
         // We return if height in ledger is reached for this block to prevent fetching again
