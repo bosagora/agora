@@ -246,6 +246,8 @@ public class EnrollmentPool
 
         Params:
             enroll_hash = key for the enrollment which has the frozen UTXO
+            req_height = optional height argument to get an enrollment for a
+                specific avail_height
 
         Returns:
             Return an `Enrollment` if the enrollment is found, otherwise
@@ -253,17 +255,19 @@ public class EnrollmentPool
 
     ***************************************************************************/
 
-    public Enrollment getEnrollment (in Hash enroll_hash)
+    public Enrollment getEnrollment (in Hash enroll_hash, in Height req_height = Height(0))
         @trusted nothrow
     {
         try
         {
-            auto results = this.db.execute("SELECT key, val FROM enrollment_pool " ~
+            auto results = this.db.execute("SELECT avail_height, val FROM enrollment_pool " ~
                 "WHERE key = ?", enroll_hash);
 
             foreach (row; results)
             {
-                return deserializeFull!Enrollment(row.peek!(ubyte[])(1));
+                auto avail_height = Height(row.peek!(size_t)(0));
+                if (req_height == Height(0) || avail_height == req_height)
+                    return deserializeFull!Enrollment(row.peek!(ubyte[])(1));
             }
         }
         catch (Exception ex)
@@ -394,6 +398,12 @@ unittest
 
     // get a specific enrollment object
     Enrollment stored_enroll;
+    assert((stored_enroll = pool.getEnrollment(utxo_hashes[1],
+        Height(avail_height + 1))) == Enrollment.init);
+    assert((stored_enroll = pool.getEnrollment(utxo_hashes[1],
+        Height(avail_height - 1))) == Enrollment.init);
+    assert((stored_enroll = pool.getEnrollment(utxo_hashes[1],
+        avail_height)) == enrollments[1]);
     assert((stored_enroll = pool.getEnrollment(utxo_hashes[1])) !=
         Enrollment.init);
     assert(stored_enroll == enrollments[1]);

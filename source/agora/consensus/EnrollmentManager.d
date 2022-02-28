@@ -445,6 +445,10 @@ public class EnrollmentManager
         in PublicKey pubkey, in Height height, scope UTXOFinder findUTXO,
         scope GetPenaltyDeposit getPenaltyDeposit) @safe nothrow
     {
+        auto existing_enroll = this.enroll_pool.getEnrollment(enroll.utxo_key, height);
+        if (existing_enroll != Enrollment.init)
+            return existing_enroll == enroll ? null : "Enrollment: Differs from the pool";
+
         const Height enrolled = this.validator_set.getEnrolledHeight(height, enroll.utxo_key);
 
         if (enrolled == ulong.max)
@@ -459,6 +463,7 @@ public class EnrollmentManager
         if (auto fail_reason = enroll.isInvalidReason(findUTXO, height,
                                 &this.validator_set.findRecentEnrollment, getPenaltyDeposit))
             return fail_reason;
+        this.enroll_pool.addValidated(enroll, height);
 
         return null;
     }
