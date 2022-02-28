@@ -682,9 +682,14 @@ public class Validator : FullNode, API
 
     protected void onPreImageRevealTimer () @safe
     {
+        const height = this.ledger.height();
+        const expected_height = this.ledger.expectedHeight(this.clock.utcTime());
+        log.dbg("{}: ledger height = {}, expected height = {} ",
+            __FUNCTION__, height, expected_height);
+
         PreImageInfo preimage;
         if (this.enroll_man.getNextPreimage(preimage,
-            max(this.ledger.height(), this.ledger.expectedHeight(this.clock.utcTime()))))
+            max(height, expected_height)))
         {
             this.ledger.addPreimage(preimage);
             this.network.peers.each!(p => p.sendPreimage(preimage));
