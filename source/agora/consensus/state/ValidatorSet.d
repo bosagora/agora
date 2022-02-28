@@ -515,7 +515,7 @@ public class ValidatorSet
         if (prev_preimage.height >= preimage.height)
             return false;
 
-        // Ignore preimages beyond the current cycle
+        // Ignore preimages more than one full cycle into the future
         if (preimage.height - prev_preimage.height > this.params.ValidatorCycle)
             return false;
 
