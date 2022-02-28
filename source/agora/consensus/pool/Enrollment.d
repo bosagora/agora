@@ -278,38 +278,6 @@ public class EnrollmentPool
 
     /***************************************************************************
 
-        Get the height when the enrollment will be available
-
-        Params:
-            enroll_hash = key for the available block height
-
-        Returns:
-            the available block height, or 0 if the enrollment isn't found
-
-    ***************************************************************************/
-
-    public Height getAvailableHeight (in Hash enroll_hash)
-        @trusted nothrow
-    {
-        try
-        {
-            auto results = this.db.execute("SELECT avail_height " ~
-                "FROM enrollment_pool WHERE key = ?", enroll_hash);
-            if (results.empty)
-                return Height(0);
-
-            return Height(results.oneValue!(size_t));
-        }
-        catch (Exception ex)
-        {
-            log.error("ManagedDatabase operation error: {}", ex.msg);
-            return Height(0);
-        }
-    }
-
-
-    /***************************************************************************
-
         Get the unregistered enrollments from the pool
         And this is arranged in ascending order with the utxo_key
 
