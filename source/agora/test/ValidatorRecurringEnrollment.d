@@ -131,7 +131,14 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
+    network.generateBlocks(Height(GenesisValidatorCycle), true);
+
+    // This block has only half of the validators enrolled
+    network.generateBlocks(iota(3), Height(GenesisValidatorCycle + 1), true);
+
+    // Block with all validators again
     network.generateBlocks(Height(GenesisValidatorCycle + 2), true);
+
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 2));
     auto last_enrolls = blocks.retro.take(3).map!(block => block.header.enrollments.length);
