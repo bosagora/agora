@@ -99,10 +99,6 @@ public class EnrollmentManager
     /// The final hash of the preimages at the beginning of the enrollment cycle
     private Hash commitment;
 
-    /// How far away in the future a pre-image should be revealed.
-    /// This is expressed in numbers of block
-    private size_t max_preimage_reveal;
-
     /// Validator set managing validators' information such as Enrollment object
     /// enrolled height, and preimages.
     public ValidatorSet validator_set;  // FIXME: Made public to ease transition to raise this to ledger
@@ -138,7 +134,6 @@ public class EnrollmentManager
         this.log = Logger(__MODULE__);
         this.params = params;
         this.key_pair = config.key_pair;
-        this.max_preimage_reveal = config.max_preimage_reveal;
 
         if (config.key_pair !is KeyPair.init)
         {
@@ -473,32 +468,16 @@ public class EnrollmentManager
         Get a pre-image for revelation
 
         Params:
-            preimage = will contain the PreImageInfo if exists
-            height = current block height
+            height = height of next preimage to reveal
 
         Returns:
-            true if the pre-image exists
+            PreImageInfo for given height
 
     ***************************************************************************/
 
-    public bool getNextPreimage (out PreImageInfo preimage, in Height height)
-        @safe
+    public PreImageInfo getPreimage (in Height height) @safe
     {
-        const enrolled = this.validator_set.getEnrolledHeight(height, this.enroll_key);
-        if (enrolled == ulong.max)
-            return false;
-
-        assert(height >= enrolled);
-        const next_reveal = min(height + this.max_preimage_reveal,
-                                enrolled + this.params.ValidatorCycle);
-
-        if (next_reveal <= height)
-            return false;
-
-        preimage.utxo = this.enroll_key;
-        preimage.height = Height(next_reveal);
-        preimage.hash = this.cycle[next_reveal];
-        return true;
+        return PreImageInfo(this.enroll_key, this.cycle[height], height);
     }
 
     /***************************************************************************
@@ -806,8 +785,8 @@ unittest
     PreImageInfo preimage;
     assert(man.addValidator(enroll, WK.Keys[0].address, Height(10),
             &utxo_set.peekUTXO, getPenaltyDeposit, utxos) is null);
-    assert(man.getNextPreimage(preimage, Height(10)));
-    assert(preimage.height >= Height(10));
+    preimage = man.getPreimage(Height(12));
+    assert(preimage.height == Height(12));
     assert(preimage.hash == man.cycle[preimage.height]);
 
     // test for getting validators' UTXO keys
@@ -1105,8 +1084,7 @@ unittest
     assert(state.preimage.hash == genesis_enroll.commitment);
     assert(state.preimage.height == 0);
 
-    PreImageInfo preimage;
-    assert(man.getNextPreimage(preimage, Height(params.ValidatorCycle / 2)));
+    PreImageInfo preimage = man.getPreimage(Height(params.ValidatorCycle / 2));
     assert(man.validator_set.addPreimage(preimage));
     assert(findEnrollment(genesis_enroll.utxo_key, state));
     assert(state.preimage.hash == preimage.hash);
