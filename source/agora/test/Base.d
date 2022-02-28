@@ -796,8 +796,8 @@ public class TestAPIManager
                     scope node = this.nodes[idx];
                     retryFor(node.client.getPreimages(Set!Hash.from(enroll.utxo_key.only))
                         .any!(preimage => preimage.height >= height),
-                            timeout, format!"Client #%s (%s) has no preimage for client #%s (%s) at height %s"
-                                (idx, node.address, idx_enroll, this.nodes[idx_enroll].address, height));
+                            timeout, format!"Client #%s (%s) has no preimage at height %s for node enrolled with utxo %s"
+                                (idx, node.address, height, enroll.utxo_key));
                 }
     }
 
