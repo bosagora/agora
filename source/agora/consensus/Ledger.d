@@ -161,7 +161,9 @@ public class NodeLedger : Ledger
     protected override void updateUTXOSet (in Block block) @safe
     {
         super.updateUTXOSet(block);
-        this.frozen_utxos.externalize(block);
+        this.frozen_utxos.externalize(block, (Hash stake_hash) @safe {
+            this.enroll_man.removeEnrollment(stake_hash);
+        });
         block.txs.each!(tx => this.pool.remove(tx));
     }
 
@@ -883,16 +885,20 @@ private final class FrozenUTXOTracker : UTXOTracker
     }
 
     /// Process all transactions in this `Block`
-    public override void externalize (in Block block) @safe
+    public override void externalize (in Block block, void delegate (Hash) @safe onRemoved = null) @safe
     {
-        super.externalize(block);
+        super.externalize(block, onRemoved);
         auto slashed = block.header.preimages.enumerate
             .filter!(en => en.value is Hash.init).map!(en => en.index);
         if (!slashed.empty)
         {
             auto validators = this.ledger.getValidators(block.header.height);
             foreach (idx; slashed)
+            {
+                if (onRemoved)
+                    onRemoved(validators[idx].utxo);
                 this.data_.remove(Tracked(validators[idx].utxo));
+            }
         }
     }
 }
@@ -1815,4 +1821,31 @@ unittest
         ledger.forceCreateBlock();
         assert(ledger.lastBlock().txs.length >= txs.length);
     }
+}
+
+// test enrollments whose stake is spent is cleared from the pool
+unittest
+{
+    import agora.consensus.data.genesis.Test;
+
+    auto params = new immutable(ConsensusParams)();
+    const(Block)[] blocks = [ GenesisBlock ];
+    scope ledger = new TestLedger(genesis_validator_keys[0], blocks, params);
+    ledger.simulatePreimages(Height(params.ValidatorCycle));
+
+    KeyPair kp = WK.Keys.NODE10;
+    assert(GenesisBlock.txs[1].outputs[1].address == WK.Keys.NODE10.address);
+    auto stake = UTXO.getHash(GenesisBlock.txs[1].hashFull, 1);
+
+    auto enrollment = EnrollmentManager.makeEnrollment(stake, kp, Height(5), 20);
+    assert(ledger.enrollment_manager.addEnrollment(enrollment, kp.address,
+        Height(5), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
+    assert(ledger.enrollment_manager.enroll_pool.hasEnrollment(stake, Height(5)));
+
+    auto melting_tx = TxBuilder(GenesisBlock.txs[1], 1).sign();
+    assert(ledger.acceptTransaction(melting_tx) is null);
+
+    ledger.forceCreateBlock();
+    assert(ledger.lastBlock.txs.canFind(melting_tx));
+    assert(!ledger.enrollment_manager.enroll_pool.hasEnrollment(stake, Height(5)));
 }
