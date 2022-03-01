@@ -1206,7 +1206,7 @@ extern(D):
 
     ***************************************************************************/
 
-    public StellarHash getNodeUTXO (uint64_t slot_index, uint64_t index)
+    public Hash getNodeUTXO (uint64_t slot_index, uint64_t index)
         @safe nothrow
     {
         Hash utxo;
@@ -1214,16 +1214,14 @@ extern(D):
         try
         {
             validators = this.ledger.getValidators(Height(slot_index));
+            if (validators.length > index)
+                utxo = validators[index].utxo;
         }
         catch (Exception exc)
         {
             log.error("Exception happened with calling `getValidators` in `getNodeID: {}", exc);
         }
-
-        if (validators.length > index)
-            utxo = validators[index].utxo;
-
-        return StellarHash(utxo[][0 .. StellarHash.sizeof]);
+        return utxo;
     }
 
     /// Used for holding consensus candidate values. It contains precomputed
