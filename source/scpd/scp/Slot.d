@@ -121,6 +121,8 @@ private:
         BALLOT_PROTOCOL_TIMER = 1
     }
 
+    static vector!Value getStatementValues(const ref SCPStatement st);
+
   protected:
     vector!SCPEnvelope getEntireCurrentState();
     void maybeSetGotVBlocking();
