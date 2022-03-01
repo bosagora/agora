@@ -726,11 +726,79 @@ extern(D):
             }
         }
 
+        Set!Hash missing_txs;
+        auto values = Slot.getStatementValues(envelope.statement);
+        foreach (value; values)
+        {
+            auto idx_value_hash = hashMulti(envelope.statement.slotIndex,
+                value);
+            if (idx_value_hash in this.fully_validated_value)
+                continue;
+
+            ConsensusData data;
+            try
+                data = deserializeFull!ConsensusData(value[]);
+            catch (Exception ex)
+                return;
+
+            auto missing = this.ledger.getUnknownTXsFromSet(Set!Hash.from(data.tx_set));
+            missing.each!(hash => missing_txs.put(hash));
+        }
+
         auto shared_env = this.wrapEnvelope(envelope);
+        if (missing_txs.length > 0 && this.handleMissingTxEnvelope(shared_env, missing_txs, utxo))
+            return;
+
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
             log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope, &this.getQSet));
         else
-            this.emitEnvelope(envelope);
+            this.emitEnvelope(shared_env.getEnvelope());
+    }
+
+    /***************************************************************************
+
+        Called to process a SCP envelope that references unknown TX hashes
+
+        Params:
+            shared_env = the SCP envelope
+            missing_txs = Set of unknown TX hashes
+            peer_utxo = stake of the peer that the envelope belongs to
+
+        Returns:
+            success/failure
+
+    ***************************************************************************/
+
+    private bool handleMissingTxEnvelope (SCPEnvelopeWrapperPtr shared_env, Set!Hash missing_txs, Hash peer_utxo) @trusted
+    {
+        auto peer = this.network.getPeerByStake(peer_utxo);
+        if (!peer)
+            return false;
+
+        log.trace("Missing {} TXs while handling envelope from {} for slot {}", missing_txs.length,
+            shared_env.getEnvelope().statement.nodeID, shared_env.getEnvelope().statement.slotIndex);
+
+        auto heap_env = new SCPEnvelopeWrapperPtr(shared_env);
+        this.taskman.runTask({
+            try
+            {
+                Transaction[] txs;
+                do
+                {
+                    txs = peer.getTransactions(missing_txs);
+                    txs.each!((tx) {
+                        this.ledger.acceptTransaction(tx);
+                        missing_txs.remove(tx.hashFull());
+                    });
+                } while(missing_txs.length > 0 && txs.length > 0);
+                if (this.scp.receiveEnvelope(*heap_env) != SCP.EnvelopeState.VALID)
+                    log.trace("SCP indicated invalid envelope: {}", scpPrettify(&(*heap_env).getEnvelope(), &this.getQSet));
+                else
+                    this.emitEnvelope((*heap_env).getEnvelope());
+            }
+            catch (Exception) {}
+        });
+        return true;
     }
 
     /***************************************************************************
