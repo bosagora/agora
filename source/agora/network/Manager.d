@@ -766,6 +766,24 @@ public class NetworkManager
 
     /***************************************************************************
 
+        Params:
+            a Validator stake hash
+
+        Returns:
+            Network client to the peer identified with `utxo`
+
+    ***************************************************************************/
+
+    public auto getPeerByStake (in Hash utxo) return @safe nothrow
+    {
+        auto found = this.validators.find!(peer => peer.identity.utxo == utxo);
+        if (!found.empty())
+            return found.front();
+        return null;
+    }
+
+    /***************************************************************************
+
         Retrieve blocks starting from height up to the highest block
         that's available from the connected nodes.
 
