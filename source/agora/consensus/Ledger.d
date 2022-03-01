@@ -447,7 +447,7 @@ public class NodeLedger : Ledger
                 return fail_reason;
         }
 
-        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators, utxo_finder))
+        try if (auto fail_reason = this.validateSlashingData(validating, data, initial_missing_validators))
                 return fail_reason;
 
         catch (Exception exc)
@@ -600,10 +600,10 @@ public class NodeLedger : Ledger
     ***************************************************************************/
 
     public string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators, scope UTXOFinder utxo_finder) @safe
+        in uint[] initial_missing_validators) @safe
     {
         return this.isInvalidPreimageRootReason(height, data.missing_validators,
-            initial_missing_validators, utxo_finder);
+            initial_missing_validators);
     }
 
     /***************************************************************************
@@ -625,8 +625,7 @@ public class NodeLedger : Ledger
     ***************************************************************************/
 
     private string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators, in uint[] missing_validators_higher_bound,
-        scope UTXOFinder utxo_finder) @safe
+        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe
     {
         import std.algorithm.setops : setDifference;
 
@@ -661,8 +660,6 @@ public class NodeLedger : Ledger
         if (missing_validators.any!(idx => idx >= validators.length))
             return "Slashing non existing index";
         UTXO utxo;
-        if (missing_validators.any!(idx => !utxo_finder(validators[idx].utxo, utxo)))
-            return "Cannot slash a spent UTXO";
 
         return null;
     }
@@ -720,9 +717,9 @@ public class ValidatingLedger : NodeLedger
 
     /// Validate slashing data, including checking if the node is slef slashing
     public override string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators, scope UTXOFinder utxo_finder) @safe
+        in uint[] initial_missing_validators) @safe
     {
-        if (auto res = super.validateSlashingData(height, data, initial_missing_validators, utxo_finder))
+        if (auto res = super.validateSlashingData(height, data, initial_missing_validators))
             return res;
 
         const self = this.enroll_man.getEnrollmentKey();
@@ -1430,10 +1427,10 @@ unittest
     assert(data.missing_validators == skip_indexes);
 
     // check validity of slashing information
-    assert(ledger.validateSlashingData(Height(22), data, skip_indexes, ledger.utxo_set.getUTXOFinder()) == null);
+    assert(ledger.validateSlashingData(Height(22), data, skip_indexes) == null);
     ConsensusData forged_data = data;
     forged_data.missing_validators = [3, 2, 1];
-    assert(ledger.validateSlashingData(Height(22), forged_data, skip_indexes, ledger.utxo_set.getUTXOFinder()) != null);
+    assert(ledger.validateSlashingData(Height(22), forged_data, skip_indexes) != null);
 
     // Now reveal for all active validators at height 22
     ledger.simulatePreimages(Height(22));
