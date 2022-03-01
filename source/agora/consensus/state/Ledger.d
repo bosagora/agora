@@ -1136,15 +1136,19 @@ public abstract class UTXOTracker
     public abstract bool include (in Hash hash, in Output utxo) scope @safe;
 
     /// Process all transactions in this `Block`
-    public void externalize (in Block block) @safe
+    public void externalize (in Block block, void delegate (Hash) @safe onRemoved = null) @safe
     {
-        block.txs.each!((in tx) => this.externalize(tx));
+        block.txs.each!((in tx) => this.externalize(tx, onRemoved));
     }
 
     /// Process all inputs and outputs in this `Transaction`
-    public void externalize (in Transaction tx) @safe
+    public void externalize (in Transaction tx, void delegate (Hash) @safe onRemoved = null) @safe
     {
-        tx.inputs.each!((in inp) => this.data_.remove(Tracked(inp.utxo)));
+        tx.inputs.each!((in inp) {
+            if (Tracked(inp.utxo) in this.data_ && onRemoved)
+                onRemoved(inp.utxo);
+            this.data_.remove(Tracked(inp.utxo));
+        });
         const txHash = tx.hashFull();
         tx.outputs.enumerate
             .map!((in tup) => tuple(UTXO.getHash(txHash, tup.index), tup.value))

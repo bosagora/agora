@@ -235,6 +235,20 @@ public class EnrollmentManager
 
     /***************************************************************************
 
+        Remove all enrollments associated with a key from pool
+
+        Params:
+            enroll_key = the frozen UTXO hash
+
+    ***************************************************************************/
+
+    public void removeEnrollment (in Hash enroll_key) @safe
+    {
+        this.enroll_pool.remove(enroll_key);
+    }
+
+    /***************************************************************************
+
         Get the unregistered enrollments that can be validator in the next
         block based on the current block height.
 
