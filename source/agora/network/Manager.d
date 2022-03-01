@@ -880,14 +880,16 @@ public class NetworkManager
         {
             try
             {
-                ledger.acceptTransaction(tx); // This will also remove it from unknown_txs
+                // This will also remove it from unknown_txs
+                if (ledger.acceptTransaction(tx) is null)
+                    accepted++;
+
                 log.trace("getUnknownTXs: Found unknown tx with hash {}", tx.hashFull());
             }
             catch (Exception e)
             {
                 log.warn("getUnknownTXs: Unknown TX {} threw {}", tx, e.msg);
             }
-            accepted++;
         });
         return accepted;
     }
