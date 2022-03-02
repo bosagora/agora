@@ -1191,7 +1191,7 @@ extern(D):
         try
         {
             Transaction[] externalized_tx_set;
-            if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set, this.ledger.getUTXOFinder()))
+            if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set))
             {
                 log.info("Missing TXs while externalizing at Height {}: {}",
                     height, prettify(data));
