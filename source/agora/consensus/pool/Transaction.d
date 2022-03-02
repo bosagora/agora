@@ -647,6 +647,40 @@ public class TransactionPool
         }
         return false;
     }
+
+    /***************************************************************************
+
+        Check if a set of hashes represent a valid TX set
+
+        Params:
+            hashes = Set of TX hashes
+            spent_utxos = spent utxos
+
+        Returns:
+            `null` if the TX set is valid, otherwise a string
+            explaining the reason it is invalid.
+
+    ***************************************************************************/
+
+    public string isValidTxSet (Hashes) (Hashes hashes, Set!Hash spent_utxos = Set!Hash.init)
+    {
+        foreach (hash; hashes)
+        {
+            if (auto spending = hash in this.known_txs)
+            {
+                auto found_double_spent = (*spending)[].any!((utxo_hash) {
+                    scope (exit) spent_utxos.put(utxo_hash);
+                    return !(utxo_hash !in spent_utxos);
+                });
+
+                if (found_double_spent)
+                    return "Double spending TX set";
+            }
+            else
+                return "Transaction is not in the pool";
+        }
+        return null;
+    }
 }
 
 /// hasTransactionHash tests
@@ -852,6 +886,15 @@ unittest
     assert(pool.add(tx1, 0.coins));
     assert(pool.add(tx2, 0.coins));
     assert(pool.add(tx3, 0.coins));
+
+    assert(pool.isValidTxSet([tx1.hashFull, tx2.hashFull]) is null);
+    assert(pool.isValidTxSet([tx1.hashFull, Hash.init]) == "Transaction is not in the pool");
+    assert(pool.isValidTxSet([tx2.hashFull, tx3.hashFull]) == "Double spending TX set");
+
+    Set!Hash spent_utxos;
+    spent_utxos.put(UTXO.getHash(Hash.init, 0));
+    assert(pool.isValidTxSet([tx1.hashFull, tx2.hashFull], spent_utxos) == "Double spending TX set");
+
     assert(pool.length == 3);
     // tx3 should be removed as well.
     pool.remove(tx2);
