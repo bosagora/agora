@@ -664,17 +664,6 @@ public class EnrollmentManager
         this.db.execute("REPLACE into node_enroll_data " ~
             "(key, val) VALUES (?, ?)", "utxo", enroll_key);
     }
-
-    /***************************************************************************
-
-        Reset all the information about an enrollment of this node
-
-    ***************************************************************************/
-
-    private void resetNodeEnrollment () @safe nothrow
-    {
-        this.enroll_key = Hash.init;
-    }
 }
 
 /// tests for member functions of EnrollmentManager
