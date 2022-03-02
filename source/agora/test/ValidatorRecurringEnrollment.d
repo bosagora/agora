@@ -241,6 +241,13 @@ unittest
 
     // Even if configured to not re-enroll, BatValidator should enroll if there
     // are not enough validators
+    network.generateBlocks(Height(GenesisValidatorCycle), true);
+
+    // fetch last block and check they all enrolled
+    auto block = network.clients[0].getBlock(Height(GenesisValidatorCycle));
+    assert(block.header.enrollments.length == 1);
+
+    // Generate next block in new cycle
     network.generateBlocks(Height(GenesisValidatorCycle + 1), true);
 }
 
