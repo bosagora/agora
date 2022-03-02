@@ -549,8 +549,7 @@ public class EnrollmentManager
     /// Returns: true if this validator is currently enrolled
     public bool isEnrolled (in Height height, scope UTXOFinder finder) nothrow @safe
     {
-        this.enroll_key = this.getEnrolledUTXO(height, finder);
-        return this.enroll_key != Hash.init;
+        return this.getEnrolledUTXO(height, finder) != Hash.init;
     }
 
     /// Returns: The UTXO hash that this Validator is enrolled with or Hash.init if not enrolled
