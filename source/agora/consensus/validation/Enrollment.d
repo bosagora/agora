@@ -256,6 +256,10 @@ unittest
 
     assert(validator_set.countActive(Height(params.ValidatorCycle + 1)) == 0);
 
+    // Add initial enrollment first
+    enroll1.commitment = cycle[Height(0)];
+    enroll1.enroll_sig = sign(node_key_pair_1, signature_noise, hashMulti(Height(0), enroll1));
+    validator_set.add(Height(0), utxoPeek, getPenaltyDeposit, enroll1, key_pairs[0].address);
     // First 2 iterations should fail because commitment is wrong
     foreach (offset; [-1, +1, 0])
     {
