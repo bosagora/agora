@@ -1256,7 +1256,7 @@ public struct PeerRange
 
     public void popFront () nothrow @safe
     {
-        if (!this.checkIfInvalidated())
+        if (!this.empty())
             this.range.popFront();
     }
 
