@@ -70,7 +70,6 @@ public class NodeLedger : Ledger
         TooManyMPVs = "More MPVs than active enrollments",
         NoUTXO = "Couldn't find UTXO for one or more Enrollment",
         NotInPool = "Transaction is not in the pool",
-        MissingCoinbase = "Missing Coinbase transaction",
         MisMatchingCoinbase = "Missing matching Coinbase transaction",
     }
 
@@ -318,7 +317,6 @@ public class NodeLedger : Ledger
         Params:
             data = consensus value
             tx_set = buffer to write the found TXs
-            utxo_finder = UTXO finder with double spent protection
 
         Returns:
             `null` if node can build a valid TX set, a string explaining
@@ -326,53 +324,45 @@ public class NodeLedger : Ledger
 
     ***************************************************************************/
 
-    public string getValidTXSet (in ConsensusData data, ref Transaction[] tx_set,
-        scope UTXOFinder utxo_finder)
-        @safe nothrow
+    public string getValidTXSet(in ConsensusData data, ref Transaction[] tx_set)  @safe nothrow
     {
-        const expect_height = this.height() + 1;
-        bool[Hash] local_unknown_txs;
+        if (auto reason = this.isValidTXSet(data))
+            return reason;
+
+        auto coinbase_tx = this.getCoinbaseTX(this.height() + 1);
+        auto coinbase_tx_hash = coinbase_tx.hashFull();
+        auto not_cb_filter = (Hash h) => coinbase_tx == Transaction.init || h != coinbase_tx_hash;
 
         foreach (const ref tx_hash; data.tx_set)
         {
+            if (!not_cb_filter(tx_hash))
+                continue;
             auto tx = this.pool.getTransactionByHash(tx_hash);
-            if (tx == Transaction.init)
-                local_unknown_txs[tx_hash] = true;
-            else
-                tx_set ~= tx;
+            assert(tx != Transaction.init);
+            tx_set ~= tx;
         }
-
-        // This is payout block and we have at least two payout periods
-        if (expect_height >= 2 * this.params.PayoutPeriod
-            && expect_height % this.params.PayoutPeriod == 0)
-        {
-            auto coinbase_tx = this.getCoinbaseTX(expect_height);
-            auto coinbase_tx_hash = coinbase_tx.hashFull();
-            log.trace("getValidTXSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
-            assert(coinbase_tx.outputs.length > 0);
-
-            // Because CB TXs are never in the pool, they will always end up in
-            // local_unknown_txs.
-            if (local_unknown_txs.length == 0)
-                return InvalidConsensusDataReason.MissingCoinbase;
-            if (!local_unknown_txs.remove(coinbase_tx_hash))
-            {
-                this.cached_coinbase = CachedCoinbase.init; // Clear cached value
-                return InvalidConsensusDataReason.MisMatchingCoinbase;
-            }
+        if (coinbase_tx != Transaction.init)
             tx_set ~= coinbase_tx;
-        }
-        if (local_unknown_txs.length > 0)
+
+        return null;
+    }
+
+    /// Ditto
+    public string isValidTXSet (in ConsensusData data) @safe nothrow
+    {
+        auto coinbase_tx = this.getCoinbaseTX(this.height() + 1);
+        Hash coinbase_tx_hash = coinbase_tx.hashFull();
+        if (coinbase_tx != Transaction.init)
         {
-            local_unknown_txs.byKey.each!(tx => this.unknown_txs.put(tx));
-            log.warn("getValidTXSet: local_unknown_txs.length={}, unknown_txs.length={}",
-                local_unknown_txs.length, this.unknown_txs.length);
-            return InvalidConsensusDataReason.NotInPool;
+            log.trace("isValidTxSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
+            if (!data.tx_set.canFind(coinbase_tx_hash))
+                return InvalidConsensusDataReason.MisMatchingCoinbase;
         }
 
-        UTXO val;
-        if (!tx_set.filter!(tx => !tx.isCoinbase).all!(tx => tx.inputs.all!(input => utxo_finder(input.utxo, val))))
-            return "Double spending TX set";
+        auto enrolled_utxos = Set!Hash.from(data.enrolls.map!(enroll => enroll.utxo_key));
+        auto not_cb_filter = (Hash h) => coinbase_tx == Transaction.init || h != coinbase_tx_hash;
+        if (auto reason = this.pool.isValidTxSet(data.tx_set.filter!(not_cb_filter), enrolled_utxos))
+            return reason;
 
         return null;
     }
@@ -401,14 +391,8 @@ public class NodeLedger : Ledger
         if (idx_value_hash in this.fully_validated_value)
             return null;
 
-        Transaction[] tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, tx_set, utxo_finder))
+        if (auto fail_reason = this.isValidTXSet(data))
             return fail_reason;
-
-        const tx_set_size = tx_set.map!(tx => tx.sizeInBytes()).sum();
-        const size_limit = this.params.MaxTxSetSize * 1024;
-        if (tx_set_size > size_limit)
-            return "TX set too big in size";
 
         // av   == active validators (this block)
         // avnb == active validators next block
@@ -802,10 +786,9 @@ public class ValidatingLedger : NodeLedger
     private string externalize (ConsensusData data, size_t signed = genesis_validator_keys.length) @trusted
     {
         const height = Height(this.last_block.header.height + 1);
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
 
         Transaction[] externalized_tx_set;
-        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set, utxo_finder))
+        if (auto fail_reason = this.getValidTXSet(data, externalized_tx_set))
         {
             log.info("Ledger.externalize: can not create new block at Height {} : {}. Fail reason : {}",
                 height, data.prettify, fail_reason);
@@ -1555,7 +1538,7 @@ unittest
         {
             // Remove the coinbase TX
             data.tx_set = data.tx_set[0 .. $ - 1];
-            assert(ledger.validateConsensusData(data, skip_indexes) == "Missing Coinbase transaction");
+            assert(ledger.validateConsensusData(data, skip_indexes) == "Missing matching Coinbase transaction");
             // Add different hash to tx_set
             data.tx_set ~= "Not Coinbase tx".hashFull();
             assert(ledger.validateConsensusData(data, skip_indexes) == "Missing matching Coinbase transaction");
@@ -1811,10 +1794,6 @@ unittest
         auto total_size = txs.map!(tx => tx.sizeInBytes()).sum();
         assert(total_size > params.MaxTxSetSize * 1024);
         txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
-
-        ConsensusData data;
-        txs.each!(tx => data.tx_set ~= tx.hashFull);
-        assert(ledger.validateConsensusData(data, null) == "TX set too big in size");
 
         ledger.forceCreateBlock();
         assert(ledger.lastBlock().txs.length < txs.length);

@@ -567,7 +567,9 @@ public class Ledger
 
     protected Transaction getCoinbaseTX (in Height height) nothrow @safe
     {
-        assert(height >= 2 * this.params.PayoutPeriod);
+        if (height < 2 * this.params.PayoutPeriod
+            || height % this.params.PayoutPeriod != 0)   // not a Coinbase payout block
+            return Transaction.init;
 
         if (cached_coinbase.height == height)
             return cached_coinbase.tx;
