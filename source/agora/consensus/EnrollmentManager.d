@@ -471,7 +471,7 @@ public class EnrollmentManager
 
         assert(height >= enrolled);
         const next_reveal = min(height + this.max_preimage_reveal,
-                                enrolled + this.params.ValidatorCycle);
+                                enrolled + this.params.ValidatorCycle + 6);
 
         if (next_reveal <= height)
             return false;
