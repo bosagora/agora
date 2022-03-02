@@ -106,6 +106,9 @@ public class ValidatorSet
 
         Add a enrollment data to the validators set
 
+        If a later preimage has not already been stored for this validator then
+        add the preimage that is used for the enrollment commitment
+
         Params:
             height = the current block height in the ledger
             finder = the delegate to find UTXOs with
@@ -138,11 +141,13 @@ public class ValidatorSet
             return "A validator with the same public key is already enrolled";
 
         () @trusted {
-            this.db.execute("INSERT OR REPLACE INTO preimages " ~
-                "(key, height, preimage) " ~
-                "VALUES (?, ?, ?)",
-                enroll.utxo_key, height.value,
-                enroll.commitment);
+            if (this.getPreimage(enroll.utxo_key) == PreImageInfo.init)
+                this.db.execute("INSERT INTO preimages " ~
+                    "(key, height, preimage) VALUES (?, ?, ?)",
+                    enroll.utxo_key, height, enroll.commitment);
+            else
+                this.addPreimage(PreImageInfo(enroll.utxo_key, enroll.commitment, height));
+
             this.db.execute("INSERT INTO validator " ~
                 "(key, public_key, enrolled_height, nonce, stake) " ~
                 "VALUES (?, ?, ?, ?, ?)",
@@ -152,7 +157,6 @@ public class ValidatorSet
                 enroll.enroll_sig.R,
                 stake);
         }();
-
         return null;
     }
 
@@ -530,9 +534,9 @@ public class ValidatorSet
         try
         {
             () @trusted {
-                this.db.execute("UPDATE preimages SET preimage = ?, " ~
-                    "height = ? WHERE key = ?",
-                    preimage.hash, preimage.height, preimage.utxo);
+                this.db.execute("INSERT OR REPLACE INTO preimages " ~
+                    "(key, height, preimage) VALUES (?, ?, ?)",
+                    preimage.utxo, preimage.height, preimage.hash);
             }();
         }
         catch (Exception ex)
