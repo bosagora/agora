@@ -686,33 +686,33 @@ extern(D):
         Hash utxo = this.getNodeUTXO(envelope.statement.slotIndex, envelope.statement.nodeID);
         if (utxo == Hash.init)
         {
-            log.trace("No UTXO for the nodeID {} at the slot {}",
-                envelope.statement.nodeID, envelope.statement.slotIndex);
+            log.trace("{}: No UTXO for the nodeID {} at the slot {}",
+                __FUNCTION__, envelope.statement.nodeID, envelope.statement.slotIndex);
             return;
         }
 
         UTXO utxo_value;
         if (!this.ledger.peekUTXO(utxo, utxo_value))
         {
-            log.trace("Couldn't find UTXO {} at height {} to validate envelope's signature",
-                utxo, last_block.header.height);
+            log.trace("{}: Couldn't find UTXO {} at height {} to validate envelope's signature",
+                __FUNCTION__, utxo, last_block.header.height);
             return;
         }
         const PublicKey public_key = utxo_value.output.address;
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         if (!public_key.isValid())
         {
-            log.trace("Invalid point from public_key {}", public_key);
+            log.trace("{}: Invalid point from public_key {}", __FUNCTION__, public_key);
             return;
         }
         if (!verify(public_key, envelope.signature.toSignature(), challenge))
         {
             // If it fails signature verification, it might not originate from said key
-            log.trace("Envelope failed signature verification for {}", public_key);
+            log.trace("{}: Envelope failed signature verification for {}", __FUNCTION__, public_key);
             return;
         }
 
-        log.trace("Received signed envelope: {}", scpPrettify(&envelope, &this.getQSet));
+        log.trace("{}: Received signed envelope: {}", __FUNCTION__, scpPrettify(&envelope, &this.getQSet));
         if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
             // show some tolerance to early nominations
@@ -721,7 +721,7 @@ extern(D):
             // too early to nominate a new block
             if (this.clock.networkTime() + tolerance < this.getExpectedBlockTime())
             {
-                log.trace("Ignoring early nomination for height {}", envelope.statement.slotIndex);
+                log.trace("{}: Ignoring early nomination for height {}", __FUNCTION__, envelope.statement.slotIndex);
                 return;
             }
         }
@@ -750,7 +750,7 @@ extern(D):
             return;
 
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
-            log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope, &this.getQSet));
+            log.trace("{}: SCP indicated invalid envelope: {}", __FUNCTION__, scpPrettify(&envelope, &this.getQSet));
         else
             this.emitEnvelope(shared_env.getEnvelope());
     }
