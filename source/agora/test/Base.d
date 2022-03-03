@@ -755,7 +755,7 @@ public class TestAPIManager
     {
         static assert (isInputRange!Idxs);
 
-        this.waitForPreimages(clients_idxs, enrolls, height, timeout);
+        this.waitForPreimages(clients_idxs, enrolls, height, timeout, file, line);
         this.expectHeight(clients_idxs, height, timeout, file, line);
     }
 
@@ -775,15 +775,15 @@ public class TestAPIManager
     ***************************************************************************/
 
     public void waitForPreimages (const(Enrollment)[] enrolls, Height height,
-        Duration timeout = 10.seconds)
+        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
     {
-        this.waitForPreimages(iota(this.test_conf.node.test_validators), enrolls, height, timeout);
+        this.waitForPreimages(iota(this.test_conf.node.test_validators), enrolls, height, timeout, file, line);
     }
 
     /// Ditto
     public void waitForPreimages (Idxs)(Idxs clients_idxs,
         const(Enrollment)[] enrolls, Height height,
-        Duration timeout = 10.seconds)
+        Duration timeout = 10.seconds, string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
         import std.algorithm.searching : any;
