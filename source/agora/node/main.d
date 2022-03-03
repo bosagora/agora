@@ -348,13 +348,13 @@ private Nullable!Config makeTestNetConfig (AgoraCLIArgs cmdln)
 
     // Otherwise, this is the default config for TestNet when
     // no config file is provided.
-    scope client = new RestInterfaceClient!API("http://ns1.bosagora.io");
+    scope client = new RestInterfaceClient!API("https://ns1.bosagora.io");
     auto params = client.getConsensusParams();
     Config defaultConfig = {
         node: {
             testing: true,
             realm: Domain.fromSafeString("testnet.bosagora.io."),
-            registry_address: SetInfo!Address(Address("http://ns1.bosagora.io"), true),
+            registry_address: SetInfo!Address(Address("https://ns1.bosagora.io"), true),
         },
         consensus: params.data.config,
     };
