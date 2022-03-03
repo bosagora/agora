@@ -675,8 +675,16 @@ extern(D):
             return;  // slot was already externalized
         }
 
-        // If the node is not enrolled at the height then return early
         const env_height = Height(envelope.statement.slotIndex);
+        // If the envelope is too early then trigger catchup task
+        if (env_height > last_block.header.height + 1)
+        {
+            log.dbg("{}: Envelope is for height {} but ledger is only at height {}.",
+                __FUNCTION__, env_height, last_block.header.height);
+            this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
+        }
+
+        // If the node is not enrolled at the height then return early
         if (!this.enroll_man.isEnrolled(env_height, &this.ledger.peekUTXO))
         {
             log.dbg("{}: Skip this envelope as this node is not enrolled at height {}", __FUNCTION__, env_height);
