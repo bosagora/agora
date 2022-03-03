@@ -691,6 +691,12 @@ extern(D):
             return;
         }
 
+        if (utxo == this.enroll_man.getEnrollmentKey)
+        {
+            log.dbg("{}: Ignore this envelope as it is from this node", __FUNCTION__);
+            return;
+        }
+
         UTXO utxo_value;
         if (!this.ledger.peekUTXO(utxo, utxo_value))
         {
