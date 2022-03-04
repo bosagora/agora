@@ -615,11 +615,24 @@ public class FullNode : API
         Params:
             header = the block header to distribute
 
+        Returns:
+            the error message if block validation failed, otherwise null
+
     ***************************************************************************/
 
-    protected void acceptHeader (BlockHeader header) @safe
+    protected string acceptHeader (BlockHeader header) @safe
     {
+        // First we must validate the header
+        if (auto err = this.ledger.validateBlockSignature(header))
+        {
+            log.trace("acceptHeader: Received header is not valid: {}", err);
+            return err;
+        }
+        // Add any missing signatures we know
+        this.ledger.updateBlockMultiSig(header);
         this.pushBlockHeader(header);
+
+        return null;
     }
 
     /***************************************************************************

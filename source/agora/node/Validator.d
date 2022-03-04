@@ -411,20 +411,19 @@ public class Validator : FullNode, API
         Params:
             block = block to be added to the Ledger
 
+        Returns:
+            the error message if block validation failed, otherwise null
+
     ***************************************************************************/
 
-    protected override void acceptHeader (BlockHeader header) @safe
+    protected override string acceptHeader (BlockHeader header) @safe
     {
-        // First we must validate the header
-        if (auto err = this.ledger.validateBlockSignature(header))
-        {
-            log.trace("acceptHeader: Recieved header is not valid: {}", err);
-            return;
-        }
+        if (auto err = super.acceptHeader(header))
+            return err;
+
         // Add any missing signatures we know
         this.nominator.updateMultiSignature(header);
-        this.ledger.updateBlockMultiSig(header);
-        super.acceptHeader(header);
+        return null;
     }
 
     /***************************************************************************
