@@ -379,8 +379,11 @@ extern(D):
     {
         if (!this.is_shutting_down)
         {
-            this.log.dbg("Re-arming timer {} for {}", timer_id, interval);
-            this.timers[timer_id].rearm(interval, false);
+            if (!this.timers[timer_id].pending())
+            {
+                this.log.dbg("Re-arming timer {} for {}", timer_id, interval);
+                this.timers[timer_id].rearm(interval, false);
+            }
         }
         else
             this.log.dbg("Not re-arming timer {} for {} because we are shutting down",
@@ -639,6 +642,7 @@ extern(D):
     public void receiveEnvelope (in SCPEnvelope envelope) @trusted
     {
         auto env_hash = envelope.hashFull();
+        log.dbg("{}: Received envelope with hash {}", __FUNCTION__, env_hash);
         if (env_hash !in this.seen_envs)
         {
             auto copied = envelope.clone();
