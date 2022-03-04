@@ -2,12 +2,9 @@
 
     A garbage collector that register memory allocations
 
-    This file was originally copied verbatim from druntime
-    (src/gc/impl/conservative/gc.d) at v2.095.0
-    (last commit 99b04d8e5b509ab471b7d5ca83b85a7c4ecd9dd0).
-
-    It was subsequently modified to include changes to allow tracking
-    allocations / deallocations using Tracy.
+    This file is based on Druntime's version (src/gc/impl/conservative/gc.d)
+    at v2.099.0-rc.1-57-gbadb3cef3 (badb3cef315b0a6a1840e2932411b6c01031beb2),
+    with modifications to allow tracking allocations / deallocations via Tracy.
 
 *******************************************************************************/
 
@@ -33,9 +30,12 @@ import agora.utils.TracyAPI;
 //debug = PTRCHECK2;            // thorough but slow pointer checking
 //debug = INVARIANT;            // enable invariants
 //debug = PROFILE_API;          // profile API calls for config.profile > 1
+//debug = GC_RECURSIVE_LOCK;    // check for recursive locking on the same thread
 
 /***************************************************/
 version = COLLECT_PARALLEL;  // parallel scanning
+version (Posix)
+    version = COLLECT_FORK;
 
 import agora.utils.gc.bits;
 import agora.utils.gc.os;
@@ -45,12 +45,15 @@ import core.gc.gcinterface;
 import core.gc.registry;
 
 import core.internal.container.treap;
+import core.internal.spinlock;
+import agora.utils.gc.pooltable;
+
+import core.internal.container.treap;
 
 import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
 import core.stdc.string : memcpy, memset, memmove;
 import core.bitop;
 import core.thread;
-import core.time;
 static import core.memory;
 
 version (GNU) import gcc.builtins;
@@ -58,6 +61,7 @@ version (GNU) import gcc.builtins;
 debug (PRINTF_TO_FILE) import core.stdc.stdio : sprintf, fprintf, fopen, fflush, FILE;
 else                   import core.stdc.stdio : sprintf, printf; // needed to output profiling results
 
+import core.time;
 alias currTime = MonoTime.currTime;
 
 // Track total time spent preparing for GC,
@@ -98,6 +102,10 @@ private
         // to avoid inlining - see issue 13725.
         void onInvalidMemoryOperationError(void* pretend_sideffect = null) @trusted pure nothrow @nogc;
         void onOutOfMemoryErrorNoGC() @trusted nothrow @nogc;
+
+        version (COLLECT_FORK)
+            version (OSX)
+                pid_t __fork() nothrow;
     }
 
     enum
@@ -125,19 +133,13 @@ extern(C) pragma(crt_constructor) void _d_register_tracking_precise_gc()
 
 private GC initialize()
 {
-    import core.stdc.string: memcpy;
+    import core.lifetime : emplace;
 
-    auto p = cstdlib.malloc(__traits(classInstanceSize, ConservativeGC));
-
-    if (!p)
+    auto gc = cast(ConservativeGC) cstdlib.malloc(__traits(classInstanceSize, ConservativeGC));
+    if (!gc)
         onOutOfMemoryErrorNoGC();
 
-    auto init = typeid(ConservativeGC).initializer();
-    assert(init.length == __traits(classInstanceSize, ConservativeGC));
-    auto instance = cast(ConservativeGC) memcpy(p, init.ptr, init.length);
-    instance.__ctor();
-
-    return instance;
+    return emplace(gc);
 }
 
 private GC initialize_precise()
@@ -154,19 +156,28 @@ class ConservativeGC : GC
 
     Gcx *gcx;                   // implementation
 
-    import core.internal.spinlock;
     static gcLock = shared(AlignedSpinLock)(SpinLock.Contention.lengthy);
     static bool _inFinalizer;
     __gshared bool isPrecise = false;
 
-    // lock GC, throw InvalidMemoryOperationError on recursive locking during finalization
-    static void lockNR() @nogc nothrow
+    /*
+     * Lock the GC.
+     *
+     * Throws: InvalidMemoryOperationError on recursive locking during finalization.
+     */
+    static void lockNR() @safe @nogc nothrow
     {
         if (_inFinalizer)
             onInvalidMemoryOperationError();
         gcLock.lock();
     }
 
+    /*
+     * Initialize the GC based on command line configuration.
+     *
+     * Throws:
+     *  OutOfMemoryError if failed to initialize GC due to not enough memory.
+     */
     this()
     {
         //config is assumed to have already been initialized
@@ -203,6 +214,10 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Enables the GC if disable() was previously called. Must be called
+     * for each time disable was called in order to enable the GC again.
+     */
     void enable()
     {
         static void go(Gcx* gcx) nothrow
@@ -214,6 +229,9 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Disable the GC. The GC may still run if it deems necessary.
+     */
     void disable()
     {
         static void go(Gcx* gcx) nothrow
@@ -223,10 +241,24 @@ class ConservativeGC : GC
         runLocked!(go, otherTime, numOthers)(gcx);
     }
 
+    debug (GC_RECURSIVE_LOCK) static bool lockedOnThisThread;
 
+    /**
+     * Run a function inside a lock/unlock set.
+     *
+     * Params:
+     *  func = The function to run.
+     *  args = The function arguments.
+     */
     auto runLocked(alias func, Args...)(auto ref Args args)
     {
         debug(PROFILE_API) immutable tm = (config.profile > 1 ? currTime.ticks : 0);
+        debug(GC_RECURSIVE_LOCK)
+        {
+            if (lockedOnThisThread)
+                onInvalidMemoryOperationError();
+            lockedOnThisThread = true;
+        }
         lockNR();
         scope (failure) gcLock.unlock();
         debug(PROFILE_API) immutable tm2 = (config.profile > 1 ? currTime.ticks : 0);
@@ -239,15 +271,37 @@ class ConservativeGC : GC
         debug(PROFILE_API) if (config.profile > 1)
             lockTime += tm2 - tm;
         gcLock.unlock();
+        debug(GC_RECURSIVE_LOCK)
+        {
+            if (!lockedOnThisThread)
+                onInvalidMemoryOperationError();
+            lockedOnThisThread = false;
+        }
 
         static if (!is(typeof(func(args)) == void))
             return res;
     }
 
-
+    /**
+     * Run a function in an lock/unlock set that keeps track of
+     * how much time was spend inside this function (in ticks)
+     * and how many times this fuction was called.
+     *
+     * Params:
+     *  func = The function to run.
+     *  time = The variable keeping track of the time (in ticks).
+     *  count = The variable keeping track of how many times this fuction was called.
+     *  args = The function arguments.
+     */
     auto runLocked(alias func, alias time, alias count, Args...)(auto ref Args args)
     {
         debug(PROFILE_API) immutable tm = (config.profile > 1 ? currTime.ticks : 0);
+        debug(GC_RECURSIVE_LOCK)
+        {
+            if (lockedOnThisThread)
+                onInvalidMemoryOperationError();
+            lockedOnThisThread = true;
+        }
         lockNR();
         scope (failure) gcLock.unlock();
         debug(PROFILE_API) immutable tm2 = (config.profile > 1 ? currTime.ticks : 0);
@@ -265,12 +319,29 @@ class ConservativeGC : GC
             time += now - tm2;
         }
         gcLock.unlock();
+        debug(GC_RECURSIVE_LOCK)
+        {
+            if (!lockedOnThisThread)
+                onInvalidMemoryOperationError();
+            lockedOnThisThread = false;
+        }
 
         static if (!is(typeof(func(args)) == void))
             return res;
     }
 
 
+    /**
+     * Returns a bit field representing all block attributes set for the memory
+     * referenced by p.
+     *
+     * Params:
+     *  p = A pointer to the base of a valid memory block or to null.
+     *
+     * Returns:
+     *  A bit field containing any bits set for the memory block referenced by
+     *  p or zero on error.
+     */
     uint getAttr(void* p) nothrow
     {
         if (!p)
@@ -298,7 +369,20 @@ class ConservativeGC : GC
         return runLocked!(go, otherTime, numOthers)(gcx, p);
     }
 
-
+    /**
+     * Sets the specified bits for the memory references by p.
+     *
+     * If p was not allocated by the GC, points inside a block, or is null, no
+     * action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the base of a valid memory block or to null.
+     *  mask = A bit field containing any bits to set for this memory block.
+     *
+     * Returns:
+     *  The result of a call to getAttr after the specified bits have been
+     *  set.
+     */
     uint setAttr(void* p, uint mask) nothrow
     {
         if (!p)
@@ -328,6 +412,20 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Clears the specified bits for the memory references by p.
+     *
+     * If p was not allocated by the GC, points inside a block, or is null, no
+     * action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the base of a valid memory block or to null.
+     *  mask = A bit field containing any bits to clear for this memory block.
+     *
+     * Returns:
+     *  The result of a call to getAttr after the specified bits have been
+     *  cleared
+     */
     uint clrAttr(void* p, uint mask) nothrow
     {
         if (!p)
@@ -356,8 +454,21 @@ class ConservativeGC : GC
         return runLocked!(go, otherTime, numOthers)(gcx, p, mask);
     }
 
-
-    void *malloc(size_t size, uint bits, const TypeInfo ti) nothrow
+    /**
+     * Requests an aligned block of managed memory from the garbage collector.
+     *
+     * Params:
+     *  size = The desired allocation size in bytes.
+     *  bits = A bitmask of the attributes to set on this block.
+     *  ti = TypeInfo to describe the memory.
+     *
+     * Returns:
+     *  A reference to the allocated memory or null if no memory was requested.
+     *
+     * Throws:
+     *  OutOfMemoryError on allocation failure
+     */
+    void *malloc(size_t size, uint bits = 0, const TypeInfo ti = null) nothrow
     {
         if (!size)
         {
@@ -378,7 +489,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation for malloc and calloc.
     //
     private void *mallocNoSync(size_t size, uint bits, ref size_t alloc_size, const TypeInfo ti = null) nothrow
     {
@@ -408,8 +519,9 @@ class ConservativeGC : GC
         return p;
     }
 
-    override BlkInfo qalloc( size_t size, uint bits, const scope TypeInfo ti) nothrow
+    BlkInfo qalloc( size_t size, uint bits, const scope TypeInfo ti) nothrow
     {
+
         if (!size)
         {
             return BlkInfo.init;
@@ -428,7 +540,23 @@ class ConservativeGC : GC
         return retval;
     }
 
-    void *calloc(size_t size, uint bits, const TypeInfo ti) nothrow
+
+    /**
+     * Requests an aligned block of managed memory from the garbage collector,
+     * which is initialized with all bits set to zero.
+     *
+     * Params:
+     *  size = The desired allocation size in bytes.
+     *  bits = A bitmask of the attributes to set on this block.
+     *  ti = TypeInfo to describe the memory.
+     *
+     * Returns:
+     *  A reference to the allocated memory or null if no memory was requested.
+     *
+     * Throws:
+     *  OutOfMemoryError on allocation failure.
+     */
+    void *calloc(size_t size, uint bits = 0, const TypeInfo ti = null) nothrow
     {
         if (!size)
         {
@@ -448,8 +576,27 @@ class ConservativeGC : GC
         return p;
     }
 
-
-    void *realloc(void *p, size_t size, uint bits, const TypeInfo ti) nothrow
+    /**
+     * Request that the GC reallocate a block of memory, attempting to adjust
+     * the size in place if possible. If size is 0, the memory will be freed.
+     *
+     * If p was not allocated by the GC, points inside a block, or is null, no
+     * action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the root of a valid memory block or to null.
+     *  size = The desired allocation size in bytes.
+     *  bits = A bitmask of the attributes to set on this block.
+     *  ti = TypeInfo to describe the memory.
+     *
+     * Returns:
+     *  A reference to the allocated memory on success or null if size is
+     *  zero.
+     *
+     * Throws:
+     *  OutOfMemoryError on allocation failure.
+     */
+    void *realloc(void *p, size_t size, uint bits = 0, const TypeInfo ti = null) nothrow
     {
         size_t localAllocSize = void;
         auto oldp = p;
@@ -465,6 +612,8 @@ class ConservativeGC : GC
     }
 
 
+    //
+    // The implementation of realloc.
     //
     // bits will be set to the resulting bits of the new block
     //
@@ -547,7 +696,7 @@ class ConservativeGC : GC
             else if (pagenum + newsz <= pool.npages)
             {
                 // Attempt to expand in place (TODO: merge with extend)
-                if (lpool.pagetable[pagenum + psz] != B_FREE)
+                if (lpool.pagetable[pagenum + psz] != Bins.B_FREE)
                     return doMalloc();
 
                 auto newPages = newsz - psz;
@@ -557,7 +706,7 @@ class ConservativeGC : GC
 
                 debug (MEMSTOMP) memset(p + psize, 0xF0, size - psize);
                 debug (PRINTF) printFreeInfo(pool);
-                memset(&lpool.pagetable[pagenum + psz], B_PAGEPLUS, newPages);
+                memset(&lpool.pagetable[pagenum + psz], Bins.B_PAGEPLUS, newPages);
                 lpool.bPageOffsets[pagenum] = cast(uint) newsz;
                 for (auto offset = psz; offset < newsz; offset++)
                     lpool.bPageOffsets[pagenum + offset] = cast(uint) offset;
@@ -606,7 +755,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation of extend.
     //
     private size_t extendNoSync(void* p, size_t minsize, size_t maxsize, const TypeInfo ti = null) nothrow
     in
@@ -628,7 +777,7 @@ class ConservativeGC : GC
 
             auto lpool = cast(LargeObjectPool*) pool;
             size_t pagenum = lpool.pagenumOf(p);
-            if (lpool.pagetable[pagenum] != B_PAGE)
+            if (lpool.pagetable[pagenum] != Bins.B_PAGE)
                 return 0;
 
             size_t psz = lpool.bPageOffsets[pagenum];
@@ -639,7 +788,7 @@ class ConservativeGC : GC
 
             if (pagenum + psz >= lpool.npages)
                 return 0;
-            if (lpool.pagetable[pagenum + psz] != B_FREE)
+            if (lpool.pagetable[pagenum + psz] != Bins.B_FREE)
                 return 0;
 
             size_t freesz = lpool.bPageOffsets[pagenum + psz];
@@ -647,7 +796,7 @@ class ConservativeGC : GC
                 return 0;
             size_t sz = freesz > maxsz ? maxsz : freesz;
             debug (MEMSTOMP) memset(pool.baseAddr + (pagenum + psz) * PAGESIZE, 0xF0, sz * PAGESIZE);
-            memset(lpool.pagetable + pagenum + psz, B_PAGEPLUS, sz);
+            memset(lpool.pagetable + pagenum + psz, Bins.B_PAGEPLUS, sz);
             lpool.bPageOffsets[pagenum] = cast(uint) (psz + sz);
             for (auto offset = psz; offset < psz + sz; offset++)
                 lpool.bPageOffsets[pagenum + offset] = cast(uint) offset;
@@ -660,6 +809,16 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Requests that at least size bytes of memory be obtained from the operating
+     * system and marked as free.
+     *
+     * Params:
+     *  size = The desired size in bytes.
+     *
+     * Returns:
+     *  The actual number of bytes reserved or zero on error.
+     */
     size_t reserve(size_t size) nothrow
     {
         if (!size)
@@ -672,7 +831,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation of reserve
     //
     private size_t reserveNoSync(size_t size) nothrow
     {
@@ -683,7 +842,16 @@ class ConservativeGC : GC
     }
 
 
-    void free(void *p) nothrow @nogc
+    /**
+     * Deallocates the memory referenced by p.
+     *
+     * If p was not allocated by the GC, points inside a block, is null, or
+     * if free is called from a finalizer, no action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the root of a valid memory block or to null.
+     */
+    void free(void *p) nothrow
     {
         if (!p || _inFinalizer)
         {
@@ -695,7 +863,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation of free.
     //
     private void freeNoSync(void *p) nothrow @nogc
     {
@@ -717,11 +885,11 @@ class ConservativeGC : GC
         debug(PRINTF) printf("pool base = %p, PAGENUM = %d of %d, bin = %d\n", pool.baseAddr, pagenum, pool.npages, pool.pagetable[pagenum]);
         debug(PRINTF) if (pool.isLargeObject) printf("Block size = %d\n", pool.bPageOffsets[pagenum]);
 
-        bin = cast(Bins)pool.pagetable[pagenum];
+        bin = pool.pagetable[pagenum];
 
         // Verify that the pointer is at the beginning of a block,
         //  no action should be taken if p is an interior pointer
-        if (bin > B_PAGE) // B_PAGEPLUS or B_FREE
+        if (bin > Bins.B_PAGE) // B_PAGEPLUS or B_FREE
             return;
         size_t off = (sentinel_sub(p) - pool.baseAddr);
         size_t base = baseOffset(off, bin);
@@ -729,17 +897,21 @@ class ConservativeGC : GC
             return;
 
         sentinel_Invariant(p);
+        auto q = p;
         p = sentinel_sub(p);
+        size_t ssize;
 
         if (pool.isLargeObject)              // if large alloc
         {
             biti = cast(size_t)(p - pool.baseAddr) >> pool.ShiftBy.Large;
-            assert(bin == B_PAGE);
+            assert(bin == Bins.B_PAGE);
             auto lpool = cast(LargeObjectPool*) pool;
 
             // Free pages
             size_t npages = lpool.bPageOffsets[pagenum];
-            debug (MEMSTOMP) memset(p, 0xF2, npages * PAGESIZE);
+            auto size = npages * PAGESIZE;
+            ssize = sentinel_size(q, size);
+            debug (MEMSTOMP) memset(p, 0xF2, size);
             lpool.freePages(pagenum, npages);
             lpool.mergeFreePageOffsets!(true, true)(pagenum, npages);
         }
@@ -751,7 +923,9 @@ class ConservativeGC : GC
             // Add to free list
             List *list = cast(List*)p;
 
-            debug (MEMSTOMP) memset(p, 0xF2, binsize[bin]);
+            auto size = binsize[bin];
+            ssize = sentinel_size(q, size);
+            debug (MEMSTOMP) memset(p, 0xF2, size);
 
             // in case the page hasn't been recovered yet, don't add the object to the free list
             if (!gcx.recoverPool[bin] || pool.binPageChain[pagenum] == Pool.PageRecovered)
@@ -764,12 +938,23 @@ class ConservativeGC : GC
         }
         pool.clrBits(biti, ~BlkAttr.NONE);
 
-        gcx.leakDetector.log_free(sentinel_add(p));
+        gcx.leakDetector.log_free(sentinel_add(p), ssize);
         ___tracy_emit_memory_free(sentinel_add(p), true);
     }
 
 
-    void* addrOf(void *p) nothrow @nogc
+    /**
+     * Determine the base address of the block containing p.  If p is not a gc
+     * allocated pointer, return null.
+     *
+     * Params:
+     *  p = A pointer to the root or the interior of a valid memory block or to
+     *      null.
+     *
+     * Returns:
+     *  The base address of the memory block referenced by p or null on error.
+     */
+    void* addrOf(void *p) nothrow
     {
         if (!p)
         {
@@ -781,7 +966,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation of addrOf.
     //
     void* addrOfNoSync(void *p) nothrow @nogc
     {
@@ -797,7 +982,17 @@ class ConservativeGC : GC
     }
 
 
-    size_t sizeOf(void *p) nothrow @nogc
+    /**
+     * Determine the allocated size of pointer p.  If p is an interior pointer
+     * or not a gc allocated pointer, return 0.
+     *
+     * Params:
+     *  p = A pointer to the root of a valid memory block or to null.
+     *
+     * Returns:
+     *  The size in bytes of the memory block referenced by p or zero on error.
+     */
+    size_t sizeOf(void *p) nothrow
     {
         if (!p)
         {
@@ -809,7 +1004,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation of sizeOf.
     //
     private size_t sizeOfNoSync(void *p) nothrow @nogc
     {
@@ -829,6 +1024,18 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Determine the base address of the block containing p.  If p is not a gc
+     * allocated pointer, return null.
+     *
+     * Params:
+     *  p = A pointer to the root or the interior of a valid memory block or to
+     *      null.
+     *
+     * Returns:
+     *  Information regarding the memory block referenced by p or BlkInfo.init
+     *  on error.
+     */
     BlkInfo query(void *p) nothrow
     {
         if (!p)
@@ -841,7 +1048,7 @@ class ConservativeGC : GC
     }
 
     //
-    //
+    // Implementation of query
     //
     BlkInfo queryNoSync(void *p) nothrow
     {
@@ -861,10 +1068,14 @@ class ConservativeGC : GC
 
 
     /**
-     * Verify that pointer p:
-     *  1) belongs to this memory pool
-     *  2) points to the start of an allocated piece of memory
-     *  3) is not on a free list
+     * Performs certain checks on a pointer. These checks will cause asserts to
+     * fail unless the following conditions are met:
+     *  1) The poiinter belongs to this memory pool.
+     *  2) The pointer points to the start of an allocated piece of memory.
+     *  3) The pointer is not on a free list.
+     *
+     * Params:
+     *  p = The pointer to be checked.
      */
     void check(void *p) nothrow
     {
@@ -878,7 +1089,7 @@ class ConservativeGC : GC
 
 
     //
-    //
+    // Implementation of check
     //
     private void checkNoSync(void *p) nothrow
     {
@@ -895,13 +1106,13 @@ class ConservativeGC : GC
             pool = gcx.findPool(p);
             assert(pool);
             pagenum = pool.pagenumOf(p);
-            bin = cast(Bins)pool.pagetable[pagenum];
-            assert(bin <= B_PAGE);
+            bin = pool.pagetable[pagenum];
+            assert(bin <= Bins.B_PAGE);
             assert(p == cast(void*)baseOffset(cast(size_t)p, bin));
 
             debug (PTRCHECK2)
             {
-                if (bin < B_PAGE)
+                if (bin < Bins.B_PAGE)
                 {
                     // Check that p is not on a free list
                     List *list;
@@ -916,6 +1127,12 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Add p to list of roots. If p is null, no operation is performed.
+     *
+     * Params:
+     *  p = A pointer into a GC-managed memory block or null.
+     */
     void addRoot(void *p) nothrow @nogc
     {
         if (!p)
@@ -927,6 +1144,13 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Remove p from list of roots. If p is null or is not a value
+     * previously passed to addRoot() then no operation is performed.
+     *
+     * Params:
+     *  p = A pointer into a GC-managed memory block or null.
+     */
     void removeRoot(void *p) nothrow @nogc
     {
         if (!p)
@@ -937,13 +1161,23 @@ class ConservativeGC : GC
         gcx.removeRoot(p);
     }
 
-
+    /**
+     * Returns an iterator allowing roots to be traversed via a foreach loop.
+     */
     @property RootIterator rootIter() @nogc
     {
         return &gcx.rootsApply;
     }
 
 
+    /**
+     * Add range to scan for roots. If p is null or sz is 0, no operation is performed.
+     *
+     * Params:
+     *  p  = A pointer to a valid memory address or to null.
+     *  sz = The size in bytes of the block to add.
+     *  ti = TypeInfo to describe the memory.
+     */
     void addRange(void *p, size_t sz, const TypeInfo ti = null) nothrow @nogc
     {
         if (!p || !sz)
@@ -955,6 +1189,14 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Remove range from list of ranges. If p is null or does not represent
+     * a value previously passed to addRange() then no operation is
+     * performed.
+     *
+     * Params:
+     *  p  = A pointer to a valid memory address or to null.
+     */
     void removeRange(void *p) nothrow @nogc
     {
         if (!p)
@@ -966,12 +1208,21 @@ class ConservativeGC : GC
     }
 
 
+    /**
+     * Returns an iterator allowing ranges to be traversed via a foreach loop.
+     */
     @property RangeIterator rangeIter() @nogc
     {
         return &gcx.rangesApply;
     }
 
 
+    /**
+     * Run all finalizers in the code segment.
+     *
+     * Params:
+     *  segment = address range of a code segment
+     */
     void runFinalizers(const scope void[] segment) nothrow
     {
         static void go(Gcx* gcx, const scope void[] segment) nothrow
@@ -1001,8 +1252,10 @@ class ConservativeGC : GC
 
 
     /**
-     * Do full garbage collection.
-     * Return number of pages free'd.
+     * Begins a full collection, scanning all stack segments for roots.
+     *
+     * Returns:
+     *  The number of pages freed.
      */
     size_t fullCollect() nothrow
     {
@@ -1012,7 +1265,7 @@ class ConservativeGC : GC
         // when collecting.
         static size_t go(Gcx* gcx) nothrow
         {
-            return gcx.fullcollect();
+            return gcx.fullcollect(false, true); // standard stop the world
         }
         immutable result = runLocked!go(gcx);
 
@@ -1031,7 +1284,7 @@ class ConservativeGC : GC
 
 
     /**
-     * do full garbage collection ignoring roots
+     * Begins a full collection while ignoring all stack segments for roots.
      */
     void fullCollectNoStack() nothrow
     {
@@ -1039,12 +1292,15 @@ class ConservativeGC : GC
         // when collecting.
         static size_t go(Gcx* gcx) nothrow
         {
-            return gcx.fullcollect(true);
+            return gcx.fullcollect(true, true, true); // standard stop the world
         }
         runLocked!go(gcx);
     }
 
 
+    /**
+     * Minimize free space usage.
+     */
     void minimize() nothrow
     {
         static void go(Gcx* gcx) nothrow
@@ -1055,7 +1311,7 @@ class ConservativeGC : GC
     }
 
 
-    core.memory.GC.Stats stats() nothrow
+    core.memory.GC.Stats stats() @safe nothrow @nogc
     {
         typeof(return) ret;
 
@@ -1086,15 +1342,22 @@ class ConservativeGC : GC
 
 
     //
+    // Implementation of getStats
     //
-    //
-    private void getStatsNoSync(out core.memory.GC.Stats stats) nothrow
+    private void getStatsNoSync(out core.memory.GC.Stats stats) @trusted nothrow @nogc
     {
-        foreach (pool; gcx.pooltable[0 .. gcx.npools])
+        // This function is trusted for two reasons: `pool.pagetable` is a pointer,
+        // which is being sliced in the below foreach, and so is `binPageChain`,
+        // also sliced a bit later in this function.
+        // However, both usages are safe as long as the assumption that `npools`
+        // defines the limit for `pagetable`'s length holds true (see allocation).
+        // The slicing happens at __LINE__ + 4 and __LINE__ + 24.
+        // `@trusted` delegates are not used to prevent any performance issue.
+        foreach (pool; gcx.pooltable[])
         {
             foreach (bin; pool.pagetable[0 .. pool.npages])
             {
-                if (bin == B_FREE)
+                if (bin == Bins.B_FREE)
                     stats.freeSize += PAGESIZE;
                 else
                     stats.usedSize += PAGESIZE;
@@ -1102,13 +1365,13 @@ class ConservativeGC : GC
         }
 
         size_t freeListSize;
-        foreach (n; 0 .. B_PAGE)
+        foreach (n; 0 .. Bins.B_PAGE)
         {
             immutable sz = binsize[n];
             for (List *list = gcx.bucket[n]; list; list = list.next)
                 freeListSize += sz;
 
-            foreach (pool; gcx.pooltable[0 .. gcx.npools])
+            foreach (pool; gcx.pooltable[])
             {
                 if (pool.isLargeObject)
                     continue;
@@ -1137,7 +1400,7 @@ enum
 }
 
 
-enum
+enum Bins : ubyte
 {
     B_16,
     B_32,
@@ -1161,10 +1424,6 @@ enum
     B_MAX,
 }
 
-
-alias ubyte Bins;
-
-
 struct List
 {
     List *next;
@@ -1172,12 +1431,12 @@ struct List
 }
 
 // non power of two sizes optimized for small remainder within page (<= 64 bytes)
-immutable short[B_NUMSMALL + 1] binsize = [ 16, 32, 48, 64, 96, 128, 176, 256, 368, 512, 816, 1024, 1360, 2048, 4096 ];
-immutable short[PAGESIZE / 16][B_NUMSMALL + 1] binbase = calcBinBase();
+immutable short[Bins.B_NUMSMALL + 1] binsize = [ 16, 32, 48, 64, 96, 128, 176, 256, 368, 512, 816, 1024, 1360, 2048, 4096 ];
+immutable short[PAGESIZE / 16][Bins.B_NUMSMALL + 1] binbase = calcBinBase();
 
-short[PAGESIZE / 16][B_NUMSMALL + 1] calcBinBase()
+short[PAGESIZE / 16][Bins.B_NUMSMALL + 1] calcBinBase()
 {
-    short[PAGESIZE / 16][B_NUMSMALL + 1] bin;
+    short[PAGESIZE / 16][Bins.B_NUMSMALL + 1] bin;
 
     foreach (i, size; binsize)
     {
@@ -1196,7 +1455,7 @@ short[PAGESIZE / 16][B_NUMSMALL + 1] calcBinBase()
 
 size_t baseOffset(size_t offset, Bins bin) @nogc nothrow
 {
-    assert(bin <= B_PAGE);
+    assert(bin <= Bins.B_PAGE);
     return (offset & ~(PAGESIZE - 1)) + binbase[bin][(offset & (PAGESIZE - 1)) >> 4];
 }
 
@@ -1204,9 +1463,9 @@ alias PageBits = GCBits.wordtype[PAGESIZE / 16 / GCBits.BITS_PER_WORD];
 static assert(PAGESIZE % (GCBits.BITS_PER_WORD * 16) == 0);
 
 // bitmask with bits set at base offsets of objects
-immutable PageBits[B_NUMSMALL] baseOffsetBits = (){
-    PageBits[B_NUMSMALL] bits;
-    foreach (bin; 0..B_NUMSMALL)
+immutable PageBits[Bins.B_NUMSMALL] baseOffsetBits = (){
+    PageBits[Bins.B_NUMSMALL] bits;
+    foreach (bin; 0 .. Bins.B_NUMSMALL)
     {
         size_t size = binsize[bin];
         const top = PAGESIZE - size + 1; // ensure <size> bytes available even if unaligned
@@ -1231,21 +1490,24 @@ private void set(ref PageBits bits, size_t i) @nogc pure nothrow
 
 struct Gcx
 {
-    import core.internal.spinlock;
     auto rootsLock = shared(AlignedSpinLock)(SpinLock.Contention.brief);
     auto rangesLock = shared(AlignedSpinLock)(SpinLock.Contention.brief);
     Treap!Root roots;
     Treap!Range ranges;
+    bool minimizeAfterNextCollection = false;
+    version (COLLECT_FORK)
+    {
+        private pid_t markProcPid = 0;
+        bool shouldFork;
+    }
 
     debug(INVARIANT) bool initialized;
     debug(INVARIANT) bool inCollection;
     uint disabled; // turn off collections if >0
 
-    import agora.utils.gc.pooltable;
-    private @property size_t npools() pure const nothrow { return pooltable.length; }
     PoolTable!Pool pooltable;
 
-    List*[B_NUMSMALL] bucket; // free list for each small size
+    List*[Bins.B_NUMSMALL] bucket; // free list for each small size
 
     // run a collection when reaching those thresholds (number of used pages)
     float smallCollectThreshold, largeCollectThreshold;
@@ -1258,7 +1520,7 @@ struct Gcx
     else
         alias leakDetector = LeakDetector;
 
-    SmallObjectPool*[B_NUMSMALL] recoverPool;
+    SmallObjectPool*[Bins.B_NUMSMALL] recoverPool;
     version (Posix) __gshared Gcx* instance;
 
     void initialize()
@@ -1279,13 +1541,16 @@ struct Gcx
             if (!atforkHandlersInstalled)
             {
                 pthread_atfork(
-                    &_d_gcx_tracking_atfork_prepare,
-                    &_d_gcx_tracking_atfork_parent,
-                    &_d_gcx_tracking_atfork_child);
+                    &_d_gcx_atfork_prepare,
+                    &_d_gcx_atfork_parent,
+                    &_d_gcx_atfork_child);
                 atforkHandlersInstalled = true;
             }
         }
         debug(INVARIANT) initialized = true;
+        version (COLLECT_FORK)
+            shouldFork = config.fork;
+
     }
 
     void Dtor()
@@ -1339,9 +1604,8 @@ struct Gcx
 
         debug(INVARIANT) initialized = false;
 
-        for (size_t i = 0; i < npools; i++)
+        foreach (Pool* pool; this.pooltable[])
         {
-            Pool *pool = pooltable[i];
             mappedPages -= pool.npages;
             pool.Dtor();
             cstdlib.free(pool);
@@ -1382,7 +1646,7 @@ struct Gcx
             if (!inCollection)
                 (cast()rangesLock).unlock();
 
-            for (size_t i = 0; i < B_NUMSMALL; i++)
+            for (size_t i = 0; i < Bins.B_NUMSMALL; i++)
             {
                 size_t j = 0;
                 List* prev, pprev, ppprev; // keep a short history to inspect in the debugger
@@ -1391,9 +1655,20 @@ struct Gcx
                     auto pool = list.pool;
                     auto biti = cast(size_t)(cast(void*)list - pool.baseAddr) >> Pool.ShiftBy.Small;
                     assert(pool.freebits.test(biti));
+                    ppprev = pprev;
+                    pprev = prev;
+                    prev = list;
                 }
             }
         }
+    }
+
+    @property bool collectInProgress() const nothrow
+    {
+        version (COLLECT_FORK)
+            return markProcPid != 0;
+        else
+            return false;
     }
 
 
@@ -1488,7 +1763,7 @@ struct Gcx
         ConservativeGC._inFinalizer = true;
         scope (failure) ConservativeGC._inFinalizer = false;
 
-        foreach (pool; pooltable[0 .. npools])
+        foreach (pool; this.pooltable[])
         {
             if (!pool.finals.nbits) continue;
 
@@ -1552,18 +1827,18 @@ struct Gcx
     /**
      * Computes the bin table using CTFE.
      */
-    static byte[2049] ctfeBins() nothrow
+    static Bins[2049] ctfeBins() nothrow
     {
-        byte[2049] ret;
+        Bins[2049] ret;
         size_t p = 0;
-        for (Bins b = B_16; b <= B_2048; b++)
+        for (Bins b = Bins.B_16; b <= Bins.B_2048; b++)
             for ( ; p <= binsize[b]; p++)
                 ret[p] = b;
 
         return ret;
     }
 
-    static const byte[2049] binTable = ctfeBins();
+    static immutable Bins[2049] binTable = ctfeBins();
 
     /**
      * Allocate a new pool of at least size bytes.
@@ -1634,11 +1909,8 @@ struct Gcx
 
     void* alloc(size_t size, ref size_t alloc_size, uint bits, const TypeInfo ti) nothrow
     {
-
-        auto ptr = size <= PAGESIZE/2 ? smallAlloc(size, alloc_size, bits, ti)
+        return size <= PAGESIZE/2 ? smallAlloc(size, alloc_size, bits, ti)
                                   : bigAlloc(size, alloc_size, bits, ti);
-
-        return ptr;
     }
 
     void* smallAlloc(size_t size, ref size_t alloc_size, uint bits, const TypeInfo ti) nothrow
@@ -1673,7 +1945,7 @@ struct Gcx
                 if (!newPool(1, false))
                 {
                     // out of memory => try to free some memory
-                    fullcollect();
+                    fullcollect(false, true); // stop the world
                     if (lowMem)
                         minimize();
                     recoverNextPage(bin);
@@ -1696,8 +1968,11 @@ struct Gcx
         // Return next item from free list
         bucket[bin] = (cast(List*)p).next;
         auto pool = (cast(List*)p).pool;
+
         auto biti = (p - pool.baseAddr) >> pool.shiftBy;
         assert(pool.freebits.test(biti));
+        if (collectInProgress)
+            pool.mark.setLocked(biti); // be sure that the child is aware of the page being used
         pool.freebits.clear(biti);
         if (bits)
             pool.setBits(biti, bits);
@@ -1730,7 +2005,7 @@ struct Gcx
 
         bool tryAlloc() nothrow
         {
-            foreach (p; pooltable[0 .. npools])
+            foreach (p; this.pooltable[])
             {
                 if (!p.isLargeObject || p.freepages < npages)
                     continue;
@@ -1760,14 +2035,14 @@ struct Gcx
                 if (!tryAllocNewPool())
                 {
                     // disabled but out of memory => try to free some memory
-                    fullcollect();
-                    minimize();
+                    minimizeAfterNextCollection = true;
+                    fullcollect(false, true);
                 }
             }
             else if (usedLargePages > 0)
             {
+                minimizeAfterNextCollection = true;
                 fullcollect();
-                minimize();
             }
             // If alloc didn't yet succeed retry now that we collected/minimized
             if (!pool && !tryAlloc() && !tryAllocNewPool())
@@ -1777,6 +2052,8 @@ struct Gcx
         assert(pool);
 
         debug(PRINTF) printFreeInfo(&pool.base);
+        if (collectInProgress)
+            pool.mark.setLocked(pn);
         usedLargePages += npages;
 
         debug(PRINTF) printFreeInfo(&pool.base);
@@ -1828,10 +2105,11 @@ struct Gcx
         }
 
         // Allocate successively larger pools up to 8 megs
-        if (npools)
-        {   size_t n;
+        if (this.pooltable.length)
+        {
+            size_t n;
 
-            n = config.minPoolSize + config.incPoolSize * npools;
+            n = config.minPoolSize + config.incPoolSize * this.pooltable.length;
             if (n > config.maxPoolSize)
                 n = config.maxPoolSize;                 // cap pool size
             n /= PAGESIZE; // convert bytes to pages
@@ -1845,6 +2123,8 @@ struct Gcx
         if (pool)
         {
             pool.initialize(npages, isLargeObject);
+            if (collectInProgress)
+                pool.mark.setAll();
             if (!pool.baseAddr || !pooltable.insert(pool))
             {
                 pool.Dtor();
@@ -1871,9 +2151,8 @@ struct Gcx
     List* allocPage(Bins bin) nothrow
     {
         //debug(PRINTF) printf("Gcx::allocPage(bin = %d)\n", bin);
-        for (size_t n = 0; n < npools; n++)
+        foreach (Pool* pool; this.pooltable[])
         {
-            Pool* pool = pooltable[n];
             if (pool.isLargeObject)
                 continue;
             if (List* p = (cast(SmallObjectPool*)pool).allocPage(bin))
@@ -1991,7 +2270,7 @@ struct Gcx
     /**
      * Search a range of memory values and mark any pointers into the GC pool.
      */
-    private void mark(bool precise, bool parallel)(ScanRange!precise rng) scope nothrow
+    private void mark(bool precise, bool parallel, bool shared_mem)(ScanRange!precise rng) scope nothrow
     {
         alias toscan = scanStack!precise;
 
@@ -2007,7 +2286,7 @@ struct Gcx
 
         // let dmd allocate a register for this.pools
         auto pools = pooltable.pools;
-        const highpool = pooltable.npools - 1;
+        const highpool = pooltable.length - 1;
         const minAddr = pooltable.minAddr;
         size_t memSize = pooltable.maxAddr - minAddr;
         Pool* pool = null;
@@ -2032,7 +2311,6 @@ struct Gcx
                         bitpos -= rng.bmplength;
                         rng.pbase += rng.bmplength;
                     }
-                    import core.bitop;
                     if (!core.bitop.bt(rng.ptrbmp, bitpos))
                     {
                         debug(MARK_PRINTF) printf("\t\tskipping non-pointer\n");
@@ -2067,7 +2345,7 @@ struct Gcx
                     printf("\t\tfound pool %p, base=%p, pn = %lld, bin = %d\n", pool, pool.baseAddr, cast(long)pn, bin);
 
                 // Adjust bit to be at start of allocated memory block
-                if (bin < B_PAGE)
+                if (bin < Bins.B_PAGE)
                 {
                     // We don't care abou setting pointsToBase correctly
                     // because it's ignored for small object pools anyhow.
@@ -2075,7 +2353,7 @@ struct Gcx
                     biti = offsetBase >> Pool.ShiftBy.Small;
                     //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
 
-                    if (!pool.mark.testAndSet!parallel(biti) && !pool.noscan.test(biti))
+                    if (!pool.mark.testAndSet!shared_mem(biti) && !pool.noscan.test(biti))
                     {
                         tgt.pbot = pool.baseAddr + offsetBase;
                         tgt.ptop = tgt.pbot + binsize[bin];
@@ -2088,7 +2366,7 @@ struct Gcx
                         goto LaddRange;
                     }
                 }
-                else if (bin == B_PAGE)
+                else if (bin == Bins.B_PAGE)
                 {
                     biti = offset >> Pool.ShiftBy.Large;
                     //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
@@ -2102,13 +2380,13 @@ struct Gcx
                     if (tgt.pbot != sentinel_sub(p) && pool.nointerior.nbits && pool.nointerior.test(biti))
                         goto LnextPtr;
 
-                    if (!pool.mark.testAndSet!parallel(biti) && !pool.noscan.test(biti))
+                    if (!pool.mark.testAndSet!shared_mem(biti) && !pool.noscan.test(biti))
                     {
                         tgt.ptop = tgt.pbot + (cast(LargeObjectPool*)pool).getSize(pn);
                         goto LaddLargeRange;
                     }
                 }
-                else if (bin == B_PAGEPLUS)
+                else if (bin == Bins.B_PAGEPLUS)
                 {
                     pn -= pool.bPageOffsets[pn];
                     biti = pn * (PAGESIZE >> Pool.ShiftBy.Large);
@@ -2117,7 +2395,7 @@ struct Gcx
                     if (pool.nointerior.nbits && pool.nointerior.test(biti))
                         goto LnextPtr;
 
-                    if (!pool.mark.testAndSet!parallel(biti) && !pool.noscan.test(biti))
+                    if (!pool.mark.testAndSet!shared_mem(biti) && !pool.noscan.test(biti))
                     {
                         tgt.pbot = pool.baseAddr + (pn * PAGESIZE);
                         tgt.ptop = tgt.pbot + (cast(LargeObjectPool*)pool).getSize(pn);
@@ -2161,7 +2439,7 @@ struct Gcx
                 else
                 {
                     // Don't mark bits in B_FREE pages
-                    assert(bin == B_FREE);
+                    assert(bin == Bins.B_FREE);
                 }
             }
         LnextPtr:
@@ -2224,16 +2502,16 @@ struct Gcx
         }
     }
 
-    void markConservative(void *pbot, void *ptop) scope nothrow
+    void markConservative(bool shared_mem)(void *pbot, void *ptop) scope nothrow
     {
         if (pbot < ptop)
-            mark!(false, false)(ScanRange!false(pbot, ptop));
+            mark!(false, false, shared_mem)(ScanRange!false(pbot, ptop));
     }
 
-    void markPrecise(void *pbot, void *ptop) scope nothrow
+    void markPrecise(bool shared_mem)(void *pbot, void *ptop) scope nothrow
     {
         if (pbot < ptop)
-            mark!(true, false)(ScanRange!true(pbot, ptop, null));
+            mark!(true, false, shared_mem)(ScanRange!true(pbot, ptop, null));
     }
 
     version (COLLECT_PARALLEL)
@@ -2258,9 +2536,8 @@ struct Gcx
     {
         debug(COLLECT_PRINTF) printf("preparing mark.\n");
 
-        for (size_t n = 0; n < npools; n++)
+        foreach (Pool* pool; this.pooltable[])
         {
-            Pool* pool = pooltable[n];
             if (pool.isLargeObject)
                 pool.mark.zero();
             else
@@ -2330,10 +2607,9 @@ struct Gcx
         size_t freedLargePages;
         size_t freedSmallPages;
         size_t freed;
-        for (size_t n = 0; n < npools; n++)
+        foreach (Pool* pool; this.pooltable[])
         {
             size_t pn;
-            Pool* pool = pooltable[n];
 
             if (pool.isLargeObject)
             {
@@ -2344,12 +2620,12 @@ struct Gcx
                 {
                     npages = pool.bPageOffsets[pn];
                     Bins bin = cast(Bins)pool.pagetable[pn];
-                    if (bin == B_FREE)
+                    if (bin == Bins.B_FREE)
                     {
                         numFree += npages;
                         continue;
                     }
-                    assert(bin == B_PAGE);
+                    assert(bin == Bins.B_PAGE);
                     size_t biti = pn;
 
                     if (!pool.mark.test(biti))
@@ -2368,9 +2644,9 @@ struct Gcx
                         pool.clrBits(biti, ~BlkAttr.NONE ^ BlkAttr.FINALIZE);
 
                         debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
-                        leakDetector.log_free(q);
+                        leakDetector.log_free(q, sentinel_size(q, npages * PAGESIZE - SENTINEL_EXTRA));
                         ___tracy_emit_memory_free(q, true);
-                        pool.pagetable[pn..pn+npages] = B_FREE;
+                        pool.pagetable[pn..pn+npages] = Bins.B_FREE;
                         if (pn < pool.searchStart) pool.searchStart = pn;
                         freedLargePages += npages;
                         pool.freepages += npages;
@@ -2404,7 +2680,7 @@ struct Gcx
                 {
                     Bins bin = cast(Bins)pool.pagetable[pn];
 
-                    if (bin < B_PAGE)
+                    if (bin < Bins.B_PAGE)
                     {
                         auto freebitsdata = pool.freebits.data + pn * PageBits.length;
                         auto markdata = pool.mark.data + pn * PageBits.length;
@@ -2443,22 +2719,28 @@ struct Gcx
                         static foreach (w; 0 .. PageBits.length)
                             recoverPage = recoverPage && (~freebitsdata[w] == toFree[w]);
 
-                        bool hasFinalizer = true;
-                        debug(COLLECT_PRINTF) // need output for each onject
-                            hasFinalizer = true;
-                        else debug(LOGGING)
-                            hasFinalizer = true;
-                        else debug(MEMSTOMP)
-                            hasFinalizer = true;
-                        if (pool.finals.data)
+                        // We need to loop through each object if any have a finalizer,
+                        // or, if any of the debug hooks are enabled.
+                        bool doLoop = false;
+                        debug (SENTINEL)
+                            doLoop = true;
+                        else version (assert)
+                            doLoop = true;
+                        else debug (COLLECT_PRINTF) // need output for each object
+                            doLoop = true;
+                        else debug (LOGGING)
+                            doLoop = true;
+                        else debug (MEMSTOMP)
+                            doLoop = true;
+                        else if (pool.finals.data)
                         {
                             // finalizers must be called on objects that are about to be freed
                             auto finalsdata = pool.finals.data + pn * PageBits.length;
                             static foreach (w; 0 .. PageBits.length)
-                                hasFinalizer = hasFinalizer || (toFree[w] & finalsdata[w]) != 0;
+                                doLoop = doLoop || (toFree[w] & finalsdata[w]) != 0;
                         }
 
-                        if (hasFinalizer)
+                        if (doLoop)
                         {
                             immutable size = binsize[bin];
                             void *p = pool.baseAddr + pn * PAGESIZE;
@@ -2483,8 +2765,8 @@ struct Gcx
                                     assert(core.bitop.bt(toFree.ptr, i));
 
                                     debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
-                                    leakDetector.log_free(sentinel_add(p));
-                                    ___tracy_emit_memory_free(sentinel_add(p), true);
+                                    leakDetector.log_free(q, sentinel_size(q, size));
+                                    ___tracy_emit_memory_free(q, true);
 
                                     debug (MEMSTOMP) memset(p, 0xF3, size);
                                 }
@@ -2495,7 +2777,7 @@ struct Gcx
                         {
                             pool.freeAllPageBits(pn);
 
-                            pool.pagetable[pn] = B_FREE;
+                            pool.pagetable[pn] = Bins.B_FREE;
                             // add to free chain
                             pool.binPageChain[pn] = cast(uint) pool.searchStart;
                             pool.searchStart = pn;
@@ -2517,7 +2799,8 @@ struct Gcx
 
         assert(freedLargePages <= usedLargePages);
         usedLargePages -= freedLargePages;
-        debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedLargePages, npools);
+        debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n",
+                                     freed, freedLargePages, this.pooltable.length);
 
         assert(freedSmallPages <= usedSmallPages);
         usedSmallPages -= freedSmallPages;
@@ -2582,19 +2865,152 @@ struct Gcx
     private SmallObjectPool* setNextRecoverPool(Bins bin, size_t poolIndex) nothrow
     {
         Pool* pool;
-        while (poolIndex < npools &&
-               ((pool = pooltable[poolIndex]).isLargeObject ||
+        while (poolIndex < this.pooltable.length &&
+               ((pool = this.pooltable[poolIndex]).isLargeObject ||
                 pool.recoverPageFirst[bin] >= pool.npages))
             poolIndex++;
 
-        return recoverPool[bin] = poolIndex < npools ? cast(SmallObjectPool*)pool : null;
+        return recoverPool[bin] = poolIndex < this.pooltable.length ? cast(SmallObjectPool*)pool : null;
     }
 
+    version (COLLECT_FORK)
+    void disableFork() nothrow
+    {
+        markProcPid = 0;
+        shouldFork = false;
+    }
+
+    version (COLLECT_FORK)
+    ChildStatus collectFork(bool block) nothrow
+    {
+        typeof(return) rc = wait_pid(markProcPid, block);
+        final switch (rc)
+        {
+            case ChildStatus.done:
+                debug(COLLECT_PRINTF) printf("\t\tmark proc DONE (block=%d)\n",
+                                                cast(int) block);
+                markProcPid = 0;
+                // process GC marks then sweep
+                thread_suspendAll();
+                thread_processGCMarks(&isMarked);
+                thread_resumeAll();
+                break;
+            case ChildStatus.running:
+                debug(COLLECT_PRINTF) printf("\t\tmark proc RUNNING\n");
+                if (!block)
+                    break;
+                // Something went wrong, if block is true, wait() should never
+                // return RUNNING.
+                goto case ChildStatus.error;
+            case ChildStatus.error:
+                debug(COLLECT_PRINTF) printf("\t\tmark proc ERROR\n");
+                // Try to keep going without forking
+                // and do the marking in this thread
+                break;
+        }
+        return rc;
+    }
+
+    version (COLLECT_FORK)
+    ChildStatus markFork(bool nostack, bool block, bool doParallel) nothrow
+    {
+        // Forking is enabled, so we fork() and start a new concurrent mark phase
+        // in the child. If the collection should not block, the parent process
+        // tells the caller no memory could be recycled immediately (if this collection
+        // was triggered by an allocation, the caller should allocate more memory
+        // to fulfill the request).
+        // If the collection should block, the parent will wait for the mark phase
+        // to finish before returning control to the mutator,
+        // but other threads are restarted and may run in parallel with the mark phase
+        // (unless they allocate or use the GC themselves, in which case
+        // the global GC lock will stop them).
+        // fork now and sweep later
+        int child_mark() scope
+        {
+            if (doParallel)
+                markParallel(nostack);
+            else if (ConservativeGC.isPrecise)
+                markAll!(markPrecise!true)(nostack);
+            else
+                markAll!(markConservative!true)(nostack);
+            return 0;
+        }
+
+        import core.stdc.stdlib : _Exit;
+        debug (PRINTF_TO_FILE)
+        {
+            fflush(null); // avoid duplicated FILE* output
+        }
+        version (OSX)
+        {
+            auto pid = __fork(); // avoids calling handlers (from libc source code)
+        }
+        else version (linux)
+        {
+            // clone() fits better as we don't want to do anything but scanning in the child process.
+            // no fork-handlera are called, so we can avoid deadlocks due to malloc locks. Probably related:
+            //  https://sourceware.org/bugzilla/show_bug.cgi?id=4737
+            import core.sys.linux.sched : clone;
+            import core.sys.posix.signal : SIGCHLD;
+            enum CLONE_CHILD_CLEARTID = 0x00200000; /* Register exit futex and memory */
+            const flags = CLONE_CHILD_CLEARTID | SIGCHLD; // child thread id not needed
+            scope int delegate() scope dg = &child_mark;
+            extern(C) static int wrap_delegate(void* arg)
+            {
+                auto dg = cast(int delegate() scope*)arg;
+                return (*dg)();
+            }
+            char[256] stackbuf; // enough stack space for clone() to place some info for the child without stomping the parent stack
+            auto stack = stackbuf.ptr + (isStackGrowingDown ? stackbuf.length : 0);
+            auto pid = clone(&wrap_delegate, stack, flags, &dg);
+        }
+        else
+        {
+            fork_needs_lock = false;
+            auto pid = fork();
+            fork_needs_lock = true;
+        }
+        assert(pid != -1);
+        switch (pid)
+        {
+            case -1: // fork() failed, retry without forking
+                return ChildStatus.error;
+            case 0: // child process (not run with clone)
+                child_mark();
+                _Exit(0);
+            default: // the parent
+                thread_resumeAll();
+                if (!block)
+                {
+                    markProcPid = pid;
+                    return ChildStatus.running;
+                }
+                ChildStatus r = wait_pid(pid); // block until marking is done
+                if (r == ChildStatus.error)
+                {
+                    thread_suspendAll();
+                    // there was an error
+                    // do the marking in this thread
+                    disableFork();
+                    if (doParallel)
+                        markParallel(nostack);
+                    else if (ConservativeGC.isPrecise)
+                        markAll!(markPrecise!false)(nostack);
+                    else
+                        markAll!(markConservative!false)(nostack);
+                } else {
+                    assert(r == ChildStatus.done);
+                    assert(r != ChildStatus.running);
+                }
+        }
+        return ChildStatus.done; // waited for the child
+    }
 
     /**
      * Return number of full pages free'd.
+     * The collection is done concurrently only if block and isFinal are false.
      */
-    size_t fullcollect(bool nostack = false) nothrow
+    size_t fullcollect(bool nostack = false, bool block = false, bool isFinal = false) nothrow
     {
         // It is possible that `fullcollect` will be called from a thread which
         // is not yet registered in runtime (because allocating `new Thread` is
@@ -2608,23 +3024,52 @@ struct Gcx
         begin = start = currTime;
 
         debug(COLLECT_PRINTF) printf("Gcx.fullcollect()\n");
+        version (COLLECT_PARALLEL)
+        {
+            bool doParallel = config.parallel > 0 && !config.fork;
+            if (doParallel && !scanThreadData)
+            {
+                if (isFinal) // avoid starting threads for parallel marking
+                    doParallel = false;
+                else
+                    startScanThreads();
+            }
+        }
+        else
+            enum doParallel = false;
+
         //printf("\tpool address range = %p .. %p\n", minAddr, maxAddr);
 
+        version (COLLECT_FORK)
+            bool doFork = shouldFork;
+        else
+            enum doFork = false;
+
+        if (doFork && collectInProgress)
         {
-            version (COLLECT_PARALLEL)
+            version (COLLECT_FORK)
             {
-                bool doParallel = config.parallel > 0;
-                if (doParallel && !scanThreadData)
+                // If there is a mark process running, check if it already finished.
+                // If that is the case, we move to the sweep phase.
+                // If it's still running, either we block until the mark phase is
+                // done (and then sweep to finish the collection), or in case of error
+                // we redo the mark phase without forking.
+                ChildStatus rc = collectFork(block);
+                final switch (rc)
                 {
-                    if (nostack) // only used during shutdown, avoid starting threads for parallel marking
-                        doParallel = false;
-                    else
-                        startScanThreads();
+                    case ChildStatus.done:
+                        break;
+                    case ChildStatus.running:
+                        return 0;
+                    case ChildStatus.error:
+                        disableFork();
+                        goto Lmark;
                 }
             }
-            else
-                enum doParallel = false;
-
+        }
+        else
+        {
+Lmark:
             // lock roots and ranges around suspending threads b/c they're not reentrant safe
             rangesLock.lock();
             rootsLock.lock();
@@ -2643,7 +3088,34 @@ struct Gcx
             prepTime += (stop - start);
             start = stop;
 
-            if (doParallel)
+            if (doFork && !isFinal && !block) // don't start a new fork during termination
+            {
+                version (COLLECT_FORK)
+                {
+                    auto forkResult = markFork(nostack, block, doParallel);
+                    final switch (forkResult)
+                    {
+                        case ChildStatus.error:
+                            disableFork();
+                            goto Lmark;
+                        case ChildStatus.running:
+                            // update profiling informations
+                            stop = currTime;
+                            markTime += (stop - start);
+                            Duration pause = stop - begin;
+                            if (pause > maxPauseTime)
+                                maxPauseTime = pause;
+                            pauseTime += pause;
+                            return 0;
+                        case ChildStatus.done:
+                            break;
+                    }
+                    // if we get here, forking failed and a standard STW collection got issued
+                    // threads were suspended again, restart them
+                    thread_suspendAll();
+                }
+            }
+            else if (doParallel)
             {
                 version (COLLECT_PARALLEL)
                     markParallel(nostack);
@@ -2651,14 +3123,19 @@ struct Gcx
             else
             {
                 if (ConservativeGC.isPrecise)
-                    markAll!markPrecise(nostack);
+                    markAll!(markPrecise!false)(nostack);
                 else
-                    markAll!markConservative(nostack);
+                    markAll!(markConservative!false)(nostack);
             }
 
             thread_processGCMarks(&isMarked);
             thread_resumeAll();
+            isFinal = false;
         }
+
+        // If we get here with the forking GC, the child process has finished the marking phase
+        // or block == true and we are using standard stop the world collection.
+        // It is time to sweep
 
         stop = currTime;
         markTime += (stop - start);
@@ -2676,9 +3153,17 @@ struct Gcx
             ConservativeGC._inFinalizer = false;
         }
 
+        // minimize() should be called only after a call to fullcollect
+        // terminates with a sweep
+        if (minimizeAfterNextCollection || lowMem)
+        {
+            minimizeAfterNextCollection = false;
+            minimize();
+        }
+
         // init bucket lists
         bucket[] = null;
-        foreach (Bins bin; 0..B_NUMSMALL)
+        foreach (Bins bin; Bins.B_16 .. Bins.B_NUMSMALL)
             setNextRecoverPool(bin, 0);
 
         stop = currTime;
@@ -2691,7 +3176,8 @@ struct Gcx
         ++numCollections;
 
         updateCollectThresholds();
-
+        if (doFork && isFinal)
+            return fullcollect(true, true, false);
         return freedPages;
     }
 
@@ -2712,24 +3198,24 @@ struct Gcx
             auto pn = offset / PAGESIZE;
             auto bins = cast(Bins)pool.pagetable[pn];
             size_t biti = void;
-            if (bins < B_PAGE)
+            if (bins < Bins.B_PAGE)
             {
                 biti = baseOffset(offset, bins) >> pool.ShiftBy.Small;
                 // doesn't need to check freebits because no pointer must exist
                 //  to a block that was free before starting the collection
             }
-            else if (bins == B_PAGE)
+            else if (bins == Bins.B_PAGE)
             {
                 biti = pn * (PAGESIZE >> pool.ShiftBy.Large);
             }
-            else if (bins == B_PAGEPLUS)
+            else if (bins == Bins.B_PAGEPLUS)
             {
                 pn -= pool.bPageOffsets[pn];
                 biti = pn * (PAGESIZE >> pool.ShiftBy.Large);
             }
-            else // bins == B_FREE
+            else // bins == Bins.B_FREE
             {
-                assert(bins == B_FREE);
+                assert(bins == Bins.B_FREE);
                 return IsMarked.no;
             }
             return pool.mark.test(biti) ? IsMarked.yes : IsMarked.no;
@@ -2737,10 +3223,60 @@ struct Gcx
         return IsMarked.unknown;
     }
 
+    version (Posix)
+    {
+        // A fork might happen while GC code is running in a different thread.
+        // Because that would leave the GC in an inconsistent state,
+        // make sure no GC code is running by acquiring the lock here,
+        // before a fork.
+        // This must not happen if fork is called from the GC with the lock already held
+
+        __gshared bool fork_needs_lock = true; // racing condition with cocurrent calls of fork?
+
+
+        extern(C) static void _d_gcx_atfork_prepare()
+        {
+            if (instance && fork_needs_lock)
+                ConservativeGC.lockNR();
+        }
+
+        extern(C) static void _d_gcx_atfork_parent()
+        {
+            if (instance && fork_needs_lock)
+                ConservativeGC.gcLock.unlock();
+        }
+
+        extern(C) static void _d_gcx_atfork_child()
+        {
+            if (instance && fork_needs_lock)
+            {
+                ConservativeGC.gcLock.unlock();
+
+                // make sure the threads and event handles are reinitialized in a fork
+                version (COLLECT_PARALLEL)
+                {
+                    if (Gcx.instance.scanThreadData)
+                    {
+                        cstdlib.free(Gcx.instance.scanThreadData);
+                        Gcx.instance.numScanThreads = 0;
+                        Gcx.instance.scanThreadData = null;
+                        Gcx.instance.busyThreads = 0;
+
+                        memset(&Gcx.instance.evStart, 0, Gcx.instance.evStart.sizeof);
+                        memset(&Gcx.instance.evDone, 0, Gcx.instance.evDone.sizeof);
+                    }
+                }
+            }
+        }
+    }
+
     /* ============================ Parallel scanning =============================== */
     version (COLLECT_PARALLEL):
-    import core.sync.event;
+
     import core.atomic;
+    import core.cpuid;
+    import core.sync.event;
+
     private: // disable invariants for background threads
 
     static struct ScanThreadData
@@ -2798,9 +3334,9 @@ struct Gcx
         debug(PARALLEL_PRINTF) printf("mark %lld roots\n", cast(ulong)(ptop - pbot));
 
         if (ConservativeGC.isPrecise)
-            mark!(true, true)(ScanRange!true(pbot, ptop, null));
+            mark!(true, true, true)(ScanRange!true(pbot, ptop, null));
         else
-            mark!(false, true)(ScanRange!false(pbot, ptop));
+            mark!(false, true, true)(ScanRange!false(pbot, ptop));
 
         busyThreads.atomicOp!"-="(1);
 
@@ -2811,7 +3347,6 @@ struct Gcx
 
     int maxParallelThreads() nothrow
     {
-        import core.cpuid;
         auto threads = threadsPerCPU();
 
         if (threads == 0)
@@ -2963,51 +3498,11 @@ struct Gcx
             {
                 debug(PARALLEL_PRINTF) printf("scanBackground thread %d scanning range [%p,%lld] from stack\n", threadId,
                                               rng.pbot, cast(long) (rng.ptop - rng.pbot));
-                mark!(precise, true)(rng);
+                mark!(precise, true, true)(rng);
             }
             busyThreads.atomicOp!"-="(1);
         }
         debug(PARALLEL_PRINTF) printf("scanBackground thread %d done\n", threadId);
-    }
-
-    version (Posix)
-    {
-        // A fork might happen while GC code is running in a different thread.
-        // Because that would leave the GC in an inconsistent state,
-        // make sure no GC code is running by acquiring the lock here,
-        // before a fork.
-
-        extern(C) static void _d_gcx_tracking_atfork_prepare()
-        {
-            if (instance)
-                ConservativeGC.lockNR();
-        }
-
-        extern(C) static void _d_gcx_tracking_atfork_parent()
-        {
-            if (instance)
-                ConservativeGC.gcLock.unlock();
-        }
-
-        extern(C) static void _d_gcx_tracking_atfork_child()
-        {
-            if (instance)
-            {
-                ConservativeGC.gcLock.unlock();
-
-                // make sure the threads and event handles are reinitialized in a fork
-                if (Gcx.instance.scanThreadData)
-                {
-                    cstdlib.free(Gcx.instance.scanThreadData);
-                    Gcx.instance.numScanThreads = 0;
-                    Gcx.instance.scanThreadData = null;
-                    Gcx.instance.busyThreads = 0;
-
-                    memset(&Gcx.instance.evStart, 0, Gcx.instance.evStart.sizeof);
-                    memset(&Gcx.instance.evDone, 0, Gcx.instance.evDone.sizeof);
-                }
-            }
-        }
     }
 }
 
@@ -3029,7 +3524,7 @@ struct Pool
     GCBits is_pointer;  // precise GC only: per-word, not per-block like the rest of them (SmallObjectPool only)
     size_t npages;
     size_t freepages;     // The number of pages not in use.
-    ubyte* pagetable;
+    Bins* pagetable;
 
     bool isLargeObject;
 
@@ -3058,7 +3553,7 @@ struct Pool
     enum PageRecovered = uint.max;
 
     // first of chain of pages to recover (SmallObjectPool only)
-    uint[B_NUMSMALL] recoverPageFirst;
+    uint[Bins.B_NUMSMALL] recoverPageFirst;
 
     // precise GC: TypeInfo.rtInfo for allocation (LargeObjectPool only)
     immutable(size_t)** rtinfo;
@@ -3097,7 +3592,10 @@ struct Pool
         topAddr = baseAddr + poolsize;
         auto nbits = cast(size_t)poolsize >> shiftBy;
 
-        mark.alloc(nbits);
+        version (COLLECT_FORK)
+            mark.alloc(nbits, config.fork);
+        else
+            mark.alloc(nbits);
         if (ConservativeGC.isPrecise)
         {
             if (isLargeObject)
@@ -3125,7 +3623,7 @@ struct Pool
         noscan.alloc(nbits);
         appendable.alloc(nbits);
 
-        pagetable = cast(ubyte*)cstdlib.malloc(npages);
+        pagetable = cast(Bins*)cstdlib.malloc(npages * Bins.sizeof);
         if (!pagetable)
             onOutOfMemoryErrorNoGC();
 
@@ -3149,7 +3647,7 @@ struct Pool
             }
         }
 
-        memset(pagetable, B_FREE, npages);
+        memset(pagetable, Bins.B_FREE, npages);
 
         this.npages = npages;
         this.freepages = npages;
@@ -3186,7 +3684,7 @@ struct Pool
             bPageOffsets = null;
         }
 
-        mark.Dtor();
+        mark.Dtor(config.fork);
         if (ConservativeGC.isPrecise)
         {
             if (isLargeObject)
@@ -3366,7 +3864,7 @@ struct Pool
     }
 
     public
-    @property bool isFree() const pure nothrow
+    @property bool isFree() const scope @safe pure nothrow @nogc
     {
         return npages == freepages;
     }
@@ -3397,10 +3895,10 @@ struct Pool
     {
         size_t offset = cast(size_t)(p - baseAddr);
         size_t pn = offset / PAGESIZE;
-        Bins   bin = cast(Bins)pagetable[pn];
+        Bins   bin = pagetable[pn];
 
         // Adjust bit to be at start of allocated memory block
-        if (bin < B_NUMSMALL)
+        if (bin < Bins.B_NUMSMALL)
         {
             auto baseOff = baseOffset(offset, bin);
             const biti = baseOff >> Pool.ShiftBy.Small;
@@ -3408,11 +3906,11 @@ struct Pool
                 return null;
             return baseAddr + baseOff;
         }
-        if (bin == B_PAGE)
+        if (bin == Bins.B_PAGE)
         {
             return baseAddr + (offset & (offset.max ^ (PAGESIZE-1)));
         }
-        if (bin == B_PAGEPLUS)
+        if (bin == Bins.B_PAGEPLUS)
         {
             size_t pageOffset = bPageOffsets[pn];
             offset -= pageOffset * PAGESIZE;
@@ -3421,7 +3919,7 @@ struct Pool
             return baseAddr + (offset & (offset.max ^ (PAGESIZE-1)));
         }
         // we are in a B_FREE page
-        assert(bin == B_FREE);
+        assert(bin == Bins.B_FREE);
         return null;
     }
 
@@ -3458,8 +3956,8 @@ struct Pool
         {
             for (size_t i = 0; i < npages; i++)
             {
-                Bins bin = cast(Bins)pagetable[i];
-                assert(bin < B_MAX);
+                Bins bin = pagetable[i];
+                assert(bin < Bins.B_MAX);
             }
         }
     }
@@ -3567,19 +4065,19 @@ struct LargeObjectPool
             uint np = bPageOffsets[n];
             assert(np > 0 && np <= npages - n);
 
-            if (pagetable[n] == B_PAGE)
+            if (pagetable[n] == Bins.B_PAGE)
             {
                 for (uint p = 1; p < np; p++)
                 {
-                    assert(pagetable[n + p] == B_PAGEPLUS);
+                    assert(pagetable[n + p] == Bins.B_PAGEPLUS);
                     assert(bPageOffsets[n + p] == p);
                 }
             }
-            else if (pagetable[n] == B_FREE)
+            else if (pagetable[n] == Bins.B_FREE)
             {
                 for (uint p = 1; p < np; p++)
                 {
-                    assert(pagetable[n + p] == B_FREE);
+                    assert(pagetable[n + p] == Bins.B_FREE);
                 }
                 assert(bPageOffsets[n + np - 1] == np);
             }
@@ -3600,17 +4098,17 @@ struct LargeObjectPool
 
         //debug(PRINTF) printf("Pool::allocPages(n = %d)\n", n);
         size_t largest = 0;
-        if (pagetable[searchStart] == B_PAGEPLUS)
+        if (pagetable[searchStart] == Bins.B_PAGEPLUS)
         {
             searchStart -= bPageOffsets[searchStart]; // jump to B_PAGE
             searchStart += bPageOffsets[searchStart];
         }
-        while (searchStart < npages && pagetable[searchStart] == B_PAGE)
+        while (searchStart < npages && pagetable[searchStart] == Bins.B_PAGE)
             searchStart += bPageOffsets[searchStart];
 
         for (size_t i = searchStart; i < npages; )
         {
-            assert(pagetable[i] == B_FREE);
+            assert(pagetable[i] == Bins.B_FREE);
 
             auto p = bPageOffsets[i];
             if (p > n)
@@ -3621,11 +4119,11 @@ struct LargeObjectPool
             if (p == n)
             {
             L_found:
-                pagetable[i] = B_PAGE;
+                pagetable[i] = Bins.B_PAGE;
                 bPageOffsets[i] = cast(uint) n;
                 if (n > 1)
                 {
-                    memset(&pagetable[i + 1], B_PAGEPLUS, n - 1);
+                    memset(&pagetable[i + 1], Bins.B_PAGEPLUS, n - 1);
                     for (auto offset = 1; offset < n; offset++)
                         bPageOffsets[i + offset] = cast(uint) offset;
                 }
@@ -3636,7 +4134,7 @@ struct LargeObjectPool
                 largest = p;
 
             i += p;
-            while (i < npages && pagetable[i] == B_PAGE)
+            while (i < npages && pagetable[i] == Bins.B_PAGE)
             {
                 // we have the size information, so we skip a whole bunch of pages.
                 i += bPageOffsets[i];
@@ -3659,8 +4157,8 @@ struct LargeObjectPool
 
         for (size_t i = pagenum; i < npages + pagenum; i++)
         {
-            assert(pagetable[i] < B_FREE);
-            pagetable[i] = B_FREE;
+            assert(pagetable[i] < Bins.B_FREE);
+            pagetable[i] = Bins.B_FREE;
         }
         freepages += npages;
         largestFree = freepages; // invalidate
@@ -3671,8 +4169,8 @@ struct LargeObjectPool
      */
     void setFreePageOffsets(size_t page, size_t num) nothrow @nogc
     {
-        assert(pagetable[page] == B_FREE);
-        assert(pagetable[page + num - 1] == B_FREE);
+        assert(pagetable[page] == Bins.B_FREE);
+        assert(pagetable[page + num - 1] == Bins.B_FREE);
         bPageOffsets[page] = cast(uint)num;
         if (num > 1)
             bPageOffsets[page + num - 1] = cast(uint)num;
@@ -3682,7 +4180,7 @@ struct LargeObjectPool
     {
         static if (bwd)
         {
-            if (page > 0 && pagetable[page - 1] == B_FREE)
+            if (page > 0 && pagetable[page - 1] == Bins.B_FREE)
             {
                 auto sz = bPageOffsets[page - 1];
                 page -= sz;
@@ -3691,7 +4189,7 @@ struct LargeObjectPool
         }
         static if (fwd)
         {
-            if (page + num < npages && pagetable[page + num] == B_FREE)
+            if (page + num < npages && pagetable[page + num] == Bins.B_FREE)
                 num += bPageOffsets[page + num];
         }
         setFreePageOffsets(page, num);
@@ -3711,8 +4209,8 @@ struct LargeObjectPool
         if (cast(size_t)p & (PAGESIZE - 1)) // check for interior pointer
             return 0;
         size_t pagenum = pagenumOf(p);
-        Bins bin = cast(Bins)pagetable[pagenum];
-        if (bin != B_PAGE)
+        Bins bin = pagetable[pagenum];
+        if (bin != Bins.B_PAGE)
             return 0;
         return bPageOffsets[pagenum];
     }
@@ -3722,7 +4220,7 @@ struct LargeObjectPool
     */
     size_t getSize(size_t pn) const nothrow @nogc
     {
-        assert(pagetable[pn] == B_PAGE);
+        assert(pagetable[pn] == Bins.B_PAGE);
         return cast(size_t) bPageOffsets[pn] * PAGESIZE;
     }
 
@@ -3735,11 +4233,11 @@ struct LargeObjectPool
 
         size_t offset = cast(size_t)(p - baseAddr);
         size_t pn = offset / PAGESIZE;
-        Bins bin = cast(Bins)pagetable[pn];
+        Bins bin = pagetable[pn];
 
-        if (bin == B_PAGEPLUS)
+        if (bin == Bins.B_PAGEPLUS)
             pn -= bPageOffsets[pn];
-        else if (bin != B_PAGE)
+        else if (bin != Bins.B_PAGE)
             return info;           // no info for free pages
 
         info.base = baseAddr + pn * PAGESIZE;
@@ -3752,8 +4250,8 @@ struct LargeObjectPool
     {
         foreach (pn; 0 .. npages)
         {
-            Bins bin = cast(Bins)pagetable[pn];
-            if (bin > B_PAGE)
+            Bins bin = pagetable[pn];
+            if (bin > Bins.B_PAGE)
                 continue;
             size_t biti = pn;
 
@@ -3779,7 +4277,7 @@ struct LargeObjectPool
 
             size_t n = 1;
             for (; pn + n < npages; ++n)
-                if (pagetable[pn + n] != B_PAGEPLUS)
+                if (pagetable[pn + n] != Bins.B_PAGEPLUS)
                     break;
             debug (MEMSTOMP) memset(baseAddr + pn * PAGESIZE, 0xF3, n * PAGESIZE);
             freePages(pn, n);
@@ -3799,7 +4297,7 @@ struct SmallObjectPool
     {
         //base.Invariant();
         uint cntRecover = 0;
-        foreach (Bins bin; 0 .. B_NUMSMALL)
+        foreach (Bins bin; Bins.B_16 .. Bins.B_NUMSMALL)
         {
             for (auto pn = recoverPageFirst[bin]; pn < npages; pn = binPageChain[pn])
             {
@@ -3810,7 +4308,7 @@ struct SmallObjectPool
         uint cntFree = 0;
         for (auto pn = searchStart; pn < npages; pn = binPageChain[pn])
         {
-            assert(pagetable[pn] == B_FREE);
+            assert(pagetable[pn] == Bins.B_FREE);
             cntFree++;
         }
         assert(cntFree == freepages);
@@ -3829,8 +4327,8 @@ struct SmallObjectPool
     do
     {
         size_t pagenum = pagenumOf(p);
-        Bins bin = cast(Bins)pagetable[pagenum];
-        assert(bin < B_PAGE);
+        Bins bin = pagetable[pagenum];
+        assert(bin < Bins.B_PAGE);
         if (p != cast(void*)baseOffset(cast(size_t)p, bin)) // check for interior pointer
             return 0;
         const biti = cast(size_t)(p - baseAddr) >> ShiftBy.Small;
@@ -3844,9 +4342,9 @@ struct SmallObjectPool
         BlkInfo info;
         size_t offset = cast(size_t)(p - baseAddr);
         size_t pn = offset / PAGESIZE;
-        Bins   bin = cast(Bins)pagetable[pn];
+        Bins   bin = pagetable[pn];
 
-        if (bin >= B_PAGE)
+        if (bin >= Bins.B_PAGE)
             return info;
 
         auto base = cast(void*)baseOffset(cast(size_t)p, bin);
@@ -3866,8 +4364,8 @@ struct SmallObjectPool
     {
         foreach (pn; 0 .. npages)
         {
-            Bins bin = cast(Bins)pagetable[pn];
-            if (bin >= B_PAGE)
+            Bins bin = pagetable[pn];
+            if (bin >= Bins.B_PAGE)
                 continue;
 
             immutable size = binsize[bin];
@@ -3918,13 +4416,13 @@ struct SmallObjectPool
         if (searchStart >= npages)
             return null;
 
-        assert(pagetable[searchStart] == B_FREE);
+        assert(pagetable[searchStart] == Bins.B_FREE);
 
     L1:
         size_t pn = searchStart;
         searchStart = binPageChain[searchStart];
         binPageChain[pn] = Pool.PageRecovered;
-        pagetable[pn] = cast(ubyte)bin;
+        pagetable[pn] = bin;
         freepages--;
 
         // Convert page to free list
@@ -4051,7 +4549,7 @@ debug(PRINTF) void printFreeInfo(Pool* pool) nothrow
 {
     uint nReallyFree;
     foreach (i; 0..pool.npages) {
-        if (pool.pagetable[i] >= B_FREE) nReallyFree++;
+        if (pool.pagetable[i] >= Bins.B_FREE) nReallyFree++;
     }
 
     printf("Pool %p:  %d really free, %d supposedly free\n", pool, nReallyFree, pool.freepages);
@@ -4078,14 +4576,14 @@ string debugTypeName(const(TypeInfo) ti) nothrow
     else if (auto ci = cast(TypeInfo_Class)ti)
         name = ci.name;
     else if (auto si = cast(TypeInfo_Struct)ti)
-        name = si.name;
+        name = si.mangledName; // .name() might GC-allocate, avoid deadlock
     else if (auto ci = cast(TypeInfo_Const)ti)
         static if (__traits(compiles,ci.base)) // different whether compiled with object.di or object.d
             return debugTypeName(ci.base);
         else
             return debugTypeName(ci.next);
     else
-        name = ti.classinfo.name;
+        name = typeid(ti).name;
     return name;
 }
 
@@ -4228,13 +4726,13 @@ debug (LOGGING)
         }
 
 
-        private void log_free(void *p) nothrow @nogc
+        private void log_free(void *p, size_t size) nothrow @nogc
         {
             //debug(PRINTF) printf("+log_free(%p)\n", p);
             auto i = current.find(p);
             if (i == OPFAIL)
             {
-                debug(PRINTF) printf("free'ing unallocated memory %p\n", p);
+                debug(PRINTF) printf("free'ing unallocated memory %p (size %zu)\n", p, size);
             }
             else
                 current.remove(i);
@@ -4290,7 +4788,7 @@ debug (LOGGING)
                 size_t offset = cast(size_t)(p - pool.baseAddr);
                 size_t biti;
                 size_t pn = offset / PAGESIZE;
-                Bins bin = cast(Bins)pool.pagetable[pn];
+                Bins bin = pool.pagetable[pn];
                 biti = (offset & (PAGESIZE - 1)) >> pool.shiftBy;
                 debug(PRINTF) printf("\tbin = %d, offset = x%x, biti = x%x\n", bin, offset, biti);
             }
@@ -4308,7 +4806,7 @@ else
     {
         static void initialize(Gcx* gcx) nothrow { }
         static void log_malloc(void *p, size_t size) nothrow { }
-        static void log_free(void *p) nothrow @nogc { }
+        static void log_free(void *p, size_t size) nothrow @nogc {}
         static void log_collect() nothrow { }
         static void log_parent(void *p, void *parent) nothrow { }
     }
@@ -4402,11 +4900,11 @@ debug (MEMSTOMP)
 unittest
 {
     import core.memory;
-    auto p = cast(uint*)GC.malloc(uint.sizeof*5);
-    assert(*p == 0xF0F0F0F0);
+    auto p = cast(size_t*)GC.malloc(size_t.sizeof*3);
+    assert(*p == cast(size_t)0xF0F0F0F0F0F0F0F0);
     p[2] = 0; // First two will be used for free list
     GC.free(p);
-    assert(p[4] == 0xF2F2F2F2); // skip List usage, for both 64-bit and 32-bit
+    assert(p[2] == cast(size_t)0xF2F2F2F2F2F2F2F2);
 }
 
 debug (SENTINEL)
@@ -4416,16 +4914,8 @@ unittest
     auto p = cast(ubyte*)GC.malloc(1);
     assert(p[-1] == 0xF4);
     assert(p[ 1] == 0xF5);
-/*
-    p[1] = 0;
-    bool thrown;
-    try
-        GC.free(p);
-    catch (Error e)
-        thrown = true;
-    p[1] = 0xF5;
-    assert(thrown);
-*/
+
+    // See also stand-alone tests in test/gc
 }
 
 unittest
@@ -4449,7 +4939,7 @@ unittest
     assert(p + (260 << 20) == q);
     assert(q + (65 << 20) == r);
     GC.free(q);
-    // should trigger "assert(bin == B_FREE);" in mark due to dangling pointer q:
+    // should trigger "assert(bin == Bins.B_FREE);" in mark due to dangling pointer q:
     GC.collect();
     // should trigger "break;" in extendNoSync:
     size_t sz = GC.extend(p, 64 << 20, 66 << 20); // trigger size after p large enough (but limited)

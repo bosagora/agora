@@ -36,6 +36,51 @@ else version (Posix)
     import core.sys.posix.sys.mman;
     import core.stdc.stdlib;
 
+
+    /// Possible results for the wait_pid() function.
+    enum ChildStatus
+    {
+        done, /// The process has finished successfully
+        running, /// The process is still running
+        error /// There was an error waiting for the process
+    }
+
+    /**
+     * Wait for a process with PID pid to finish.
+     *
+     * If block is false, this function will not block, and return ChildStatus.running if
+     * the process is still running. Otherwise it will return always ChildStatus.done
+     * (unless there is an error, in which case ChildStatus.error is returned).
+     */
+    ChildStatus wait_pid(pid_t pid, bool block = true) nothrow @nogc
+    {
+        import core.exception : onForkError;
+
+        int status = void;
+        pid_t waited_pid = void;
+        // In the case where we are blocking, we need to consider signals
+        // arriving while we wait, and resume the waiting if EINTR is returned
+        do {
+            errno = 0;
+            waited_pid = waitpid(pid, &status, block ? 0 : WNOHANG);
+        }
+        while (waited_pid == -1 && errno == EINTR);
+        if (waited_pid == 0)
+            return ChildStatus.running;
+        else if (errno ==  ECHILD)
+            return ChildStatus.done; // someone called posix.syswait
+        else if (waited_pid != pid || status != 0)
+        {
+            onForkError();
+            return ChildStatus.error;
+        }
+        return ChildStatus.done;
+    }
+
+    public import core.sys.posix.unistd: pid_t, fork;
+    import core.sys.posix.sys.wait: waitpid, WNOHANG;
+    import core.stdc.errno: errno, EINTR, ECHILD;
+
     //version = GC_Use_Alloc_MMap;
 }
 else
@@ -60,9 +105,18 @@ else static assert(false, "No supported allocation methods available.");
 static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 {
     /**
+    * Indicates if an implementation supports fork().
+    *
+    * The value shown here is just demostrative, the real value is defined based
+    * on the OS it's being compiled in.
+    * enum HaveFork = true;
+    */
+    enum HaveFork = false;
+
+    /**
      * Map memory.
      */
-    void *os_mem_map(size_t nbytes) nothrow
+    void *os_mem_map(size_t nbytes) nothrow @nogc
     {
         return VirtualAlloc(null, nbytes, MEM_RESERVE | MEM_COMMIT,
                 PAGE_READWRITE);
@@ -75,35 +129,40 @@ static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
      *      0       success
      *      !=0     failure
      */
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         return cast(int)(VirtualFree(base, 0, MEM_RELEASE) == 0);
     }
 }
 else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
 {
-    void *os_mem_map(size_t nbytes) nothrow
+    enum HaveFork = true;
+
+    void *os_mem_map(size_t nbytes, bool share = false) nothrow @nogc
     {   void *p;
 
-        p = mmap(null, nbytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        auto map_f = share ? MAP_SHARED : MAP_PRIVATE;
+        p = mmap(null, nbytes, PROT_READ | PROT_WRITE, map_f | MAP_ANON, -1, 0);
         return (p == MAP_FAILED) ? null : p;
     }
 
 
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         return munmap(base, nbytes);
     }
 }
 else static if (is(typeof(valloc))) // else version (GC_Use_Alloc_Valloc)
 {
-    void *os_mem_map(size_t nbytes) nothrow
+    enum HaveFork = false;
+
+    void *os_mem_map(size_t nbytes) nothrow @nogc
     {
         return valloc(nbytes);
     }
 
 
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         free(base);
         return 0;
@@ -116,6 +175,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     //       to PAGESIZE alignment, there will be space for a void* at the end
     //       after PAGESIZE bytes used by the GC.
 
+    enum HaveFork = false;
 
     import core.internal.gc.impl.conservative.gc;
 
@@ -123,7 +183,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     const size_t PAGE_MASK = PAGESIZE - 1;
 
 
-    void *os_mem_map(size_t nbytes) nothrow
+    void *os_mem_map(size_t nbytes) nothrow @nogc
     {   byte *p, q;
         p = cast(byte *) malloc(nbytes + PAGESIZE);
         if (!p)
@@ -134,7 +194,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     }
 
 
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         free( *cast(void**)( cast(byte*) base + nbytes ) );
         return 0;
@@ -153,46 +213,38 @@ else
    Returns:
        true if memory is scarce
 */
-// TOOD: get virtual mem sizes and current usage from OS
+// TODO: get virtual mem sizes and current usage from OS
 // TODO: compare current RSS and avail. physical memory
-version (Windows)
+bool isLowOnMem(size_t mapped) nothrow @nogc
 {
-    bool isLowOnMem(size_t mapped) nothrow @nogc
+    version (Windows)
     {
-        version (D_LP64)
+        import core.sys.windows.winbase : GlobalMemoryStatusEx, MEMORYSTATUSEX;
+
+        MEMORYSTATUSEX stat;
+        stat.dwLength = stat.sizeof;
+        const success = GlobalMemoryStatusEx(&stat) != 0;
+        assert(success, "GlobalMemoryStatusEx() failed");
+        if (!success)
             return false;
-        else
-        {
-            import core.sys.windows.winbase : GlobalMemoryStatus, MEMORYSTATUS;
-            MEMORYSTATUS stat;
-            GlobalMemoryStatus(&stat);
-            // Less than 5 % of virtual address space available
-            return stat.dwAvailVirtual < stat.dwTotalVirtual / 20;
-        }
+
+        // dwMemoryLoad is the 'approximate percentage of physical memory that is in use'
+        // https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/ns-sysinfoapi-memorystatusex
+        const percentPhysicalRAM = stat.ullTotalPhys / 100;
+        return (stat.dwMemoryLoad >= 95 && mapped > percentPhysicalRAM)
+            || (stat.dwMemoryLoad >= 90 && mapped > 10 * percentPhysicalRAM);
     }
-}
-else version (Darwin)
-{
-    bool isLowOnMem(size_t mapped) nothrow @nogc
+    else
     {
         enum GB = 2 ^^ 30;
         version (D_LP64)
             return false;
-        else
+        else version (Darwin)
         {
             // 80 % of available 4GB is used for GC (excluding malloc and mmap)
             enum size_t limit = 4UL * GB * 8 / 10;
             return mapped > limit;
         }
-    }
-}
-else
-{
-    bool isLowOnMem(size_t mapped) nothrow @nogc
-    {
-        enum GB = 2 ^^ 30;
-        version (D_LP64)
-            return false;
         else
         {
             // be conservative and assume 3GB
