@@ -721,10 +721,13 @@ public class FullNode : API
 
         // The handlers are just arrays on which we iterate,
         // so setting them to null doesn't incur any risk.
-        this.block_handlers = null;
-        this.block_header_handlers = null;
-        this.preimage_handlers = null;
-        this.transaction_handlers = null;
+        synchronized
+        {
+            this.block_handlers = null;
+            this.block_header_handlers = null;
+            this.preimage_handlers = null;
+            this.transaction_handlers = null;
+        }
 
         // The relayer depends on the NetworkManager and the pool,
         // so shut its timers down first.
@@ -1222,19 +1225,26 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
-                if (this.block_handlers.length <= idx)
-                    return;
+                HandlerInfo!(BlockExternalizedHandler) handler;
+
+                synchronized
+                {
+                    if (this.block_handlers.length > idx)
+                        handler = this.block_handlers[idx];
+                    else
+                        return;
+                }
 
                 try
                 {
-                    this.block_handlers[idx].client.pushBlock(block);
-                    this.block_handlers[idx].onCompletion(false);
+                    handler.client.pushBlock(block);
+                    handler.onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending block height #{} to {} :{}",
-                        block.header.height, this.block_handlers[idx].address, e);
-                    this.block_handlers[idx].onCompletion(true);
+                        block.header.height, handler.address, e);
+                    handler.onCompletion(true);
                 }
             });
         }
@@ -1266,19 +1276,26 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
-                if (this.block_header_handlers.length <= idx)
-                    return;
+                HandlerInfo!(BlockHeaderUpdatedHandler) handler;
+
+                synchronized
+                {
+                    if (this.block_header_handlers.length > idx)
+                        handler = this.block_header_handlers[idx];
+                    else
+                        return;
+                }
 
                 try
                 {
-                    this.block_header_handlers[idx].client.pushBlockHeader(header);
-                    this.block_header_handlers[idx].onCompletion(false);
+                    handler.client.pushBlockHeader(header);
+                    handler.onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending block header at height #{} to {} :{}",
-                        header.height, this.block_header_handlers[idx].address, e);
-                    this.block_header_handlers[idx].onCompletion(true);
+                        header.height, handler.address, e);
+                    handler.onCompletion(true);
                 }
             });
         }
@@ -1308,19 +1325,26 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
-                if (this.preimage_handlers.length <= idx)
-                    return;
+                HandlerInfo!(PreImageReceivedHandler) handler;
+
+                synchronized
+                {
+                    if (this.preimage_handlers.length > idx)
+                        handler = this.preimage_handlers[idx];
+                    else
+                        return;
+                }
 
                 try
                 {
-                    this.preimage_handlers[idx].client.pushPreImage(pre_image);
-                    this.preimage_handlers[idx].onCompletion(false);
+                    handler.client.pushPreImage(pre_image);
+                    handler.onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending preImage (enroll_key: {}) to {} :{}",
-                        pre_image.utxo, this.preimage_handlers[idx].address, e);
-                    this.preimage_handlers[idx].onCompletion(true);
+                        pre_image.utxo, handler.address, e);
+                    handler.onCompletion(true);
                 }
             });
         }
@@ -1349,19 +1373,26 @@ public class FullNode : API
             this.taskman.runTask({
                 // Work around potential DMD bug
                 const idx = index;
-                if (this.transaction_handlers.length <= idx)
-                    return;
+                HandlerInfo!(TransactionReceivedHandler) handler;
+
+                synchronized
+                {
+                    if (this.transaction_handlers.length > idx)
+                        handler = this.transaction_handlers[idx];
+                    else
+                        return;
+                }
 
                 try
                 {
-                    this.transaction_handlers[idx].client.pushTransaction(tx);
-                    this.transaction_handlers[idx].onCompletion(false);
+                    handler.client.pushTransaction(tx);
+                    handler.onCompletion(false);
                 }
                 catch (Exception e)
                 {
                     log.error("Error sending transaction (tx hash: {}) to {} :{}",
-                        hashFull(tx), this.transaction_handlers[idx].address, e);
-                    this.transaction_handlers[idx].onCompletion(true);
+                        hashFull(tx), handler.address, e);
+                    handler.onCompletion(true);
                 }
             });
         }
