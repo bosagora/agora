@@ -921,7 +921,7 @@ public class NetworkManager
 
     public void getMissingBlockSigs (Ledger ledger,
         scope ulong delegate(BlockHeader) @safe extra_sigs,
-        scope void delegate(BlockHeader) @safe acceptHeader) @safe nothrow
+        scope string delegate(BlockHeader) @safe acceptHeader) @safe nothrow
     {
         import std.algorithm;
         import std.conv;
@@ -967,8 +967,14 @@ public class NetworkManager
                             {
                                 try
                                 {
-                                    log.trace("getMissingBlockSigs: updating header signature: {} validators: {}", header.signature, header.validators);
-                                    acceptHeader(header);
+                                    if (auto res = acceptHeader(header))
+                                        log.dbg("getMissingBlockSigs: couldn't update header ({})", header.height);
+                                    else
+                                    {
+                                        log.trace("getMissingBlockSigs: updated header ({}) signature: {} validators: {}",
+                                            header.height, header.signature, header.validators);
+                                        missing_heights.remove(header.height);
+                                    }
                                 }
                                 catch (Exception e)
                                 {
@@ -976,7 +982,6 @@ public class NetworkManager
                                 }
                             }
                         }
-                        missing_heights = heightsMissingSigs();
                         if (missing_heights.empty)
                             break;
                     }
