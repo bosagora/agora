@@ -388,7 +388,8 @@ public class Validator : FullNode, API
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
-        acceptHeader(block.header.clone());
+        if (auto fail_msg = acceptHeader(block.header.clone()))
+            return fail_msg;
 
         // In the case where a validator is restarted and frozen utxo is not in Genesis
         if (this.identity.utxo == Hash.init)
