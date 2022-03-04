@@ -144,17 +144,14 @@ public class AdminInterface : NodeControlAPI
         // The randomly generated temporary KeyPair
         KeyPair temp_kp = KeyPair.random();
 
-        TimePoint current_time = this.clock.networkTime();
-        // A 'nonce' used to allow expiring
-        current_time += 60 * 60 * 24 * 90; // (default: +90 days)
-        SysTime expires_time = SysTime(unixTimeToStdTime(current_time), UTC());
-
+        // A 'nonce' used to allow expiring (default: +90 days)
+        TimePoint expires = this.clock.utcTime() + (60 * 60 * 24 * 90);
         LoginInfo login_info = LoginInfo(
             temp_kp.secret.toString(PrintMode.Clear),
             VoterCard(
                 this.key_pair.address,
                 temp_kp.address,
-                expires_time.toISOExtString()
+                SysTime(unixTimeToStdTime(expires), UTC()).toISOExtString(),
             )
         );
 
