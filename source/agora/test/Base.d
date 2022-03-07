@@ -716,8 +716,8 @@ public class TestAPIManager
         this.setTimeFor(height);
         foreach (idx; clients_idxs)
             retryFor(clients[idx].getBlockHeight() == height, timeout,
-                format("Node %s has block height %s. Expected: %s",
-                    idx, clients[idx].getBlockHeight(), height),
+                format("Node %s (%s) has block height %s. Expected: %s",
+                    idx, this.nodes[idx].address, clients[idx].getBlockHeight(), height),
                 file, line);
     }
 
