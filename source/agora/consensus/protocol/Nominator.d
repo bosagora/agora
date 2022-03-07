@@ -1284,13 +1284,13 @@ extern(D):
 
     public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
-        log.trace("Emitting envelope: {}", scpPrettify(&envelope, &this.getQSet));
         SCPEnvelope copy;
         try
             copy = envelope.serializeFull.deserializeFull!SCPEnvelope();
         catch (Exception e)
             assert(0);
-        log.dbg("{}: peers are {}", __FUNCTION__, this.network.peers.map!(p => p.identity()));
+        log.trace("{}: {} to peers {}", __FUNCTION__, scpPrettify(&copy, &this.getQSet),
+            this.network.validators().map!(p => p.identity().key));
         this.network.validators().each!(v => v.sendEnvelope(copy));
     }
 
