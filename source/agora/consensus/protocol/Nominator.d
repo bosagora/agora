@@ -1523,7 +1523,9 @@ extern(D):
         auto base = 1.seconds;
         // double the timeout every 16 validators
         auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 16;
-        return milliseconds((base * val_multipler * roundNumber).total!"msecs".to!long);
+        const timeout = milliseconds((base * val_multipler * roundNumber).total!"msecs".to!long);
+        log.dbg("{}: roundNumber {} timeout = {} msecs", __FUNCTION__, roundNumber, timeout);
+        return timeout;
     }
 }
 
