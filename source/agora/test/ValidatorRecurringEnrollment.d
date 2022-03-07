@@ -131,6 +131,11 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
+
+    // TODO: remove pause
+    import core.thread;
+    Thread.sleep(5.seconds);
+
     network.generateBlocks(Height(GenesisValidatorCycle + 2), true);
     blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
     assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 2));
