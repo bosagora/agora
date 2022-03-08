@@ -98,7 +98,7 @@ unittest
     network.sendTransaction(set_b.front);
     const enroll_block = set_b.front.getBlock(Height(20));
     network.expectHeightAndPreImg(iota(GenesisValidators, allValidators), Height(GenesisValidatorCycle + 1),
-        enroll_block.header);
+        enroll_block.header.enrollments);
 
     // assert that all set_b have same block at height 21
     network.assertSameBlocks(iota(GenesisValidators, allValidators), Height(GenesisValidatorCycle + 1));

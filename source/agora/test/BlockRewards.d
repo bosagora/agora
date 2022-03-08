@@ -171,17 +171,16 @@ unittest
 
     // Create blocks until third payout block and make sure signatures are added for those who signed
     const target_height = Height(3 * PayoutPeriod);
-    Height last_height = Height(0);
-    iota(Height(PayoutPeriod), target_height + 1)
-        .stride(Height(PayoutPeriod))
-        .each!((Height h)
+    iota(Height(1), target_height + 1).each!((Height h)
     {
-        network.generateBlocks(iota(activeValidators), h, true); // Don't include node 5
-        // To ensure we have expected percentage of signatures at each height wait long enough for first node to have them
+        network.expectHeightAndPreImg(iota(activeValidators), h,
+            network.blocks[0].header.enrollments.takeExactly(activeValidators)); // Don't include node 5
+
+        // Ensure we have expected percentage of signatures at each height
         auto required_sigs = (h % 2 == 0) ? 5 : 4;
-        retryFor(node_1.getBlocksFrom(h, 1).front.header.validators.setCount() == required_sigs, 5.seconds,
-            format!"First node failed to achieve desired signature count of %s at height %s"(required_sigs, h));
-        last_height = h;
+        network.nodes.takeExactly(activeValidators)
+            .each!(node => retryFor(node.client.getBlocksFrom(h, 1).front.header.validators.setCount() == required_sigs, 5.seconds,
+                format!"Node %s failed to achieve desired signature count of %s at height %s"(node.address, required_sigs, h)));
     });
 
     void assertPayout (Height height) // height is payout block with Coinbase tx

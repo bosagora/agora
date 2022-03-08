@@ -743,20 +743,19 @@ public class TestAPIManager
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
-        this.expectHeightAndPreImg(iota(this.test_conf.node.test_validators), height, enroll_header,
-            timeout, file, line);
+        this.expectHeightAndPreImg(iota(this.test_conf.node.test_validators),
+            height, enroll_header.enrollments, timeout, file, line);
     }
 
     /// Ditto
     public void expectHeightAndPreImg (Idxs)(Idxs clients_idxs, Height height,
-        const(BlockHeader) enroll_header = GenesisBlock.header,
+        const(Enrollment[]) enrolls = GenesisBlock.header.enrollments,
         Duration timeout = 10.seconds,
         string file = __FILE__, int line = __LINE__)
     {
         static assert (isInputRange!Idxs);
 
-        assert(height > enroll_header.height);
-        this.waitForPreimages(clients_idxs, enroll_header.enrollments, height, timeout, file, line);
+        this.waitForPreimages(clients_idxs, enrolls, height, timeout, file, line);
         this.expectHeight(clients_idxs, height, timeout, file, line);
     }
 
@@ -790,15 +789,14 @@ public class TestAPIManager
         import std.algorithm.searching : any;
 
         foreach (idx; clients_idxs)
-            foreach (idx_enroll, enroll; enrolls)
-                if (clients_idxs.canFind(idx_enroll))
-                {
-                    scope node = this.nodes[idx];
-                    retryFor(node.client.getPreimages(Set!Hash.from(enroll.utxo_key.only))
-                        .any!(preimage => preimage.height >= height),
-                            timeout, format!"Client #%s (%s) has no preimage at height %s for node enrolled with utxo %s"
-                                (idx, node.address, height, enroll.utxo_key));
-                }
+        {
+            scope node = this.nodes[idx];
+            foreach (enroll; enrolls)
+                retryFor(node.client.getPreimages(Set!Hash.from(enroll.utxo_key.only))
+                    .any!(preimage => preimage.height >= height),
+                        timeout, format!"Client #%s (%s) has no preimage for height %s and node enrolled with utxo %s"
+                            (idx, node.address, height, enroll.utxo_key), file, line);
+        }
     }
 
     /***************************************************************************
@@ -1183,7 +1181,7 @@ public class TestAPIManager
         // Check block is at target height for the participating clients
         const enroll_block = first_client.getBlock(enrolled_height);
         this.expectHeightAndPreImg(client_idxs, target_height,
-            enroll_block.header, 10.seconds, file, line);
+            enroll_block.header.enrollments, 10.seconds, file, line);
     }
 
 
