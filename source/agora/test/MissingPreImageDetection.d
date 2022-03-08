@@ -126,7 +126,8 @@ unittest
     // block 1
     txs.each!(tx => nodes[0].postTransaction(tx));
     // Exclude first node from the check as it is not sending pre-image
-    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1), network.blocks[0].header);
+    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1),
+        network.blocks[0].header.enrollments.dropExactly(1));
 }
 
 /// Situation: There is a validator does not reveal a pre-image for next
@@ -175,5 +176,7 @@ unittest
 
     // try to make block 1
     txs.each!(tx => nodes[0].postTransaction(tx));
-    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1), network.blocks[0].header);
+    // Exclude first node from the check as it is not sending pre-image
+    network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1),
+        network.blocks[0].header.enrollments.dropExactly(1));
 }

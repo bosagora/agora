@@ -192,8 +192,7 @@ unittest
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
             .deduct(1.coins).sign());
 
-        network.expectHeightAndPreImg(iota(1, GenesisValidators),
-            new_height, blocks[0].header);
+        network.expectHeightAndPreImg(iota(1, GenesisValidators), new_height);
 
         // add next block
         blocks ~= valid_nodes.front.getBlocksFrom(new_height, 1);

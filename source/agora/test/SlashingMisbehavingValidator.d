@@ -65,7 +65,8 @@ unittest
     assert(nodes[0].getPenaltyDeposit(utxos[0].hash) != 0.coins);
     // block 1
     // Node index is 5 for bad node so we do not expect pre-image from it
-    network.expectHeightAndPreImg(iota(0, 5), Height(1), network.blocks[0].header);
+    network.expectHeightAndPreImg(iota(0, 5), Height(1),
+        network.blocks[0].header.enrollments.takeExactly(5));
 
     assert(utxos.length == 1);
     auto block1 = nodes[0].getBlocksFrom(1, 1)[0];
@@ -79,7 +80,10 @@ unittest
     assert(utxos[0] == refund[0]);
     assert(nodes[0].getPenaltyDeposit(utxos[0].hash) == 0.coins);
 
-    network.generateBlocks(iota(0, 5), Height(conf.consensus.payout_period * 3), true);
+    // Only check for first 5 nodes as sixth is byzantine
+    iota(2, Height(conf.consensus.payout_period * 3)).each!(h =>
+        network.expectHeightAndPreImg(iota(0, 5), Height(h),
+            network.blocks[0].header.enrollments.takeExactly(5)));
 }
 
 /// Situation: All the validators do not reveal their pre-images for

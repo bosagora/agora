@@ -84,5 +84,5 @@ unittest
 
     // all nodes should have same block height now
     network.expectHeightAndPreImg(iota(nodes.length), Height(GenesisValidatorCycle + 1),
-        nodes[0].getAllBlocks()[GenesisValidatorCycle].header);
+        nodes[0].getAllBlocks()[GenesisValidatorCycle].header.enrollments);
 }

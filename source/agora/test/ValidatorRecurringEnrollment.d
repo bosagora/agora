@@ -94,7 +94,13 @@ unittest
             auto ret = super.prepareNominatingSet(data);
             if (data.enrolls.length > 3)
                 data.enrolls.length = 3;
-            return ret;
+            // make sure we have our 3 enrollments in block 20 and then 21 (ledger will be 19 and 20)
+            const ok = ret
+                && (!only(Height(19), Height(20)).canFind(this.ledger.height())
+                    || data.enrolls.length == 3);
+            if (!ok)
+                log.warn("{}: failed in test override", __FUNCTION__);
+            return ok;
         }
     }
 
@@ -131,12 +137,18 @@ unittest
     auto blocks = node_0.getBlocksFrom(0, 2);
     assert(blocks.length == 1);
 
-    network.generateBlocks(Height(GenesisValidatorCycle + 2), true);
-    blocks = node_0.getBlocksFrom(10, GenesisValidatorCycle + 3);
-    assert(blocks[$ - 1].header.height == Height(GenesisValidatorCycle + 2));
-    auto last_enrolls = blocks.retro.take(3).map!(block => block.header.enrollments.length);
-    assert(last_enrolls.sum() == 6);
-    assert(!last_enrolls.any!(count => count > 3));
+    network.generateBlocks(Height(GenesisValidatorCycle), true);
+    auto block20 = node_0.getBlock(Height(GenesisValidatorCycle));
+    assert(block20.header.enrollments.length == 3);
+
+    // This block has only half of the validators enrolled
+    network.expectHeightAndPreImg(iota(3), Height(GenesisValidatorCycle + 1), block20.header.enrollments);
+    auto block21 = node_0.getBlock(Height(GenesisValidatorCycle + 1));
+    assert(block21.header.enrollments.length == 3);
+
+    // Block with all validators again
+    network.expectHeightAndPreImg(iota(6), Height(GenesisValidatorCycle + 2),
+        block20.header.enrollments ~ block21.header.enrollments);
 }
 
 // Some nodes are interrupted during their validator cycles, they should
@@ -178,7 +190,7 @@ unittest
     node_4.ctrl.sleep(0.seconds);
     // Let it catch up
     network.expectHeightAndPreImg(only(4), // node #4
-        Height(GenesisValidatorCycle - 1), network.blocks[0].header);
+        Height(GenesisValidatorCycle - 1));
 
     network.generateBlocks(iota(5), // nodes #0 .. #4
         Height(GenesisValidatorCycle), true);
@@ -234,7 +246,14 @@ unittest
 
     // Even if configured to not re-enroll, BatValidator should enroll if there
     // are not enough validators
-    network.generateBlocks(Height(GenesisValidatorCycle + 1), true);
+    network.generateBlocks(Height(GenesisValidatorCycle), true);
+
+    // fetch last block and check that at least one node enrolled
+    auto block = network.clients[0].getBlock(Height(GenesisValidatorCycle));
+    assert(block.header.enrollments.length > 0);
+
+    // Generate next block checking with the enrolled validators
+    network.expectHeightAndPreImg(Height(GenesisValidatorCycle + 1), block.header);
 }
 
 // Make a validator recur enrollment in the middle of generating blocks
