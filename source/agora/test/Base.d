@@ -1026,6 +1026,27 @@ public class TestAPIManager
 
     /***************************************************************************
 
+        Clear the logs for each node
+
+    ***************************************************************************/
+
+    public void clearLogs (string file = __FILE__, int line = __LINE__)
+    {
+        synchronized // ,ake sure we complete the clearing of logs
+        {
+            writefln("%s(%s): Clear node logs:\n", file, line);
+            foreach (node; this.nodes)
+            {
+                try
+                    node.client.clearLog();
+                catch (Exception ex)
+                    writefln("Could not clear logs for node %s: %s", node.address, ex.message);
+            }
+        }
+    }
+
+    /***************************************************************************
+
         Print out the logs for each node
 
     ***************************************************************************/
