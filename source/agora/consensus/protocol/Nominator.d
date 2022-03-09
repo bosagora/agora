@@ -156,6 +156,9 @@ public extern (C++) class Nominator : SCPDriver
     /// User configured nomination frequency
     private const Duration nomination_interval;
 
+    /// User configured nomination frequency
+    private Duration round_timeout;
+
     /// Delegate called when node's own nomination is invalid
     public extern (D) void delegate (in ConsensusData data, in string msg)
         @safe onInvalidNomination;
@@ -235,6 +238,7 @@ extern(D):
         this.updateSCPObject(node_id);
         this.restoreSCPState();
         this.nomination_interval = nomination_interval;
+        this.round_timeout = this.nomination_interval;
         this.acceptBlock = externalize;
     }
 
@@ -510,7 +514,7 @@ extern(D):
     {
         scope (exit)
         {
-            this.armTaskTimer(TimersIdx.Nomination, this.nomination_interval);
+            this.armTaskTimer(TimersIdx.Nomination, this.round_timeout);
         }
         const slot_idx = this.ledger.height() + 1;
         const cur_time = this.clock.networkTime();
@@ -953,6 +957,9 @@ extern(D):
                 log.info("{}: block #{} was already in the ledger (catchup task)", __FUNCTION__, block.header.height);
             }
             this.pending_block = Block.init;
+            // Reset the nomination timer
+            this.round_timeout = this.nomination_interval;
+            this.armTaskTimer(TimersIdx.Nomination, this.round_timeout);
             // Enable envelope processing again
             this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
         }
@@ -1538,10 +1545,11 @@ extern(D):
 
     protected override milliseconds computeTimeout(uint32_t roundNumber)
     {
-        auto base = 1.seconds;
+        auto base = min(this.nomination_interval, 1.seconds);
         // double the timeout every 16 validators
         auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 16;
-        const timeout = milliseconds((base * val_multipler * roundNumber).total!"msecs".to!long);
+        this.round_timeout = base * val_multipler * roundNumber;
+        const timeout = milliseconds(round_timeout.total!"msecs".to!long);
         log.dbg("{}: roundNumber {} timeout = {} msecs", __FUNCTION__, roundNumber, timeout);
         return timeout;
     }
