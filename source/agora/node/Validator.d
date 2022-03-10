@@ -146,7 +146,7 @@ public class Validator : FullNode, API
             return false;
 
         preimage = this.enroll_man.getPreimage(nextReveal);
-        return true;
+        return preimage.utxo != Hash.init;
     }
 
     /***************************************************************************
