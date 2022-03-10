@@ -606,6 +606,14 @@ extern(D):
         else
         {
             log.info("{}(): Tx set didn't trigger new nomination", __FUNCTION__);
+            const Height expected = this.ledger.expectedHeight(this.clock.utcTime());
+            if (expected > this.ledger.height)
+            {
+                log.info("{}(): Behind expected height so resend latest envleopes"
+                    , __FUNCTION__);
+                foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
+                    this.emitEnvelope(env);
+            }
         }
     }
 
