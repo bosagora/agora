@@ -983,7 +983,7 @@ extern(D):
 
         if (header.height !in this.slot_sigs)
         {
-            log.warn("No signatures in memory at height {}", header.height);
+            log.trace("No signatures in memory at height {}", header.height);
             return;
         }
         log.dbg("{}: Before updating block signature for block {}, mask: {}",
