@@ -511,7 +511,7 @@ public class ValidatorSet
         if (prev_preimage == PreImageInfo.init)
         {
             log.info("Rejected pre-image for never-enrolled UTXO key: {}",
-                preimage.hash);
+                preimage.utxo);
             return false;
         }
 
