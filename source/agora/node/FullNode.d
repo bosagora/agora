@@ -481,7 +481,7 @@ public class FullNode : API
         this.startTaskTimer(TimersIdx.BlockCatchup, this.config.node.block_catchup_interval);
     }
 
-    private void startTaskTimer (in TimersIdx timer_id, in Duration interval) @trusted nothrow
+    protected void startTaskTimer (in TimersIdx timer_id, in Duration interval) @trusted nothrow
     {
         log.dbg("{}: re-arm timer index {}", __FUNCTION__, timer_id);
         if (!this.is_shutting_down)

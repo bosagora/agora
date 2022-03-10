@@ -275,7 +275,8 @@ public class Validator : FullNode, API
     protected override void discoveryTask ()
     {
         this.network.discover(this.required_peer_utxos);
-        this.timers[TimersIdx.Discovery].rearm(this.config.node.network_discovery_interval, false);
+        this.startTaskTimer(FullNode.TimersIdx.Discovery,
+            this.config.node.network_discovery_interval);
     }
 
     ///
