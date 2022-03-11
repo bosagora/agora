@@ -33,7 +33,6 @@ unittest
         recurring_enrollment : false,
         outsider_validators : 2,
     };
-    conf.node.max_listeners = 8;
     conf.node.network_discovery_interval = 2.seconds;
     conf.node.retry_delay = 250.msecs;
     auto network = makeTestNetwork!TestAPIManager(conf);
