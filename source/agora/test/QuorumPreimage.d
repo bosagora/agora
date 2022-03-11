@@ -161,10 +161,7 @@ unittest
     // Re-enroll
     iota(validators).each!(idx => network.enroll(iota(validators), idx));
 
-    // TODO: re enable - temp to enable PRs to test with rest of tests
-    version (none)
-    {
-    // Generate the last block of cycle with Genesis validators
+    // Generate the last block of cycle with all validators
     network.generateBlocks(iota(validators),
         Height(2 * GenesisValidatorCycle));
 
@@ -204,6 +201,5 @@ unittest
             retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_3: %s",
                     idx, node.getQuorumConfig(), quorums_3[idx])));
-    }
     }
 }
