@@ -161,7 +161,7 @@ unittest
     // Re-enroll
     iota(validators).each!(idx => network.enroll(iota(validators), idx));
 
-    // Generate the last block of cycle with Genesis validators
+    // Generate the last block of cycle with all validators
     network.generateBlocks(iota(validators),
         Height(2 * GenesisValidatorCycle));
 
