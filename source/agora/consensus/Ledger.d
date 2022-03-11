@@ -163,7 +163,7 @@ public class NodeLedger : Ledger
         this.frozen_utxos.externalize(block, (Hash stake_hash) @safe {
             this.enroll_man.removeEnrollment(stake_hash);
         });
-        block.txs.each!(tx => this.pool.remove(tx));
+        this.pool.remove(block.txs, true);
     }
 
     /// See `Ledger.updateValidatorSet`
@@ -1441,7 +1441,7 @@ unittest
 
     // there's no missing validator at the height of 22
     // after revealing preimages
-    temp_txs.each!(tx => ledger.pool.remove(tx));
+    ledger.pool.remove(temp_txs);
     temp_txs = genTransactions(new_txs);
     temp_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
 

@@ -35,6 +35,7 @@ import std.exception : collectException, enforce;
 import std.functional : toDelegate;
 import std.range;
 import std.string;
+import std.traits;
 
 version (unittest)
 {
@@ -184,52 +185,69 @@ public class TransactionPool
 
     ***************************************************************************/
 
-    public void remove (in Transaction tx, bool rm_double_spent = true) @trusted
+    public void remove (Transactions) (Transactions txs, bool rm_double_spent = true) @safe
+    if (is (Unqual!(ElementType!Transactions) : Transaction))
     {
-        auto tx_hash = tx.hashFull();
-
-        this.db.execute("DELETE FROM tx_pool WHERE key = ?", tx_hash);
-        this.known_txs.remove(tx_hash);
-        iota(tx.outputs.length).each!(idx => this.utxo_set.remove(UTXO.getHash(tx_hash, idx)));
-
+        this.remove(txs.map!(tx => tx.hashFull()));
         if (rm_double_spent)
-        {
-            // Incoming TX is accepted into the chain, so any other TXs in the pool
-            // that use the same utxos are now invalid, remove them too
-            Set!Hash inv_txs;
-
-            this.gatherDoubleSpentTXs(tx, inv_txs);
-            foreach (input; tx.inputs)
-                this.spenders.remove(input.utxo);
-
-            inv_txs.each!(inv_tx_hash => this.remove(inv_tx_hash, false));
-        }
-        else
-            foreach (input; tx.inputs)
-                if (auto list = input.utxo in this.spenders)
-                    (*list).remove(tx_hash);
+            txs.each!(tx => tx.inputs.each!(input => this.removeSpenders(input.utxo)));
     }
 
     /// Ditto
-    public void remove (in Hash tx_hash, bool rm_double_spent = true) @trusted
+    public void remove (in Transaction tx, bool rm_double_spent = true) @safe
     {
-        auto results = this.db.execute("SELECT val FROM tx_pool " ~
-            "WHERE key = ?", tx_hash);
-        if (!results.empty)
+        this.remove(only(tx.clone()), rm_double_spent);
+    }
+
+    /// Ditto
+    public void remove (Hashes) (Hashes tx_hashes) @trusted
+    if (is (Unqual!(ElementType!Hashes) : Hash))
+    {
+        int length = cast(int) tx_hashes.save.walkLength;
+        auto query = "DELETE FROM tx_pool WHERE key IN (" ~ "?".repeat(length).join(",") ~ ")";
+        auto stm = db.prepare(query);
+        length = 0;
+        foreach (tx_hash; tx_hashes.save)
+            stm.bind(++length, tx_hash);
+        stm.execute();
+
+        foreach (tx_hash; tx_hashes)
         {
-            auto tx = deserializeFull!Transaction(results
-                .front.peek!(ubyte[])(0));
-            this.remove(tx, rm_double_spent);
+            ulong output_idx = 0;
+            while(true)
+            {
+                auto utxo_hash = UTXO.getHash(tx_hash, output_idx++);
+                if (utxo_hash in this.utxo_set)
+                    this.utxo_set.remove(utxo_hash);
+                else
+                    break;
+            }
+
+            if (auto spending = tx_hash in this.known_txs)
+            {
+                foreach (input; *spending)
+                    if (auto list = input in this.spenders)
+                    {
+                        (*list).remove(tx_hash);
+                        if ((*list).length == 0)
+                            this.spenders.remove(input);
+                    }
+                this.known_txs.remove(tx_hash);
+            }
         }
+   }
+
+    /// Ditto
+    public void remove (in Hash tx_hash) @safe
+    {
+        this.remove(only(tx_hash));
     }
 
     /// Remove all TXs that spend the `utxo_hash`
-    public void removeSpenders (in Hash utxo_hash) @trusted
+    public void removeSpenders (in Hash utxo_hash) @safe
     {
         if (auto spender_set = utxo_hash in this.spenders)
-            foreach (tx_hash; *spender_set)
-                this.remove(tx_hash, false);
-        this.spenders.remove(utxo_hash);
+            this.remove((*spender_set)[]);
     }
 
     /***************************************************************************
@@ -764,6 +782,8 @@ unittest
     // adding duplicate tx hash => return false
     pool.add(txs[0], 0.coins);
     assert(!pool.add(txs[0], 0.coins));
+    pool.remove(txs);
+    assert(pool.length == 0);
 }
 
 /// memory reclamation tests
