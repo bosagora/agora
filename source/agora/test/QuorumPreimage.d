@@ -110,6 +110,10 @@ unittest
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle));
 
+    // Make sure we have all enrolled in block 20
+    auto block20 = nodes.front.getBlock(Height(GenesisValidatorCycle));
+    assert(block20.header.enrollments.length == validators);
+
     // make sure outsiders are up to date
     network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
