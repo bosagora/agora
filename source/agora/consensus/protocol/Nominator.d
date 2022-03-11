@@ -613,6 +613,7 @@ extern(D):
                     , __FUNCTION__);
                 foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
                     this.emitEnvelope(env);
+                this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
             }
         }
     }
