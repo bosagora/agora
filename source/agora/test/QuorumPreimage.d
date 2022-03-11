@@ -117,9 +117,6 @@ unittest
     // make sure outsiders are up to date
     network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
-    // Wait for nodes to run a discovery task and update their required peers
-    Thread.sleep(3.seconds);
-    network.waitForDiscovery();
 
     enum quorums_2 = [
         // 0
