@@ -36,8 +36,8 @@ unittest
         outsider_validators : 3,
         recurring_enrollment : false
     };
-    conf.node.block_catchup_interval = 100.msecs; // speed up block catchup
-    conf.node.network_discovery_interval = 200.msecs; // speed up discovery
+    conf.node.block_catchup_interval = 250.msecs; // speed up block catchup
+    conf.node.network_discovery_interval = 500.msecs; // speed up discovery
     conf.node.retry_delay = 250.msecs;
     conf.node.max_retries = 2; // We shutdown some nodes so let's try less times
     const allValidators = GenesisValidators + conf.outsider_validators;
