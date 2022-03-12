@@ -51,6 +51,7 @@ unittest
         recurring_enrollment : false,
     };
     conf.consensus.payout_period = 3;
+    conf.consensus.quorum_threshold = 51;
     auto network = makeTestNetwork!BadAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
