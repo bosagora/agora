@@ -383,6 +383,53 @@ public class Ledger
 
         if (header.height == this.last_block.header.height)
             this.last_block = this.storage.readLastBlock();
+
+        // reset the cached coinbase tx if next block is coinbase block
+        // and signature is for a block in that payout period
+        const next = this.height() + 1;
+        if (this.isCoinbaseBlock(next) && this.isRelatedRewardBlock(header.height, next))
+        {
+            log.info("{}: Reset cached coinbase for height {}", __FUNCTION__, header.height);
+            cached_coinbase = CachedCoinbase.init;
+        }
+    }
+
+    /***************************************************************************
+
+        Check if this is the `height` for payouts of a payout period
+
+        Params:
+            height = block to check
+
+        Returns:
+            `true` if this is `height` for a `Coinbase tx` to be included
+
+    ***************************************************************************/
+
+    public bool isCoinbaseBlock (in Height height) pure nothrow @safe @nogc
+    {
+        // The first payout block is at the end of the second period
+        return height > this.params.PayoutPeriod && height % this.params.PayoutPeriod == 0;
+    }
+
+    /***************************************************************************
+
+        Check if block is related to given payout block
+
+        Params:
+            reward_height = block to check if it is rewarded
+            coinbase_height = block which will have payouts in Coinbase tx
+
+        Returns:
+            `true` if payouts for `reward_height` should be in the `Coinbase tx`
+            at `coinbase_height`
+
+    ***************************************************************************/
+
+    public bool isRelatedRewardBlock (in Height reward_height, in Height coinbase_height) pure nothrow @safe @nogc
+    {
+        return reward_height > Height(coinbase_height - 2 * this.params.PayoutPeriod)
+            && reward_height <= Height(coinbase_height - this.params.PayoutPeriod);
     }
 
     /***************************************************************************
@@ -1193,4 +1240,28 @@ unittest
     assert(ledger.expectedHeight(GTS + BIS + 1.seconds) == Height(1));
 
     assert(ledger.expectedHeight(GTS + (BIS * 200)) == Height(200));
+}
+
+// Unittests for `Ledger.isCoinbaseBlock`
+unittest
+{
+    scope ledger = new Ledger();
+    const PP = ledger.params.PayoutPeriod;
+    only(0, 1, PP, 2 * PP - 1, 2 * PP + 1).each!(h => assert(!ledger.isCoinbaseBlock(Height(h))));
+
+    only(2 * PP, 3 * PP).each!(h => assert(ledger.isCoinbaseBlock(Height(h))));
+}
+
+// Unittests for `Ledger.isRelatedRewardBlock`
+unittest
+{
+    scope ledger = new Ledger();
+    const PP = ledger.params.PayoutPeriod;
+    const CB_1 = Height(2 * PP);
+    only(1, 2, PP - 1, PP).each!(h => assert(ledger.isRelatedRewardBlock(Height(h), CB_1)));
+    only(0, PP + 1, 2 * PP, 2 * PP + 1).each!(h => assert(!ledger.isRelatedRewardBlock(Height(h), CB_1)));
+
+    const CB_2 = Height(3 * PP);
+    only(PP + 1, 2 * PP - 1, 2 * PP).each!(h => assert(ledger.isRelatedRewardBlock(Height(h), CB_2)));
+    only(0, 1, PP - 1, 2 * PP + 1).each!(h => assert(!ledger.isRelatedRewardBlock(Height(h), CB_2)));
 }
