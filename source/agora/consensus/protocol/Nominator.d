@@ -1201,6 +1201,7 @@ extern(D):
             {
                 log.error("validateValue(): Validation failed: {}. Will check for missing signatures", fail_reason);
                 this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
+                return ValidationLevel.kMaybeValidValue;
             }
             else
             {
