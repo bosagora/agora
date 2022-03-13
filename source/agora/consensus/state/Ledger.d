@@ -383,6 +383,17 @@ public class Ledger
 
         if (header.height == this.last_block.header.height)
             this.last_block = this.storage.readLastBlock();
+
+        // reset the cached coinbase tx if next block is coinbase block
+        // and signature is for a block in that payout period
+        const height = this.height() + 1;
+        if (height % this.params.PayoutPeriod == 0 &&
+            header.height > Height(height - 2 * this.params.PayoutPeriod)
+            && header.height <= Height(height - this.params.PayoutPeriod))
+        {
+            log.info("{}: Reset cached coinbase for height {}", __FUNCTION__, header.height);
+            cached_coinbase = CachedCoinbase.init;
+        }
     }
 
     /***************************************************************************
