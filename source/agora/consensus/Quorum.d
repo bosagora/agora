@@ -130,8 +130,9 @@ public QuorumConfig buildQuorumConfig (in NodeID key, in Hash[] utxo_keys,
     }
 
     quorum.nodes.sort;
-    quorum.threshold = max(1, cast(uint)ceil(
+    quorum.threshold = cast(uint) max((quorum.nodes.length / 2) + 1, cast(ulong)ceil(
         (params.QuorumThreshold * double(0.01)) * quorum.nodes.length));
+    assert(quorum.threshold > quorum.nodes.length / 2);
     return quorum;
 }
 
