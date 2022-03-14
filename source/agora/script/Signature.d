@@ -306,7 +306,6 @@ unittest
     import agora.crypto.Key;
     import agora.common.Amount;
     import agora.utils.Test;
-    import ocean.core.Test;
 
     // SigHash.All
     {

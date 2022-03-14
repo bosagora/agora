@@ -32,8 +32,6 @@ import vibe.data.json;
 import vibe.http.router;
 import vibe.http.server;
 
-import Ocean = ocean.util.log.Logger;
-
 import barcode;
 
 import std.datetime : SysTime, unixTimeToStdTime, UTC;
