@@ -460,9 +460,7 @@ public class Validator : FullNode, API
 
     protected override ulong potentialExtraSigs (BlockHeader header) @safe
     {
-        const currentCount = header.validators.setCount;
-        this.nominator.updateMultiSignature(header);
-        return header.validators.setCount - currentCount;
+        return this.nominator.potentialExtraSigs(header);
     }
 
     /***************************************************************************
