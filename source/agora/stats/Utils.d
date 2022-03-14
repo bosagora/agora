@@ -16,8 +16,6 @@ module agora.stats.Utils;
 public import ocean.util.prometheus.collector.Collector;
 import ocean.util.prometheus.collector.CollectorRegistry;
 
-import std.stdio;
-
 /*******************************************************************************
 
     Utility method to generate a collector delegate for a particular `Stats`
