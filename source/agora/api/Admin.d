@@ -19,7 +19,7 @@ import vibe.data.serialization;
 import vibe.http.common;
 import vibe.web.rest;
 
-import ocean.util.log.ILogger;
+import dtext.log.ILogger;
 
 import std.typecons;
 

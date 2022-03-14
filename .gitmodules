@@ -43,9 +43,6 @@
 [submodule "d2sqlite3"]
 	path = submodules/d2sqlite3
 	url = https://github.com/dlang-community/d2sqlite3.git
-[submodule "ocean"]
-	path = submodules/ocean
-	url = https://github.com/bosagora/ocean.git
 [submodule "barcode"]
 	path = submodules/barcode
 	url = https://github.com/deviator/barcode.git
@@ -61,3 +58,6 @@
 [submodule "config"]
 	path = submodules/configy
 	url = https://github.com/bosagora/configy.git
+[submodule "dtext"]
+	path = submodules/dtext
+	url = https://github.com/bosagora/dtext.git

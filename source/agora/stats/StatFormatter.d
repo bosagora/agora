@@ -16,7 +16,7 @@ module agora.stats.StatFormatter;
 
 import std.math.traits : isNaN, isInfinity;
 import std.traits : isBasicType, isFloatingPoint;
-import ocean.text.convert.Formatter;
+import dtext.format.Formatter;
 
 /*******************************************************************************
 

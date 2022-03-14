@@ -27,7 +27,7 @@ unittest
 
     // Test default formatting behavior with Ocean's sformat/log
     // The library test integration with Phobos
-    import ocean.text.convert.Formatter : format;
+    import dtext.format.Formatter : format;
     assert(format("{}", s) == "**SCALAR**");
 
     import vibe.data.json;
