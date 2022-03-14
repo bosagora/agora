@@ -1546,8 +1546,8 @@ extern(D):
     protected override milliseconds computeTimeout(uint32_t roundNumber)
     {
         auto base = min(this.nomination_interval, 1.seconds);
-        // double the timeout every 16 validators
-        auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 16;
+        // double the timeout every 8 validators
+        auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 8;
         this.round_timeout = base * val_multipler * roundNumber;
         const timeout = milliseconds(round_timeout.total!"msecs".to!long);
         log.dbg("{}: roundNumber {} timeout = {} msecs", __FUNCTION__, roundNumber, timeout);
