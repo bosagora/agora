@@ -558,7 +558,7 @@ public class FullNode : API
 
         try
         {
-            this.network.getMissingBlockSigs(this.ledger, &this.extra_sigs, &this.acceptHeader);
+            this.network.getMissingBlockSigs(this.ledger, &this.potentialExtraSigs, &this.acceptHeader);
         }
         catch (Exception e)
         {
@@ -600,7 +600,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    protected ulong extra_sigs (BlockHeader header) @safe
+    protected ulong potentialExtraSigs (BlockHeader header) @safe
     {
         return 0;
     }
