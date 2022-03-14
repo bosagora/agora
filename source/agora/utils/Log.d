@@ -29,7 +29,6 @@ module agora.utils.Log;
 import configy.Attributes;
 
 import ocean.text.convert.Formatter;
-import ocean.transition;
 import ocean.util.log.AppendConsole;
 import ocean.util.log.Appender;
 import ocean.util.log.Event;
@@ -54,50 +53,50 @@ public struct Logger
     }
 
     /// See `ocean.util.log.Logger : Logger.dbg`
-    public void dbg (Args...) (cstring fmt, Args args)
+    public void dbg (Args...) (in char[] fmt, Args args)
     {
         // For debug logging let's assume we do not throw
         assumeWontThrow(this.format(LogLevel.Debug, fmt, args));
     }
 
     /// See `ocean.util.log.Logger : Logger.trace`
-    public void trace (Args...) (cstring fmt, Args args)
+    public void trace (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Trace, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.verbose`
-    public void verbose (Args...) (cstring fmt, Args args)
+    public void verbose (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Verbose, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.info`
-    public void info (Args...) (cstring fmt, Args args)
+    public void info (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Info, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.warn`
-    public void warn (Args...) (cstring fmt, Args args)
+    public void warn (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Warn, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.error`
-    public void error (Args...) (cstring fmt, Args args)
+    public void error (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Error, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.fatal`
-    public void fatal (Args...) (cstring fmt, Args args)
+    public void fatal (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Fatal, fmt, args);
     }
 
     /// See `ocean.util.log.Logger : Logger.format`
-    public void format (Args...) (LogLevel level, cstring fmt, Args args)
+    public void format (Args...) (LogLevel level, in char[] fmt, Args args)
     {
         import core.memory : GC;
         try
@@ -321,7 +320,7 @@ public class CircularAppender (size_t BufferSize = 2^^20) : Appender
     }
 
     /// Returns: the name of this class
-    public override istring name ()
+    public override string name ()
     {
         return this.classinfo.name;
     }
@@ -344,7 +343,7 @@ public class CircularAppender (size_t BufferSize = 2^^20) : Appender
         }
 
         this.layout.format(event,
-            (in cstring content)
+            (in char[] content)
             {
                 this.cyclic.put(content);
                 this.used_length = min(this.buffer.length,
@@ -428,7 +427,7 @@ public class PhobosFileAppender : Appender
     }
 
     /// Returns: the name of this class
-    public override istring name ()
+    public override string name ()
     {
         return this.classinfo.name;
     }
@@ -447,7 +446,7 @@ public class PhobosFileAppender : Appender
         scope (exit) this.file.flush();
         scope writer = this.file.lockingTextWriter();
         this.layout.format(event,
-            (in cstring content)
+            (in char[] content)
             {
                 writer.put(content);
             });
