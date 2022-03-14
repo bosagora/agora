@@ -957,20 +957,25 @@ public class NetworkManager
         {
             auto start_height = ledger.getLastPaidHeight();
             auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
-            size_t[Height] enrolled_validators = headers.map!(header =>
-                tuple(header.height, header.validators.count)).assocArray;
+
+            size_t enrolledValidators (Height height)
+            {
+                return headers.find!(
+                    (b, h) => b.height == h
+                )(height)[0].validators.count;
+            }
 
             Set!ulong heightsMissingSigs ()
             {
                 signed_validators =
                     headers.map!(header =>
                         tuple(header.height,
-                            iota(0, enrolled_validators[header.height]).filter!(i =>
+                            iota(0, enrolledValidators(header.height)).filter!(i =>
                                 header.validators[i] || header.preimages[i] is Hash.init).count() // Take into account the slashed validators
                         )
                     ).assocArray;
 
-                return Set!ulong.from(headers.map!(h => h.height).filter!(height => signed_validators[height] < enrolled_validators[height]));
+                return Set!ulong.from(headers.map!(h => h.height).filter!(height => signed_validators[height] < enrolledValidators(height)));
             }
 
             void doCatchUp ()
@@ -983,7 +988,7 @@ public class NetworkManager
                     {
                         foreach (header; peer.getBlockHeaders(missing_heights))
                         {
-                            auto potential_sig_count = iota(enrolled_validators[header.height]).filter!(i =>
+                            auto potential_sig_count = iota(enrolledValidators(header.height)).filter!(i =>
                                 header.validators[i] || header.preimages[i] is Hash.init).count()
                                 + extra_sigs(header);
                             if (potential_sig_count > signed_validators[header.height])
