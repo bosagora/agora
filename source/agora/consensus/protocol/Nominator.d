@@ -863,7 +863,11 @@ extern(D):
 
         Block block = pendingBlockSig ? this.pending_block : this.ledger.getBlocksFrom(Height(block_sig.height)).front;
 
-        if (this.collectBlockSignature(block_sig, block.hashFull()))
+        // Only update if it is valid and we are missing signatures and this is one of them
+        if (this.collectBlockSignature(block_sig, block.hashFull())
+            && block.header.validators.setCount < block.header.preimages.map!(p => p != Hash.init).count()
+            && !block.header.validators[this.enroll_man.validator_set
+                .getValidators(block.header.height).map!(v => v.utxo()).countUntil(block_sig.utxo)])
         {
             log.dbg("{}: Signature is for {} block #{}",
                 __FUNCTION__, pendingBlockSig ? "pending" : "ledger", block.header.height);
@@ -872,6 +876,8 @@ extern(D):
             else
             {
                 this.updateMultiSignature(block.header);
+                log.dbg("{}: mask now {} for block #{}",
+                    __FUNCTION__, block.header.validators, block.header.height);
                 this.ledger.updateBlockMultiSig(block.header);
                 return block.header;
             }
@@ -1086,7 +1092,7 @@ extern(D):
         if (sigs && block_sig.utxo in (*sigs))
         {
             log.trace("Signature already collected for this node at height {}", block_sig.height);
-            return false;
+            return true;
         }
 
         // Using `assumeSorted` and `getValidator` being a random access range
