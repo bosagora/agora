@@ -135,10 +135,9 @@ public struct NoLabel {}
 
 version (unittest)
 {
+    import agora.stats.Collector;
+    import agora.stats.CollectorRegistry;
     import agora.stats.Utils;
-
-    import ocean.util.prometheus.collector.CollectorRegistry;
-    import ocean.util.prometheus.collector.Collector;
 
     public struct TestStatsWithLabelT
     {

@@ -13,9 +13,9 @@
 
 module agora.stats.Server;
 
+import agora.stats.CollectorRegistry;
 import agora.stats.Utils;
 
-import ocean.util.prometheus.collector.CollectorRegistry;
 import vibe.http.server;
 import vibe.http.router;
 
