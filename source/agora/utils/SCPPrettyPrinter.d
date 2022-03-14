@@ -401,10 +401,10 @@ version (unittest)
     private void testAssert (T) (string expected, in T toFmt, int line = __LINE__)
     {
         import std.stdio;
-        import Ocean = ocean.text.convert.Formatter;
+        import Dtext = dtext.format.Formatter;
 
         auto phobosResult = format("%s", toFmt);
-        auto oceanResult = Ocean.format("{}", toFmt);
+        auto oceanResult = Dtext.format("{}", toFmt);
 
         if (expected != phobosResult)
         {
@@ -412,14 +412,14 @@ version (unittest)
             stderr.writeln("\tTest is located at ", __FILE__, ":", line);
             stderr.writeln("\tExpected: ", expected);
             stderr.writeln("\tPhobos:   ", phobosResult);
-            stderr.writeln("\tOcean:    ", oceanResult);
+            stderr.writeln("\tDtext:    ", oceanResult);
             assert(0);
         }
         if (expected != oceanResult)
         {
             stderr.writeln("\tOcean result doesn't match expected output (but Phobos do)");
             stderr.writeln("\tExpected: ", expected);
-            stderr.writeln("\tOcean:    ", oceanResult);
+            stderr.writeln("\tDtext:    ", oceanResult);
             assert(0);
         }
     }

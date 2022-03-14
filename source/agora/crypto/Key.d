@@ -326,9 +326,9 @@ public struct SecretKey
 
         // Test default formatting behavior with writeln, log, etc...
         import std.format : phobos_format = format;
-        import ocean.text.convert.Formatter : ocean_format = format;
+        import dtext.format.Formatter : dtext_format = format;
         assert(phobos_format("%s", sd) == "**SECRET**");
-        () @trusted { assert(ocean_format("{}", sd) == "**SECRET**"); }();
+        () @trusted { assert(dtext_format("{}", sd) == "**SECRET**"); }();
     }
 
     /***************************************************************************

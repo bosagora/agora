@@ -28,27 +28,27 @@ module agora.utils.Log;
 
 import configy.Attributes;
 
-import ocean.text.convert.Formatter;
-import ocean.util.log.AppendConsole;
-import ocean.util.log.Appender;
-import ocean.util.log.Event;
-import Ocean = ocean.util.log.Logger;
+import dtext.format.Formatter;
+import dtext.log.AppendConsole;
+import dtext.log.Appender;
+import dtext.log.Event;
+import Dtext = dtext.log.Logger;
 
 import std.algorithm : min;
 import std.stdio;
 import std.exception : assumeWontThrow;
 import std.range : Cycle, cycle, isOutputRange, take, takeExactly, put;
 
-/// nothrow wrapper around Ocean's Logger
+/// nothrow wrapper around dtext's Logger
 public struct Logger
 {
-    private Ocean.Logger logger;
+    private Dtext.Logger logger;
 
     /// ctor
     public this (string moduleName)
     {
         import core.memory;
-        this.logger = Ocean.Log.lookup(moduleName);
+        this.logger = Dtext.Log.lookup(moduleName);
         this.logger.buffer(new char[](16_384));
     }
 
@@ -120,7 +120,7 @@ public struct Logger
 
     // Supports `log = Log.lookup("yo")`,
     // where `log` is of `typeof(this)` type
-    public ref Logger opAssign (Ocean.Logger newLogger)
+    public ref Logger opAssign (Dtext.Logger newLogger)
         @safe pure nothrow @nogc return
     {
         this.logger = newLogger;
@@ -128,7 +128,7 @@ public struct Logger
     }
 
     // Support `Logger log = Log.lookup("yo")` (initialization)
-    public this (Ocean.Logger initRef)
+    public this (Dtext.Logger initRef)
         @safe pure nothrow @nogc
     {
         this.logger = initRef;
@@ -178,10 +178,10 @@ public template AddLogger (string moduleName = __MODULE__)
 }
 
 /// Convenience alias
-public alias LogLevel = Ocean.Level;
+public alias LogLevel = Dtext.Level;
 
 /// Ditto
-public alias Log = Ocean.Log;
+public alias Log = Dtext.Log;
 
 version (unittest)
 {
@@ -211,7 +211,7 @@ public struct LoggerConfig
     public string name;
 
     /// Level to set the logger to (messages at a lower level won't be printed)
-    public Ocean.Level level = Ocean.Level.Info;
+    public LogLevel level = LogLevel.Info;
 
     /// Whether to propagate that level to the children
     /// Default to `true` as this is the expected behavior for most users
@@ -367,18 +367,19 @@ unittest
         /// Format the message
         public override void format (LogEvent event, scope FormatterSink dg)
         {
-            sformat(dg, "{}", event);
+            sformat(dg, "{}", event.msg);
         }
     }
 
     scope get_log_output = (string log_msg){
-        import ocean.util.log.ILogger;
+        import dtext.log.ILogger;
 
         immutable buffer_size = 7;
         char[buffer_size + 1] result_buff;
-        LogEvent event;
         scope appender = new CircularAppender!(buffer_size);
-        event.set(ILogger.Context.init, ILogger.Level.init, log_msg, "");
+        LogEvent event = {
+            msg: log_msg,
+        };
         appender.layout(new MockLayout());
         appender.append(event);
         appender.print(result_buff[]);
@@ -458,20 +459,17 @@ public class PhobosFileAppender : Appender
 /// A layout with colored LogLevel
 public class AgoraLayout : Appender.Layout
 {
-    import ocean.time.WallClock;
-
     /// Format the message
     public override void format (LogEvent event, scope FormatterSink dg)
     {
         // convert time to field values
         const tm = event.time;
-        const dt = WallClock.toDate(tm);
 
         // format date according to ISO-8601 (lightweight formatter)
         sformat(dg, "{u4}-{u2}-{u2} {u2}:{u2}:{u2},{u2} {} [{}] - {}",
-            dt.date.year, dt.date.month, dt.date.day,
-            dt.time.hours, dt.time.minutes, dt.time.seconds, dt.time.millis,
-            coloredName(event.level), event.name, event);
+            tm.year, tm.month, tm.day,
+            tm.hour, tm.minute, tm.second, tm.fracSecs.total!"msecs",
+            coloredName(event.level), event.name, event.msg);
     }
 
     /// Returns: A colorized version of a LogLevel
@@ -590,36 +588,36 @@ private extern(C++, "agora") int getLogLevel (const(char)* logger)
 
 *******************************************************************************/
 
-public void setVibeLogLevel (Ocean.Level level) @safe
+public void setVibeLogLevel (LogLevel level) @safe
 {
     import vibe.core.log : LogLevel, setLogLevel;
 
     final switch (level)
     {
-    case Ocean.Level.Debug:
+    case Dtext.Level.Debug:
         setLogLevel(LogLevel.trace);
         break;
-    case Ocean.Level.Trace:
+    case Dtext.Level.Trace:
         setLogLevel(LogLevel.debugV);
         break;
     // There is one extra level between debugV and diagnostic (debug_),
     // but we choose to just include it in verbose.
-    case Ocean.Level.Verbose:
+    case Dtext.Level.Verbose:
         setLogLevel(LogLevel.diagnostic);
         break;
-    case Ocean.Level.Info:
+    case Dtext.Level.Info:
         setLogLevel(LogLevel.info);
         break;
-    case Ocean.Level.Warn:
+    case Dtext.Level.Warn:
         setLogLevel(LogLevel.warn);
         break;
-    case Ocean.Level.Error:
+    case Dtext.Level.Error:
         setLogLevel(LogLevel.error);
         break;
-    case Ocean.Level.Fatal:
+    case Dtext.Level.Fatal:
         setLogLevel(LogLevel.critical);
         break;
-    case Ocean.Level.None:
+    case Dtext.Level.None:
         setLogLevel(LogLevel.none);
         break;
     }

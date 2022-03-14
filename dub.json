@@ -199,10 +199,10 @@
         "configy":          { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "crypto":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "d2sqlite3":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "dtext":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "dyaml":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "libsodiumd":       { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "localrest":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
-        "ocean":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "serialization":    { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "vibe-d":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] }
     }

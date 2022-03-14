@@ -18,7 +18,7 @@
 
 module agora.common.Ensure;
 
-import ocean.text.convert.Formatter;
+import dtext.format.Formatter;
 
 /// Module ctor to initialize the thread-local instance
 static this ()
