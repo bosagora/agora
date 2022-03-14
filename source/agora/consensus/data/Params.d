@@ -39,6 +39,7 @@
 module agora.consensus.data.Params;
 
 import agora.common.Amount;
+import agora.common.Ensure;
 import agora.common.Types;
 import agora.consensus.data.Block;
 import agora.crypto.Key;
@@ -164,6 +165,12 @@ public struct ConsensusConfig
 
     /// Max TX set size in KBs
     public uint max_tx_set_size_kbs = 1024;
+
+    /// Validate this struct
+    public void validate () const scope @safe
+    {
+        ensure(this.quorum_threshold > 50, "Quorum threshold should be more than 50%");
+    }
 }
 
 /// Inserts properties functions aliasing `ConsensusConfig`
