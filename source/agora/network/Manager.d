@@ -943,7 +943,7 @@ public class NetworkManager
     ***************************************************************************/
 
     public void getMissingBlockSigs (Ledger ledger,
-        scope ulong delegate(BlockHeader) @safe extra_sigs,
+        scope ulong delegate(BlockHeader) @safe potentialExtraSigs,
         scope string delegate(BlockHeader) @safe acceptHeader) @safe nothrow
     {
         import std.algorithm;
@@ -990,7 +990,7 @@ public class NetworkManager
                         {
                             auto potential_sig_count = iota(enrolledValidators(header.height)).filter!(i =>
                                 header.validators[i] || header.preimages[i] is Hash.init).count()
-                                + extra_sigs(header);
+                                + potentialExtraSigs(header);
                             if (potential_sig_count > signed_validators[header.height])
                             {
                                 try
