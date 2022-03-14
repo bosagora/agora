@@ -1040,6 +1040,33 @@ extern(D):
 
     /***************************************************************************
 
+        Count how many block signatures could be added from memory
+
+        Params:
+            header = header to be checked
+
+    ***************************************************************************/
+
+    public ulong potentialExtraSigs (in BlockHeader header) @safe
+    {
+        if (header.height !in this.slot_sigs)
+            return 0;
+
+        const validators = this.ledger.getValidators(header.height);
+
+        const Signature[Hash] block_sigs = this.slot_sigs[header.height];
+
+        ulong count = 0;
+        foreach (idx, const ref val; validators)
+        {
+            if (!header.validators[idx] && val.utxo() in block_sigs)
+                count++;
+        }
+        return count;
+    }
+
+    /***************************************************************************
+
         Collect the block signature for a gossiped signature only if the
         signature is valid for validator and block hash
 
