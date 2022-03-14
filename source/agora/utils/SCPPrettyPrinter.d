@@ -38,8 +38,6 @@ import scpd.Cpp;
 import scpd.types.Stellar_SCP;
 import scpd.types.Stellar_types : StellarHash = Hash, NodeID;
 
-import Ocean = ocean.text.convert.Formatter;
-
 import std.algorithm;
 import std.format;
 import std.range;
@@ -403,6 +401,7 @@ version (unittest)
     private void testAssert (T) (string expected, in T toFmt, int line = __LINE__)
     {
         import std.stdio;
+        import Ocean = ocean.text.convert.Formatter;
 
         auto phobosResult = format("%s", toFmt);
         auto oceanResult = Ocean.format("{}", toFmt);
