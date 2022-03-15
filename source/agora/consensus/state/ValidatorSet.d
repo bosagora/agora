@@ -141,12 +141,10 @@ public class ValidatorSet
             return "A validator with the same public key is already enrolled";
 
         () @trusted {
-            if (this.getPreimage(enroll.utxo_key) == PreImageInfo.init)
-                this.db.execute("INSERT INTO preimages " ~
+            if (this.getPreimage(enroll.utxo_key).height <= height)
+                this.db.execute("INSERT OR REPLACE INTO preimages " ~
                     "(key, height, preimage) VALUES (?, ?, ?)",
                     enroll.utxo_key, height, enroll.commitment);
-            else
-                this.addPreimage(PreImageInfo(enroll.utxo_key, enroll.commitment, height));
 
             this.db.execute("INSERT INTO validator " ~
                 "(key, public_key, enrolled_height, nonce, stake) " ~
@@ -723,4 +721,20 @@ unittest
     assert(set.getEnrolledUTXOs(Height(1010), keys));
     assert(keys.length == 0);
     set.removeAll();  // clear all
+
+    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], FirstEnrollHeight, params.ValidatorCycle);
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[0].address) is null);
+    far_height = Height(5 * params.ValidatorCycle);
+    foreach (idx; 1..7)
+        assert(set.addPreimage(PreImageInfo(utxos[0], cache[Height(idx * params.ValidatorCycle)], Height(idx * params.ValidatorCycle))));
+    // enroll again at a much later height, preimage should not be updated
+    enroll = EnrollmentManager.makeEnrollment(utxos[0], WK.Keys[0], far_height, params.ValidatorCycle);
+    assert(set.getPreimage(utxos[0]).height > far_height);
+
+    enroll = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], FirstEnrollHeight, params.ValidatorCycle);
+    assert(set.add(FirstEnrollHeight, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[1].address) is null);
+    // enroll again at a much later height, preimage should still be accepted
+    enroll = EnrollmentManager.makeEnrollment(utxos[1], WK.Keys[1], far_height, params.ValidatorCycle);
+    assert(set.add(far_height, &storage.peekUTXO, getPenaltyDeposit, enroll, WK.Keys[1].address) is null);
+    assert(set.getPreimage(utxos[1]).height == far_height);
 }
