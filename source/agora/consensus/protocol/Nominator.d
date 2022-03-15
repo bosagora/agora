@@ -607,9 +607,9 @@ extern(D):
         {
             log.info("{}(): Tx set didn't trigger new nomination", __FUNCTION__);
             const Height expected = this.ledger.expectedHeight(this.clock.utcTime());
-            if (expected > this.ledger.height)
+            if (expected > this.ledger.height + 1) // We are one block late
             {
-                log.info("{}(): Behind expected height - Resending latest envelopes"
+                log.info("{}(): Full block span behind expected height - Resending latest envelopes"
                     , __FUNCTION__);
                 foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
                     this.emitEnvelope(env);
