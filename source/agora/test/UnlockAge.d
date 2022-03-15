@@ -22,6 +22,7 @@ unittest
 {
     import std.conv;
     TestConf conf = TestConf.init;
+    conf.node.test_validators = 2;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
