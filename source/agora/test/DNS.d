@@ -69,8 +69,8 @@ unittest
 
     // AXFR zone transfer
     result = resolver.query("validators.unittest.bosagora.io.", QTYPE.AXFR);
-    // * 2 for URI records and + 2 for starting and ending SOA records
-    assert(result.length == (conf.node.test_validators * 2) + 2);
+    // * 2 for URI records and + 2 for starting and ending SOA records, + 1 for NS record
+    assert(result.length == (conf.node.test_validators * 2) + 2 + 1);
     assert(result[0].type == TYPE.SOA);
     assert(result[$-1].type == TYPE.SOA);
 }
@@ -122,8 +122,8 @@ unittest
 
     // AXFR zone transfer
     result = resolver.query("validators.unittest.bosagora.io.", QTYPE.AXFR);
-    // * 2 for URI records and + 2 for starting and ending SOA records
-    assert(result.length == (conf.node.test_validators * 2) + 2);
+    // * 2 for URI records and + 2 for starting and ending SOA records, + 1 for NS record
+    assert(result.length == (conf.node.test_validators * 2) + 2 + 1);
     assert(result[0].type == TYPE.SOA);
     assert(result[$-1].type == TYPE.SOA);
 }
