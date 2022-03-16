@@ -94,15 +94,20 @@ public struct Stats (ValueType, LabelType)
     ***************************************************************************/
 
     public void setMetricTo (string metricName, LabelTs...)(ulong amount,
-        LabelTs labels_packed)
+        LabelTs labels_packed) pure nothrow @safe
     {
         static assert(labels_packed.length == LabelType.tupleof.length);
 
         string[] labels = [labels_packed];
         auto key = labels.join(SEPARATOR);
 
-        __traits(getMember, this.stats_maps.require(key, ValueType.init),
-            metricName) = amount;
+        if (auto metrics = key in this.stats_maps)
+            __traits(getMember, *metrics, metricName) = amount;
+        else
+        {
+            this.stats_maps[key] = ValueType.init;
+            __traits(getMember, this.stats_maps[key], metricName) = amount;
+        }
     }
 
     /***************************************************************************
