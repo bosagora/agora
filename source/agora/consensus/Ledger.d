@@ -706,8 +706,7 @@ public class ValidatingLedger : NodeLedger
         data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
         data.missing_validators = this.getCandidateMissingValidators(next_height, utxo_finder);
         data.tx_set = this.getCandidateTransactions(next_height, utxo_finder);
-        if (next_height >= 2 * this.params.PayoutPeriod
-            && next_height % this.params.PayoutPeriod == 0)   // This is a Coinbase payout block
+        if (this.isCoinbaseBlock(next_height))
             {
                 auto coinbase_tx = this.getCoinbaseTX(next_height);
                 auto coinbase_hash = coinbase_tx.hashFull();

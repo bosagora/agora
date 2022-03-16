@@ -475,8 +475,7 @@ public class Ledger
         }
 
         // if this was a block with fees payout
-        if (block.header.height >= 2 * this.params.PayoutPeriod
-            && block.header.height % this.params.PayoutPeriod == 0)
+        if (this.isCoinbaseBlock(block.header.height))
         {
             // Clear out paid fees
             this.fee_man.clearBlockFeesBefore(Height(block.header.height - this.params.PayoutPeriod));
@@ -614,8 +613,7 @@ public class Ledger
 
     protected Transaction getCoinbaseTX (in Height height) nothrow @safe
     {
-        if (height < 2 * this.params.PayoutPeriod
-            || height % this.params.PayoutPeriod != 0)   // not a Coinbase payout block
+        if (!this.isCoinbaseBlock(height))
             return Transaction.init;
 
         if (cached_coinbase.height == height)
@@ -795,8 +793,7 @@ public class Ledger
         auto incoming_cb_txs = block.txs.filter!(tx => tx.isCoinbase);
         const cbTxCount = incoming_cb_txs.count;
         // If it is a payout block then a single Coinbase transaction is included
-        if (block.header.height >= 2 * this.params.PayoutPeriod
-            && block.header.height % this.params.PayoutPeriod == 0)
+        if (this.isCoinbaseBlock(block.header.height))
         {
             if (cbTxCount == 0)
                 return "Missing expected Coinbase transaction in payout block";
