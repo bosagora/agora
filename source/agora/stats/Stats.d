@@ -133,6 +133,12 @@ public struct Stats (ValueType, LabelType)
         }
         return res;
     }
+
+    /// Clears stats
+    public void clear () nothrow @safe
+    {
+        this.stats_maps = this.stats_maps.init;
+    }
 }
 
 /// Convenience struct for easier stats definition
