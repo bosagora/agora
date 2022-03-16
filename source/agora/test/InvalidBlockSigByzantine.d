@@ -129,6 +129,7 @@ unittest
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1));
     // Make sure the client we will check is in sync with others (except for byzantine)
     network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
+    network.assertSameSignatures(iota(1, GenesisValidators), Height(1));
     nodes.drop(1).each!(node => assertValidatorsBitmask(node.getAllBlocks()[1]));
 }
 
@@ -153,6 +154,7 @@ unittest
     network.expectHeightAndPreImg(iota(1, GenesisValidators), Height(1));
     // Make sure the client we will check is in sync with others (except for byzantine)
     network.assertSameBlocks(iota(1, GenesisValidators), Height(1));
+    network.assertSameSignatures(iota(1, GenesisValidators), Height(1));
     nodes.drop(1).each!(node => assertValidatorsBitmask(node.getAllBlocks()[1]));
 }
 
