@@ -37,6 +37,8 @@ import agora.crypto.Schnorr;
 import agora.network.Clock;
 import agora.network.Manager;
 import agora.consensus.Ledger;
+import agora.stats.Slot;
+import agora.stats.Utils;
 import agora.utils.Log;
 import agora.utils.SCPPrettyPrinter;
 import agora.utils.PrettyPrinter;
@@ -58,6 +60,7 @@ import core.stdc.stdint;
 import std.algorithm;
 import std.container : DList;
 import std.conv;
+import std.exception;
 import std.format;
 import std.path : buildPath;
 import std.range : assumeSorted, chain;
@@ -189,6 +192,9 @@ public extern (C++) class Nominator : SCPDriver
 
 extern(D):
 
+    /// Statistics of the current consensus slot
+    private SlotStats slot_stat;
+
     /***************************************************************************
 
         Constructor
@@ -229,6 +235,7 @@ extern(D):
         this.timers[TimersIdx.Envelope] = this.taskman.createTimer(&this.envelopeProcessTask);
         this.timers[TimersIdx.Nomination] = this.taskman.createTimer(&this.checkNominate);
         this.timers[TimersIdx.Catchup] = catchup_timer; // Created in caller
+        Utils.getCollectorRegistry().addCollector(&this.collectStats);
 
         // Find the node id of this validator and create an SCPObject
         Hash[] utxo_keys;
@@ -237,6 +244,7 @@ extern(D):
         NodeID node_id = utxo_keys.countUntil(this_utxo);
         this.updateSCPObject(node_id);
         this.restoreSCPState();
+        this.slot_stat.clear();
         this.nomination_interval = nomination_interval;
         this.round_timeout = this.nomination_interval;
         this.acceptBlock = externalize;
@@ -936,6 +944,9 @@ extern(D):
                 if (block.header.validators.percentage > 50)
                 {
                     log.info("{}: Ready to externalize block #{} to the ledger", __FUNCTION__, block.header.height);
+                    auto time_to_sig_majority = (this.clock.networkTime() -
+                        this.ledger.getExpectedBlockTime(block.header.height)).total!"seconds";
+                    this.slot_stat.setMetricTo!"time_to_sig_majority"(time_to_sig_majority, assumeWontThrow(block.header.height.toString()));
                     this.verifyBlock(block);
                 }
                 else
@@ -1123,6 +1134,13 @@ extern(D):
         return true;
     }
 
+    //
+    private void collectStats (Collector collector)
+    {
+        foreach (stat; this.slot_stat.getStats())
+            collector.collect(stat.value, stat.label);
+    }
+
     extern (C++):
 
     /***************************************************************************
@@ -1195,6 +1213,10 @@ extern(D):
             }
         }
         this.fully_validated_value.put(idx_value_hash);
+
+        if (slot_idx % 10 == 0)
+            this.slot_stat.clear();
+        this.slot_stat.increaseMetricBy!"num_values"(1, assumeWontThrow(Height(slot_idx).toString()));
         return ValidationLevel.kFullyValidatedValue;
     }
 
@@ -1214,6 +1236,8 @@ extern(D):
         ref const(Value) value) nothrow
     {
         Height height = Height(slot_idx);
+        auto time_to_ext = (this.clock.networkTime() - this.ledger.getExpectedBlockTime(height)).total!"seconds";
+        this.slot_stat.setMetricTo!"time_to_ext"(time_to_ext, assumeWontThrow(Height(slot_idx).toString()));
         const Height last_height = this.ledger.height();
         log.trace("valueExternalized: attempt to add slot id {} to ledger at height {}", height, last_height);
         if (height != last_height + 1)
@@ -1534,6 +1558,9 @@ extern(D):
         {
             this.heighest_ballot_height = Height(slot_idx);
             log.info("Balloting started for slot idx {}", slot_idx);
+            auto time_to_ballot = (this.clock.networkTime() -
+                this.ledger.getExpectedBlockTime(this.heighest_ballot_height)).total!"seconds";
+            this.slot_stat.setMetricTo!"time_to_ballot"(time_to_ballot, assumeWontThrow(Height(slot_idx).toString()));
         }
     }
 
