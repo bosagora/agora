@@ -52,7 +52,7 @@ immutable Cleanup = [ "rm", "-rf", IntegrationPath.buildPath("node/0/.cache/"),
                       IntegrationPath.buildPath("node/6/.cache/"),
                       IntegrationPath.buildPath("node/7/.cache/"),
 ];
-auto SetGenesisTimestamp = ["sed", "-i",
+auto SetGenesisTimestamp = ["sed", "-i''",
     "s/genesis_timestamp: [0-9]\\+/genesis_timestamp: curr_time/g",
     IntegrationPath.buildPath("node/0/config.yaml"),
     IntegrationPath.buildPath("node/2/config.yaml"),
