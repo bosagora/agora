@@ -30,7 +30,6 @@ import core.thread;
 unittest
 {
     TestConf conf = {
-        recurring_enrollment : false,
         outsider_validators : 2,
     };
     conf.node.network_discovery_interval = 2.seconds;
@@ -104,7 +103,7 @@ unittest
         Height(GenesisValidatorCycle - 1));
 
     // Now we enroll new validators and re-enroll the original validators
-    iota(validators).each!(idx => network.enroll(idx));
+    iota(GenesisValidators, validators).each!(idx => network.enroll(idx));
 
      // Generate the last block of cycle with Genesis validators
     network.generateBlocks(iota(GenesisValidators),
@@ -154,20 +153,13 @@ unittest
                     idx, node.getQuorumConfig(), quorums_2[idx])));
     }
 
-    // create 19 more blocks with all validators (1 short of end of 2nd cycle)
-    iota(Height(GenesisValidatorCycle + 1), Height(2 * GenesisValidatorCycle))
+    // create 20 more blocks with all validators
+    iota(Height(GenesisValidatorCycle + 1), Height(2 * GenesisValidatorCycle + 1))
         .each!((Height h)
         {
             network.sendTransaction(nodes.front);
             network.expectHeightAndPreImg(iota(validators), h, block20.header.enrollments);
         });
-
-    // Re-enroll
-    iota(validators).each!(idx => network.enroll(iota(validators), idx));
-
-    // Generate the last block of cycle with all validators
-    network.generateBlocks(iota(validators),
-        Height(2 * GenesisValidatorCycle));
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage
