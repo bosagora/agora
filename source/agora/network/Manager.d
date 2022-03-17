@@ -825,11 +825,7 @@ public class NetworkManager
     public void getBlocksFrom (Height height,
         scope Height delegate(const(Block)[]) @safe onReceivedBlocks) nothrow
     {
-        struct Pair { Height height; NetworkClient client; }
-
-        static Pair[] node_pairs;
-        node_pairs.length = 0;
-        assumeSafeAppend(node_pairs);
+        import std.typecons : tuple;
 
         // return ulong.max if getBlockHeight() fails
         Height getHeight (NetworkClient node)
@@ -840,25 +836,15 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        foreach (node; this.peers)
+        foreach (node, peer_height; this.peers.map!(node => tuple(node, getHeight(node))))
         {
-            auto pair = Pair(getHeight(node), node);
-            if (pair.height == ulong.max)  // request failed
-                continue;
-            node_pairs ~= pair;
-        }
-
-        node_pairs.sort!((a, b) => a.height > b.height);
-
-        foreach (pair; node_pairs)
-        {
-            if (height > pair.height)
+            if (peer_height == ulong.max || height > peer_height)
                 continue;  // this node does not have newer blocks than us
 
             log.info("Retrieving blocks [{}..{}] from {}..",
-                height, pair.height, pair.client.addresses);
+                height, peer_height, node.addresses);
             const MaxBlocks = 1024;
-            auto blocks = pair.client.getBlocksFrom(height, MaxBlocks);
+            auto blocks = node.getBlocksFrom(height, MaxBlocks);
             if (blocks.length == 0)
                 continue;
 
