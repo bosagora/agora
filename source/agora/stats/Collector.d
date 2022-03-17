@@ -59,7 +59,7 @@
 
 module agora.stats.Collector;
 
-import ocean.util.prometheus.collector.StatFormatter;
+import agora.stats.StatFormatter;
 
 /*******************************************************************************
 
