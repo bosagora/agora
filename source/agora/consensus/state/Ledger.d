@@ -1102,6 +1102,24 @@ public class Ledger
         const offset = utcTime - this.params.GenesisTimestamp;
         return Height(offset / this.params.BlockInterval);
     }
+
+    /***************************************************************************
+
+        Gets the expected block nomination time offset from Genesis start time.
+
+        Params:
+            height = target height
+
+        Returns:
+            the expected block nomination time for the provided height
+
+    ***************************************************************************/
+
+    public TimePoint getExpectedBlockTime (Height height) @safe @nogc nothrow pure
+    {
+        return this.params.GenesisTimestamp +
+            height * this.params.BlockInterval;
+    }
 }
 
 /// This is the last block height that has had fees and rewards paid before the current block

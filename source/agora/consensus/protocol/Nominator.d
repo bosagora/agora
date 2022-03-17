@@ -485,21 +485,6 @@ extern(D):
 
     /***************************************************************************
 
-        Gets the expected block nomination time offset from Genesis start time.
-
-        Returns:
-            the expected block nomination time for the provided height
-
-    ***************************************************************************/
-
-    protected TimePoint getExpectedBlockTime () @safe @nogc nothrow pure
-    {
-        return this.params.GenesisTimestamp +
-            (ledger.height() + 1) * this.params.BlockInterval;
-    }
-
-    /***************************************************************************
-
         The main nominating function.
 
         This function is called periodically by the nominating timer.
@@ -518,7 +503,7 @@ extern(D):
         }
         const slot_idx = this.ledger.height() + 1;
         const cur_time = this.clock.networkTime();
-        const next_nomination = this.getExpectedBlockTime();
+        const next_nomination = this.ledger.getExpectedBlockTime(this.ledger.height() + 1);
         if (cur_time < next_nomination)
         {
             this.log.trace(
@@ -750,7 +735,7 @@ extern(D):
             ulong tolerance = this.params.BlockInterval.total!"seconds" / 20; // 5%
 
             // too early to nominate a new block
-            if (this.clock.networkTime() + tolerance < this.getExpectedBlockTime())
+            if (this.clock.networkTime() + tolerance < this.ledger.getExpectedBlockTime(this.ledger.height() + 1))
             {
                 log.trace("{}: Ignoring early nomination for height {}", __FUNCTION__, envelope.statement.slotIndex);
                 return;
