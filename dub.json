@@ -22,7 +22,7 @@
     ],
 
     "versions": [ "_GLIBCXX_USE_CXX98_ABI" ],
-    "dflags": [ "-extern-std=c++17", "-preview=in", "-revert=dtorfields" ],
+    "dflags": [ "-extern-std=c++17", "-preview=in", "-revert=dtorfields", "-debug=EventCoreLeakTrace" ],
     "lflags-posix": [ "-lstdc++", "-lsqlite3" ],
     "lflags-windows": [  "sqlite3.lib", "/nodefaultlib:msvcetd.lib" ],
     "lflags-linux": [ "--export-dynamic" ],
