@@ -21,6 +21,7 @@
 module agora.consensus.Ledger;
 
 import agora.common.Amount;
+import agora.common.BitMask;
 import agora.common.Ensure;
 import agora.common.ManagedDatabase;
 import agora.common.Set;
@@ -93,6 +94,26 @@ public class NodeLedger : Ledger
 
     /***************************************************************************
 
+        Keep track of missing signatures for `PayoutPeriod` blocks
+
+        The length of this BitMask is the `PayoutPeriod`, and each index is
+        relative to the last payout period.
+
+        For example, if:
+        - The payout period is 10 blocks;
+        - We have just externalized block 108;
+        `BitMask.count` will be 10, and, given the last payout would have been
+        at height 100, `this.missing_sigs[0]` will be `true` iff the payout
+        block (block #100) has missing signatures.
+        Likewise, `this.missing_sigs[1]` will be true if block #101 has missing
+        signatures.
+
+    ***************************************************************************/
+
+    protected BitMask missing_sigs;
+
+    /***************************************************************************
+
         Constructor
 
         Params:
@@ -118,6 +139,8 @@ public class NodeLedger : Ledger
         this.pool = pool;
         this.enroll_man = enroll_man;
         this.frozen_utxos = new FrozenUTXOTracker(this);
+        this.missing_sigs = BitMask(params.PayoutPeriod);
+
         super(params, database, storage, enroll_man.validator_set);
 
         // Rebuild tracker frozen UTXO set
@@ -143,6 +166,15 @@ public class NodeLedger : Ledger
             this.onAcceptedBlock(block, validators_changed);
         }
 
+        const baseIdx = this.getLastPaidHeight();
+        if (block.header.height == baseIdx)
+            this.missing_sigs.clear();
+        if (!block.header.validators.notSetIndices.empty)
+        {
+            assert(baseIdx >= block.header.height);
+            this.missing_sigs[block.header.height - baseIdx] = true;
+        }
+        log.warn("Block externalized, missing sigs: {}", this.getMissingSignatureHeights());
         () @trusted { this.fully_validated_value.clear(); }();
         return null;
     }
@@ -663,6 +695,76 @@ public class NodeLedger : Ledger
         UTXO utxo;
 
         return null;
+    }
+
+    /***************************************************************************
+
+        Get a range containing the heights with missing signatures
+
+        When doing catchup, we also periodically check for missing signatues.
+        However, past a certain threshold, signatures can no longer be
+        externalized (once rewards have been paid).
+        This helper function returns a range of all headers that are
+        missing signatures.
+
+    ***************************************************************************/
+
+    public auto getMissingSignatureHeights () const @safe pure nothrow @nogc
+    {
+        static struct ResultRange
+        {
+            private const(BitMask) data;
+            private size_t index;
+            private size_t size;
+
+            private this (const BitMask bm)
+            {
+                this.data = bm;
+                this.size = this.data.setCount();
+                this.popFront(); // Initialize `index`
+            }
+
+            ///
+            public bool   empty () const scope { return this.size == 0; }
+
+            ///
+            public Height front () { return Height(0); }
+
+            ///
+            public void   popFront () scope @safe pure nothrow @nogc
+            {
+                if (this.index >= this.data.count() || this.empty())
+                    return;
+
+                this.index++;
+                this.size--;
+                while (this.index < this.data.count())
+                {
+                    // Find the next set index
+                    if (this.data[this.index])
+                        break;
+                }
+                assert((this.size > 0) ^ (this.index == this.data.count()));
+            }
+
+            /// ForwardRange interface
+            public ResultRange save () { return this; }
+
+            ///
+            public size_t length () const scope
+            {
+                return this.size;
+            }
+        }
+
+        return ResultRange(this.missing_sigs);
+    }
+
+    /// Provide a range of Header containing all headers with missing signatures
+    public auto getMissingSigBlocks ()
+    {
+        auto missingR = this.getMissingSignatureHeights();
+        return this.getBlocks(missingR);
     }
 }
 

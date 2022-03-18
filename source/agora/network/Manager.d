@@ -928,7 +928,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void getMissingBlockSigs (Ledger ledger,
+    public void getMissingBlockSigs (NodeLedger ledger,
         scope ulong delegate(BlockHeader) @safe potentialExtraSigs,
         scope string delegate(BlockHeader) @safe acceptHeader) @safe nothrow
     {
@@ -938,12 +938,21 @@ public class NetworkManager
         import std.typecons;
 
         size_t[Height] signed_validators;
+        auto missingR = ledger.getMissingSignatureHeights();
+        if (missingR.empty())
+        {
+            log.trace("No missing signature between {} (last payout) and {} (last externalized)",
+                      ledger.getLastPaidHeight(), ledger.height());
+            return;
+        }
 
         try
         {
-            auto start_height = ledger.getLastPaidHeight();
-            auto headers = ledger.getBlocksFrom(start_height)
+            auto headers = ledger.getBlocks(missingR)
                 .map!(block => block.header).array;
+            log.trace("Missing signatures (last={}, current={}): {}",
+                      ledger.getLastPaidHeight(), ledger.height(),
+                      headers.map!(h => h.height));
 
             size_t enrolledValidators (Height height)
             {

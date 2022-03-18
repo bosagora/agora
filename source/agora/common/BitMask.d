@@ -163,6 +163,12 @@ public struct BitMask
         return !!(this.bytes[bit_index / 8] & mask(bit_index));
     }
 
+    /// Reset this BitMask
+    public void clear () scope @safe pure nothrow @nogc
+    {
+        this.bytes[] = 0;
+    }
+
     /// Gets a bit mask which only includes a given index within a ubyte
     pragma(inline, true)
     private static ubyte mask (size_t index) @nogc
