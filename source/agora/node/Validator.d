@@ -427,12 +427,12 @@ public class Validator : FullNode, API
 
     /***************************************************************************
 
-        If block header is missing any signatures we have stored then add them
-        and then update in storage and call super function to push header to
-        configured listeners.
+        If block header is valid and after last paid height we add our signature
+        in case missing and any other signatures we have in memory. Then the
+        ledger is updated and the header is pushed to configured listeners.
 
         Params:
-            block = block to be added to the Ledger
+            header = header to be added to the Ledger
 
         Returns:
             the error message if block validation failed, otherwise null
@@ -441,11 +441,20 @@ public class Validator : FullNode, API
 
     protected override string acceptHeader (BlockHeader header) @safe
     {
-        if (auto err = super.acceptHeader(header))
+        // First we must validate the header
+        if (auto err = this.ledger.validateBlockSignature(header))
+        {
+            log.trace("{}: Received header is not valid: {}", __FUNCTION__, err);
             return err;
+        }
 
-        // Add any missing signatures we know
-        this.nominator.updateMultiSignature(header);
+        // Add our and any missing signatures we know
+        if (header.height > this.ledger.getLastPaidHeight())
+        {
+            this.nominator.selfSignBlock(header);
+            this.ledger.updateBlockMultiSig(header);
+            this.pushBlockHeader(header);
+        }
         return null;
     }
 

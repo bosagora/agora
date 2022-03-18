@@ -921,14 +921,14 @@ extern(D):
         This will only returns the new signature, the block won't be modified.
 
         Params:
-            block = the block to sign
+            header = the block header to sign
 
     ***************************************************************************/
 
-    protected Signature signBlock (in Block block) @safe nothrow
+    protected Signature signBlock (in BlockHeader header) @safe nothrow
     {
-        return block.header.sign(this.kp.secret,
-            this.enroll_man.getOurPreimage(block.header.height));
+        return header.sign(this.kp.secret,
+            this.enroll_man.getOurPreimage(header.height));
     }
 
     /// If we have majority signatures then externalize to the ledger otherwise check again after receiving signatures
@@ -1081,6 +1081,23 @@ extern(D):
                 count++;
         }
         return count;
+    }
+
+    /***************************************************************************
+
+        Sign the block and add it to the given block header
+
+        Params:
+            header = header to update
+
+    ***************************************************************************/
+
+    public void selfSignBlock (ref BlockHeader header) @safe
+    {
+        log.trace("{}: ADD BLOCK SIG at height {} for this node {}",
+            __FUNCTION__, header.height, this.kp.address);
+        this.slot_sigs[header.height][this.enroll_man.getEnrollmentKey()] = this.signBlock(header);
+        this.updateMultiSignature(header);
     }
 
     /***************************************************************************
@@ -1271,7 +1288,7 @@ extern(D):
             assert(0, exc.message);
         }
 
-        log.info("{}: Externalized consensus data set at {}: {}", __FUNCTION__, height, prettify(data));
+        log.info("{}: Externalizing consensus data set at {}: {}", __FUNCTION__, height, prettify(data));
         try
         {
             Transaction[] externalized_tx_set;
@@ -1285,11 +1302,9 @@ extern(D):
             this.pending_block = this.ledger.buildBlock(
                 externalized_tx_set, data.enrolls, data.missing_validators);
 
-            // Now we add our signature and gossip to other nodes
-            log.trace("{}: ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
-            const self = this.enroll_man.getEnrollmentKey();
-            this.slot_sigs[height][self] = this.signBlock(this.pending_block);
-            this.updateMultiSignature(this.pending_block.header);
+            // Now we add our signature
+            this.selfSignBlock(this.pending_block.header);
+
             // Now add any early signatures we received
             early_sigs[].each!(sig => this.receiveBlockSignature(sig));
             early_sigs.clear();
