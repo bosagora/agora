@@ -975,11 +975,13 @@ public class NetworkManager
                 auto missing_heights = heightsMissingSigs();
                 if (!missing_heights.empty)
                 {
-                    log.trace("getMissingBlockSigs: detected missing signatures at heights {}", missing_heights);
+                    log.trace("{}: detected missing signatures at heights {}", __FUNCTION__, missing_heights);
                     foreach (peer; this.peers)
                     {
+                        log.dbg("{}: peer: [ {}, {} ]", __FUNCTION__, peer.identity.key, peer.addresses);
                         foreach (header; peer.getBlockHeaders(missing_heights))
                         {
+                            log.dbg("{}: check header: height {} validators {}", __FUNCTION__, header.height, header.validators);
                             auto potential_sig_count = iota(enrolledValidators(header.height)).filter!(i =>
                                 header.validators[i] || header.preimages[i] is Hash.init).count()
                                 + potentialExtraSigs(header);
@@ -988,17 +990,18 @@ public class NetworkManager
                                 try
                                 {
                                     if (auto res = acceptHeader(header))
-                                        log.dbg("getMissingBlockSigs: couldn't update header ({})", header.height);
+                                        log.dbg("{}: couldn't update header ({})", __FUNCTION__, header.height);
                                     else
                                     {
-                                        log.trace("getMissingBlockSigs: updated header ({}) signature: {} validators: {}",
-                                            header.height, header.signature, header.validators);
+                                        log.trace("{}: updated header ({}) signature: {} validators: {}",
+                                            __FUNCTION__, header.height, header.signature, header.validators);
                                         missing_heights.remove(header.height);
                                     }
                                 }
                                 catch (Exception e)
                                 {
-                                    log.error("getMissingBlockSigs: Exception thrown updating block signature at height {}: {}", header.height, e.msg);
+                                    log.error("{}: Exception thrown updating block signature at height {}: {}",
+                                        __FUNCTION__, header.height, e.msg);
                                 }
                             }
                         }

@@ -1025,11 +1025,10 @@ extern(D):
 
         if (header.height !in this.slot_sigs)
         {
-            log.trace("No signatures in memory at height {}", header.height);
+            log.trace("{}: No signatures in memory at height {}", __FUNCTION__, header.height);
             return;
         }
-        log.dbg("{}: Before updating block signature for block {}, mask: {}",
-            __FUNCTION__, header.height, header.validators);
+        const signed = header.validators; // store before updating
         const Signature[Hash] block_sigs = this.slot_sigs[header.height];
 
         auto validator_mask = BitMask(validators.length);
@@ -1043,14 +1042,15 @@ extern(D):
                 validator_mask[idx] = true;
                 const sig = block_sigs[val.utxo()];
                 sigs_to_add ~= sig;
-                log.trace("updateMultiSignature: Adding missing signature for {} at height {}",
-                    val.address, header.height);
+                log.trace("{}: Adding missing signature for {} at height {}",
+                    __FUNCTION__, val.address, header.height);
                 this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
             }
         }
         header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
-        log.trace("{}: Updated block signature for block {}, mask: {}",
-            __FUNCTION__, header.height, header.validators);
+        if (header.validators != signed)
+            log.trace("{}: Updated: block {}: signed {} => {}",
+                __FUNCTION__, header.height, signed, header.validators);
         this.checkExternalize();
         return;
     }
@@ -1254,11 +1254,11 @@ extern(D):
         auto time_to_ext = (this.clock.networkTime() - this.ledger.getExpectedBlockTime(height)).total!"seconds";
         this.slot_stat.setMetricTo!"time_to_ext"(time_to_ext, assumeWontThrow(Height(slot_idx).toString()));
         const Height last_height = this.ledger.height();
-        log.trace("valueExternalized: attempt to add slot id {} to ledger at height {}", height, last_height);
+        log.trace("{}: attempt to add slot id {} to ledger at height {}", __FUNCTION__, height, last_height);
         if (height != last_height + 1)
         {
-            log.trace("valueExternalized: Will not externalize envelope with slot id {} as ledger is at height {}",
-                height, last_height);
+            log.trace("{}: Will not externalize envelope with slot id {} as ledger is at height {}",
+                __FUNCTION__, height, last_height);
             return;  // slot was already externalized or envelope is too new
         }
         ConsensusData data = void;
@@ -1266,18 +1266,18 @@ extern(D):
             data = deserializeFull!ConsensusData(value[]);
         catch (Exception exc)
         {
-            log.fatal("Deserialization of C++ Value failed: {}", exc);
+            log.fatal("{}: Deserialization of C++ Value failed: {}", __FUNCTION__, exc);
             assert(0, exc.message);
         }
 
-        log.info("Externalized consensus data set at {}: {}", height, prettify(data));
+        log.info("{}: Externalized consensus data set at {}: {}", __FUNCTION__, height, prettify(data));
         try
         {
             Transaction[] externalized_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set))
             {
-                log.info("Missing TXs while externalizing at Height {}: {}",
-                    height, prettify(data));
+                log.info("{}: Missing TXs while externalizing at Height {}: {}",
+                    __FUNCTION__, height, prettify(data));
                 return;
             }
 
@@ -1285,7 +1285,7 @@ extern(D):
                 externalized_tx_set, data.enrolls, data.missing_validators);
 
             // Now we add our signature and gossip to other nodes
-            log.trace("ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
+            log.trace("{}: ADD BLOCK SIG at height {} for this node {}", height, this.kp.address);
             const self = this.enroll_man.getEnrollmentKey();
             this.slot_sigs[height][self] = this.signBlock(this.pending_block);
             this.updateMultiSignature(this.pending_block.header);
@@ -1295,11 +1295,11 @@ extern(D):
         }
         catch (Exception exc)
         {
-            log.fatal("Externalization of SCP data failed: {}", exc);
+            log.fatal("{}: Externalization of SCP data failed: {}", __FUNCTION__, exc);
             assert(0, exc.message);
         }
         this.initial_missing_validators = [];
-        log.trace("valueExternalized: added slot id {} to ledger at height {}", height, last_height);
+        log.trace("{}: added slot id {} to ledger at height {}", __FUNCTION__, height, last_height);
         () @trusted { this.fully_validated_value.clear(); }();
         () @trusted { this.seen_envs.clear(); }();
     }
