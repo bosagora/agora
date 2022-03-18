@@ -1299,7 +1299,6 @@ extern(D):
             assert(0, exc.message);
         }
         this.initial_missing_validators = [];
-        log.trace("{}: added slot id {} to ledger at height {}", __FUNCTION__, height, last_height);
         () @trusted { this.fully_validated_value.clear(); }();
         () @trusted { this.seen_envs.clear(); }();
     }
