@@ -251,16 +251,18 @@ unittest
 
 private extern(C++) class EvenBlockHeightSignerNominator : Nominator
 {
-     extern(D) {
+    extern(D) {
         mixin ForwardCtor!();
     }
 
-    public override void valueExternalized (uint64_t slot_idx,
-        ref const(Value) value) nothrow
+    extern(D) public override void selfSignBlock (ref BlockHeader header) @safe
     {
         // only sign even block heights
-        if (slot_idx % 2 == 0)
-            return super.valueExternalized(slot_idx, value);
+        if (header.height % 2 == 0)
+            return super.selfSignBlock(header);
+        else
+            log.warn("{}: Only signing even blocks so skip signing at height {}",
+                __FUNCTION__, header.height);
     }
 }
 

@@ -45,7 +45,7 @@ private extern(C++) class BadBlockSigningNominator : Nominator
         this.reason = reason;
     }
 
-    extern(D) override protected Signature signBlock (in Block block)
+    extern(D) override protected Signature signBlock (in BlockHeader header)
         @trusted nothrow
     {
         final switch (reason)
@@ -53,11 +53,11 @@ private extern(C++) class BadBlockSigningNominator : Nominator
             case ByzantineReason.BadPreimage:
                 // use preimage from wrong height
                 return sign(this.kp.secret,
-                    this.enroll_man.getOurPreimage(Height(block.header.height + 1)));
+                    this.enroll_man.getOurPreimage(Height(header.height + 1)));
             case ByzantineReason.BadSecretKey:
                 // Sign with random in place of validator secret key
                 return sign(Scalar.random(),
-                    this.enroll_man.getOurPreimage(block.header.height));
+                    this.enroll_man.getOurPreimage(header.height));
         }
     }
 
