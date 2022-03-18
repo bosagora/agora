@@ -942,7 +942,8 @@ public class NetworkManager
         try
         {
             auto start_height = ledger.getLastPaidHeight();
-            auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
+            auto headers = ledger.getBlocksFrom(start_height)
+                .map!(block => block.header).array;
 
             size_t enrolledValidators (Height height)
             {
