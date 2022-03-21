@@ -823,8 +823,10 @@ public class TestAPIManager
     {
         static assert (isInputRange!Pairs);
 
+        // set time to half way through block as normally time would move forward
         const exp_time = this.test_start_time +
-            this.test_conf.consensus.block_interval * height;
+            this.test_conf.consensus.block_interval * height +
+            this.test_conf.consensus.block_interval / 2;
         // We also need to set the registry time, because otherwise their Ledger
         // will reject new blocks as they exceed tolerance.
         // Note that this relies on the time moving forward only.
