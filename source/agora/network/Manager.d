@@ -367,6 +367,7 @@ public class NetworkManager
                 log.info("Found new Validator: {} (UTXO: {}, key: {})",
                          client.addresses(), utxo, key);
                 client.setIdentity(utxo, key);
+                this.whitelist(utxo);
             }
             else
                 log.info("Found new FullNode: {}", client.addresses());
