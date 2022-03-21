@@ -272,6 +272,7 @@ extern(D):
             this.queued_envelopes.removeFront();
             this.handleSCPEnvelope(env);
         }
+        this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
     }
 
     /***************************************************************************
@@ -958,6 +959,21 @@ extern(D):
                     return;
                 }
             }
+            this.resetPendingBlock(block.header.height);
+        }
+        catch (Exception exc)
+        {
+            log.warn("{}: Exception thrown: {}", __FUNCTION__, exc);
+        }
+    }
+
+    /// Reset the pending block and arm the timers at defaults again
+    public void resetPendingBlock (in Height height) @safe nothrow
+    {
+        if (this.pending_block.header.height > 0 && this.pending_block.header.height <= height)
+        {
+            log.info("{}: Reset pending block #{} as height {} is already externalized",
+                __FUNCTION__, this.pending_block.header.height, height);
             this.pending_block = Block.init;
             // Reset the nomination timer
             this.round_timeout = this.nomination_interval;
@@ -965,10 +981,9 @@ extern(D):
             // Enable envelope processing again
             this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
         }
-        catch (Exception exc)
-        {
-            log.warn("{}: Exception thrown: {}", __FUNCTION__, exc);
-        }
+        else
+            log.trace("{}: Pending block #{} is higher than block #{} added to ledger so do not reset",
+                __FUNCTION__, this.pending_block.header.height, height);
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
