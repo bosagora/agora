@@ -41,28 +41,31 @@ private extern(C++) class DoesNotExternalizeBlockNominator : Nominator
         mixin ForwardCtor!();
     }
 
-    public override void valueExternalized (uint64_t slot_idx, ref const(Value) value) nothrow
+    extern(D) public override void checkExternalize () @safe nothrow
     {
         try
         {
-            if (slot_idx == 2)
+            if (this.ledger.height == 0)
             {
-                log.trace("Do not externalize block 2 to test periodic catchup of blocks");
+                log.trace("{}: Do not externalize block 1 to test periodic catchup of blocks", __FUNCTION__);
                 return;
             }
-            super.valueExternalized(slot_idx, value);
+            super.checkExternalize();
         }
         catch (Exception e)
         {
-            assert(0, format!"PeriodicCatchup exception thrown during test: %s"(e));
+            assert(0, __FUNCTION__ ~ ": exception thrown during test: " ~ e.msg);
         }
     }
 
     extern(D) public override const(BlockHeader) receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
-        if (block_sig.height == 1)
-            log.trace("Ignore signatures for block 1 to test signature catchup");
-        return BlockHeader.init;
+        if (block_sig.height == 2)
+        {
+            log.trace("{}: Ignore signatures for block 2 to test signature catchup", __FUNCTION__);
+            return BlockHeader.init;
+        }
+        return super.receiveBlockSignature(block_sig);
     }
 }
 
@@ -90,7 +93,7 @@ private class NodeManager (): TestAPIManager
     public override void createNewNode (Config conf,
         string file = __FILE__, int line = __LINE__)
     {
-        if (this.nodes.length < 1)  // Use first node as test node
+        if (this.nodes.length == 0)  // Use first node as test node
         {
             assert(conf.validator.enabled);
             log.trace("Create node #{} ({}) as catchup test node",
@@ -99,7 +102,7 @@ private class NodeManager (): TestAPIManager
         }
         else
         {
-            log.trace("Create node {} as normal validator", this.nodes.length);
+            log.trace("Create node {} as normal node", this.nodes.length);
             super.createNewNode(conf, file, line);
         }
     }
@@ -121,6 +124,8 @@ unittest
     network.generateBlocks(target_height);
     // Check all validators and fullnodes have all the same blocks to height 3
     network.assertSameBlocks(iota(conf.node.test_validators + conf.full_nodes), target_height);
-    // Check the signature counts are complete for block at height 1
-    network.assertSameSignatures(iota(conf.node.test_validators + conf.full_nodes), Height(1));
+    // Check the signature counts are complete for all blocks up to height 3 for first node
+    network.clients.front.getBlocksFrom(Height(1), 5).each!(b => assert(b.header.validators.percentage == 100));
+    // Check all nodes have same signatures
+    network.assertSameSignatures(iota(conf.node.test_validators + conf.full_nodes), target_height);
 }

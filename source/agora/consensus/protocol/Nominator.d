@@ -932,7 +932,7 @@ extern(D):
     }
 
     /// If we have majority signatures then externalize to the ledger otherwise check again after receiving signatures
-    private void checkExternalize () @safe nothrow
+    protected void checkExternalize () @safe nothrow
     {
         const block = this.pending_block;
         if (block.header.height == 0)
