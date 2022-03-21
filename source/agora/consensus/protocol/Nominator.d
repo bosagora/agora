@@ -516,15 +516,15 @@ extern(D):
         if (cur_time < next_nomination)
         {
             this.log.trace(
-                "checkNominate(): Too early to nominate (current: {}, next: {})",
-                cur_time, next_nomination);
+                "{}: Too early to nominate (current: {}, next: {})",
+                    __FUNCTION__, cur_time, next_nomination);
             return;
         }
 
         if (this.heighest_ballot_height >= slot_idx)
         {
-            this.log.trace("checkNominate(): Balloting already started for height {}" ~
-                " skipping new nomination", slot_idx);
+            this.log.trace("{}: Balloting already started for height {}" ~
+                " skipping new nomination", __FUNCTION__, slot_idx);
             () @trusted
             {
                 foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
@@ -541,7 +541,7 @@ extern(D):
         if (!this.is_nominating)
             this.initial_missing_validators = data.missing_validators;
 
-        log.info("Nominating {} at {}", data.prettify, cur_time);
+        log.info("{}: Nominating {} at {}", data.prettify, cur_time, __FUNCTION__);
         this.is_nominating = true;
 
         this.nominate(slot_idx, data);
