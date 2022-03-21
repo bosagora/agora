@@ -66,6 +66,24 @@ node:
   # Address of the name registry
   registry_address: http://127.0.0.1:3003
 
+  # Registering a node to public interface includes three configuration options,
+  # all interfaces are considered as public by default if not configured otherwise;
+  # 1- Default config
+  #    All public interfaces are registered with their `address` values, if the
+  #    address is 0.0.0.0 then public IP address of the host is used
+  # 2- Providing a hostname through `register`
+  #    All public interfaces are registered with `register` hostname
+  # 3- Providing `public_addresses` config
+  #    Interface configuration is ignored and all addresses provided here are
+  #    registered
+
+  # (Optional) Hostname for the node to be registered
+  register: host.test
+  # (Optional) Addresses for interface to be registered, useful when Agora is
+  # configured behind a reverse proxy
+  public_addresses:
+    - https://proxy.host.test/agora
+
 # Each entry in this array is an interface Agora will listen to, allowing to
 # expose the same node on more than one network interface or with different
 # API, such as having one interface using HTTP+JSON and the other TCP+binary.
@@ -75,6 +93,9 @@ interfaces:
     address: 0.0.0.0 # Any node can bind - default value
     # Port on which we bind
     port:    2826    # 0xB0A, default value
+    # A validator node is required to register at least one of its interfaces
+    # to public registry, interfaces can be left out from public registry
+    public: false
   - type: http
     address: 0.0.0.0
     port: 9110
@@ -84,6 +105,9 @@ interfaces:
     port: 9220
     # Enables proxy protocol v1 for the interface, only applicable for TCP
     proxy_proto: true
+  - type: https
+    address: 0.0.0.0
+    port: 2834
 
 # Proxy to be used for outgoing Agora connections
 proxy:
@@ -106,11 +130,6 @@ validator:
   # DO NOT USE THOSE VALUES ANYWHERE
   # Public address:  boa1xpvald2ydpxzl9aat978kv78y5g24jxy46mcnl7munf4jyhd0zjrc5x62kn
   seed: SAUHVPR7O7F2QGLDVXG3DQTVHXESE3ZAWHIIGKT35LCHIPLZBZTAFXJA
-  # Network addresses that will be registered with the public key (Validator only)
-  # If left empty, all public network addresses of the node will be registered
-  addresses_to_register:
-    - http://88.88.88.88:8080/api
-    - agora://best.validator.io
   # Whether or not the Validator will enroll automatically at the startup or
   # at the end of Validator cycle
   recurring_enrollment: true

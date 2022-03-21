@@ -2315,7 +2315,6 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
         const ValidatorConfig validator = {
             enabled : true,
             key_pair : key_pair,
-            addresses_to_register : [ self_address ],
             recurring_enrollment : test_conf.recurring_enrollment,
             name_registration_interval : 10.seconds,
             preimage_reveal_interval : test_conf.preimage_reveal_interval,

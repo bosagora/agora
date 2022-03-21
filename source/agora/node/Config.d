@@ -30,7 +30,7 @@ import vibe.inet.url;
 import configy.Read;
 
 import std.algorithm.iteration : splitter;
-import std.algorithm.searching : all, any;
+import std.algorithm.searching : all, any, count;
 import std.exception;
 import std.getopt;
 import std.traits : hasUnsharedAliasing;
@@ -127,12 +127,17 @@ public struct Config
     public void validate () @safe const scope
     {
         if (this.validator.enabled)
+        {
             enforce(this.network.length || this.registry.public_interface ||
                     this.node.registry_address.set ||
                     // Allow single-network validator (assume this is NODE6)
                     this.node.test_validators == 1,
                     "Either the network section must not be empty, or 'node.registry_address' must be set " ~
                     ", or registry public interface must be enabled");
+
+            enforce(this.interfaces.count!(i => i.public_register) > 0,
+                "Validator node must register at least one interface to public");
+        }
         else
             enforce(this.network.length || this.registry.public_interface,
                     "Either the network section must not be empty, or registry public interface must be enabled");
@@ -170,6 +175,20 @@ public struct InterfaceConfig
     /// Ditto
     public Type type;
 
+    /// String representation of the `Type`
+    public static string typeToString (Type t) @safe nothrow
+    {
+        final switch (t)
+        {
+            case Type.http:
+                return "http";
+            case Type.https:
+                return "https";
+            case Type.tcp:
+                return "agora";
+        }
+    }
+
      /// Bind address
     public string address;
 
@@ -181,6 +200,9 @@ public struct InterfaceConfig
 
     /// Enable StatsServer through this interface
     public bool stats;
+
+    /// Register this interface to public registry
+    public @Name("public") bool public_register = true;
 
     /// Default values when none is given in the config file
     private static immutable InterfaceConfig[Type.max] Default = [
@@ -286,6 +308,13 @@ public struct NodeConfig
     // Registry address
     public SetInfo!Address registry_address;
 
+
+    /// Register CNAME record for this interface
+    public SetInfo!string register;
+
+    /// Register addresses for this interface, i.e. reverse proxy configurations
+    public @Optional immutable Address[] public_addresses;
+
     /// Validate this struct
     public void validate () const scope @safe
     {
@@ -298,6 +327,16 @@ public struct NodeConfig
             ensure(schema.startsWith("http"),
                    "Registry address schema must be http(s), not {}", schema);
         }
+
+        enforce({
+            if (this.register.set)
+                return !this.public_addresses.length;
+
+            if (this.public_addresses.length)
+                return !this.register.set;
+
+            return true;
+        }, "Either 'register' or 'public_addresses' can be configured for an interface");
     }
 }
 
@@ -335,9 +374,6 @@ public struct ValidatorConfig
     ***************************************************************************/
 
     public size_t max_preimage_reveal = 6;
-
-    // Network addresses that will be registered with the public key
-    public @Optional immutable Address[] addresses_to_register;
 
     // If the enrollments will be renewed or not at the end of the cycle
     public bool recurring_enrollment = true;

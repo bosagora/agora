@@ -115,14 +115,14 @@ to the following:
 validator:
   enabled: true
   seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3
-  addresses_to_register:
-    - "agora://my-address.example.com:2826"
 ```
 
 Make sure you use the **seed** for the configuration and the **public key** for Faucet.
 
-The address to put in `addresses_to_register` should match the **public address** of your validator.
-This can be an IP address or an hostname. The above example uses port `2826` explicitly,
+Interfaces will be registered to public registry by default. If your validator's
+interface is not directly accessible to public, i.e. behind a reverse proxy,
+`public_addresses` or `register` fields of an interface can be configured.
+This can be an URL address or a hostname. The above example uses port `2826` explicitly,
 but you may elect to change it by using an interface entry, for example:
 ```yaml
 interfaces:
@@ -171,13 +171,11 @@ The following screenshot shows the output of the preceding command:
 You should copy the TCP address provided marked on a red line in the previous screenshot,
 which will be used in your configuration file.
 
-**Fourth**, you should replace the value of the `addresses_to_register` to the copied address
+**Fourth**, you should replace the value of the `public_addresses` to the copied address
 in your configuration file that you have already written.
 ```
-validator:
-  enabled: true
-  seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3
-  addresses_to_register:
+node:
+  public_addresses:
     - "agora://2.tcp.ngrok.io:14476"
 ```
 And then, you can run your validator as described in the previous sections.
