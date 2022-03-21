@@ -625,10 +625,10 @@ public class FullNode : API
         // First we must validate the header
         if (auto err = this.ledger.validateBlockSignature(header))
         {
-            log.trace("acceptHeader: Received header is not valid: {}", err);
+            log.trace("{}: Received header is not valid: {}", __FUNCTION__, err);
             return err;
         }
-        // Add any missing signatures we know
+        // Update stored header in ledger
         this.ledger.updateBlockMultiSig(header);
         this.pushBlockHeader(header);
 
@@ -679,20 +679,20 @@ public class FullNode : API
 
     protected string acceptBlock (in Block block) @trusted
     {
-        log.dbg("Fullnode.acceptBlock: height = {}", block.header.height);
+        log.dbg("{}: height = {}", __FUNCTION__, block.header.height);
         auto old_validators = this.ledger.getValidators(block.header.height);
-        log.dbg("Fullnode.acceptBlock: old_validators = {}", old_validators);
+        log.dbg("{}: old_validators = {}", __FUNCTION__, old_validators);
         // Attempt to add block to the ledger (it may be there by other means)
         if (auto fail_msg = this.ledger.acceptBlock(block))
         {
-            log.dbg("Fullnode.acceptBlock: failed to add block to ledger: {}", fail_msg);
+            log.dbg("{}: failed to add block to ledger: {}", __FUNCTION__, fail_msg);
             return fail_msg;
         }
 
         this.recordBlockStats(block);
 
         auto validators = this.ledger.getValidators(block.header.height + 1);
-        log.dbg("Fullnode.acceptBlock: validators = {}", validators);
+        log.dbg("{}: validators = {}", __FUNCTION__, validators);
         auto expired = setDifference(
             old_validators.map!(vi => vi.utxo),
             validators.map!(vi => vi.utxo));
