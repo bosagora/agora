@@ -512,7 +512,7 @@ extern(D):
         }
         const slot_idx = this.ledger.height() + 1;
         const cur_time = this.clock.networkTime();
-        const next_nomination = this.ledger.getExpectedBlockTime(this.ledger.height() + 1);
+        const next_nomination = this.ledger.getExpectedBlockTime(slot_idx);
         if (cur_time < next_nomination)
         {
             this.log.trace(
