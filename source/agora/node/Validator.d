@@ -403,7 +403,7 @@ public class Validator : FullNode, API
 
     protected override string acceptBlock (in Block block) @trusted
     {
-        log.dbg("Validator.acceptBlock: height = {}", block.header.height);
+        log.dbg("{}: height = {}", __FUNCTION__, block.header.height);
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
