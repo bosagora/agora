@@ -407,6 +407,9 @@ public class Validator : FullNode, API
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
+        // If node has block ready to externalize waiting for signatures we can reset it
+        this.nominator.resetPendingBlock(block.header.height);
+
         if (auto fail_msg = acceptHeader(block.header.clone()))
             return fail_msg;
 
