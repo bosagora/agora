@@ -88,9 +88,6 @@ public class NodeLedger : Ledger
     /// Enrollment manager
     protected EnrollmentManager enroll_man;
 
-    /// Hashes of Values we fully validated for a slot
-    private Set!Hash fully_validated_value;
-
     /***************************************************************************
 
         Constructor
@@ -143,7 +140,6 @@ public class NodeLedger : Ledger
             this.onAcceptedBlock(block, validators_changed);
         }
 
-        () @trusted { this.fully_validated_value.clear(); }();
         return null;
     }
 
@@ -312,6 +308,315 @@ public class NodeLedger : Ledger
 
     /***************************************************************************
 
+        Checks whether the `tx` is an acceptable double spend transaction.
+
+        If `tx` is not a double spend transaction, then returns true.
+        If `tx` is a double spend transaction, and its fee is considerable higher
+        than the existing double spend transactions, then returns true.
+        Otherwise this function returns false.
+
+        Params:
+            tx = transaction
+            threshold_pct = percentage by which the fee of the new transaction has
+              to be higher, than the previously highest double spend transaction
+
+        Returns:
+            whether the `tx` is an acceptable double spend transaction
+
+    ***************************************************************************/
+
+    public bool isAcceptableDoubleSpent (in Transaction tx, ubyte threshold_pct) @safe
+    {
+        Amount rate;
+        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate).length)
+            return false;
+
+        // only consider a double spend transaction, if its fee is
+        // considerably higher than the current highest fee
+        auto fee_threshold = getDoubleSpentHighestFee(tx);
+
+        // if the fee_threshold is null, it means there won't be any double
+        // spend transactions, after this transaction is added to the pool
+        if (!fee_threshold.isNull())
+            fee_threshold.get().percentage(threshold_pct + 100);
+
+        if (!fee_threshold.isNull() &&
+            (!rate.isValid() || rate < fee_threshold.get()))
+            return false;
+
+        return true;
+    }
+
+    /***************************************************************************
+
+        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
+
+    ***************************************************************************/
+
+    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
+    {
+        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
+    }
+
+    /***************************************************************************
+
+        Looks up transaction with hash `tx_hash`, then forwards to
+        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
+
+    ***************************************************************************/
+
+    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
+    {
+        auto tx = this.pool.getTransactionByHash(tx_hash);
+        if (tx == Transaction.init)
+            return InvalidConsensusDataReason.NotInPool;
+        return this.getTxFeeRate(tx, rate);
+    }
+
+    /***************************************************************************
+
+        Returns the highest fee among all the transactions which would be
+        considered as a double spent, if `tx` transaction was in the transaction
+        pool.
+
+        If adding `tx` to the transaction pool would not result in double spent
+        transaction, then the return value is Nullable!Amount().
+
+        Params:
+            tx = transaction
+
+        Returns:
+            the highest fee among all the transactions which would be
+            considered as a double spend, if `tx` transaction was in the
+            transaction pool.
+
+    ***************************************************************************/
+
+    public Nullable!Amount getDoubleSpentHighestFee (in Transaction tx) @safe
+    {
+        Set!Hash tx_hashes;
+        pool.gatherDoubleSpentTXs(tx, tx_hashes);
+
+        const(Transaction)[] txs;
+        foreach (const tx_hash; tx_hashes)
+        {
+            const tx_ret = this.pool.getTransactionByHash(tx_hash);
+            if (tx_ret != Transaction.init)
+                txs ~= tx_ret;
+        }
+
+        if (!txs.length)
+            return Nullable!Amount();
+
+        return nullable(txs.map!((tx)
+            {
+                Amount rate;
+                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
+                return rate;
+            }).maxElement());
+    }
+
+    /***************************************************************************
+
+        Returns: A list of Enrollments that can be used for the next block
+
+    ***************************************************************************/
+
+    public Enrollment[] getCandidateEnrollments (in Height height,
+        scope UTXOFinder utxo_finder) @safe
+    {
+        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO,
+            &this.getPenaltyDeposit, utxo_finder);
+    }
+
+    /***************************************************************************
+
+        Check if information for pre-images and slashed validators is valid
+
+        Params:
+            height = the height of proposed block
+            missing_validators = list of indices to the validator UTXO set
+                which have not revealed the preimage
+            missing_validators_higher_bound = missing validators at the beginning of
+               the nomination round
+            utxo_finder = UTXO finder with double spent protection
+
+        Returns:
+            `null` if the information is valid at the proposed height,
+            otherwise a string explaining the reason it is invalid.
+
+    ***************************************************************************/
+
+    private string isInvalidPreimageRootReason (in Height height,
+        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe
+    {
+        import std.algorithm.setops : setDifference;
+
+        auto validators = this.getValidators(height);
+        assert(validators.length <= uint.max);
+
+        uint[] missing_validators_lower_bound = validators.enumerate
+            .filter!(kv => kv.value.preimage.height < height)
+            .map!(kv => cast(uint) kv.index).array();
+
+        // NodeA will check the candidate from NodeB in the following way:
+        //
+        // Current missing validators in NodeA(=sorted_missing_validators_lower_bound) ⊆
+        // missing validators in the candidate from NodeB(=sorted_missing_validators) ⊆
+        // missing validators in NodeA before the nomination round started
+        // (=sorted_missing_validators_higher_bound)
+        //
+        // If both of those conditions true, then NodeA will accept the candidate.
+
+        auto sorted_missing_validators = missing_validators.dup().sort();
+        auto sorted_missing_validators_lower_bound = missing_validators_lower_bound.dup().sort();
+        auto sorted_missing_validators_higher_bound = missing_validators_higher_bound.dup().sort();
+
+        if (!setDifference(sorted_missing_validators_lower_bound, sorted_missing_validators).empty())
+            return format!("Lower bound violation - Missing validator mismatch %s is not a subset of %s")
+                (sorted_missing_validators_lower_bound, sorted_missing_validators);
+
+        if (!setDifference(sorted_missing_validators, sorted_missing_validators_higher_bound).empty())
+            return format!("Higher bound violation - Missing validator mismatch %s is not a subset of %s")
+                (sorted_missing_validators, sorted_missing_validators_higher_bound);
+
+        if (missing_validators.any!(idx => idx >= validators.length))
+            return "Slashing non existing index";
+        UTXO utxo;
+
+        return null;
+    }
+}
+
+/*******************************************************************************
+
+    A ledger that participate in the consensus protocol
+
+    This ledger is held by validators, as they need to do additional bookkeeping
+    when e.g. proposing transactions.
+
+*******************************************************************************/
+
+public class ValidatingLedger : NodeLedger
+{
+    /// Hashes of Values we fully validated for a slot
+    private Set!Hash fully_validated_value;
+
+    /// See parent class
+    public this (immutable(ConsensusParams) params,
+        ManagedDatabase database, IBlockStorage storage,
+        EnrollmentManager enroll_man, TransactionPool pool,
+        void delegate (in Block, bool) @safe onAcceptedBlock)
+    {
+        super(params, database, storage, enroll_man, pool, onAcceptedBlock);
+    }
+
+    /***************************************************************************
+
+        Collect up to a maximum number of transactions to nominate
+
+        Params:
+            txs = will contain the transaction set to nominate,
+                  or empty if not enough txs were found
+            max_txs = the maximum number of transactions to prepare.
+
+    ***************************************************************************/
+
+    public void prepareNominatingSet (out ConsensusData data)
+        @safe
+    {
+        const next_height = this.height() + 1;
+
+        auto utxo_finder = this.utxo_set.getUTXOFinder();
+        data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
+        data.missing_validators = this.getCandidateMissingValidators(next_height, utxo_finder);
+        data.tx_set = this.getCandidateTransactions(next_height, utxo_finder);
+        if (this.isCoinbaseBlock(next_height))
+            {
+                auto coinbase_tx = this.getCoinbaseTX(next_height);
+                auto coinbase_hash = coinbase_tx.hashFull();
+                log.info("prepareNominatingSet: Coinbase hash={}, tx={}", coinbase_hash, coinbase_tx.prettify);
+                data.tx_set ~= coinbase_hash;
+            }
+    }
+
+    /// Validate slashing data, including checking if the node is slef slashing
+    public string validateSlashingData (in Height height, in ConsensusData data,
+        in uint[] initial_missing_validators) @safe
+    {
+        if (auto res = this.isInvalidPreimageRootReason(height, data.missing_validators,
+            initial_missing_validators))
+            return res;
+
+        const self = this.enroll_man.getEnrollmentKey();
+        foreach (index, const ref validator; this.getValidators(height))
+        {
+            if (self != validator.utxo())
+                continue;
+
+            return data.missing_validators.find(index).empty ? null
+                : "Node is attempting to slash itself";
+        }
+        return null;
+    }
+
+    /***************************************************************************
+
+        Returns:
+            A list of Validators that have not yet revealed their PreImage for
+            height `height` (based on the current Ledger's knowledge).
+
+    ***************************************************************************/
+
+    public uint[] getCandidateMissingValidators (in Height height,
+        scope UTXOFinder findUTXO) @safe
+    {
+        UTXO utxo;
+        return this.getValidators(height).enumerate()
+            .filter!(en => en.value.preimage.height < height)
+            .filter!(en => findUTXO(en.value.preimage.utxo, utxo))
+            .map!(en => cast(uint) en.index)
+            .array();
+    }
+
+    /***************************************************************************
+
+        Returns:
+            A list of Transaction hash that can be included in the next block
+
+    ***************************************************************************/
+
+    public Hash[] getCandidateTransactions (in Height height,
+        scope UTXOFinder utxo_finder) @safe
+    {
+        Hash[] result;
+        size_t size_budget = this.params.MaxTxSetSize * 1024; // cant overflow
+        foreach (ref Hash hash, ref Transaction tx; this.pool)
+        {
+            auto size = tx.sizeInBytes();
+            if (size_budget >= size)
+            {
+                result ~= hash;
+                size_budget -= size;
+            }
+            else
+                break;
+        }
+        result.sort();
+        return result;
+    }
+
+    /// See `Ledger.acceptBlock`
+    public override string acceptBlock (in Block block) @safe
+    {
+        if (auto err = super.acceptBlock(block))
+            return err;
+        () @trusted { this.fully_validated_value.clear(); }();
+        return null;
+    }
+
+    /***************************************************************************
+
         Get the valid TX set that `data` is representing
 
         Params:
@@ -459,325 +764,6 @@ public class NodeLedger : Ledger
 
         this.fully_validated_value.put(idx_value_hash);
         return null;
-    }
-
-    /***************************************************************************
-
-        Checks whether the `tx` is an acceptable double spend transaction.
-
-        If `tx` is not a double spend transaction, then returns true.
-        If `tx` is a double spend transaction, and its fee is considerable higher
-        than the existing double spend transactions, then returns true.
-        Otherwise this function returns false.
-
-        Params:
-            tx = transaction
-            threshold_pct = percentage by which the fee of the new transaction has
-              to be higher, than the previously highest double spend transaction
-
-        Returns:
-            whether the `tx` is an acceptable double spend transaction
-
-    ***************************************************************************/
-
-    public bool isAcceptableDoubleSpent (in Transaction tx, ubyte threshold_pct) @safe
-    {
-        Amount rate;
-        if (this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate).length)
-            return false;
-
-        // only consider a double spend transaction, if its fee is
-        // considerably higher than the current highest fee
-        auto fee_threshold = getDoubleSpentHighestFee(tx);
-
-        // if the fee_threshold is null, it means there won't be any double
-        // spend transactions, after this transaction is added to the pool
-        if (!fee_threshold.isNull())
-            fee_threshold.get().percentage(threshold_pct + 100);
-
-        if (!fee_threshold.isNull() &&
-            (!rate.isValid() || rate < fee_threshold.get()))
-            return false;
-
-        return true;
-    }
-
-    /***************************************************************************
-
-        Forwards to `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
-
-    ***************************************************************************/
-
-    public string getTxFeeRate (in Transaction tx, out Amount rate) @safe nothrow
-    {
-        return this.fee_man.getTxFeeRate(tx, &this.utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
-    }
-
-    /***************************************************************************
-
-        Looks up transaction with hash `tx_hash`, then forwards to
-        `FeeManager.getTxFeeRate`, using this Ledger's UTXO.
-
-    ***************************************************************************/
-
-    public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
-    {
-        auto tx = this.pool.getTransactionByHash(tx_hash);
-        if (tx == Transaction.init)
-            return InvalidConsensusDataReason.NotInPool;
-        return this.getTxFeeRate(tx, rate);
-    }
-
-    /***************************************************************************
-
-        Returns the highest fee among all the transactions which would be
-        considered as a double spent, if `tx` transaction was in the transaction
-        pool.
-
-        If adding `tx` to the transaction pool would not result in double spent
-        transaction, then the return value is Nullable!Amount().
-
-        Params:
-            tx = transaction
-
-        Returns:
-            the highest fee among all the transactions which would be
-            considered as a double spend, if `tx` transaction was in the
-            transaction pool.
-
-    ***************************************************************************/
-
-    public Nullable!Amount getDoubleSpentHighestFee (in Transaction tx) @safe
-    {
-        Set!Hash tx_hashes;
-        pool.gatherDoubleSpentTXs(tx, tx_hashes);
-
-        const(Transaction)[] txs;
-        foreach (const tx_hash; tx_hashes)
-        {
-            const tx_ret = this.pool.getTransactionByHash(tx_hash);
-            if (tx_ret != Transaction.init)
-                txs ~= tx_ret;
-        }
-
-        if (!txs.length)
-            return Nullable!Amount();
-
-        return nullable(txs.map!((tx)
-            {
-                Amount rate;
-                this.fee_man.getTxFeeRate(tx, &utxo_set.peekUTXO, &this.getPenaltyDeposit, rate);
-                return rate;
-            }).maxElement());
-    }
-
-    /***************************************************************************
-
-        Returns: A list of Enrollments that can be used for the next block
-
-    ***************************************************************************/
-
-    public Enrollment[] getCandidateEnrollments (in Height height,
-        scope UTXOFinder utxo_finder) @safe
-    {
-        return this.enroll_man.getEnrollments(height, &this.utxo_set.peekUTXO,
-            &this.getPenaltyDeposit, utxo_finder);
-    }
-
-    /***************************************************************************
-
-        Check whether the slashing data is valid.
-
-        Params:
-            height = height
-            data = consensus data
-            initial_missing_validators = missing validators at the beginning of
-               the nomination round
-            utxo_finder = UTXO finder with double spent protection
-
-        Returns:
-            the error message if validation failed, otherwise null
-
-    ***************************************************************************/
-
-    public string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators) @safe
-    {
-        return this.isInvalidPreimageRootReason(height, data.missing_validators,
-            initial_missing_validators);
-    }
-
-    /***************************************************************************
-
-        Check if information for pre-images and slashed validators is valid
-
-        Params:
-            height = the height of proposed block
-            missing_validators = list of indices to the validator UTXO set
-                which have not revealed the preimage
-            missing_validators_higher_bound = missing validators at the beginning of
-               the nomination round
-            utxo_finder = UTXO finder with double spent protection
-
-        Returns:
-            `null` if the information is valid at the proposed height,
-            otherwise a string explaining the reason it is invalid.
-
-    ***************************************************************************/
-
-    private string isInvalidPreimageRootReason (in Height height,
-        in uint[] missing_validators, in uint[] missing_validators_higher_bound) @safe
-    {
-        import std.algorithm.setops : setDifference;
-
-        auto validators = this.getValidators(height);
-        assert(validators.length <= uint.max);
-
-        uint[] missing_validators_lower_bound = validators.enumerate
-            .filter!(kv => kv.value.preimage.height < height)
-            .map!(kv => cast(uint) kv.index).array();
-
-        // NodeA will check the candidate from NodeB in the following way:
-        //
-        // Current missing validators in NodeA(=sorted_missing_validators_lower_bound) ⊆
-        // missing validators in the candidate from NodeB(=sorted_missing_validators) ⊆
-        // missing validators in NodeA before the nomination round started
-        // (=sorted_missing_validators_higher_bound)
-        //
-        // If both of those conditions true, then NodeA will accept the candidate.
-
-        auto sorted_missing_validators = missing_validators.dup().sort();
-        auto sorted_missing_validators_lower_bound = missing_validators_lower_bound.dup().sort();
-        auto sorted_missing_validators_higher_bound = missing_validators_higher_bound.dup().sort();
-
-        if (!setDifference(sorted_missing_validators_lower_bound, sorted_missing_validators).empty())
-            return format!("Lower bound violation - Missing validator mismatch %s is not a subset of %s")
-                (sorted_missing_validators_lower_bound, sorted_missing_validators);
-
-        if (!setDifference(sorted_missing_validators, sorted_missing_validators_higher_bound).empty())
-            return format!("Higher bound violation - Missing validator mismatch %s is not a subset of %s")
-                (sorted_missing_validators, sorted_missing_validators_higher_bound);
-
-        if (missing_validators.any!(idx => idx >= validators.length))
-            return "Slashing non existing index";
-        UTXO utxo;
-
-        return null;
-    }
-}
-
-/*******************************************************************************
-
-    A ledger that participate in the consensus protocol
-
-    This ledger is held by validators, as they need to do additional bookkeeping
-    when e.g. proposing transactions.
-
-*******************************************************************************/
-
-public class ValidatingLedger : NodeLedger
-{
-    /// See parent class
-    public this (immutable(ConsensusParams) params,
-        ManagedDatabase database, IBlockStorage storage,
-        EnrollmentManager enroll_man, TransactionPool pool,
-        void delegate (in Block, bool) @safe onAcceptedBlock)
-    {
-        super(params, database, storage, enroll_man, pool, onAcceptedBlock);
-    }
-
-    /***************************************************************************
-
-        Collect up to a maximum number of transactions to nominate
-
-        Params:
-            txs = will contain the transaction set to nominate,
-                  or empty if not enough txs were found
-            max_txs = the maximum number of transactions to prepare.
-
-    ***************************************************************************/
-
-    public void prepareNominatingSet (out ConsensusData data)
-        @safe
-    {
-        const next_height = this.height() + 1;
-
-        auto utxo_finder = this.utxo_set.getUTXOFinder();
-        data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
-        data.missing_validators = this.getCandidateMissingValidators(next_height, utxo_finder);
-        data.tx_set = this.getCandidateTransactions(next_height, utxo_finder);
-        if (this.isCoinbaseBlock(next_height))
-            {
-                auto coinbase_tx = this.getCoinbaseTX(next_height);
-                auto coinbase_hash = coinbase_tx.hashFull();
-                log.info("prepareNominatingSet: Coinbase hash={}, tx={}", coinbase_hash, coinbase_tx.prettify);
-                data.tx_set ~= coinbase_hash;
-            }
-    }
-
-    /// Validate slashing data, including checking if the node is slef slashing
-    public override string validateSlashingData (in Height height, in ConsensusData data,
-        in uint[] initial_missing_validators) @safe
-    {
-        if (auto res = super.validateSlashingData(height, data, initial_missing_validators))
-            return res;
-
-        const self = this.enroll_man.getEnrollmentKey();
-        foreach (index, const ref validator; this.getValidators(height))
-        {
-            if (self != validator.utxo())
-                continue;
-
-            return data.missing_validators.find(index).empty ? null
-                : "Node is attempting to slash itself";
-        }
-        return null;
-    }
-
-    /***************************************************************************
-
-        Returns:
-            A list of Validators that have not yet revealed their PreImage for
-            height `height` (based on the current Ledger's knowledge).
-
-    ***************************************************************************/
-
-    public uint[] getCandidateMissingValidators (in Height height,
-        scope UTXOFinder findUTXO) @safe
-    {
-        UTXO utxo;
-        return this.getValidators(height).enumerate()
-            .filter!(en => en.value.preimage.height < height)
-            .filter!(en => findUTXO(en.value.preimage.utxo, utxo))
-            .map!(en => cast(uint) en.index)
-            .array();
-    }
-
-    /***************************************************************************
-
-        Returns:
-            A list of Transaction hash that can be included in the next block
-
-    ***************************************************************************/
-
-    public Hash[] getCandidateTransactions (in Height height,
-        scope UTXOFinder utxo_finder) @safe
-    {
-        Hash[] result;
-        size_t size_budget = this.params.MaxTxSetSize * 1024; // cant overflow
-        foreach (ref Hash hash, ref Transaction tx; this.pool)
-        {
-            auto size = tx.sizeInBytes();
-            if (size_budget >= size)
-            {
-                result ~= hash;
-                size_budget -= size;
-            }
-            else
-                break;
-        }
-        result.sort();
-        return result;
     }
 
     version (unittest):
