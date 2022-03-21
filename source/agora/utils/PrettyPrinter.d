@@ -663,7 +663,7 @@ private struct ConsensusDataFmt
         try
         {
             formattedWrite(sink, "{ tx_set: %s, enrolls: %s, missing_validators: %s }",
-                this.data.tx_set.map!(tx => HashFmt(tx)),
+                HashFmt(this.data.tx_set),
                 this.data.enrolls.map!(enroll => EnrollmentFmt(enroll)),
                 this.data.missing_validators);
         }
@@ -699,12 +699,12 @@ unittest
 
     const(ConsensusData) cd =
     {
-        tx_set: [hashFull(37), hashFull(44)],
+        tx_set: hashFull(37),
         enrolls: [ record, record, ],
         missing_validators: [0, 2, 4],
     };
 
-    static immutable Res1 = `{ tx_set: [0x992e...6694, 0x053f...89c8], enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }`;
+    static immutable Res1 = `{ tx_set: 0x992e...6694, enrolls: [{ utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }, { utxo: 0x0000...e26f, seed: 0x4a5e...a33b, sig: 0x0000...be78 }], missing_validators: [0, 2, 4] }`;
 
     assert(Res1 == format("%s", prettify(cd)),
                    format("%s", prettify(cd)));

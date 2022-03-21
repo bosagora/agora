@@ -121,6 +121,20 @@ public interface API : agora.api.FullNode.API
 
     public void postBlockSignature (ValidatorBlockSig block_sig);
 
+   /***************************************************************************
+
+        Set of TX hashes represented by the given hash
+
+        Params:
+            hash = hash of TX set
+
+        API:
+            GET /tx_set
+
+    ***************************************************************************/
+
+    public Hash[] getTxSet (Hash hash);
+
     /// Interfaces that are only enabled in debug builds
     debug (AgoraDebugAPIs)
     {

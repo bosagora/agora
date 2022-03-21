@@ -71,6 +71,7 @@ public class NodeLedger : Ledger
         NoUTXO = "Couldn't find UTXO for one or more Enrollment",
         NotInPool = "Transaction is not in the pool",
         MisMatchingCoinbase = "Missing matching Coinbase transaction",
+        UnknownTxSet = "Transaction set is unknown",
     }
 
     /// A delegate to be called when a block was externalized (unless `null`)
@@ -502,6 +503,9 @@ public class ValidatingLedger : NodeLedger
     /// Hashes of Values we fully validated for a slot
     private Set!Hash fully_validated_value;
 
+    /// Nominated TX sets
+    public Hash[][Hash] nominated_tx_sets;
+
     /// See parent class
     public this (immutable(ConsensusParams) params,
         ManagedDatabase database, IBlockStorage storage,
@@ -530,14 +534,16 @@ public class ValidatingLedger : NodeLedger
         auto utxo_finder = this.utxo_set.getUTXOFinder();
         data.enrolls = this.getCandidateEnrollments(next_height, utxo_finder);
         data.missing_validators = this.getCandidateMissingValidators(next_height, utxo_finder);
-        data.tx_set = this.getCandidateTransactions(next_height, utxo_finder);
+        auto tx_set = this.getCandidateTransactions(next_height, utxo_finder);
         if (this.isCoinbaseBlock(next_height))
             {
                 auto coinbase_tx = this.getCoinbaseTX(next_height);
                 auto coinbase_hash = coinbase_tx.hashFull();
                 log.info("prepareNominatingSet: Coinbase hash={}, tx={}", coinbase_hash, coinbase_tx.prettify);
-                data.tx_set ~= coinbase_hash;
+                tx_set ~= coinbase_hash;
             }
+        data.tx_set = hashFull(tx_set);
+        this.nominated_tx_sets[data.tx_set] = tx_set;
     }
 
     /// Validate slashing data, including checking if the node is slef slashing
@@ -611,7 +617,10 @@ public class ValidatingLedger : NodeLedger
     {
         if (auto err = super.acceptBlock(block))
             return err;
-        () @trusted { this.fully_validated_value.clear(); }();
+        () @trusted {
+            this.fully_validated_value.clear();
+            this.nominated_tx_sets.clear();
+        }();
         return null;
     }
 
@@ -638,7 +647,7 @@ public class ValidatingLedger : NodeLedger
         auto coinbase_tx_hash = coinbase_tx.hashFull();
         auto not_cb_filter = (Hash h) => coinbase_tx == Transaction.init || h != coinbase_tx_hash;
 
-        foreach (const ref tx_hash; data.tx_set)
+        foreach (const ref tx_hash; this.nominated_tx_sets[data.tx_set])
         {
             if (!not_cb_filter(tx_hash))
                 continue;
@@ -655,18 +664,22 @@ public class ValidatingLedger : NodeLedger
     /// Ditto
     public string isValidTXSet (in ConsensusData data) @safe nothrow
     {
+        auto tx_set = data.tx_set in this.nominated_tx_sets;
+        if (tx_set is null)
+            return InvalidConsensusDataReason.UnknownTxSet;
+
         auto coinbase_tx = this.getCoinbaseTX(this.height() + 1);
         Hash coinbase_tx_hash = coinbase_tx.hashFull();
         if (coinbase_tx != Transaction.init)
         {
             log.trace("isValidTxSet: Coinbase hash={}, tx={}", coinbase_tx_hash, coinbase_tx.prettify);
-            if (!data.tx_set.canFind(coinbase_tx_hash))
+            if (!(*tx_set).canFind(coinbase_tx_hash))
                 return InvalidConsensusDataReason.MisMatchingCoinbase;
         }
 
         auto enrolled_utxos = Set!Hash.from(data.enrolls.map!(enroll => enroll.utxo_key));
         auto not_cb_filter = (Hash h) => coinbase_tx == Transaction.init || h != coinbase_tx_hash;
-        if (auto reason = this.pool.isValidTxSet(data.tx_set.filter!(not_cb_filter), enrolled_utxos))
+        if (auto reason = this.pool.isValidTxSet((*tx_set).filter!(not_cb_filter), enrolled_utxos))
             return reason;
 
         return null;
@@ -1522,10 +1535,14 @@ unittest
         if (height >= 2 * testPayoutPeriod && height % testPayoutPeriod == 0)
         {
             // Remove the coinbase TX
-            data.tx_set = data.tx_set[0 .. $ - 1];
+            auto tx_set = ledger.nominated_tx_sets[data.tx_set][0 .. $ - 1];
+            ledger.nominated_tx_sets[tx_set.hashFull] = tx_set;
+            data.tx_set = tx_set.hashFull;
             assert(ledger.validateConsensusData(data, skip_indexes) == "Missing matching Coinbase transaction");
             // Add different hash to tx_set
-            data.tx_set ~= "Not Coinbase tx".hashFull();
+            tx_set ~= "Not Coinbase tx".hashFull();
+            ledger.nominated_tx_sets[tx_set.hashFull] = tx_set;
+            data.tx_set = tx_set.hashFull;
             assert(ledger.validateConsensusData(data, skip_indexes) == "Missing matching Coinbase transaction");
         }
 
@@ -1678,7 +1695,7 @@ unittest
 
     ConsensusData data;
     ledger.prepareNominatingSet(data);
-    assert(data.tx_set.canFind(melting_tx.hashFull()));
+    assert(ledger.nominated_tx_sets[data.tx_set].canFind(melting_tx.hashFull()));
     assert(ledger.validateConsensusData(data, []) is null);
 
     // can't enroll and spend the stake at the same height
@@ -1716,6 +1733,7 @@ unittest
     ledger.simulatePreimages(Height(params.ValidatorCycle));
 
     auto expected_height = 0;
+    ledger.nominated_tx_sets[Hash.init] = [];
     // if less than 4 out of 6 validators sign it should not externalize
     iota(4).each!((signed)
     {
@@ -1727,6 +1745,7 @@ unittest
     // if at least 4 out of 6 validators sign it should externalize
     iota(4, 7).each!((signed)
     {
+        ledger.nominated_tx_sets[Hash.init] = [];
         assert(!ledger.externalize(ConsensusData.init, signed));
         assert(ledger.height == ++expected_height);
     });

@@ -1961,6 +1961,12 @@ public class TestFullNode : FullNode, TestAPI
     {
         assert(0);
     }
+
+    /// ditto
+    public override Hash[] getTxSet (Hash hash) @safe
+    {
+        assert(0);
+    }
 }
 
 /// A Validator which also implements test routines in TestAPI
