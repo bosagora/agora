@@ -18,6 +18,7 @@ version (unittest):
 import agora.test.Base;
 
 import core.atomic : atomicLoad;
+import scpd.types.Stellar_SCP;
 
 /// Situation: A delayed validator is a block behind the latest height(19)
 ///     where other nodes have a block that contains a frozen UTXO for
@@ -45,6 +46,13 @@ unittest
         }
 
         ///
+        public override void postEnvelope (SCPEnvelope envelope) @safe
+        {
+            if (atomicLoad(*this.enable_catchup))
+                this.nominator.receiveEnvelope(envelope);
+        }
+
+        ///
         protected override void catchupTask () nothrow
         {
             if (atomicLoad(*this.enable_catchup))
@@ -58,7 +66,7 @@ unittest
     {
         mixin ForwardCtor!();
 
-        public static shared bool enable_catchup = false;
+        public static shared bool enable_catchup = true;
 
         /// set base class
         public override void createNewNode (Config conf, string file, int line)
@@ -95,7 +103,7 @@ unittest
     network.postAndEnsureTxInPool(network.freezeUTXO(only(GenesisValidators)));
 
     // the delayed validator becomes unresponsive
-    network.clients[delayed_node].filter!(API.postTransaction);
+    CustomAPIManager.enable_catchup = false;
 
     // Block 19 we add the frozen utxo for the outsider validator
     network.generateBlocks(iota(1, GenesisValidators), Height(GenesisValidatorCycle - 1));

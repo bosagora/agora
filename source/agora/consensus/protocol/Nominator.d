@@ -753,6 +753,7 @@ extern(D):
             }
         }
 
+        Set!Hash missing_sets;
         Set!Hash missing_txs;
         auto values = Slot.getStatementValues(envelope.statement);
         foreach (value; values)
@@ -768,12 +769,16 @@ extern(D):
             catch (Exception ex)
                 return;
 
-            auto missing = this.ledger.getUnknownTXsFromSet(Set!Hash.from(data.tx_set));
-            missing.each!(hash => missing_txs.put(hash));
+            if (auto tx_set = data.tx_set in this.ledger.nominated_tx_sets)
+                this.ledger.getUnknownTXsFromSet(Set!Hash.from(*tx_set))
+                    .each!(hash => missing_txs.put(hash));
+            else
+                missing_sets.put(data.tx_set);
         }
 
         auto shared_env = this.wrapEnvelope(envelope);
-        if (missing_txs.length > 0 && this.handleMissingTxEnvelope(shared_env, missing_txs, utxo))
+        if ((missing_sets.length > 0 || missing_txs.length > 0)
+            && this.handleMissingTxEnvelope(shared_env, missing_sets, missing_txs, utxo))
             return;
 
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
@@ -788,6 +793,7 @@ extern(D):
 
         Params:
             shared_env = the SCP envelope
+            missing_sets = Set of unknown TX sets
             missing_txs = Set of unknown TX hashes
             peer_utxo = stake of the peer that the envelope belongs to
 
@@ -796,19 +802,35 @@ extern(D):
 
     ***************************************************************************/
 
-    private bool handleMissingTxEnvelope (SCPEnvelopeWrapperPtr shared_env, Set!Hash missing_txs, Hash peer_utxo) @trusted
+    private bool handleMissingTxEnvelope (SCPEnvelopeWrapperPtr shared_env,
+        Set!Hash missing_sets, Set!Hash missing_txs, Hash peer_utxo) @trusted
     {
         auto peer = this.network.getPeerByStake(peer_utxo);
         if (!peer)
             return false;
 
-        log.trace("Missing {} TXs while handling envelope from {} for slot {}", missing_txs.length,
-            shared_env.getEnvelope().statement.nodeID, shared_env.getEnvelope().statement.slotIndex);
+        log.trace("Missing {} sets, {} TXs while handling envelope from {} for slot {}", missing_sets.length,
+            missing_txs.length, shared_env.getEnvelope().statement.nodeID, shared_env.getEnvelope().statement.slotIndex);
 
         auto heap_env = new SCPEnvelopeWrapperPtr(shared_env);
         this.taskman.runTask({
             try
             {
+                foreach (set_hash; missing_sets)
+                {
+                    try
+                    {
+                        auto tx_set = peer.getTxSet(set_hash);
+                        if (tx_set.hashFull() != set_hash)
+                            continue;
+                        this.ledger.nominated_tx_sets[set_hash] = tx_set;
+                        this.ledger.getUnknownTXsFromSet(Set!Hash.from(tx_set))
+                            .each!(hash => missing_txs.put(hash));
+                    }
+                    catch (Exception e)
+                        continue;
+                }
+
                 Transaction[] txs;
                 do
                 {
@@ -1427,11 +1449,6 @@ extern(D):
             else if (this.total_rate < other.total_rate)
                 return 1;
 
-            if (this.consensus_data.tx_set.length > other.consensus_data.tx_set.length)
-                return -1;
-            else if (this.consensus_data.tx_set.length < other.consensus_data.tx_set.length)
-                return 1;
-
             if (this.hash > other.hash)
                 return -1;
             else if (this.hash < other.hash)
@@ -1505,7 +1522,7 @@ extern(D):
                 log.trace("Consensus data: {}", data.prettify);
 
                 Amount total_rate;
-                foreach (const ref tx_hash; data.tx_set)
+                foreach (const ref tx_hash; this.ledger.nominated_tx_sets[data.tx_set])
                 {
                     Amount rate;
                     auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);

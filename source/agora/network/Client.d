@@ -585,6 +585,23 @@ public class NetworkClient
         return this.attemptRequest!(API.getPreimages, Throw.No)(enroll_keys);
     }
 
+   /***************************************************************************
+
+        Set of TX hashes represented by the given hash
+
+        Params:
+            hash = hash of TX set
+
+        API:
+            GET /tx_set
+
+    ***************************************************************************/
+
+    public Hash[] getTxSet (Hash hash) @trusted nothrow
+    {
+        return this.attemptRequest!(API.getTxSet, Throw.No)(hash);
+    }
+
     /***************************************************************************
 
         Attempt a request up to 'this.max_retries' attempts, and make the task

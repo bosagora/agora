@@ -516,6 +516,25 @@ public class Validator : FullNode, API
         }
     }
 
+   /***************************************************************************
+
+        Set of TX hashes represented by the given hash
+
+        Params:
+            hash = hash of TX set
+
+        API:
+            GET /tx_set
+
+    ***************************************************************************/
+
+    public override Hash[] getTxSet (Hash hash) @safe
+    {
+        if (auto tx_set = hash in (cast(ValidatingLedger) this.ledger).nominated_tx_sets)
+            return *tx_set;
+        throw new Exception("Unknown TX Set");
+    }
+
     debug (AgoraDebugAPIs)
     {
         /***************************************************************************

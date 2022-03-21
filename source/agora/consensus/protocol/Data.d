@@ -21,7 +21,7 @@ import agora.crypto.Hash;
 public struct ConsensusData
 {
     /// The transaction set that is being nominated / voted on
-    public Hash[] tx_set;
+    public Hash tx_set;
 
     /// The enrollments that are being nominated / voted on
     public Enrollment[] enrolls;
@@ -60,7 +60,7 @@ unittest
 
     const(ConsensusData) data =
     {
-        tx_set:  GenesisBlock.txs.map!(tx => tx.hashFull()).array,
+        tx_set:  GenesisBlock.txs.map!(tx => tx.hashFull()).array.hashFull,
         enrolls: [ record, record, ],
         missing_validators : [ 1, 3, 5 ]
     };
