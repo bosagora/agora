@@ -34,8 +34,6 @@ validator:
   enabled: true
   # We use first of Genesis Block enrollments: val5: boa1xrval5rzmma29zh4aqgv3mvcarhwa0w8rgthy3l9vaj3fywf9894ycmjkm8
   seed: SAZO4WA5SXUN3J6XBXZCFPXJJZ62IQAJYAG2KBVWF2QZKTU2WK3QTNMV
-  addresses_to_register:
-    - http://127.0.0.1:2826/
 
 registry:
   public: true

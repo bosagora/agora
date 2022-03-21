@@ -22,8 +22,6 @@ registry:
 # validator:
 #   enabled: true
 #   seed: YOUR_SEED_HERE
-#   addresses_to_register:
-#     - "agora://my-address.example.com"
 
 logging:
   root:

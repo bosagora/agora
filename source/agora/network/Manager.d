@@ -265,6 +265,12 @@ public class NetworkManager
     /// Registry client to send registrations to
     private NameRegistryAPI registry_client;
 
+    /// Statically configured addresses to register for interfaces
+    private const(Address)[] addresses_to_register;
+
+    /// Interfaces to fetch Public IP addresses for registration
+    private size_t[] public_ip_interfaces;
+
     /// Maximum connection tasks to run in parallel
     private enum MaxConnectionTasks = 10;
 
@@ -536,6 +542,38 @@ public class NetworkManager
 
         this.registry_client = this.makeRegistryClient();
 
+        // Ignore interfaces and use manual address configuration
+        if (this.config.node.public_addresses.length)
+            this.addresses_to_register ~= this.config.node.public_addresses;
+        else
+        {
+            foreach (ix, interface_; this.config.interfaces)
+            {
+                if (interface_.type > InterfaceConfig.Type.tcp || !interface_.public_register)
+                    continue;
+
+                string schema = InterfaceConfig.typeToString(interface_.type);
+
+                if (this.config.node.register.set)
+                {
+                    // Registering CNAME for the interface
+                    this.addresses_to_register ~= Address(
+                        format("%s://%s:%u", schema, this.config.node.register, interface_.port)
+                    );
+                    continue;
+                }
+
+                if (interface_.address == "0.0.0.0" || interface_.address == "::")
+                    // Will Register public IPs in `onRegisterName`
+                    this.public_ip_interfaces ~= ix;
+                else
+                    // Register config provided IP addr
+                    this.addresses_to_register ~= Address(
+                        format("%s://%s:%u", schema, interface_.address, interface_.port)
+                    );
+            }
+        }
+
         this.onRegisterName();  // avoid delay
         // We re-register at regular interval in order to cope with the situation below
         // 1. network registry server is restarted
@@ -753,19 +791,31 @@ public class NetworkManager
     public void onRegisterName () @safe
     {
         assert(this.registry_client !is null);
+        string public_ip = "";
 
-        const(Address)[] addresses = this.config.validator.addresses_to_register;
-        if (!addresses.length)
+        const(Address)[] addresses = this.addresses_to_register;
+
+        if (this.public_ip_interfaces.length > 0)
         {
             try
-                addresses ~= Address("agora://"~InetUtils.getPublicIP());
+                public_ip = InetUtils.getPublicIP();
             catch (Exception e)
-            {
                 log.warn("Couldn't get public address of the host: {}. Trying again later, consider providing addresses to register..",
                     e);
-                return;
+        }
+
+        if (public_ip != "")
+        {
+            foreach (ix; this.public_ip_interfaces)
+            {
+                scope interface_ = this.config.interfaces[ix];
+                string schema = InterfaceConfig.typeToString(interface_.type);
+
+                addresses ~= Address(
+                    format("%s://%s:%u", schema, public_ip, interface_.port));
             }
         }
+
         this.addAddresses(Set!Address.from(addresses));
 
         RegistryPayloadData data =

@@ -23,6 +23,7 @@ node:
     seconds : 1200
   realm: "integration.bosagora.io"
   registry_address: http://node-0:1826
+  register: node-4
 
 interfaces:
   - type: http
@@ -66,10 +67,6 @@ validator:
   # DO NOT USE THOSE VALUES ANYWHERE
   # Public address:  boa1xzval4nvru2ej9m0rptq7hatukkavemryvct4f8smyy3ky9ct5u0s8w6gfy
   seed: SBIJAVYYCSRV5RNO2WVTT25H6VZTEV3YSE7U7WT7UQUNSVBUGB6QNBWG
-  # Network addresses that will be registered with the public key (Validator only)
-  # If left empty, all public network addresses of the node will be registered
-  addresses_to_register:
-    - "agora://node-4:4735"
   # Block interval is only 5 seconds so we need to check to nominate more often
   nomination_interval:
     seconds: 2

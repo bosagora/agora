@@ -1,4 +1,4 @@
-# 노드 운영 방법 및 조건 
+# 노드 운영 방법 및 조건
 
 보스아고라 노드인 아고라(Agora)를 테스트 하는데 필요한 단계와 테스트 네트워크(‘TestNet’)에서 Foundation 노드와 상호 작용하는 방법을 안내드립니다.
 
@@ -38,7 +38,7 @@ Ubuntu Linux 20.04 및 MacOS-11(Big Sur)용 네이티브 바이너리(Native Bin
 
 터미널을 열고 `docker run bosagora/agora --testnet` 명령을 사용합니다.
 
-노드가 시작되고 여러 메시지를 화면에 나타나야 합니다. 약 몇초 동안 네트워크와 동기화를 시작하여 최신 상태의 체인을 다운로드해야 합니다. 
+노드가 시작되고 여러 메시지를 화면에 나타나야 합니다. 약 몇초 동안 네트워크와 동기화를 시작하여 최신 상태의 체인을 다운로드해야 합니다.
 
 ![초기 블록 다운로드시 로그 메시지](./IBD.png)
 
@@ -135,12 +135,10 @@ interfaces:
 ![Running ngrok](ngrok_run.png)
 위 화면에서 빨간색 네모로 표시된, TCP 주소를 복사해야 합니다. 이 주소는 여러분의 설정파일에서 사용됩니다.
 
-**네번째**, 이제 위에서 복사한 TCP 주소를, 설정 파일의 `addresses_to_register` 부분에 아래와 같이 복사해야 합니다.
+**네번째**, 이제 위에서 복사한 TCP 주소를, 설정 파일의 `public_addresses` 부분에 아래와 같이 복사해야 합니다.
 ```
-validator:
-  enabled: true
-  seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3
-  addresses_to_register:
+node:
+  public_addresses:
     - "agora://2.tcp.ngrok.io:14476"
 ```
 그리고 나서, 이전 섹션에서 설명된 것처럼 검증자를 실행하면 됩니다.

@@ -190,7 +190,7 @@ public class NameRegistry: NameRegistryAPI
                 , "Cannot register a loopback address");
             }
 
-            ensure(this_type != TYPE.CNAME || payload.addresses.length == 1,
+            ensure(this_type != TYPE.CNAME || addr.host == payload.addresses[0].host,
                     "Can only have one domain name (CNAME) for payload, not: {}",
                     payload);
             payload_type = this_type;
@@ -703,22 +703,18 @@ private struct TypedPayload
         switch (this.type)
         {
         case TYPE.CNAME:
-            // FIXME: Use a proper TTL
-
-            /* If it's a CNAME, it has to be to another domain, as we don't
-             * yet support aliases in the same zone, hence the algorithm in
-             * "RFC1034: 4.3.2. Algorithm" can be reduced to "return the CNAME".
-             */
-            assert(this.payload.addresses.length == 1);
             dg(ResourceRecord.make!(TYPE.CNAME)(name, this.payload.ttl,
                 Domain.fromString(this.payload.addresses[0].host)));
 
-            // Add URI record along with
-            dg(ResourceRecord.make!(TYPE.URI)(
-                Domain.fromString(format(uri_service_label, name)),
-                this.payload.ttl,
-                this.payload.addresses[0],
-            ));
+            foreach (idx, addr; this.payload.addresses)
+            {
+                // Add URI record along with
+                dg(ResourceRecord.make!(TYPE.URI)(
+                    Domain.fromString(format(uri_service_label, name)),
+                    this.payload.ttl,
+                    addr,
+                ));
+            }
             break;
         case TYPE.A: case TYPE.AAAA:
             foreach (idx, addr; this.payload.addresses)
