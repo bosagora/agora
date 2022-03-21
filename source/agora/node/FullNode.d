@@ -552,7 +552,7 @@ public class FullNode : API
         {
             // TODO: Iff the node is the single validator for the network,
             // this should not be printed, or at least not be `warn`.
-            this.log.warn("Could not perform catchup yet because we have no peer");
+            this.log.warn("{}: Could not perform catchup yet because we have no peer", __FUNCTION__);
             return;
         }
 
@@ -562,18 +562,18 @@ public class FullNode : API
         }
         catch (Exception e)
         {
-            log.error("Error sending updated block headers:{}", e);
+            log.error("{}: Error sending updated block headers:{}", __FUNCTION__, e);
         }
 
         const Height expected = this.ledger.expectedHeight(this.clock.utcTime());
         if (expected < this.ledger.height)
-            this.log.warn("Our current Ledger state is ahead of the expected height (current: {}, expected: {}",
-                          this.ledger.height, expected);
+            this.log.warn("{}: Our current Ledger state is ahead of the expected height (current: {}, expected: {}",
+                __FUNCTION__, this.ledger.height, expected);
         else if (expected > this.ledger.height)
         {
             const size_t missing = expected - this.ledger.height;
-            this.log.info("Ledger out of sync, missing {} blocks (current height: {}, delay: {})",
-                          missing, this.ledger.height, this.ledger.params.BlockInterval * missing);
+            this.log.info("{}: Ledger out of sync, missing {} blocks (current height: {}, delay: {})",
+                          __FUNCTION__, missing, this.ledger.height, this.ledger.params.BlockInterval * missing);
 
             this.network.getBlocksFrom(
                 this.ledger.height + 1,
