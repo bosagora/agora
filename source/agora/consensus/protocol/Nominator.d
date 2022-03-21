@@ -949,6 +949,7 @@ extern(D):
                         this.ledger.getExpectedBlockTime(block.header.height)).total!"seconds";
                     this.slot_stat.setMetricTo!"time_to_sig_majority"(time_to_sig_majority, assumeWontThrow(block.header.height.toString()));
                     this.verifyBlock(block);
+                    log.info("{}: Externalized block #{} to the ledger", __FUNCTION__, block.header.height);
                 }
                 else
                 {
