@@ -14,7 +14,7 @@ node:
   # Path to the data directory (if the path doesn't exist it will be created)
   data_dir: .cache
   block_catchup_interval:
-    seconds: 5
+    seconds: 2
   relay_tx_max_num : 0
   relay_tx_interval:
     seconds : 0
