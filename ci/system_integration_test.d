@@ -82,7 +82,7 @@ private int main (string[] args)
     // as the docker-compose bind volumes
     runCmd(Cleanup);
 
-    auto now = (Clock.currTime(UTC()).toUnixTime + 10).to!string;
+    auto now = (Clock.currTime(UTC()).toUnixTime + 20).to!string;
     // Update genesis timestamps
     runCmd(SetGenesisTimestamp.map!(str => str.replace("curr_time", now)).array);
 
