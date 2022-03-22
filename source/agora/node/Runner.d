@@ -76,7 +76,7 @@ package __gshared int exitCode;
 
 *******************************************************************************/
 
-public Listeners runNode (Config config)
+public void runNode (Config config, ref Listeners result)
 {
     foreach (const ref settings; config.logging)
     {
@@ -90,7 +90,6 @@ public Listeners runNode (Config config)
 
     mkdirRecurse(config.node.data_dir);
 
-    Listeners result;
     const bool hasHTTPInterface = config.interfaces.any!(
         i => i.type.among(InterfaceConfig.Type.http, InterfaceConfig.Type.https));
     URLRouter router;
@@ -228,8 +227,6 @@ public Listeners runNode (Config config)
             result.tcp ~= listenRPC!(agora.api.FullNode.API)(result.node, interface_.address, interface_.port, interface_.proxy_proto,
                 config.node.timeout, &result.node.getNetworkManager().discoverFromClient, isBannedDg);
     }
-
-    return result;
 }
 
 /*******************************************************************************

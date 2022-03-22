@@ -173,7 +173,7 @@ private int main (string[] args)
     runTask(
         () nothrow {
             try
-                listeners = runNode(config);
+                runNode(config, listeners);
             catch (Exception exc)
             {
                 try
