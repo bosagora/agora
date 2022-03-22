@@ -2150,7 +2150,7 @@ public struct TestConf
         max_listeners: size_t.max,
 
         // Catchup needs to happens much more frequently than in production
-        block_catchup_interval: 1.seconds,
+        block_catchup_interval: 500.msecs,
 
         // The default is much longer, but in unittests latency is negligible
         retry_delay: 300.msecs,
