@@ -367,10 +367,7 @@ public class NodeLedger : Ledger
 
     public string getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
     {
-        auto tx = this.pool.getTransactionByHash(tx_hash);
-        if (tx == Transaction.init)
-            return InvalidConsensusDataReason.NotInPool;
-        return this.getTxFeeRate(tx, rate);
+        return this.pool.getTxFeeRate(tx_hash, rate) ? null : InvalidConsensusDataReason.NotInPool;
     }
 
     /***************************************************************************
