@@ -31,10 +31,10 @@
         "bitblob":          { "version": "*" },
         "crypto":           { "version": "*" },
         "d2sqlite3":        { "version": "*" },
+        "dtext":            { "version": "*" },
         "dyaml":            { "version": "*" },
         "libsodiumd":       { "version": "*" },
         "localrest":        { "version": "*" },
-        "ocean":            { "version": "*" },
         "serialization":    { "version": "*" },
         "vibe-d":           { "version": "*" }
     }
