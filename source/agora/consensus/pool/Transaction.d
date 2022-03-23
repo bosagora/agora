@@ -93,8 +93,18 @@ public class TransactionPool
     /// Keeps track of which TXs spend which inputs
     private Set!Hash[Hash] spenders;
 
+    /// Data associated with TXs in the pool for fast access
+    public struct KnownTx
+    {
+        /// Inputs
+        Set!Hash inputs;
+
+        /// Fee rate
+        Amount fee_rate;
+    }
+
     /// Known TXs and their input set
-    private Set!Hash[Hash] known_txs;
+    private KnownTx[Hash] known_txs;
 
     /// A delegate to select one of the double spent TXs
     public DoubleSpentSelector selector;
@@ -125,7 +135,8 @@ public class TransactionPool
             this.updateSpenderList(tx);
             auto tx_hash = tx.hashFull();
             iota(tx.outputs.length).each!(idx => utxo_set[UTXO.getHash(tx_hash, idx)] = tx.outputs[idx]);
-            this.known_txs[tx_hash] = Set!Hash.from(tx.inputs.map!(input => input.utxo));
+            Amount fee_rate = Amount(this.db.execute("SELECT fee FROM tx_pool WHERE key = ?", tx_hash).oneValue!ulong);
+            this.known_txs[tx_hash] = KnownTx(Set!Hash.from(tx.inputs.map!(input => input.utxo)), fee_rate);
         }
 
         // Set selector after rebuilding the spender list, so nothing gets
@@ -170,7 +181,7 @@ public class TransactionPool
             db.execute("INSERT INTO tx_pool (key, val, fee) VALUES (?, ?, ?)",
                 hashFull(tx), buffer, fee);
         }();
-        this.known_txs[tx_hash] = Set!Hash.from(tx.inputs.map!(input => input.utxo));
+        this.known_txs[tx_hash] = KnownTx(Set!Hash.from(tx.inputs.map!(input => input.utxo)), fee);
 
         return true;
     }
@@ -223,9 +234,9 @@ public class TransactionPool
                     break;
             }
 
-            if (auto spending = tx_hash in this.known_txs)
+            if (auto known = tx_hash in this.known_txs)
             {
-                foreach (input; *spending)
+                foreach (input; (*known).inputs)
                     if (auto list = input in this.spenders)
                     {
                         (*list).remove(tx_hash);
@@ -684,9 +695,9 @@ public class TransactionPool
     {
         foreach (hash; hashes)
         {
-            if (auto spending = hash in this.known_txs)
+            if (auto known = hash in this.known_txs)
             {
-                auto found_double_spent = (*spending)[].any!((utxo_hash) {
+                auto found_double_spent = (*known).inputs[].any!((utxo_hash) {
                     scope (exit) spent_utxos.put(utxo_hash);
                     return !(utxo_hash !in spent_utxos);
                 });
@@ -698,6 +709,30 @@ public class TransactionPool
                 return "Transaction is not in the pool";
         }
         return null;
+    }
+
+    /***************************************************************************
+
+        Looks up fee rate of the transaction with hash `tx_hash` from memory
+
+        Params:
+            tx_hash = hash of the TX to look up
+            rate = fee rate output
+
+        Returns:
+            false if tx not found
+
+    ***************************************************************************/
+
+    public bool getTxFeeRate (in Hash tx_hash, out Amount rate) nothrow @safe
+    {
+        if (auto known = tx_hash in this.known_txs)
+        {
+            rate = (*known).fee_rate;
+            return true;
+        }
+
+        return false;
     }
 }
 
