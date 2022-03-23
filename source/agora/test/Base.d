@@ -181,10 +181,10 @@ void testAssertHandler (string file, ulong line, string msg) nothrow
 }
 
 /// Custom unittest runner as a workaround for multi-threading issue:
-/// Agora unittests spawn threads, which allocate. The Ocean tests
+/// Agora unittests spawn threads, which allocate. The Dtext tests
 /// inspect GC stats for memory allocation changes, and potentially fail
 /// if during such a test a runaway Agora unittest child thread allocates.
-/// Workaround: Don't run ocean submodule unittests
+/// Workaround: Don't run submodule unittests
 private UnitTestResult customModuleUnitTester ()
 {
     import std.parallelism;

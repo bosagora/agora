@@ -52,50 +52,50 @@ public struct Logger
         this.logger.buffer(new char[](16_384));
     }
 
-    /// See `ocean.util.log.Logger : Logger.dbg`
+    /// See `dtext.log.Logger : Logger.dbg`
     public void dbg (Args...) (in char[] fmt, Args args)
     {
         // For debug logging let's assume we do not throw
         assumeWontThrow(this.format(LogLevel.Debug, fmt, args));
     }
 
-    /// See `ocean.util.log.Logger : Logger.trace`
+    /// See `dtext.log.Logger : Logger.trace`
     public void trace (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Trace, fmt, args);
     }
 
-    /// See `ocean.util.log.Logger : Logger.verbose`
+    /// See `dtext.log.Logger : Logger.verbose`
     public void verbose (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Verbose, fmt, args);
     }
 
-    /// See `ocean.util.log.Logger : Logger.info`
+    /// See `dtext.log.Logger : Logger.info`
     public void info (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Info, fmt, args);
     }
 
-    /// See `ocean.util.log.Logger : Logger.warn`
+    /// See `dtext.log.Logger : Logger.warn`
     public void warn (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Warn, fmt, args);
     }
 
-    /// See `ocean.util.log.Logger : Logger.error`
+    /// See `dtext.log.Logger : Logger.error`
     public void error (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Error, fmt, args);
     }
 
-    /// See `ocean.util.log.Logger : Logger.fatal`
+    /// See `dtext.log.Logger : Logger.fatal`
     public void fatal (Args...) (in char[] fmt, Args args)
     {
         this.format(LogLevel.Fatal, fmt, args);
     }
 
-    /// See `ocean.util.log.Logger : Logger.format`
+    /// See `dtext.log.Logger : Logger.format`
     public void format (Args...) (LogLevel level, in char[] fmt, Args args)
     {
         import core.memory : GC;

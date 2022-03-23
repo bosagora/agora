@@ -404,7 +404,7 @@ version (unittest)
         import Dtext = dtext.format.Formatter;
 
         auto phobosResult = format("%s", toFmt);
-        auto oceanResult = Dtext.format("{}", toFmt);
+        auto dtextResult = Dtext.format("{}", toFmt);
 
         if (expected != phobosResult)
         {
@@ -412,14 +412,14 @@ version (unittest)
             stderr.writeln("\tTest is located at ", __FILE__, ":", line);
             stderr.writeln("\tExpected: ", expected);
             stderr.writeln("\tPhobos:   ", phobosResult);
-            stderr.writeln("\tDtext:    ", oceanResult);
+            stderr.writeln("\tDtext:    ", dtextResult);
             assert(0);
         }
-        if (expected != oceanResult)
+        if (expected != dtextResult)
         {
             stderr.writeln("\tOcean result doesn't match expected output (but Phobos do)");
             stderr.writeln("\tExpected: ", expected);
-            stderr.writeln("\tDtext:    ", oceanResult);
+            stderr.writeln("\tDtext:    ", dtextResult);
             assert(0);
         }
     }
