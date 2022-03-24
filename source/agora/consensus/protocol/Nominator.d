@@ -1520,26 +1520,33 @@ extern(D):
                 auto candidate = cand.getValue();
                 auto data = deserializeFull!ConsensusData(candidate[]);
                 log.trace("Consensus data: {}", data.prettify);
-
-                Amount total_rate;
-                foreach (const ref tx_hash; this.ledger.nominated_tx_sets[data.tx_set])
+                if (auto tx_set = data.tx_set in this.ledger.nominated_tx_sets)
                 {
-                    Amount rate;
-                    auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
-                    if (errormsg == NodeLedger.InvalidConsensusDataReason.NotInPool)
-                        continue; // most likely a CoinBase Transaction
-                    else if (errormsg)
-                        assert(0);
-                    total_rate += rate;
+                    Amount total_rate;
+                    foreach (const ref tx_hash; *tx_set)
+                    {
+                        Amount rate;
+                        auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
+                        if (errormsg == NodeLedger.InvalidConsensusDataReason.NotInPool)
+                            continue; // most likely a CoinBase Transaction
+                        else if (errormsg)
+                            assert(0);
+                        total_rate += rate;
+                    }
+
+                    CandidateHolder candidate_holder =
+                    {
+                        consensus_data: data,
+                        hash: data.hashFull(),
+                        total_rate: total_rate,
+                    };
+                    candidate_holders ~= candidate_holder;
                 }
-
-                CandidateHolder candidate_holder =
+                else
                 {
-                    consensus_data: data,
-                    hash: data.hashFull(),
-                    total_rate: total_rate,
-                };
-                candidate_holders ~= candidate_holder;
+                    log.error("{}: Missing tx set with hash {} in nominated tx sets {}",
+                        __FUNCTION__, data.tx_set, this.ledger.nominated_tx_sets);
+                }
             }
 
             auto chosen_consensus_data = candidate_holders.sort().front;
