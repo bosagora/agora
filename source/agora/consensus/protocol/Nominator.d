@@ -182,7 +182,7 @@ public extern (C++) class Nominator : SCPDriver
     private enum CatchupTaskDelay = 10.msecs;
 
     /// Hashes of Values we fully validated for a slot
-    private Set!Hash fully_validated_value;
+    private CandidateScore[Hash] fully_validated_value;
 
     /// Hashes of envelopes we have processed already
     private Set!Hash seen_envs;
@@ -1269,7 +1269,7 @@ extern(D):
                 return ValidationLevel.kInvalidValue;
             }
         }
-        this.fully_validated_value.put(idx_value_hash);
+        this.fully_validated_value[idx_value_hash] = this.scoreCandidate(data);
 
         if (slot_idx % 10 == 0)
             this.slot_stat.clear();
@@ -1414,34 +1414,36 @@ extern(D):
         return utxo;
     }
 
-    /// Used for holding consensus candidate values. It contains precomputed
+    /// Used for comparing consensus candidate values. It contains precomputed
     /// fields to speed up sorting.
-    static struct CandidateHolder
+    static struct CandidateScore
     {
-        /// Consensus data
-        public ConsensusData consensus_data;
         /// Hash of the consensus data
         public Hash hash;
         /// The total amount of fees of the transactions in the consensus data
         public Amount total_rate;
+        /// MPV count
+        public ulong missing_validators_length = ulong.max;
+        /// New enrollments length
+        public ulong enrollments_length;
 
         /// Comparison function, which sorts by
         /// 1. length of missing validators (smallest first), or if it ties
         /// 2. length of enrollments (smallest last), or if it ties
         /// 3. total adjusted fee (smallest last), or if it ties
         /// 4. hash of the candidate (smallest last)
-        public int opCmp (in CandidateHolder other) const @safe scope pure nothrow @nogc
+        public int opCmp (in CandidateScore other) const @safe scope pure nothrow @nogc
         {
-            if (this.consensus_data.missing_validators.length <
-                other.consensus_data.missing_validators.length)
+            if (this.missing_validators_length <
+                other.missing_validators_length)
                     return -1;
-            else if (this.consensus_data.missing_validators.length >
-                     other.consensus_data.missing_validators.length)
+            else if (this.missing_validators_length >
+                     other.missing_validators_length)
                 return 1;
 
-            if (this.consensus_data.enrolls.length > other.consensus_data.enrolls.length)
+            if (this.enrollments_length > other.enrollments_length)
                 return -1;
-            else if (this.consensus_data.enrolls.length < other.consensus_data.enrolls.length)
+            else if (this.enrollments_length < other.enrollments_length)
                 return 1;
 
             if (this.total_rate > other.total_rate)
@@ -1458,40 +1460,66 @@ extern(D):
         }
     }
 
+    /// Calculate a score for the given candidate
+    protected CandidateScore scoreCandidate (in ConsensusData data) @safe nothrow
+    {
+        auto tx_set = data.tx_set in this.ledger.nominated_tx_sets;
+        if (!tx_set)
+            return CandidateScore(data.hashFull); // worst possible score
+
+        Amount total_rate;
+        foreach (const ref tx_hash; *tx_set)
+        {
+            Amount rate;
+            auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
+            if (errormsg == NodeLedger.InvalidConsensusDataReason.NotInPool)
+                continue; // most likely a CoinBase Transaction
+            else if (errormsg)
+                assert(0);
+            if (!total_rate.add(rate))
+            {
+                total_rate = 0.coins;
+                break;
+            }
+        }
+
+        return CandidateScore(data.hashFull, total_rate,
+            data.missing_validators.length, data.enrolls.length);
+    }
+
     @safe pure nothrow unittest
     {
-        CandidateHolder candidate_holder;
-        CandidateHolder[] candidate_holders;
+        CandidateScore score;
+        CandidateScore[] scores;
 
         // The candidate with the least missing validators is preferred
-        candidate_holder.consensus_data.missing_validators = [1, 2, 3];
-        candidate_holders ~= candidate_holder;
+        score.missing_validators_length = 3;
+        scores ~= score;
 
-        candidate_holder.consensus_data.missing_validators = [1, 2];
-        candidate_holders ~= candidate_holder;
+        score.missing_validators_length = 2;
+        scores ~= score;
 
-        candidate_holder.consensus_data.missing_validators = [1, 2, 3, 4, 5];
-        candidate_holders ~= candidate_holder;
+        score.missing_validators_length = 5;
+        scores ~= score;
 
-        assert(candidate_holders.sort().front.consensus_data.missing_validators == [1, 2]);
+        assert(scores.sort().front.missing_validators_length == 2);
 
         // If multiple candidates have the same number of missing validators, then
         // the candidate with the higher adjusted fee is preferred.
-        candidate_holders[1].total_rate = Amount(10);
+        scores[1].total_rate = Amount(10);
 
-        candidate_holder.consensus_data.missing_validators = [3, 4];
-        candidate_holder.total_rate = Amount(12);
-        candidate_holders ~= candidate_holder;
+        score.missing_validators_length = 2;
+        score.total_rate = Amount(12);
+        scores ~= score;
 
-        assert(candidate_holders.sort().front.consensus_data.missing_validators == [3, 4]);
+        assert(scores.sort().front.total_rate == Amount(12));
 
         // If multiple candidates have the same number of missing validators, and
         // adjusted total fee, then the candidate with lower hash is preferred.
-        candidate_holder.consensus_data.missing_validators = [2, 4];
-        candidate_holder.hash = "not zero".hashFull();
-        candidate_holders ~= candidate_holder;
+        score.hash = "not zero".hashFull();
+        scores ~= score;
 
-        assert(candidate_holders.sort().front.consensus_data.missing_validators == [2, 4]);
+        assert(scores.sort().front.hash == "not zero".hashFull());
     }
 
     /***************************************************************************
@@ -1514,47 +1542,13 @@ extern(D):
         log.dbg("combineCandidates for slot i: {}", cast(ulong) slot_idx);
         try
         {
-            CandidateHolder[] candidate_holders;
+            const(ValueWrapperPtr)[] values;
             foreach (ref const cand; candidates)
-            {
-                auto candidate = cand.getValue();
-                auto data = deserializeFull!ConsensusData(candidate[]);
-                log.trace("Consensus data: {}", data.prettify);
-                if (auto tx_set = data.tx_set in this.ledger.nominated_tx_sets)
-                {
-                    Amount total_rate;
-                    foreach (const ref tx_hash; *tx_set)
-                    {
-                        Amount rate;
-                        auto errormsg = this.ledger.getTxFeeRate(tx_hash, rate);
-                        if (errormsg == NodeLedger.InvalidConsensusDataReason.NotInPool)
-                            continue; // most likely a CoinBase Transaction
-                        else if (errormsg)
-                            assert(0);
-                        total_rate += rate;
-                    }
+                values ~= cand;
 
-                    CandidateHolder candidate_holder =
-                    {
-                        consensus_data: data,
-                        hash: data.hashFull(),
-                        total_rate: total_rate,
-                    };
-                    candidate_holders ~= candidate_holder;
-                }
-                else
-                {
-                    log.error("{}: Missing tx set with hash {} in nominated tx sets {}",
-                        __FUNCTION__, data.tx_set, this.ledger.nominated_tx_sets);
-                }
-            }
-
-            auto chosen_consensus_data = candidate_holders.sort().front;
-            log.trace("Chosen consensus data for slot i: {} : {}", cast(ulong) slot_idx, chosen_consensus_data.prettify);
-
-            const Value val = chosen_consensus_data.serializeFull().toVec();
-            auto dupe_val = duplicate_value(&val);
-            return this.wrapValue(dupe_val);
+            auto chosen_idx = values.map!(cand =>
+                this.scoreCandidate(deserializeFull!ConsensusData(cand.getValue()[]))).minIndex;
+            return this.wrapValue((*values[chosen_idx]).getValue());
         }
         catch (Exception ex)
         {
