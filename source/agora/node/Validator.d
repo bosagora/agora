@@ -186,15 +186,7 @@ public class Validator : FullNode, API
         // We get the enrollment key for this validator.
         auto this_utxo = this.enroll_man.getEnrollmentKey();
 
-        Hash[] utxo_keys;
-        // We add one to height as we are interested in enrolled at next block
-        if (!this.enroll_man.getEnrolledUTXOs(height + 1, utxo_keys) ||
-            utxo_keys.length == 0)
-        {
-            log.fatal("Could not retrieve enrollments / no enrollments found");
-            assert(0);
-        }
-
+        auto utxo_keys = this.ledger.getValidators(height + 1).map!(vi => vi.utxo).array();
         // We create new SCP object if the enrollment key is changed.
         NodeID node_id = utxo_keys.countUntil(this_utxo);
         this.nominator.updateSCPObject(node_id);

@@ -401,23 +401,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Get all the enrolled validator's UTXO keys.
-
-        Params:
-            utxo_keys = will contain the set of UTXO keys
-
-        Returns:
-            Return true if there was no error in getting the UTXO keys
-
-    ***************************************************************************/
-
-    public bool getEnrolledUTXOs (in Height height, out Hash[] keys) @safe nothrow
-    {
-        return this.validator_set.getEnrolledUTXOs(height, keys);
-    }
-
-    /***************************************************************************
-
         Check if an enrollment is a valid candidate for the proposed height
 
         This method is very similar to `addEnrollment`. This one deals with
