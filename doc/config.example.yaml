@@ -75,9 +75,10 @@ interfaces:
     address: 0.0.0.0 # Any node can bind - default value
     # Port on which we bind
     port:    2826    # 0xB0A, default value
-  - type: stats
+  - type: http
     address: 0.0.0.0
     port: 9110
+    stats: true # Enable stats server on this interface
   - type: tcp
     address: 0.0.0.0
     port: 9220

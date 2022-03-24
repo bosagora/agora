@@ -53,7 +53,6 @@ import agora.serialization.Serializer;
 import agora.stats.App;
 import agora.stats.Block;
 import agora.stats.EndpointReq;
-import agora.stats.Server;
 import agora.stats.Tx;
 import agora.stats.Utils;
 import agora.stats.Validator;
@@ -170,18 +169,6 @@ public class FullNode : API
 
     /// Ditto
     protected ManagedDatabase cacheDB;
-
-    /***************************************************************************
-
-        Stats-related fields
-
-        Those fields are used to expose internal statistics about the node on
-        an HTTP interface that is ultimately queried by a Prometheus server.
-        They may be unused if the stats interface is not enabled in the config.
-
-    ***************************************************************************/
-
-    protected StatsServer stats_server;
 
     /// Ditto
     protected ApplicationStats app_stats;
@@ -464,7 +451,6 @@ public class FullNode : API
         }
 
         this.timers[TimersIdx.ClockTick] = this.clock.start(this.taskman);
-        this.stats_server = this.makeStatsServer();
         this.transaction_relayer.start();
 
         this.registry.start();
@@ -726,11 +712,6 @@ public class FullNode : API
         log.info("Shutting down..");
         this.taskman.logStats();
 
-        // The stats server is standalone, but accepts network
-        // requests, hence why we shut it down early on.
-        if (this.stats_server !is null)
-            this.stats_server.shutdown();
-
         // Shut down our timers (discovery, catchup)
         foreach (timer; this.timers)
             timer.stop();
@@ -801,15 +782,6 @@ public class FullNode : API
                 Genesis,
                 commons_budget,
                 config.consensus);
-    }
-
-    /// Returns a newly constructed StatsServer
-    protected StatsServer makeStatsServer ()
-    {
-        auto stat_intf = this.config.interfaces.find!(intf => intf.type == InterfaceConfig.Type.stats);
-        if (stat_intf.empty)
-            return null;
-        return new StatsServer(stat_intf.front.address, stat_intf.front.port);
     }
 
     /// Returns: The Logger to use for this class

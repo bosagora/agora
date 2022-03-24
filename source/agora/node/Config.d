@@ -30,7 +30,7 @@ import vibe.inet.url;
 import configy.Read;
 
 import std.algorithm.iteration : splitter;
-import std.algorithm.searching : all, count;
+import std.algorithm.searching : all, any;
 import std.exception;
 import std.getopt;
 import std.traits : hasUnsharedAliasing;
@@ -144,8 +144,8 @@ public struct Config
 
         if (this.consensus.quorum_threshold < 1 || this.consensus.quorum_threshold > 100)
             throw new Exception("consensus.quorum_threshold is a percentage and must be between 1 and 100, included");
-        if (this.interfaces.count!(intf => intf.type == InterfaceConfig.Type.stats) > 1)
-            throw new Exception("Can only configure a single stats interface");
+        if (this.interfaces.any!(intf => intf.type == InterfaceConfig.Type.tcp && intf.stats))
+            throw new Exception("TCP interfaces cannot have 'stats' enabled");
     }
 }
 
@@ -165,7 +165,6 @@ public struct InterfaceConfig
         http = 0,
         https = 1,
         tcp = 2,
-        stats = 3,
     }
 
     /// Ditto
@@ -179,6 +178,9 @@ public struct InterfaceConfig
 
     /// Proxy Protocol V1
     public bool proxy_proto;
+
+    /// Enable StatsServer through this interface
+    public bool stats;
 
     /// Default values when none is given in the config file
     private static immutable InterfaceConfig[Type.max] Default = [

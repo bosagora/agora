@@ -27,8 +27,9 @@ import agora.node.Config;
 import agora.node.FullNode;
 import agora.node.Registry;
 import agora.node.Validator;
-import agora.serialization.Serializer;
 import agora.script.Engine;
+import agora.serialization.Serializer;
+import agora.stats.Utils;
 import agora.utils.Log;
 
 import vibe.core.core;
@@ -90,13 +91,28 @@ public void runNode (Config config, ref Listeners result)
 
     const bool hasHTTPInterface = config.interfaces.any!(
         i => i.type.among(InterfaceConfig.Type.http, InterfaceConfig.Type.https));
+    const bool hasStatsInterface = config.interfaces.any!(i => i.stats);
     URLRouter router;
+    URLRouter stats_router;
     RestInterfaceSettings settings;
     if (hasHTTPInterface)
     {
         router = new URLRouter();
         settings = new RestInterfaceSettings;
         settings.errorHandler = toDelegate(&restErrorHandler);
+    }
+
+    void handle_metrics (
+        scope HTTPServerRequest, scope HTTPServerResponse res)
+    {
+        res.writeBody(cast(const(ubyte[])) Utils.getCollectorRegistry().collect(),
+                      "text/plain");
+    }
+
+    if (hasStatsInterface)
+    {
+        stats_router = new URLRouter();
+        stats_router.get("/metrics", &handle_metrics);
     }
 
     if (config.validator.enabled)
@@ -108,6 +124,8 @@ public void runNode (Config config, ref Listeners result)
         result.node = inst;
         if (hasHTTPInterface)
             router.registerRestInterface!(agora.api.Validator.API)(inst, settings);
+        if (hasStatsInterface)
+            stats_router.registerRestInterface!(agora.api.Validator.API)(inst, settings);
     }
     else
     {
@@ -115,6 +133,8 @@ public void runNode (Config config, ref Listeners result)
         result.node = new FullNode(config);
         if (hasHTTPInterface)
             router.registerRestInterface!(agora.api.FullNode.API)(result.node, settings);
+        if (hasStatsInterface)
+            stats_router.registerRestInterface!(agora.api.FullNode.API)(result.node, settings);
     }
 
     if (config.flash.enabled)
@@ -127,7 +147,11 @@ public void runNode (Config config, ref Listeners result)
             config.node.data_dir, params.Genesis.hashFull(), new Engine(),
             result.node.getTaskManager(), &result.node.postTransaction,
             &result.node.getBlock, &result.node.getNetworkManager().makeRegistryClient);
-        router.registerRestInterface!FlashAPI(flash, settings);
+        if (hasHTTPInterface)
+            router.registerRestInterface!FlashAPI(flash, settings);
+        if (hasStatsInterface)
+            stats_router.registerRestInterface!FlashAPI(flash, settings);
+
         result.flash = flash;
     }
 
@@ -155,6 +179,8 @@ public void runNode (Config config, ref Listeners result)
         assert(reg !is null);
         if (hasHTTPInterface)
             router.registerRestInterface(reg, settings);
+        if (hasStatsInterface)
+            stats_router.registerRestInterface(reg, settings);
         /* auto dnstask = */ runTask(() => runDNSServer(config.registry, reg));
         result.tcp ~= listenTCP(config.registry.port, (conn) => conn.runTCPDNSServer(reg),
                 config.registry.address);
@@ -201,9 +227,19 @@ public void runNode (Config config, ref Listeners result)
                     (tls_user_help, interface_.address, httpsettings.port));
             httpsettings.tlsContext = tls_ctx;
         }
+
+        // The following correspond to your scraping interval in Prometheus
+        // The default value for Prometheus is 1 minute:
+        // https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+        // We set it to 70 seconds to avoid a bit of jitter.
+        // See https://github.com/bosagora/agora/issues/2380 and the linked Vibe.d
+        // issue for short-comings of this approach.
+        if (interface_.stats)
+            httpsettings.keepAliveTimeout = 70.seconds;
+
         log.info("Node is listening on interface: http{}://{}:{}",
             interface_.type == InterfaceConfig.Type.https ? "s" : "" , interface_.address, interface_.port);
-        result.http ~= listenHTTP(httpsettings, router);
+        result.http ~= listenHTTP(httpsettings, interface_.stats ? stats_router : router);
     }
 
     // also register the FlashControlAPI
