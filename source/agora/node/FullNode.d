@@ -285,8 +285,6 @@ public class FullNode : API
         this.ledger = this.makeLedger();
 
         this.network = this.makeNetworkManager();
-        auto validator_set = this.ledger.getEnrolledUTXOs();
-        this.network.onValidatorSetChanged(validator_set);
         this.transaction_relayer = this.makeTransactionRelayer();
 
         Utils.getCollectorRegistry().addCollector(&this.collectAppStats);
@@ -450,6 +448,8 @@ public class FullNode : API
 
     public void start ()
     {
+        this.network.onValidatorSetChanged(this.ledger.getEnrolledUTXOs());
+
         this.timers[TimersIdx.ClockTick] = this.clock.start(this.taskman);
         this.transaction_relayer.start();
 
