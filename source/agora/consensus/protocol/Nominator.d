@@ -1537,7 +1537,7 @@ extern(D):
                 {
                     consensus_data: data,
                     hash: data.hashFull(),
-                    total_rate = total_rate,
+                    total_rate: total_rate,
                 };
                 candidate_holders ~= candidate_holder;
             }
