@@ -238,10 +238,9 @@ extern(D):
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
 
         // Find the node id of this validator and create an SCPObject
-        Hash[] utxo_keys;
-        this.enroll_man.getEnrolledUTXOs(Height(1), utxo_keys);
         const this_utxo = this.enroll_man.getEnrollmentKey();
-        NodeID node_id = utxo_keys.countUntil(this_utxo);
+        NodeID node_id = ledger.getValidators(Height(1))
+            .map!(vi => vi.utxo).countUntil(this_utxo);
         this.updateSCPObject(node_id);
         this.restoreSCPState();
         this.slot_stat.clear();

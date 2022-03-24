@@ -2027,9 +2027,8 @@ public class TestValidatorNode : Validator, TestAPI
     public override QuorumConfig[] getExpectedQuorums (in PublicKey[] pub_keys,
         Height height)
     {
-        Hash[] utxos;
         // We add one to height as we are interested in active validators in next block
-        assert(this.enroll_man.getEnrolledUTXOs(height + 1, utxos) && utxos.length > 0);
+        const utxos = this.ledger.getValidators(height + 1).map!(vi => vi.utxo).array();
         // See `Validator.rebuildQuorumConfig`
         const rand_seed = this.ledger.height() == height ?
             this.ledger.lastBlock().header.randomSeed() :
