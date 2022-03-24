@@ -465,9 +465,12 @@ public class AgoraLayout : Appender.Layout
         // convert time to field values
         const tm = event.time;
 
+        // `SysTime.month` returns an `enum`, we need an integer
+        const uint month = tm.month;
+
         // format date according to ISO-8601 (lightweight formatter)
         sformat(dg, "{u4}-{u2}-{u2} {u2}:{u2}:{u2},{u2} {} [{}] - {}",
-            tm.year, tm.month, tm.day,
+            tm.year, month, tm.day,
             tm.hour, tm.minute, tm.second, tm.fracSecs.total!"msecs",
             coloredName(event.level), event.name, event.msg);
     }
@@ -507,6 +510,34 @@ public class AgoraLayout : Appender.Layout
             return "\u001b[41mUnknown\u001b[0m";
         }
     }
+}
+
+///
+unittest
+{
+    import std.datetime;
+    import core.memory;
+    import core.time;
+
+    char[] result = new char[](2048);
+    result.length = 0;
+    assumeSafeAppend(result);
+
+    scope dg = (in char[] v) { result ~= v; };
+    scope layout = new AgoraLayout();
+    LogEvent event = {
+       msg: "Have you met Ted?",
+       name: "Barney",
+       time: SysTime.fromUnixTime(1525048962, UTC()) + 420.msecs,
+       level: LogLevel.Warn,
+       host: null,
+    };
+
+    const before = GC.stats();
+    layout.format(event, dg);
+    const after = GC.stats();
+    assert(result == "2018-04-30 00:42:42,420 \u001b[33mWarn\u001b[0m [Barney] - Have you met Ted?");
+    assert(before == after);
 }
 
 /***************************************************************************
