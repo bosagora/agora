@@ -475,7 +475,7 @@ public class EnrollmentManager
 
     ***************************************************************************/
 
-    public PreImageInfo getPreimage (in Height height) @safe
+    public PreImageInfo getPreimage (in Height height) @safe nothrow @nogc
     {
         return PreImageInfo(this.enroll_key, this.cycle[height], height);
     }
@@ -514,23 +514,6 @@ public class EnrollmentManager
     public PreImageInfo[] getValidatorPreimages (in Height start_height) @safe nothrow
     {
         return this.validator_set.getPreimages(start_height);
-    }
-
-    /***************************************************************************
-
-        Get the pre-image hash for this validator
-
-        Params:
-            height = the block height of pre-image to be returned
-
-        Returns:
-            The preimage hash if found otherwise Hash.init
-
-    ***************************************************************************/
-
-    public Hash getOurPreimage (in Height height) @safe nothrow
-    {
-        return this.cycle[height];
     }
 
     /***************************************************************************

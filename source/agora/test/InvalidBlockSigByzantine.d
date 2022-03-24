@@ -53,11 +53,11 @@ private extern(C++) class BadBlockSigningNominator : Nominator
             case ByzantineReason.BadPreimage:
                 // use preimage from wrong height
                 return sign(this.kp.secret,
-                    this.enroll_man.getOurPreimage(Height(header.height + 1)));
+                    this.enroll_man.getPreimage(header.height + 1).hash);
             case ByzantineReason.BadSecretKey:
                 // Sign with random in place of validator secret key
                 return sign(Scalar.random(),
-                    this.enroll_man.getOurPreimage(header.height));
+                    this.enroll_man.getPreimage(header.height).hash);
         }
     }
 

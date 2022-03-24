@@ -952,7 +952,7 @@ extern(D):
     protected Signature signBlock (in BlockHeader header) @safe nothrow
     {
         return header.sign(this.kp.secret,
-            this.enroll_man.getOurPreimage(header.height));
+            this.enroll_man.getPreimage(header.height).hash);
     }
 
     /// If we have majority signatures then externalize to the ledger otherwise check again after receiving signatures

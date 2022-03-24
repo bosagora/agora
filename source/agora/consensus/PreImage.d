@@ -195,7 +195,7 @@ public struct PreImageCache
 
     ***************************************************************************/
 
-    public Hash opIndex (size_t index) const @nogc
+    public Hash opIndex (size_t index) const @nogc pure
     {
         immutable startIndex = (index / this.interval);
         // This will trigger out of bound if needed
