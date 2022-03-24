@@ -315,6 +315,46 @@ public class FullNode : API
         // Create timers
         this.timers[TimersIdx.Discovery] = this.taskman.createTimer(&this.discoveryTask);
         this.timers[TimersIdx.BlockCatchup] = this.taskman.createTimer(&this.catchupTask);
+
+        // Create event handlers
+        if (config.event_handlers.length > 0)
+        {
+            // Make `BlockExternalizedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.BlockExternalized)
+                .each!(handler => handler.addresses
+                    .each!((string address) {
+                        auto url = Address(address);
+                        this.block_handlers ~= typeof(this.block_handlers[0])(
+                            this.network.makeBlockExternalizedHandler(url), url);
+                    }));
+
+            // Make `BlockHeaderUpdatedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.BlockHeaderUpdated)
+                .each!(handler => handler.addresses
+                    .each!((string address) {
+                        auto url = Address(address);
+                        this.block_header_handlers ~= typeof(this.block_header_handlers[0])(
+                            this.network.makeBlockHeaderUpdatedHandler(url), url);
+                    }));
+
+            // Make `PreImageReceivedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.PreimageReceived)
+                .each!(handler => handler.addresses
+                    .each!((string address) {
+                        auto url = Address(address);
+                        this.preimage_handlers ~= typeof(this.preimage_handlers[0])(
+                            this.network.makePreImageReceivedHandler(url), url);
+                    }));
+
+            // Make `TransactionReceivedHandler`s from config
+            config.event_handlers.filter!(h => h.type == HandlerType.TransactionReceived)
+                .each!(handler => handler.addresses
+                    .each!((string address) {
+                        auto url = Address(address);
+                        this.transaction_handlers ~= typeof(this.transaction_handlers[0])(
+                            this.network.makeTransactionReceivedHandler(url), url);
+                    }));
+        }
     }
 
     mixin DefineCollectorForStats!("app_stats", "collectAppStats");
@@ -410,46 +450,6 @@ public class FullNode : API
 
     public void start ()
     {
-        // If we have handlers defined in the config
-        if (config.event_handlers.length > 0)
-        {
-            // Make `BlockExternalizedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.BlockExternalized)
-                .each!(handler => handler.addresses
-                    .each!((string address) {
-                        auto url = Address(address);
-                        this.block_handlers ~= typeof(this.block_handlers[0])(
-                            this.network.makeBlockExternalizedHandler(url), url);
-                    }));
-
-            // Make `BlockHeaderUpdatedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.BlockHeaderUpdated)
-                .each!(handler => handler.addresses
-                    .each!((string address) {
-                        auto url = Address(address);
-                        this.block_header_handlers ~= typeof(this.block_header_handlers[0])(
-                            this.network.makeBlockHeaderUpdatedHandler(url), url);
-                    }));
-
-            // Make `PreImageReceivedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.PreimageReceived)
-                .each!(handler => handler.addresses
-                    .each!((string address) {
-                        auto url = Address(address);
-                        this.preimage_handlers ~= typeof(this.preimage_handlers[0])(
-                            this.network.makePreImageReceivedHandler(url), url);
-                    }));
-
-            // Make `TransactionReceivedHandler`s from config
-            config.event_handlers.filter!(h => h.type == HandlerType.TransactionReceived)
-                .each!(handler => handler.addresses
-                    .each!((string address) {
-                        auto url = Address(address);
-                        this.transaction_handlers ~= typeof(this.transaction_handlers[0])(
-                            this.network.makeTransactionReceivedHandler(url), url);
-                    }));
-        }
-
         this.timers[TimersIdx.ClockTick] = this.clock.start(this.taskman);
         this.transaction_relayer.start();
 
