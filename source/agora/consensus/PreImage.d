@@ -378,7 +378,7 @@ public struct PreImageCycle
 
     ***************************************************************************/
 
-    public Hash opIndex (in Height height) @nogc
+    public Hash opIndex (in Height height) scope @nogc
     {
         this.seek(height);
         auto offset = height % this.preimages.length();
