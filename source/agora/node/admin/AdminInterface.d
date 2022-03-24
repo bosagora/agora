@@ -174,7 +174,7 @@ public class AdminInterface : NodeControlAPI
         string app, ulong height, out string contentType, out string vary)
     {
         // Gets the pre-image of the requested height.
-        Hash pre_image = this.enroll_man.getOurPreimage(Height(height));
+        Hash pre_image = this.enroll_man.getPreimage(Height(height)).hash;
 
         // blake2b hashing
         const Hash key = hashMulti(pre_image, app);
