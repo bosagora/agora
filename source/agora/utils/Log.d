@@ -478,36 +478,27 @@ public class AgoraLayout : Appender.Layout
     /// Returns: A colorized version of a LogLevel
     protected static string coloredName (LogLevel lvl)
     {
-        switch (lvl)
+        final switch (lvl)
         {
-            // White on Cyan
-        case LogLevel.Debug:
-            return "\u001b[46mDebug\u001b[0m";
-            // Cyan
-        case LogLevel.Trace:
-            return "\u001b[36mTrace\u001b[0m";
-            // Blue
-        case LogLevel.Verbose:
-            return "\u001b[34mVerbose\u001b[0m";
-            // Green
-        case LogLevel.Info:
+        case LogLevel.Debug:   // Magenta
+            return "\u001b[35mDebug\u001b[0m";
+        case LogLevel.Trace:   // Blue
+            return "\u001b[34mTrace\u001b[0m";
+        case LogLevel.Verbose: // Cyan
+            return "\u001b[36mVerbose\u001b[0m";
+        case LogLevel.Info:    // Green
             return "\u001b[32mInfo\u001b[0m";
-            // Yellow
-        case LogLevel.Warn:
+        case LogLevel.Warn:    // Yellow
             return "\u001b[33mWarn\u001b[0m";
-            // Magenta
-        case LogLevel.Error:
-            return "\u001b[35mError\u001b[0m";
-            // Red
-        case LogLevel.Fatal:
+        case LogLevel.Error:   // Red
+            return "\u001b[31mError\u001b[0m";
+        case LogLevel.Fatal:   // Red
             return "\u001b[31mFatal\u001b[0m";
 
-            // The following two should never be printed,
-            // so use white on red and make them noticeable
+        // The following two should never be printed,
+        // so use white on red and make them noticeable
         case LogLevel.None:
             return "\u001b[41mNone\u001b[0m";
-        default:
-            return "\u001b[41mUnknown\u001b[0m";
         }
     }
 }
