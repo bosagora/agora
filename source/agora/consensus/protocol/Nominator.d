@@ -63,7 +63,7 @@ import std.conv;
 import std.exception;
 import std.format;
 import std.path : buildPath;
-import std.range : assumeSorted, chain;
+import std.range : assumeSorted, chain, only;
 import core.time;
 
 // TODO: The block should probably have a size limit rather than a maximum
@@ -181,8 +181,21 @@ public extern (C++) class Nominator : SCPDriver
     /// catchup task delay
     private enum CatchupTaskDelay = 10.msecs;
 
+    /// holds candidate and it's score
+    struct CandidateHolder
+    {
+        /// slot index (ie height)
+        public ulong slot_idx;
+
+        /// copy of the candidate
+        public ConsensusData data;
+
+        /// candidate score
+        public CandidateScore score;
+    }
+
     /// Hashes of Values we fully validated for a slot
-    private CandidateScore[Hash] fully_validated_value;
+    private CandidateHolder[Hash] fully_validated_value;
 
     /// Hashes of envelopes we have processed already
     private Set!Hash seen_envs;
@@ -539,11 +552,16 @@ extern(D):
 
         if (!this.is_nominating)
             this.initial_missing_validators = data.missing_validators;
-
-        log.info("{}: Nominating {} at {}", data.prettify, cur_time, __FUNCTION__);
         this.is_nominating = true;
 
-        this.nominate(slot_idx, data);
+        auto prepared_candidate = CandidateHolder(slot_idx, data, this.scoreCandidate(data));
+        auto chosen = only(prepared_candidate).chain(fully_validated_value.byValue())
+            .filter!(cand => cand.slot_idx == slot_idx).minElement!"a.score";
+
+        if (prepared_candidate.score.hash != chosen.score.hash)
+            log.trace("{}: Nominating best value seen", __FUNCTION__);
+        log.info("{}: Nominating {} at {}", __FUNCTION__, chosen.data.prettify, cur_time);
+        this.nominate(slot_idx, chosen.data);
     }
 
     /***************************************************************************
@@ -1268,7 +1286,7 @@ extern(D):
                 return ValidationLevel.kInvalidValue;
             }
         }
-        this.fully_validated_value[idx_value_hash] = this.scoreCandidate(data);
+        this.fully_validated_value[idx_value_hash] = CandidateHolder(slot_idx, data, this.scoreCandidate(data));
 
         if (slot_idx % 10 == 0)
             this.slot_stat.clear();
