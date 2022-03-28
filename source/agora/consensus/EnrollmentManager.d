@@ -305,10 +305,7 @@ public class EnrollmentManager
             return r;
 
         if (enroll.utxo_key in self_utxos)
-        {
-            this.setEnrollmentKey(enroll.utxo_key);
-            this.setCommitment(enroll.commitment);
-        }
+            this.update(enroll);
 
         return null;
     }
@@ -566,27 +563,6 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Set the commitment for the enrollment for this node
-
-        If saving a commitment fails, this displays a log messages and just
-        returns. The `enroll_key` stores the value anyway and it can be restored
-        from the catch-up process later. If the database or serialization
-        operation fails, it means that node is not in normal situation overall.
-
-        Params:
-            commitment = the commitment hash
-
-    ***************************************************************************/
-
-    private void setCommitment (in Hash commitment) @trusted
-    {
-        this.commitment = commitment;
-        this.db.execute("REPLACE into node_enroll_data " ~
-            "(key, val) VALUES (?, ?)", "commitment", commitment);
-    }
-
-    /***************************************************************************
-
         Get the key for the enrollment for this node
 
         If this node is not enrolled yet, the result will be empty. And if
@@ -612,23 +588,27 @@ public class EnrollmentManager
 
     /***************************************************************************
 
-        Set the UTXO for the enrollment for this node
+        Set the UTXO and commitment used for this node's enrollment
 
         If saving to the database fails, this displays a log messages and just
-        returns. The `enroll_key` stores the value anyway and it can be restored
+        returns. The fields stores the value anyway and it can be restored
         from the catch-up process later. If the database or serialization
         operation fails, it means that node is not in normal situation overall.
 
         Params:
-            utxo = the key for the enrollment
+            enrollment = The enrollment to use
 
     ***************************************************************************/
 
-    private void setEnrollmentKey (in Hash utxo) @trusted
+    private void update (in Enrollment enrollment) @trusted
     {
-        this.enroll_key = utxo;
+        this.enroll_key = enrollment.utxo_key;
+        this.commitment = enrollment.commitment;
+
         this.db.execute("REPLACE into node_enroll_data " ~
-            "(key, val) VALUES (?, ?)", "utxo", enroll_key);
+            "(key, val) VALUES (?, ?)", "utxo", enrollment.utxo_key);
+        this.db.execute("REPLACE into node_enroll_data " ~
+            "(key, val) VALUES (?, ?)", "commitment", enrollment.commitment);
     }
 }
 
@@ -936,25 +916,6 @@ unittest
     // Enrollment now gone from the pool
     assert(man.getEnrollments(firstEnrolledAt10 + validator_cycle,
         &utxo_set.peekUTXO, getPenaltyDeposit).length == 0);
-}
-
-// Tests for get/set a enrollment key
-unittest
-{
-    import agora.consensus.data.Transaction;
-
-    auto utxo_set = new MemoryUTXOSet;
-    genesisSpendable()
-        .map!(txb => txb.refund(WK.Keys.A.address).sign(OutputType.Freeze))
-        .each!(tx => utxo_set.put(tx));
-
-    auto params = new immutable(ConsensusParams)(10);
-    auto man = new EnrollmentManager(WK.Keys.A, params);
-
-    assert(utxo_set.length == 8);
-    man.setEnrollmentKey(utxo_set.keys[3]);
-    assert(man.getEnrollmentKey()[] == utxo_set.keys[3][]);
-    assert(man.getEnrollmentKey()[] != utxo_set.keys[0][]);
 }
 
 /// tests for adding enrollments from the same public key
