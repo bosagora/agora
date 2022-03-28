@@ -204,6 +204,7 @@
         "libsodiumd":       { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "localrest":        { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
         "serialization":    { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
-        "vibe-d":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] }
+        "vibe-d":           { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] },
+        "my-ip":            { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] }
     }
 }

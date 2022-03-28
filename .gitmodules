@@ -61,3 +61,6 @@
 [submodule "dtext"]
 	path = submodules/dtext
 	url = https://github.com/bosagora/dtext.git
+[submodule "my-ip"]
+	path = submodules/my-ip
+	url = https://github.com/Kripth/my-ip.git
