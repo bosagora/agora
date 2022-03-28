@@ -239,7 +239,7 @@ extern(D):
 
         // Find the node id of this validator and create an SCPObject
         const this_utxo = this.enroll_man.getEnrollmentKey();
-        NodeID node_id = ledger.getValidators(Height(1))
+        NodeID node_id = ledger.getValidators(ledger.height + 1)
             .map!(vi => vi.utxo).countUntil(this_utxo);
         this.updateSCPObject(node_id);
         this.restoreSCPState();
