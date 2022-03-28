@@ -42,7 +42,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.serialization.Serializer;
-public import agora.utils.TxBuilder;
+import agora.utils.TxBuilder;
 public import agora.utils.Utility : retryFor;
 
 import std.algorithm;
@@ -313,6 +313,24 @@ unittest
     // check we can fetch preimages from previous cycle
     assert(WK.PreImages.at(Height(1), only_node2) == preimages_height_1);
 }
+
+// Uses a random nonce when signing (non-determenistic signature),
+// and defaults to LockType.Key
+private Unlock WKUnlocker (in Transaction tx, in OutputRef out_ref)
+    @safe nothrow
+{
+    import agora.script.Signature : getChallenge;
+
+    auto ownerKP = WK.Keys[out_ref.output.address];
+    assert(ownerKP !is KeyPair.init,
+           "Address not found in Well-Known keypairs: "
+           ~ out_ref.output.address.toString());
+
+    return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
+}
+
+///
+public alias TxBuilder = StaticTransactionBuilder!WKUnlocker;
 
 /***************************************************************************
 

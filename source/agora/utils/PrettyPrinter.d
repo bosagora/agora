@@ -586,6 +586,7 @@ Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
     // need reproducible unlocks for test (signing generates unique nonces)
     import agora.script.Lock;
     import agora.utils.Test;
+    import agora.utils.TxBuilder;
     static Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
     {
         return Unlock.init;

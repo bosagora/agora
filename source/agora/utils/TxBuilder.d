@@ -7,6 +7,26 @@
     transactions are valid. Generating invalid `Transaction`s is not supported,
     however one can generate a valid `Transaction` and mutate it afterwards.
 
+    Usage_recommendation:
+    The `TransactionBuilder` needs to access keys (more precisely, unlocker)
+    in order to generate valid transaction. However, supplying those keys
+    every time the `TransactionBuilder` is to be instantiated greatly reduce
+    usability. For this reason, we recommmend something along the following:
+    ```
+    private KeyPair[PublicKey] allKeys;
+    private Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow
+    {
+        auto ownerKP = allKeys[out_ref.output.address];
+        assert(ownerKP !is KeyPair.init)
+        return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
+    }
+
+    /// Publicly exposed alias used by other modules
+    public alias TxBuilder = StaticTransactionBuilder!keyUnlocker;
+    ```
+    The following sections assume such a usage and thus reference `TxBuilder`.
+
     Basics:
     When building a transaction, one must first attach an `Output`,
     or a `Transaction`, using either the constructors or `attach`.
@@ -40,14 +60,6 @@
     will be the refund address, and if a `Transaction` is provided, the owner
     of the first output will be the refund address.
 
-    Well_Known_addresses:
-    This utility relies on the signing keys used for the inputs to be part
-    of well-known address (see `WK.Keys`).
-
-    Error_handling:
-    Since this is an utility inteded purely for testing, passing invalid data
-    or inability to perform an operation will result in an assertion failure.
-
     Chaining:
     As can be seen in the example, operations which modify the state will
     return a reference to the `TxBuilder` to allow for easy chaining.
@@ -80,15 +92,26 @@ import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.Script: toPushOpcode;
 import agora.script.Signature;
-/* version (unittest) */ import agora.utils.Test;
+version (unittest) import agora.utils.Test;
 
 import std.algorithm;
 import std.format;
 import std.range;
 
 /// Ditto
-public struct TxBuilder
+public struct StaticTransactionBuilder (alias KeyUnlocker)
 {
+    static assert(is(typeof(&KeyUnlocker) : TransactionBuilder.Unlocker),
+                  "Expected `KeyUnlocker` template argument to `TransactionBuilder` " ~
+                  "to be of type `" ~ TransactionBuilder.Unlocker.stringof ~ "`, not `" ~
+                  typeof(&KeyUnlocker).stringof ~ "`");
+
+    /// Actual object
+    public TransactionBuilder builder;
+
+    ///
+    public alias builder this;
+
     /***************************************************************************
 
         Construct a new transaction builder with the provided refund address
@@ -105,42 +128,102 @@ public struct TxBuilder
 
     public this (in PublicKey refundMe) @safe pure nothrow
     {
-        this.leftover = Output(Amount(0), refundMe);
-        this.unlocker = &TxBuilder.keyUnlocker;
+        this.builder = TransactionBuilder(&KeyUnlocker, refundMe);
     }
 
     /// Ditto
     public this (in Lock lock) @safe pure nothrow
     {
-        this.leftover = Output(Amount(0), lock);
-        this.unlocker = &TxBuilder.keyUnlocker;
+        this.builder = TransactionBuilder(&KeyUnlocker, lock);
     }
 
     /// Ditto
     public this (const Transaction tx) @safe nothrow
     {
-        this(tx.outputs[0].lock);
-        this.attach(tx);
+        this.builder = TransactionBuilder(&KeyUnlocker, tx);
     }
 
     /// Ditto
     public this (const Transaction tx, uint index) @safe nothrow
     {
-        this(tx.outputs[index].lock);
-        this.attach(tx, index);
+        this.builder = TransactionBuilder(&KeyUnlocker, tx, index);
     }
 
     /// Ditto
-    public this (const Transaction tx, uint index, in Lock lock) @safe nothrow
+    public this (const Transaction tx, uint index, in Lock lock)
+        @safe nothrow
     {
-        this(lock);
-        this.attach(tx, index);
+        this.builder = TransactionBuilder(&KeyUnlocker, tx, index, lock);
     }
 
     /// Convenience constructor that calls `this.attach(Output, Hash)`
     public this (in Output utxo, in Hash hash) @safe nothrow
     {
-        this(utxo.address);
+        this.builder = TransactionBuilder(&KeyUnlocker, utxo, hash);
+    }
+}
+
+///
+public struct TransactionBuilder
+{
+    /// Define Unlocker function to sign the inputs
+    public alias Unlocker = Unlock function (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow;
+
+    /***************************************************************************
+
+        Construct a new transaction builder with the provided refund address
+
+        Params:
+            unlocker = The function to use for unlocking
+            refundMe = The address to receive the funds by default.
+            lock = the lock to use in place of an address
+            tx = The transaction to attach to. If the `index` overload is used,
+                 only the specified `index` will be attached, and it will be
+                 the refund address. Otherwise, the first output is used.
+            index = Index of the sole output to use from the transaction.
+
+    ***************************************************************************/
+
+    public this (Unlocker unlocker, in PublicKey refundMe) @safe pure nothrow
+    {
+        this.unlocker = unlocker;
+        this.leftover = Output(Amount(0), refundMe);
+    }
+
+    /// Ditto
+    public this (Unlocker unlocker, in Lock lock) @safe pure nothrow
+    {
+        this.unlocker = unlocker;
+        this.leftover = Output(Amount(0), lock);
+    }
+
+    /// Ditto
+    public this (Unlocker unlocker, const Transaction tx) @safe nothrow
+    {
+        this(unlocker, tx.outputs[0].lock);
+        this.attach(tx);
+    }
+
+    /// Ditto
+    public this (Unlocker unlocker, const Transaction tx, uint index) @safe nothrow
+    {
+        this(unlocker, tx.outputs[index].lock);
+        this.attach(tx, index);
+    }
+
+    /// Ditto
+    public this (Unlocker unlocker, const Transaction tx, uint index, in Lock lock)
+        @safe nothrow
+    {
+        this(unlocker, lock);
+        this.attach(tx, index);
+    }
+
+    /// Convenience constructor that calls `this.attach(Output, Hash)`
+    public this (Unlocker unlocker, in Output utxo, in Hash hash) @safe nothrow
+    {
+        this(unlocker, utxo.address);
         this.attach(utxo, hash);
     }
 
@@ -239,8 +322,6 @@ public struct TxBuilder
 
         Sets the unlocker function to sign the inputs
 
-        If not set then the default unlocker using WellKnownKeys is used.
-
         Params:
             unlocker = function to sign the inputs of the transaction
 
@@ -257,26 +338,13 @@ public struct TxBuilder
     }
 
     /// Sign with a given key and append ubytes if given
-    public static Unlock signWithSpecificKey (KeyPair key, ubyte[] append = null) (in Transaction tx, in OutputRef)
+    public Unlock signWithSpecificKey (KeyPair key, ubyte[] append = null) (in Transaction tx, in OutputRef)
         @safe nothrow
     {
         auto pair = SigPair(key.sign(tx.getChallenge()), SigHash.All);
         if (append)
             return Unlock(toPushOpcode(pair[]) ~ append);
         return Unlock(toPushOpcode(pair[]));
-    }
-
-    // Uses a random nonce when signing (non-determenistic signature),
-    // and defaults to LockType.Key
-    private static Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
-        @safe nothrow
-    {
-        auto ownerKP = WK.Keys[out_ref.output.address];
-        assert(ownerKP !is KeyPair.init,
-                "Address not found in Well-Known keypairs: "
-                ~ out_ref.output.address.toString());
-
-        return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
     }
 
     /***************************************************************************
@@ -522,10 +590,6 @@ public struct TxBuilder
 
         return this;
     }
-
-    /// Define Unlocker function to sign the inputs
-    public alias Unlocker = Unlock function (in Transaction tx, in OutputRef out_ref)
-        @safe nothrow;
 
     /// The actual function that will sign the inputs
     private Unlocker unlocker;
