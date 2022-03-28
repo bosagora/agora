@@ -16,6 +16,7 @@ module agora.utils.InetUtils;
 import agora.common.Types;
 import agora.utils.Log;
 
+import myip;
 import vibe.inet.url : URL;
 
 import std.algorithm;
@@ -25,6 +26,7 @@ import std.ascii : isAlpha, isDigit;
 import std.conv;
 import std.range : zip, iota;
 import std.regex : matchFirst, regex;
+import std.socket : AddressFamily;
 import std.string : indexOf, strip;
 import std.typecons : tuple, Tuple;
 
@@ -43,104 +45,11 @@ public enum HostType : ubyte
 
 struct InetUtils
 {
-    version (Posix) public static string[] getAllIPs() @trusted
+    public static string[] getAllIPs() @trusted
     {
-        import core.sys.posix.netdb;
-
-        version (OSX)
-        {
-            import core.sys.darwin.ifaddrs;
-            import core.sys.posix.netinet.in_;
-            import core.sys.posix.sys.socket;
-        }
-        version (linux)
-        {
-            import core.sys.linux.ifaddrs;
-        }
-
-        string[] ips;
-
-        ifaddrs* if_address_head_poi;
-        ifaddrs* if_address_poi;
-
-        getifaddrs(&if_address_head_poi);
-        scope(exit) freeifaddrs(if_address_head_poi);
-
-        for (if_address_poi = if_address_head_poi; if_address_poi; if_address_poi = if_address_poi.ifa_next)
-        {
-            if (if_address_poi.ifa_addr &&
-                (if_address_poi.ifa_addr.sa_family == AF_INET || if_address_poi.ifa_addr.sa_family == AF_INET6))
-            {
-                const ipv6 = if_address_poi.ifa_addr.sa_family == AF_INET6;
-                const sockaddr_len  = ipv6? sockaddr_in6.sizeof : sockaddr_in.sizeof;
-
-                char[NI_MAXHOST] buffer;
-                int name_info_res = getnameinfo(if_address_poi.ifa_addr, sockaddr_len, buffer.ptr, buffer.length,
-                                                null, 0, NI_NUMERICHOST);
-                if (name_info_res)
-                {
-                    log.error("error happened during a call to getnameinfo, name_info_res code: {}", name_info_res);
-                    continue;
-                }
-                string ip = buffer[0 .. strlen(buffer.ptr)].idup();
-                ips ~= ip;
-            }
-        }
-
+        string[] ips = getPrivateIPs(AddressFamily.UNSPEC);
+        ips ~= getPublicIP(AddressFamily.INET6); // This also returns IPv4
         return ips;
-    }
-
-    version (Windows)
-    {
-        import core.sys.windows.iphlpapi;
-        import core.sys.windows.iptypes;
-        import core.sys.windows.windef;
-        import core.sys.windows.winsock2;
-        import core.stdc.stdlib: malloc, free;
-
-        public static string[] getAllIPs()
-        {
-            string[] ips;
-            PIP_ADAPTER_INFO adapter_info_head = cast(IP_ADAPTER_INFO *) malloc(IP_ADAPTER_INFO.sizeof);
-            PIP_ADAPTER_INFO adapter_info;
-            DWORD ret_adapters_info;
-            ULONG buff_length = IP_ADAPTER_INFO.sizeof;
-            if (adapter_info_head == NULL)
-            {
-                log.error("Error allocating memory needed to call GetAdaptersinfo");
-                return null;
-            }
-            scope(exit) free(adapter_info_head);
-            // find out the real size we need to allocate
-            if (GetAdaptersInfo(adapter_info_head, &buff_length) == ERROR_BUFFER_OVERFLOW)
-            {
-                free(adapter_info_head);
-                adapter_info_head = cast(IP_ADAPTER_INFO *) malloc(buff_length);
-                if (adapter_info_head == NULL)
-                {
-                    log.error("Error reallocating memory needed to call GetAdaptersinfo");
-                    return null;
-                }
-            }
-            ret_adapters_info = GetAdaptersInfo(adapter_info_head, &buff_length);
-            if (ret_adapters_info != NO_ERROR)
-            {
-                log.error("GetAdaptersInfo failed with error: {}", ret_adapters_info);
-                return null;
-            }
-
-            adapter_info = adapter_info_head;
-            while (adapter_info)
-            {
-                auto ip_tmp = cast(char *) adapter_info.IpAddressList.IpAddress.String;
-                string ip = ip_tmp[0 .. strlen(ip_tmp)].idup;
-                if (ip.length > 0 && ip != "0.0.0.0")
-                    ips ~= ip;
-
-                adapter_info = adapter_info.Next;
-            }
-            return ips;
-        }
     }
 
     /***************************************************************************
@@ -255,55 +164,20 @@ struct InetUtils
             == HostPortTup("seed.bosagora.io", 80, HostType.Domain, "http"));
     }
 
-    public static string[] getPublicIPs() @safe
+    public static string getPublicIP(AddressFamily addressFamily = AddressFamily.INET) @safe
     {
-        return filterIPs(ip => !isPrivateIP(ip));
+        return publicAddress(Service.ipify, addressFamily);
     }
 
-    public static string[] getPrivateIPs()
+    public static string[] getPrivateIPs(AddressFamily addressFamily = AddressFamily.INET)
     {
-        return filterIPs(&isPrivateIP);
-    }
+        uint flags = 0;
 
-    private static bool isPrivateIP(string ip)
-    {
-        if (ip.canFind(':'))
-        {
-            if(ip == "" || ip == "::" || "::1") // Loopback
-                return true;
-            ushort[] ip_parts = ip.split("::").map!(ip_part => to!ushort(ip_part,16)).array();
-            if(ip_parts.length >= 1)
-            {
-                if(ip_parts[0] >= to!ushort("fe80",16) && ip_parts[0] <= to!ushort("febf",16)) // Link
-                    return true;
-                if(ip_parts[0] >= to!ushort("fc00",16) && ip_parts[0] <= to!ushort("fdff",16)) // Private network
-                    return true;
-                if(ip_parts[0] == to!ushort("100",16)) // Discard prefix
-                    return true;
-            }
-            return false;
-        }
-        else
-        {
-            // private and loopback addresses are the followings
-            // 10.0.0.0    - 10.255.255.255
-            // 172.16.0.0  - 172.31.255.255
-            // 192.168.0.0 - 192.168.255.255
-            // 169.254.0.0 - 169.254.255.255
-            // 127.0.0.0   - 127.255.255.255
+        if (addressFamily == AddressFamily.INET)
+            flags |= Exclude.IPV6;
+        else if (addressFamily == AddressFamily.INET6)
+            flags |= Exclude.IPV4;
 
-            ubyte[] ip_parts = ip.split(".").map!(ip_part => to!ubyte(ip_part)).array();
-            return
-                (ip_parts[0]==10) ||
-                ((ip_parts[0]==172) && (ip_parts[1]>=16 && ip_parts[1]<=31)) ||
-                (ip_parts[0]==192 && ip_parts[1]==168) ||
-                (ip_parts[0]==169 && ip_parts[1]==254) ||
-                (ip_parts[0]==127);
-        }
-    }
-
-    private static string[] filterIPs(bool function(string ip) filter_func) @trusted
-    {
-        return filter!(ip => filter_func(ip))(getAllIPs()).array();
+        return privateAddresses(flags);
     }
 }

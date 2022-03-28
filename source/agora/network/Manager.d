@@ -756,9 +756,16 @@ public class NetworkManager
 
         const(Address)[] addresses = this.config.validator.addresses_to_register;
         if (!addresses.length)
-            addresses = InetUtils.getPublicIPs().map!(
-                ip => Address("agora://"~ip)
-            ).array;
+        {
+            try
+                addresses ~= Address("agora://"~InetUtils.getPublicIP());
+            catch (Exception e)
+            {
+                log.warn("Couldn't get public address of the host: {}. Trying again later, consider providing addresses to register..",
+                    e);
+                return;
+            }
+        }
         this.addAddresses(Set!Address.from(addresses));
 
         RegistryPayloadData data =
