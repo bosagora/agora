@@ -23,6 +23,7 @@
 		"taggedalgebraic": {"path":"submodules/taggedalgebraic/"},
 		"tinyendian": {"path":"submodules/tinyendian/"},
 		"vibe-core": {"path":"submodules/vibe-core/"},
-		"vibe-d": {"path":"submodules/vibe.d/"}
+		"vibe-d": {"path":"submodules/vibe.d/"},
+		"my-ip": {"path":"submodules/my-ip/"}
 	}
 }
