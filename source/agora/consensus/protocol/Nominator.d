@@ -891,13 +891,16 @@ extern(D):
 
         const pendingBlockSig = (block_sig.height == this.pending_block.header.height);
 
-        if (!pendingBlockSig && block_sig.height > cur_height) // Too early for this signature
+        Block block;
+        if (pendingBlockSig)
+            block = this.pending_block;
+        else if (block_sig.height <= cur_height)
+            block = this.ledger.getBlocksFrom(Height(block_sig.height)).front;
+        else // Too early for this signature
         {
             early_sigs.put(block_sig);
             return BlockHeader.init; // We want the caller to ignore this signature
         }
-
-        Block block = pendingBlockSig ? this.pending_block : this.ledger.getBlocksFrom(Height(block_sig.height)).front;
 
         // Only update if it is valid and we are missing signatures and this is one of them
         if (this.collectBlockSignature(block_sig, block.hashFull())
