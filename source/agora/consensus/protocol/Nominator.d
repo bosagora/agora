@@ -476,6 +476,7 @@ extern(D):
         }
 
         this.active_timers[] = null;
+        () @trusted { this.scp.purgeSlots(height); }();
     }
 
     /***************************************************************************
