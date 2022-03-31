@@ -106,7 +106,7 @@ public void runNode (Config config, ref Listeners result)
         scope HTTPServerRequest, scope HTTPServerResponse res)
     {
         res.writeBody(cast(const(ubyte[])) Utils.getCollectorRegistry().collect(),
-                      "text/plain");
+                      "text/plain; charset=utf-8");
     }
 
     if (hasStatsInterface)

@@ -17,6 +17,8 @@ module agora.stats.CollectorRegistry;
 
 import agora.stats.Collector : Collector;
 
+version (unittest) import std.algorithm;
+
 /// ditto
 public class CollectorRegistry
 {
@@ -76,6 +78,9 @@ public class CollectorRegistry
 
     public const(char)[] collect ( )
     {
+        import core.time;
+        import std.format;
+        auto start = MonoTime.currTime;
         this.collector.reset();
 
         try
@@ -90,7 +95,8 @@ public class CollectorRegistry
             throw ex;
         }
 
-        return this.collector.getCollection();
+        return this.collector.getCollection() ~
+            format("scrape_duration \"%s\"", MonoTime.currTime - start);
     }
 }
 
@@ -139,10 +145,10 @@ unittest
 
     stats.setTestStats(Statistics(3600, 347, 3.14, 6.023, 0.43));
 
-    assert(registry.collect() ==
+    assert(registry.collect().startsWith(
         "up_time_s {id=\"123.034\"} 3600\ncount {id=\"123.034\"} 347\n" ~
         "ratio {id=\"123.034\"} 3.14\nfraction {id=\"123.034\"} 6.023\n" ~
-        "very_real {id=\"123.034\"} 0.43\n");
+        "very_real {id=\"123.034\"} 0.43\n"));
 }
 
 /// Test collection from more than one delegates
@@ -155,7 +161,7 @@ unittest
     stats.setTestStats(Statistics(3600, 347, 3.14, 6.023, 0.43));
     stats.setTestLabels(Labels(1_235_813, "ocean", 3.14159));
 
-    assert(registry.collect() ==
+    assert(registry.collect().startsWith(
         "up_time_s {id=\"123.034\"} 3600\ncount {id=\"123.034\"} 347\n" ~
         "ratio {id=\"123.034\"} 3.14\nfraction {id=\"123.034\"} 6.023\n" ~
         "very_real {id=\"123.034\"} 0.43\n" ~
@@ -164,7 +170,7 @@ unittest
         "count {id=\"1235813\",job=\"ocean\",perf=\"3.14159\"} 347\n" ~
         "ratio {id=\"1235813\",job=\"ocean\",perf=\"3.14159\"} 3.14\n" ~
         "fraction {id=\"1235813\",job=\"ocean\",perf=\"3.14159\"} 6.023\n" ~
-        "very_real {id=\"1235813\",job=\"ocean\",perf=\"3.14159\"} 0.43\n");
+        "very_real {id=\"1235813\",job=\"ocean\",perf=\"3.14159\"} 0.43\n"));
 }
 
 /// Test that the collections are not accumulated upon more than one call to
