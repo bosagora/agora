@@ -170,6 +170,7 @@ version (unittest)
 unittest
 {
     import std.functional : toDelegate;
+    import std.algorithm;
 
     // stats with one label
     CollectorRegistry collector_registry_with_label = new CollectorRegistry([]);
@@ -178,14 +179,14 @@ unittest
     test_stats_with_label.increaseMetricBy!"test_metric_value"(1, "interesting_label1");
     test_stats_with_label.setMetricTo!"test_metric_value"(5, "interesting_label2");
     test_stats_with_label.increaseMetricBy!"test_metric_value"(2, "interesting_label2");
-    assert(collector_registry_with_label.collect() ==
+    assert(collector_registry_with_label.collect().startsWith(
         "test_metric_value {test_metric_label=\"interesting_label1\"} 42\n" ~
-        "test_metric_value {test_metric_label=\"interesting_label2\"} 7\n");
+        "test_metric_value {test_metric_label=\"interesting_label2\"} 7\n"));
 
     // stats without label
     CollectorRegistry collector_registry_without_label = new CollectorRegistry([]);
     collector_registry_without_label.addCollector(toDelegate(&collectTestStatWithoutLabel));
     test_stats_without_label.setMetricTo!"test_metric_value"(41);
     test_stats_without_label.increaseMetricBy!"test_metric_value"(1);
-    assert(collector_registry_without_label.collect() == "test_metric_value 42\n");
+    assert(collector_registry_without_label.collect().startsWith("test_metric_value 42\n"));
 }
