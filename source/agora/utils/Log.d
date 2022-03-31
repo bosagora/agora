@@ -53,50 +53,50 @@ public struct Logger
     }
 
     /// See `dtext.log.Logger : Logger.dbg`
-    public void dbg (Args...) (in char[] fmt, Args args)
+    public void dbg (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
         // For debug logging let's assume we do not throw
-        assumeWontThrow(this.format(LogLevel.Debug, fmt, args));
+        assumeWontThrow(this.format!Args(LogLevel.Debug, fmt, args, func));
     }
 
     /// See `dtext.log.Logger : Logger.trace`
-    public void trace (Args...) (in char[] fmt, Args args)
+    public void trace (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
-        this.format(LogLevel.Trace, fmt, args);
+        this.format!Args(LogLevel.Trace, fmt, args, func);
     }
 
     /// See `dtext.log.Logger : Logger.verbose`
-    public void verbose (Args...) (in char[] fmt, Args args)
+    public void verbose (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
-        this.format(LogLevel.Verbose, fmt, args);
+        this.format!Args(LogLevel.Verbose, fmt, args, func);
     }
 
     /// See `dtext.log.Logger : Logger.info`
-    public void info (Args...) (in char[] fmt, Args args)
+    public void info (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
-        this.format(LogLevel.Info, fmt, args);
+        this.format!Args(LogLevel.Info, fmt, args, func);
     }
 
     /// See `dtext.log.Logger : Logger.warn`
-    public void warn (Args...) (in char[] fmt, Args args)
+    public void warn (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
-        this.format(LogLevel.Warn, fmt, args);
+        this.format!Args(LogLevel.Warn, fmt, args, func);
     }
 
     /// See `dtext.log.Logger : Logger.error`
-    public void error (Args...) (in char[] fmt, Args args)
+    public void error (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
-        this.format(LogLevel.Error, fmt, args);
+        this.format!Args(LogLevel.Error, fmt, args, func);
     }
 
     /// See `dtext.log.Logger : Logger.fatal`
-    public void fatal (Args...) (in char[] fmt, Args args)
+    public void fatal (Args...) (in char[] fmt, Args args, string func = __FUNCTION__)
     {
-        this.format(LogLevel.Fatal, fmt, args);
+        this.format!Args(LogLevel.Fatal, fmt, args, func);
     }
 
     /// See `dtext.log.Logger : Logger.format`
-    public void format (Args...) (LogLevel level, in char[] fmt, Args args)
+    public void format (Args...) (LogLevel level, in char[] fmt, Args args, string func = __FUNCTION__)
     {
         import core.memory : GC;
         try
@@ -110,7 +110,7 @@ public struct Logger
             {
                 assert(0,"\nplease make sure you are declaring the \nmixin AddLogger!(); statement on top, followed by:\nstatic this{}; followed by:\nstatic ~this{};");
             }
-            this.logger.format(level, fmt, args);
+            this.logger.format!Args(level, fmt, args, func);
         }
         catch (Exception ex)
         {
@@ -151,7 +151,7 @@ public struct Logger
 
     public void enableConsole (bool additive = false)
     {
-        this.logger.additive = additive;
+        this.logger.setOption(Dtext.LogOption.Additive, additive);
         auto appender = new AppendConsole();
         appender.layout(new AgoraLayout());
         this.logger.add(appender);
@@ -160,7 +160,7 @@ public struct Logger
     /// Ditto
     public void enableFile (string path, bool additive = false)
     {
-        this.logger.additive = additive;
+        this.logger.setOption(Dtext.LogOption.Additive, additive);
         auto appender = new PhobosFileAppender(path);
         appender.layout(new AgoraLayout());
         this.logger.add(appender);
@@ -253,8 +253,8 @@ public void configureLogger (in LoggerConfig settings, bool clear)
 
 	// if console/file/syslog is specifically set, don't inherit other
     // appenders (unless we have been specifically asked to be additive)
-	log.additive = settings.additive ||
-        !(settings.console || settings.file.length);
+    log.setOption(Dtext.LogOption.Additive, settings.additive ||
+                  !(settings.console || settings.file.length));
 
     if (settings.console)
     {
