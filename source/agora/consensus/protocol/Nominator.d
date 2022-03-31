@@ -620,7 +620,7 @@ extern(D):
             log.info("{}(): Tx set didn't trigger new nomination", __FUNCTION__);
             const Duration halfBlockDuration = this.params.BlockInterval / 2;
             // We are half way through block interval time to externalize
-            if (this.clock.utcTime() > this.ledger.getExpectedBlockTime(this.ledger.height + 1) + halfBlockDuration)
+            if (this.clock.utcTime() >= this.ledger.getExpectedBlockTime(this.ledger.height + 1) + halfBlockDuration)
             {
                 log.info("{}(): Ledger has height #{} expecting #{} as half interval has passed - Resending latest envelopes"
                     , __FUNCTION__, this.ledger.height, this.ledger.expectedHeight(this.clock.utcTime()));
