@@ -44,8 +44,7 @@
             "mainSourceFile": "source/agora/node/main.d",
             "debugVersions": [ "AgoraDebugAPIs" ],
             "excludedSourceFiles": [
-                "source/agora/cli/*",
-                "source/agora/utils/gc/*",
+                "source/agora/cli/*"
             ]
         },
         {
@@ -53,16 +52,10 @@
             "targetName": "agora-traced",
             "mainSourceFile": "source/agora/node/main.d",
             "debugVersions": [ "AgoraDebugAPIs" ],
-            "preGenerateCommands": [
-                "$DUB scripts/build_tracy.d",
-            ],
-            "sourceFiles-posix": [
-                "build/TracyClient.o"
-            ],
-            "sourceFiles-windows": [
-                "build/TracyClient.obj"
-            ],
-            "excludedSourceFiles": [ "source/agora/cli/*" ]
+            "excludedSourceFiles": [ "source/agora/cli/*" ],
+            "dependencies": {
+                "tracyd": { "version": "*", "dflags" : [ "-preview=in", "-revert=dtorfields" ] }
+            }
         },
         {
             "name": "client",
@@ -91,7 +84,6 @@
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/multi/*",
                 "source/agora/test/*",
-                "source/agora/utils/gc/*"
             ]
         },
         {
@@ -99,7 +91,6 @@
             "targetName": "agora-unittests",
             "excludedSourceFiles": [
                 "source/agora/cli/*/main.d",
-                "source/agora/utils/gc/*"
             ],
             "sourceFiles-posix": [
                 "source/scpp/build/DSizeChecks.o",
@@ -122,16 +113,6 @@
             "targetName": "agora-config-dumper",
             "mainSourceFile": "source/agora/cli/configdump.d",
 
-            "preGenerateCommands": [
-                "$DUB scripts/build_tracy.d",
-            ],
-            "sourceFiles-posix": [
-                "build/TracyClient.o"
-            ],
-            "sourceFiles-windows": [
-                "build/TracyClient.obj"
-            ],
-
             "excludedSourceFiles": [
                 "source/agora/cli/version/*"
             ],
@@ -144,24 +125,17 @@
             "excludedSourceFiles": [
                 "source/agora/cli/checkvtable/*",
                 "source/agora/cli/client/*",
-                "source/agora/utils/gc/*"
             ]
         },
         {
             "name": "dns-resolver",
             "targetName": "dns-resolver",
             "versions": [ "AgoraStandaloneDNSResolver" ],
-            "excludedSourceFiles": [
-                "source/agora/utils/gc/*"
-            ]
         },
         {
             "name": "vanity",
             "targetName": "agora-vanity-generator",
             "mainSourceFile": "source/agora/cli/vanity/main.d",
-            "excludedSourceFiles": [
-                "source/agora/utils/gc/*"
-            ]
         },
         {
             "name": "checkvtable-gen",
@@ -173,7 +147,6 @@
                 "source/agora/cli/checkvtable/check.d",
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
-                "source/agora/utils/gc/*"
             ]
         },
         {
@@ -187,7 +160,6 @@
                 "source/agora/cli/checkvtable/generate.d",
                 "source/agora/cli/client/*",
                 "source/agora/cli/multi/*",
-                "source/agora/utils/gc/*"
             ]
         }
     ],

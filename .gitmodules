@@ -49,9 +49,6 @@
 [submodule "crypto"]
 	path = submodules/crypto
 	url = https://github.com/bosagora/crypto.git
-[submodule "tracy"]
-	path = submodules/tracy
-	url = https://github.com/wolfpld/tracy.git
 [submodule "serialization"]
 	path = submodules/serialization
 	url = https://github.com/bosagora/serialization.git
@@ -64,3 +61,6 @@
 [submodule "my-ip"]
 	path = submodules/my-ip
 	url = https://github.com/Kripth/my-ip.git
+[submodule "tracyd"]
+	path = submodules/tracyd
+	url = https://github.com/bosagora/tracyd.git

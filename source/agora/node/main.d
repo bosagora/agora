@@ -30,7 +30,6 @@ import agora.node.FullNode;
 import agora.node.Validator;
 import agora.node.Runner;
 import agora.utils.Workarounds;
-import agora.utils.TracyAPI;
 
 import vibe.core.core;
 import vibe.inet.url;

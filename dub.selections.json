@@ -24,6 +24,7 @@
 		"tinyendian": {"path":"submodules/tinyendian/"},
 		"vibe-core": {"path":"submodules/vibe-core/"},
 		"vibe-d": {"path":"submodules/vibe.d/"},
-		"my-ip": {"path":"submodules/my-ip/"}
+		"my-ip": {"path":"submodules/my-ip/"},
+		"tracyd": {"path":"submodules/tracyd/"}
 	}
 }
