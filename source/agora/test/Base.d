@@ -1909,10 +1909,7 @@ public class TestFullNode : FullNode, TestAPI
         // Keep in sync with `TestValidator` ctor
         Log.root.level(atomicLoad(defaultLogLevel), true);
         foreach (const ref settings; config.logging)
-        {
-            auto log = settings.name ? Log.lookup(settings.name) : Log.root;
-            log.level(settings.level, settings.propagate);
-        }
+            configureLogger(settings, false);
 
         super(config);
     }
@@ -1987,10 +1984,7 @@ public class TestValidatorNode : Validator, TestAPI
         // By default all output is written to the appender
         Log.root.level(atomicLoad(defaultLogLevel), true);
         foreach (const ref settings; config.logging)
-        {
-            auto log = settings.name ? Log.lookup(settings.name) : Log.root;
-            log.level(settings.level, settings.propagate);
-        }
+            configureLogger(settings, false);
 
         super(config);
     }
@@ -2203,7 +2197,14 @@ public struct TestConf
         };
         ---
     */
-    public immutable(LoggerConfig)[] logging;
+    public immutable(LoggerConfig)[] logging = [
+        {
+            name: null,
+            level: LogLevel.Info,
+            propagate: true,
+            additive: true,
+        },
+    ];
 
     /// Event handler config
     public immutable(EventHandlerConfig)[] event_handlers;
