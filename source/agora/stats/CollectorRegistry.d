@@ -96,7 +96,7 @@ public class CollectorRegistry
         }
 
         return this.collector.getCollection() ~
-            format("scrape_duration \"%s\"", MonoTime.currTime - start);
+            format("scrape_duration_ms %s", (MonoTime.currTime - start).total!"msecs");
     }
 }
 
