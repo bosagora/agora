@@ -1270,6 +1270,16 @@ private struct ZoneData
         }
         else if (!matches)
         {
+            if (q.qtype == QTYPE.URI)
+            {
+                // Only answer URI records for `_agora._tcp.<pubkey>.<zone>.<realm>`
+                auto service_proto = q.qname.serviceAndProtocolLabels();
+                if (service_proto == Domain.ServiceProtoTuple.init
+                    || service_proto.service != "agora"
+                    || service_proto.protocol != "tcp")
+                    return Header.RCode.Refused;
+            }
+
             auto rcode = this.getKeyDNSRecord(q, reply);
             if (rcode == Header.RCode.NameError
                 && this.type == ZoneType.caching)
