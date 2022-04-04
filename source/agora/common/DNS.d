@@ -1157,6 +1157,7 @@ public struct Domain
         Returns:
           A tuple containing both service and protocol labels, empty
           `ServiceProtoTuple` is returned when one of them is missing.
+          Returned labels will not include leading `_` character.
 
     ***************************************************************************/
 
