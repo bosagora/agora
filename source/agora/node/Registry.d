@@ -200,7 +200,7 @@ public class NameRegistry: NameRegistryAPI
     {
         Message msg;
         msg.questions ~= Question(
-            Domain.fromString(format("%s.%s", key, this.validators)),
+            Domain.fromString(format("_agora._tcp.%s.%s", key, this.validators)),
             QTYPE.URI, QCLASS.IN
         );
         msg.fill(msg.header);
