@@ -104,7 +104,7 @@ unittest
     txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs = txs.map!(tx => TxBuilder!(WK.Keys)(tx).sign()).array();
     txs.each!(tx => node_1.postTransaction(tx));
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 }
@@ -189,11 +189,11 @@ unittest
 
     network.expectHeightAndPreImg(Height(1), network.blocks[0].header);
 
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs = txs.map!(tx => TxBuilder!(WK.Keys)(tx).sign()).array();
     txs.each!(tx => network.postAndEnsureTxInPool(tx));
     network.expectHeightAndPreImg(Height(2), network.blocks[0].header);
 
-    txs = txs.map!(tx => TxBuilder(tx).sign()).array();
+    txs = txs.map!(tx => TxBuilder!(WK.Keys)(tx).sign()).array();
 
     // create a deep-copy of the first tx
     auto backup_tx = deserializeFull!Transaction(serializeFull(txs[0]));
@@ -256,7 +256,7 @@ unittest
     assert(b1.txs.length == 1);
 
     // Now spend the refund transaction (output index is 0 as it is sorted and lock is same value but ammount is less)
-    auto tx2 = TxBuilder(b1.txs[0], 0).sign();
+    auto tx2 = TxBuilder!(WK.Keys)(b1.txs[0], 0).sign();
     assert(tx2.outputs.length == 1);
 
     network.postAndEnsureTxInPool(tx2); // Make sure it makes it into the block

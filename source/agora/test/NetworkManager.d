@@ -78,7 +78,7 @@ unittest
 
             foreach (idx; 1 .. 3)
             {
-                txs = last_tx.map!(tx => TxBuilder(tx).sign()).array();
+                txs = last_tx.map!(tx => TxBuilder!(WK.Keys)(tx).sign()).array();
                 last_tx = txs;
                 block = makeNewTestBlock(last_block, txs);
 
@@ -158,7 +158,7 @@ unittest
     network.expectHeight(iota(GenesisValidators), Height(1));
 
     // create 1 additional block and enough `tx`es
-    auto txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+    auto txs = last_txs.map!(tx => TxBuilder!(WK.Keys)(tx).sign()).array();
     // send it to one node
     txs.each!(tx => node_validators[0].postTransaction(tx));
     network.expectHeight(iota(GenesisValidators), Height(2));

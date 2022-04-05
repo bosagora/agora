@@ -19,11 +19,11 @@
 
     An example would be:
     ---
-    auto tx1 = TxBuilder(myTx).split(addr1, addr2)
+    auto tx1 = TxBuilder!(WK.Keys)(myTx).split(addr1, addr2)
                               .attach(otherTx).split(addr3, addr4)
                               .sign();
     // Equivalent to:
-    auto tx2 = TxBuilder(myTx.outputs[0].address)
+    auto tx2 = TxBuilder!(WK.Keys)(myTx.outputs[0].address)
                    .attach(myTx).split(addr1, addr2)
                    .attach(otherTx).split(addr3, addr4)
                    .sign();
@@ -80,14 +80,13 @@ import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.Script: toPushOpcode;
 import agora.script.Signature;
-/* version (unittest) */ import agora.utils.Test;
 
 import std.algorithm;
 import std.format;
 import std.range;
 
 /// Ditto
-public struct TxBuilder
+public struct TxBuilder (alias KnownKeys)
 {
     /***************************************************************************
 
@@ -271,7 +270,7 @@ public struct TxBuilder
     private static Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
         @safe nothrow
     {
-        auto ownerKP = WK.Keys[out_ref.output.address];
+        auto ownerKP = KnownKeys[out_ref.output.address];
         assert(ownerKP !is KeyPair.init,
                 "Address not found in Well-Known keypairs: "
                 ~ out_ref.output.address.toString());
@@ -577,9 +576,10 @@ public struct TxBuilder
 
 version (unittest)
 {
+    import agora.utils.Test : WK;
     private Amount sumOfGenesisFirstTxOutputs ()
     {
-        return genesisSpendable().front().leftover.value * 8;
+        return GenesisBlock.payments.front.outputs.front.value * 8;
     }
     private const fee_rate = ConsensusConfig.init.min_fee;
 }
@@ -591,7 +591,7 @@ unittest
     immutable Number = GenesisBlock.payments.front.outputs.length;
     assert(Number == 8);
 
-    const tx = TxBuilder(GenesisBlock.payments.front)
+    const tx = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -622,7 +622,7 @@ unittest
     immutable Number = GenesisBlock.payments.front.outputs.length * 2;
     assert(Number == 16);
 
-    const resTx1 = TxBuilder(GenesisBlock.payments.front)
+    const resTx1 = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -644,7 +644,7 @@ unittest
 
     // Test with multi input keys
     // Split into 32 outputs
-    const resTx2 = TxBuilder(resTx1)
+    const resTx2 = TxBuilder!(WK.Keys)(resTx1)
         .split(iota(Number * 2).map!(_ => KeyPair.random().address))
         .sign();
 
@@ -666,7 +666,7 @@ unittest
     immutable Number = 3;
     auto fee_rate = Amount(700);
 
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -690,7 +690,7 @@ unittest
 /// Test with one output key
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         .split([WK.Keys.A.address])
         .sign();
 
@@ -707,7 +707,7 @@ unittest
 unittest
 {
     immutable Number = 3;
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         // Refund needs to be called first as it resets the outputs
         .refund(WK.Keys.Z.address)
         .draw(Amount(100_000_000_0000_000L), WK.Keys.byRange.map!(k => k.address).take(Number))
@@ -742,7 +742,7 @@ unittest
     // The hash is incorrect (it's not a proper UTXO hash)
     // but TxBuilder only care about strictly monotonic hashes
     auto tup_rng = outs[].zip(outs[].map!(o => o.hashFull()));
-    auto result = TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
+    auto result = TxBuilder!(WK.Keys)(WK.Keys.F.address).attach(tup_rng).sign();
 
     auto fees = fee_rate * result.sizeInBytes;
     Amount total;
@@ -757,6 +757,8 @@ unittest
 ///
 @safe unittest
 {
+    import agora.utils.Test: genesisSpendable;
+
     auto spendable = genesisSpendable();
     assert(!genesisSpendable.empty);
     Amount total;
@@ -768,7 +770,7 @@ unittest
 /// Test with unfrozen remainder
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         .draw(Amount.UnitPerCoin * 50_000, WK.Keys.byRange.map!(k => k.address).take(3))
         .sign(OutputType.Freeze, 0, 10_000.coins);
 
@@ -790,7 +792,7 @@ unittest
 {
     auto fee_rate = Amount(900);    // Using higher than min fee rate
     const freezeAmount = 50_000.coins;
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = TxBuilder!(WK.Keys)(GenesisBlock.payments.front)
         .feeRate(fee_rate)
         .draw(freezeAmount, WK.Keys.byRange.map!(k => k.address).takeExactly(1))
         .sign(OutputType.Freeze, 0, 10_000.coins);

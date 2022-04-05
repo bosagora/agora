@@ -41,7 +41,7 @@ unittest
     auto output_addr = WK.Keys.AA.address;
 
     setHashMagic(0x44); // Sign TX with an incompatible chainID
-    auto tx = TxBuilder(input_txs[0], 0).feeRate(Amount(10_000))
+    auto tx = TxBuilder!(WK.Keys)(input_txs[0], 0).feeRate(Amount(10_000))
             .draw(Amount(100_000), [output_addr])
             .sign();
     auto result = nodes[0].postTransaction(tx);
@@ -49,7 +49,7 @@ unittest
 
     setHashMagic(0); // correct chainID
     // create a transaction with the fee rate of 10000
-    tx = TxBuilder(input_txs[0], 0).feeRate(Amount(10_000))
+    tx = TxBuilder!(WK.Keys)(input_txs[0], 0).feeRate(Amount(10_000))
         .draw(Amount(100_000), [output_addr])
         .sign();
 
@@ -62,7 +62,7 @@ unittest
     assert(result == TransactionResult(TransactionResult.Status.Duplicated));
 
     // post a transaction with no fee, expect `Rejected`
-    tx = TxBuilder(input_txs[0], 1).feeRate(Amount(0))
+    tx = TxBuilder!(WK.Keys)(input_txs[0], 1).feeRate(Amount(0))
         .draw(Amount(100_000), [output_addr])
         .sign();
     result = nodes[0].postTransaction(tx);

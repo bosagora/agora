@@ -67,7 +67,7 @@ private void main ()
         storage.saveBlock(block);
         // Prepare transactions for the next block
         txs = txs
-            .map!(tx => TxBuilder(tx).refund(WK.Keys[h + 1].address).sign())
+            .map!(tx => TxBuilder!(WK.Keys)(tx).refund(WK.Keys[h + 1].address).sign())
             .array();
         prev_block = block;
     }

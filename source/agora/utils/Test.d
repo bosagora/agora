@@ -335,7 +335,7 @@ public auto spendable (const ref Block block) @safe pure nothrow
 {
     return block.txs
         .filter!(tx => tx.isPayment)
-        .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder(tx, cast(uint)idx)))
+        .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder!(WK.Keys)(tx, cast(uint)idx)))
         .joiner();
 }
 

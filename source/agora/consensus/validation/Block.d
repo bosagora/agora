@@ -637,7 +637,7 @@ unittest
     prev_txs.each!(tx => utxos.put(tx));  // these will be spent
 
     auto prev_block = block;
-    block = block.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
+    block = block.makeNewTestBlock(prev_txs.map!(tx => TxBuilder!(WK.Keys)(tx).sign()));
     block.assertValid(engine, prev_block.header.height, prev_block.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
 
@@ -703,7 +703,7 @@ unittest
     // we stopped validation due to a double-spend
     assert(used_set.length == double_spend.length - 1);
 
-    block = GenesisBlock.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
+    block = GenesisBlock.makeNewTestBlock(prev_txs.map!(tx => TxBuilder!(WK.Keys)(tx).sign()));
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
 
@@ -720,7 +720,7 @@ unittest
     const last_root = block.header.merkle_root;
 
     block = GenesisBlock.makeNewTestBlock(prev_txs.enumerate.map!(en =>
-        TxBuilder(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
+        TxBuilder!(WK.Keys)(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
 
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
