@@ -139,6 +139,49 @@ and start validating. You can also make sure your node is accessible by checking
 that `boa1xrwuel4csj4acdfdr5c6xufewa7r5l5g83cp5uax2lyxaakkhwc27aghk7m.validators.testnet.bosagora.io`
 points to your own IP address.
 
+## Exposing your validator on the internet with `ngrok`
+As you have read in the previous section, you can run a validator, but if the validator runs on
+a local computer without a publicly exposed ip, it cannot be reached from other validators.
+One option is to use a service like [ngrok](https://ngrok.com) to expose a local port to the public. If you only run
+a fullnode, not a validator, please skip this section.
+
+You should stop your validator before following the following instructions.
+
+**First**, to use `ngrok`, you need to register yourself on the `ngrok` web site and create an account.
+`ngrok` has a free plan that allows you to use the software for free with the limitation of only
+one process at a time with a maximum of four tunnels and a random port, but it is enough to run
+your validator.
+
+
+**Second**, once you download the `ngrok` client, you have to connect your account to the client
+(you need to do this operation once only) using the following command:
+```
+./ngrok authtoken <your_auth_token>
+```
+You can find your authentication token in the Auth section of your accout dashboard.
+![Getting ngrok authtoken](ngrok_auth.png)
+
+**Third**, to expose your validator using `ngrok`, simply expose a local port, currently not being used,
+using the `tcp` command.
+```
+./ngrok tcp 2826
+```
+The following screenshot shows the output of the preceding command:
+![Running ngrok](ngrok_run.png)
+You should copy the TCP address provided marked on a red line in the previous screenshot,
+which will be used in your configuration file.
+
+**Fourth**, you should replace the value of the `addresses_to_register` to the copied address
+in your configuration file that you have already written.
+```
+validator:
+  enabled: true
+  seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3
+  addresses_to_register:
+    - "agora://2.tcp.ngrok.io:14476"
+```
+And then you can run your validator as described in the previous sections.
+
 ## Updating your node
 
 As we are constantly improving Agora, new versions will be released periodically.
