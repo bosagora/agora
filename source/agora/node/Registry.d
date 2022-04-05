@@ -703,7 +703,6 @@ private struct TypedPayload
         switch (this.type)
         {
         case TYPE.CNAME:
-            assert(this.payload.addresses.length == 1);
             // FIXME: Use a proper TTL
 
             /* If it's a CNAME, it has to be to another domain, as we don't
