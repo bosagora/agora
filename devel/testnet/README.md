@@ -143,7 +143,7 @@ points to your own IP address.
 As you have read in the previous section, you can run a validator, but if the validator runs on
 a local computer without a publicly exposed ip, it cannot be reached from other validators.
 One option is to use a service like [ngrok](https://ngrok.com) to expose a local port to the public. If you only run
-a fullnode, not a validator, please skip this section.
+a full node, not a validator, please skip this section.
 
 You should stop your validator before following the following instructions.
 
@@ -158,7 +158,7 @@ your validator.
 ```
 ./ngrok authtoken <your_auth_token>
 ```
-You can find your authentication token in the Auth section of your accout dashboard.
+You can find your authentication token in the Auth section of your account dashboard.
 ![Getting ngrok authtoken](ngrok_auth.png)
 
 **Third**, to expose your validator using `ngrok`, simply expose a local port, currently not being used,
@@ -180,7 +180,7 @@ validator:
   addresses_to_register:
     - "agora://2.tcp.ngrok.io:14476"
 ```
-And then you can run your validator as described in the previous sections.
+And then, you can run your validator as described in the previous sections.
 
 ## Updating your node
 
