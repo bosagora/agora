@@ -103,15 +103,20 @@ public class NameRegistry: NameRegistryAPI
         QTYPE.URI,
     ];
 
+    /// Registry is in testing mode and allows loopback addresses
+    private bool testing;
+
     ///
     public this (Domain realm, RegistryConfig config, NodeLedger ledger,
-        ManagedDatabase cache_db, ITaskManager taskman, NetworkManager network)
+        ManagedDatabase cache_db, ITaskManager taskman, NetworkManager network,
+        bool testing = false)
     {
         assert(ledger !is null);
         assert(cache_db !is null);
 
         this.config = config;
         this.log = Logger(__MODULE__);
+        this.testing = testing;
 
         this.ledger = ledger;
 
@@ -173,6 +178,18 @@ public class NameRegistry: NameRegistryAPI
         foreach (idx, const ref addr; payload.addresses)
         {
             const this_type = addr.host.guessAddressType();
+
+            // Prevent loopback addresses to be registered
+            if (!this.testing)
+            {
+                // It is safe to compare case-insensitive since `Address` is normalized
+                ensure(
+                    (this_type == TYPE.CNAME && addr.host != "localhost")
+                    || (this_type == TYPE.A && !addr.host.startsWith("127."))
+                    || (this_type == TYPE.AAAA && (addr.host != "::1" && addr.host != "0:0:0:0:0:0:0:1"))
+                , "Cannot register a loopback address");
+            }
+
             ensure(this_type != TYPE.CNAME || payload.addresses.length == 1,
                     "Can only have one domain name (CNAME) for payload, not: {}",
                     payload);
