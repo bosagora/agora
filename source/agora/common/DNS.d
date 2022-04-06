@@ -721,6 +721,12 @@ public struct ResourceRecord
         }
 
         /// Ditto
+        public this (inout(ubyte)[16] val) inout @safe pure nothrow @nogc
+        {
+            this.aaaa = val;
+        }
+
+        /// Ditto
         public this (inout(Domain) val) inout @safe pure nothrow @nogc
         {
             this.name = val;
