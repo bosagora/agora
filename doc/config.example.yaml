@@ -245,6 +245,9 @@ logging:
     #
     # Values: Trace, Info, Warn, Error, Fatal, None (default)
     level: Info
+    # Whether to propagate that level to the children
+    # Default to `true` as this is the expected behavior for most users
+    propagate: true
     # Whether or not to log output to the console
     console: true
     # Output file to write the logging output to
@@ -254,6 +257,8 @@ logging:
     # Intermediate directories will be created as needed.
     # This setting is optional, as no file would be written to if empty / not supplied.
     file: log/root.log
+    # Whether this logger should be additive or not
+    additive: true
 
   # Nested logger configuration
   # Order does not matter as long as there is no duplication
