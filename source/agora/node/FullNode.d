@@ -309,7 +309,7 @@ public class FullNode : API
 
         this.registry = new NameRegistry(config.node.realm, config.registry,
                                          this.ledger, this.cacheDB, this.taskman,
-                                         this.network);
+                                         this.network, config.node.testing);
         this.network.setRegistry(this.registry);
 
         // Create timers
