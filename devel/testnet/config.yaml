@@ -32,3 +32,4 @@ logging:
     console: true
     propagate: true
     file: log/root.log
+    additive: true
