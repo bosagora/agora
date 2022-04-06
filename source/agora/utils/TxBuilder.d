@@ -80,7 +80,7 @@ import agora.script.Lock;
 import agora.script.Opcodes;
 import agora.script.Script: toPushOpcode;
 import agora.script.Signature;
-/* version (unittest) */ import agora.utils.Test;
+version (unittest) import agora.utils.Test : WK;
 
 import std.algorithm;
 import std.format;
@@ -106,14 +106,14 @@ public struct TxBuilder
     public this (in PublicKey refundMe) @safe pure nothrow
     {
         this.leftover = Output(Amount(0), refundMe);
-        this.unlocker = &TxBuilder.keyUnlocker;
+        version (unittest) this.unlocker = &TxBuilder.keyUnlocker;
     }
 
     /// Ditto
     public this (in Lock lock) @safe pure nothrow
     {
         this.leftover = Output(Amount(0), lock);
-        this.unlocker = &TxBuilder.keyUnlocker;
+        version (unittest) this.unlocker = &TxBuilder.keyUnlocker;
     }
 
     /// Ditto
@@ -144,6 +144,21 @@ public struct TxBuilder
         this.attach(utxo, hash);
     }
 
+    version (unittest)
+    {
+        // Uses a random nonce when signing (non-determenistic signature),
+        // and defaults to LockType.Key
+        private static Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
+            @safe nothrow
+        {
+            auto ownerKP = WK.Keys[out_ref.output.address];
+            assert(ownerKP !is KeyPair.init,
+                    "Address not found in Well-Known keypairs: "
+                    ~ out_ref.output.address.toString());
+
+            return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
+        }
+    }
     /***************************************************************************
 
         Attaches all or one output(s) of a transaction to this builder
@@ -264,19 +279,6 @@ public struct TxBuilder
         if (append)
             return Unlock(toPushOpcode(pair[]) ~ append);
         return Unlock(toPushOpcode(pair[]));
-    }
-
-    // Uses a random nonce when signing (non-determenistic signature),
-    // and defaults to LockType.Key
-    private static Unlock keyUnlocker (in Transaction tx, in OutputRef out_ref)
-        @safe nothrow
-    {
-        auto ownerKP = WK.Keys[out_ref.output.address];
-        assert(ownerKP !is KeyPair.init,
-                "Address not found in Well-Known keypairs: "
-                ~ out_ref.output.address.toString());
-
-        return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
     }
 
     /***************************************************************************
@@ -577,6 +579,8 @@ public struct TxBuilder
 
 version (unittest)
 {
+    import agora.utils.Test : genesisSpendable;
+
     private Amount sumOfGenesisFirstTxOutputs ()
     {
         return genesisSpendable().front().leftover.value * 8;
