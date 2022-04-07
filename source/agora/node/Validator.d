@@ -172,6 +172,8 @@ public class Validator : FullNode, API
 
     private void regenerateQuorums (Height height) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "val_regenerateQuorums"));
+
         this.last_shuffle_height = height;
         this.required_peer_utxos = typeof(this.required_peer_utxos).init;
 
@@ -266,6 +268,7 @@ public class Validator : FullNode, API
     /// Ditto
     protected override void discoveryTask ()
     {
+        mixin(TracyZoneLogger!("ctx", "val_discoveryTask"));
         this.network.discover(this.required_peer_utxos);
         this.startTaskTimer(FullNode.TimersIdx.Discovery,
             this.config.node.network_discovery_interval);
@@ -286,6 +289,8 @@ public class Validator : FullNode, API
     protected void preImageCatchupTask () nothrow
     {
         import std.algorithm.mutation : remove;
+
+        mixin(TracyZoneLogger!("ctx", "val_preImageCatchup"));
 
         if (this.network.peers.empty())  // no clients yet (discovery)
             return;
@@ -724,6 +729,7 @@ public class Validator : FullNode, API
 
     protected void onPreImageRevealTimer () @safe
     {
+        mixin(TracyZoneLogger!("ctx", "val_revealPreimage"));
         const height = this.ledger.height();
         const expected_height = this.ledger.expectedHeight(this.clock.utcTime());
         log.dbg("{}: ledger height = {}, expected height = {} ",
@@ -766,6 +772,7 @@ public class Validator : FullNode, API
 
     protected Enrollment checkAndEnroll (Height height) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "val_checkAndEnroll"));
         auto next_height = height + 1;
         Hash enroll_key = this.enroll_man.getEnrolledUTXO(height,
             this.ledger.getUTXOFinder());

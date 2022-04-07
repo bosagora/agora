@@ -344,6 +344,7 @@ public class Ledger
 
     public string acceptBlock (in Block block) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledger_acceptBlock"));
         // Make the Ledger tolerant to externalization of already-known block,
         // but only of the latest height.
         if (this.last_block.header.height == block.header.height)
@@ -378,6 +379,7 @@ public class Ledger
 
     public void updateBlockMultiSig (in BlockHeader header) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledger_updateBlockMultiSig"));
         this.storage.updateBlockSig(header.height, header.hashFull(),
             header.signature, header.validators);
 
@@ -449,6 +451,7 @@ public class Ledger
 
     protected void addValidatedBlock (in Block block) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledger_addValidatedBlock"));
         log.info("Beginning externalization of block #{} (previous block signatures: {})",
             block.header.height, this.last_block.header.validators);
         log.info("Transactions: {} - Enrollments: {}",
@@ -613,6 +616,7 @@ public class Ledger
 
     protected Transaction getCoinbaseTX (in Height height) nothrow @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledget_getCoinBaseTX"));
         if (!this.isCoinbaseBlock(height))
             return Transaction.init;
 
@@ -733,6 +737,7 @@ public class Ledger
 
     public string validateBlock (in Block block) nothrow @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledger_validateBlock"));
         // If it's the genesis block, we only need to validate it for syntactic
         // correctness, no need to check signatures.
         if (block.header.height == 0)
@@ -851,6 +856,7 @@ public class Ledger
 
     public string validateBlockSignature (in BlockHeader header) @safe nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "ledget_validateBlockSignature"));
         import agora.crypto.ECC;
 
         Point sum_K;
@@ -997,6 +1003,7 @@ public class Ledger
         Enrollment[] enrollments, uint[] missing_validators)
         @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledger_buildBlock"));
         const height = this.height() + 1;
         const validators = this.getValidators(height);
 
