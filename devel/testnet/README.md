@@ -112,6 +112,10 @@ will create the stake for you: [Faucet](https://faucet.bosagora.io/).
 Once this is done, all you have to do is to change your configuration file
 to the following:
 ```yaml
+node:
+  public_addresses:
+    - "agora://my-address.example.com:2826"
+
 validator:
   enabled: true
   seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3

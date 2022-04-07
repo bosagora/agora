@@ -83,6 +83,10 @@ docker run -v $(pwd):/agora/ bosagora/agora -c my_config.yaml
 
 위의 작업이 완료되면, 구성 파일을 다음과 같이 변경하면 됩니다.
 ```yaml
+node:
+  public_addresses:
+    - "agora://my-address.example.com:2826"
+
 validator:
   enabled: true
   seed: SB3EENDWPUGQZL7KLWGJS2ILMGRBB2MLVLRBUVKDYTO6A4WYLPIQWEE3
