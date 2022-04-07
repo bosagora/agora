@@ -474,6 +474,7 @@ public class NameRegistry: NameRegistryAPI
 
     auto findZone (Domain name, bool matches = true) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "reg_findZone"));
         foreach (i, const ref zone; this.zones)
             if (zone.root == name)
                 return matches ?
@@ -1253,6 +1254,7 @@ private struct ZoneData
     public Header.RCode answer (bool matches, in Question q, ref Message reply,
         string peer) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "reg_answer"));
         reply.header.AA = (this.type != ZoneType.caching);
         reply.header.RA = (this.type == ZoneType.caching);
 

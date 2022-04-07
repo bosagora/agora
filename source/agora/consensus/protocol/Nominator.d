@@ -519,6 +519,7 @@ extern(D):
 
     protected void checkNominate () @safe
     {
+        mixin(TracyZoneLogger!("ctx", "nom_checkNominate"));
         scope (exit)
         {
             this.armTaskTimer(TimersIdx.Nomination, this.round_timeout);
@@ -596,6 +597,7 @@ extern(D):
 
     protected void nominate (ulong slot_idx, in ConsensusData next) @trusted
     {
+        mixin(TracyZoneLogger!("ctx", "nom_nominate"));
         log.info("{}(): Proposing tx set for slot {}, ledger is at height {}",
             __FUNCTION__, slot_idx, this.ledger.lastBlock().header.height);
 
@@ -697,6 +699,7 @@ extern(D):
 
     private void handleSCPEnvelope (in SCPEnvelope envelope) @trusted
     {
+        mixin(TracyZoneLogger!("ctx", "nom_handleSCPEnvolpe"));
         const Block last_block = this.ledger.lastBlock();
         // Don't use `height - tolerance` as it could underflow
         if (envelope.statement.slotIndex <= last_block.header.height)
@@ -882,6 +885,7 @@ extern(D):
 
     public const(BlockHeader) receiveBlockSignature (in ValidatorBlockSig block_sig) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "nom_receiveBlockSignature"));
         const cur_height = this.ledger.height();
         log.trace("{}: Received Signature {} for Validator with staked utxo {} for block {} at ledger height {}",
             __FUNCTION__, block_sig.signature, block_sig.utxo, block_sig.height, cur_height);
@@ -979,6 +983,7 @@ extern(D):
     /// If we have majority signatures then externalize to the ledger otherwise check again after receiving signatures
     protected void checkExternalize () @safe nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "nom_checkExternalize"));
         const block = this.pending_block;
         if (block.header.height == 0)
             return; // pending block has been reset already
@@ -1067,6 +1072,7 @@ extern(D):
 
     public void updateMultiSignature (ref BlockHeader header) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "nom_updateMultiSignature"));
         const validators = this.ledger.getValidators(header.height);
 
         if (header.height !in this.slot_sigs)
@@ -1162,6 +1168,7 @@ extern(D):
     private bool collectBlockSignature (in ValidatorBlockSig block_sig,
         in Hash block_hash) @safe nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "nom_collectBlockSignature"));
         auto sigs = block_sig.height in this.slot_sigs;
         if (sigs && block_sig.utxo in (*sigs))
         {
@@ -1254,6 +1261,7 @@ extern(D):
     public override ValidationLevel validateValue (uint64_t slot_idx,
         ref const(Value) value, bool nomination) nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "nom_validateValue"));
         auto idx_value_hash = hashMulti(slot_idx, value);
         if (idx_value_hash in this.fully_validated_value)
             return ValidationLevel.kFullyValidatedValue;
@@ -1313,6 +1321,7 @@ extern(D):
     public override void valueExternalized (uint64_t slot_idx,
         ref const(Value) value) nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "nom_valueExternalized"));
         Height height = Height(slot_idx);
         auto time_to_ext = (this.clock.networkTime() - this.ledger.getExpectedBlockTime(height)).total!"seconds";
         this.slot_stat.setMetricTo!"time_to_ext"(time_to_ext, assumeWontThrow(Height(slot_idx).toString()));
@@ -1394,6 +1403,7 @@ extern(D):
 
     public override void emitEnvelope (ref const(SCPEnvelope) envelope) nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "nom_emitEnvelope"));
         SCPEnvelope copy;
         try
             copy = envelope.serializeFull.deserializeFull!SCPEnvelope();

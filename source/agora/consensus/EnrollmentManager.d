@@ -199,6 +199,7 @@ public class EnrollmentManager
         scope GetPenaltyDeposit getPenaltyDeposit)
         @safe nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "enroll_addEnrollment"));
         const Height enrolled = this.validator_set.getEnrolledHeight(height, enroll.utxo_key);
 
         // The first height at which the enrollment can be enrolled
@@ -299,6 +300,7 @@ public class EnrollmentManager
         scope GetPenaltyDeposit getPenaltyDeposit,
         in UTXO[Hash] self_utxos) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "enroll_addValidator"));
         this.enroll_pool.remove(enroll.utxo_key);
 
         if (auto r = this.validator_set.add(height, finder, getPenaltyDeposit, enroll, pubkey))
@@ -328,6 +330,7 @@ public class EnrollmentManager
     public Enrollment createEnrollment (in Hash utxo, in Height height)
         @safe nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "enroll_createEnrollment"));
         // X, final seed data and preimages of hashes
         const seed = this.cycle[height];
         const enroll = makeEnrollment(
@@ -369,6 +372,7 @@ public class EnrollmentManager
         in Hash utxo, in KeyPair key, in Hash seed, Height height, ulong offset = 0)
         @safe nothrow @nogc
     {
+        mixin(TracyZoneLogger!("ctx", "enroll_makeEnrollment"));
         Enrollment result = {
             utxo_key: utxo,
             commitment: seed,

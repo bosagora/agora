@@ -513,6 +513,7 @@ public class FullNode : API
 
     protected void discoveryTask () nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "full_discoveryTask"));
         this.network.discover();
         this.startTaskTimer(TimersIdx.Discovery, this.config.node.network_discovery_interval);
     }
@@ -529,6 +530,7 @@ public class FullNode : API
 
     protected void catchupTask () nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "catchupTask"));
         scope (exit)
         {
             this.startTaskTimer(TimersIdx.BlockCatchup, this.config.node.block_catchup_interval);

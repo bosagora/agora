@@ -213,6 +213,7 @@ public class NodeLedger : Ledger
         in ubyte double_spent_threshold_pct = 0,
         in ushort min_fee_pct = 0) @safe
     {
+        mixin(TracyZoneLogger!("ctx", "ledger_c_acceptTransaction"));
         const Height expected_height = this.height() + 1;
         auto tx_hash = hashFull(tx);
 
@@ -526,6 +527,7 @@ public class ValidatingLedger : NodeLedger
     public void prepareNominatingSet (out ConsensusData data)
         @safe
     {
+        mixin(TracyZoneLogger!("ctx", "val_ledger_prepareNominatingSet"));
         const next_height = this.height() + 1;
 
         auto utxo_finder = this.utxo_set.getUTXOFinder();
@@ -699,6 +701,7 @@ public class ValidatingLedger : NodeLedger
     public string validateConsensusData (in ConsensusData data,
         in uint[] initial_missing_validators) @trusted nothrow
     {
+        mixin(TracyZoneLogger!("ctx", "val_ledger_validateConsensusData"));
         const validating = this.height() + 1;
         auto utxo_finder = this.utxo_set.getUTXOFinder();
 
