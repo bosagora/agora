@@ -26,6 +26,7 @@ import agora.consensus.data.genesis.Test;
 import agora.crypto.Hash;
 import agora.utils.PrettyPrinter;
 import agora.utils.Test;
+import agora.utils.TxBuilder;
 
 import std.algorithm;
 import std.conv;
@@ -149,7 +150,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
         writefln("%s transactions sent to %s.\nTransactions:",
             op.count, op.address);
         txs.each!(tx => writeln(prettify(tx)));
-        txs = txs.map!(txb => TxBuilder(txb).sign()).array();
+        txs = txs.map!(tx => new TxBuilder(tx).sign()).array();
     }
 
     if (op.dump)

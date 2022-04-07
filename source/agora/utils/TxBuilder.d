@@ -39,11 +39,11 @@
 
     An example would be:
     ---
-    auto tx1 = TxBuilder(myTx).split(addr1, addr2)
+    auto tx1 = new TxBuilder(myTx).split(addr1, addr2)
                               .attach(otherTx).split(addr3, addr4)
                               .sign();
     // Equivalent to:
-    auto tx2 = TxBuilder(myTx.outputs[0].address)
+    auto tx2 = new TxBuilder(myTx.outputs[0].address)
                    .attach(myTx).split(addr1, addr2)
                    .attach(otherTx).split(addr3, addr4)
                    .sign();
@@ -98,19 +98,27 @@ import std.algorithm;
 import std.format;
 import std.range;
 
-/// Ditto
-public struct StaticTransactionBuilder (alias KeyUnlocker)
+///
+public static class TxBuilder
 {
-    static assert(is(typeof(&KeyUnlocker) : TransactionBuilder.Unlocker),
-                  "Expected `KeyUnlocker` template argument to `TransactionBuilder` " ~
-                  "to be of type `" ~ TransactionBuilder.Unlocker.stringof ~ "`, not `" ~
-                  typeof(&KeyUnlocker).stringof ~ "`");
+    version (unittest)
+    {
+        import agora.utils.Test: WK;
 
-    /// Actual object
-    public TransactionBuilder builder;
+        static Unlock WKUnlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
+        {
+            import agora.script.Signature : getChallenge;
 
-    ///
-    public alias builder this;
+            assert(out_ref.output.lock.type == LockType.Key,
+                "This unlocker can only be used for LockType.Key");
+            auto ownerKP = WK.Keys[out_ref.output.address];
+            assert(ownerKP !is KeyPair.init,
+                   "Address not found in Well-Known keypairs: "
+                   ~ out_ref.output.address.toString());
+
+            return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
+        }
+    }
 
     /***************************************************************************
 
@@ -128,102 +136,43 @@ public struct StaticTransactionBuilder (alias KeyUnlocker)
 
     public this (in PublicKey refundMe) @safe pure nothrow
     {
-        this.builder = TransactionBuilder(&KeyUnlocker, refundMe);
+        this.leftover = Output(Amount(0), refundMe);
+        version (unittest) this.key_unlocker = &WKUnlocker;
     }
 
     /// Ditto
     public this (in Lock lock) @safe pure nothrow
     {
-        this.builder = TransactionBuilder(&KeyUnlocker, lock);
+        this.leftover = Output(Amount(0), lock);
+        version (unittest) this.key_unlocker = &WKUnlocker;
     }
 
     /// Ditto
     public this (const Transaction tx) @safe nothrow
     {
-        this.builder = TransactionBuilder(&KeyUnlocker, tx);
+        this(tx.outputs[0].lock);
+        this.attach(tx);
     }
 
     /// Ditto
     public this (const Transaction tx, uint index) @safe nothrow
     {
-        this.builder = TransactionBuilder(&KeyUnlocker, tx, index);
+        this(tx.outputs[index].lock);
+        this.attach(tx, index);
     }
 
     /// Ditto
     public this (const Transaction tx, uint index, in Lock lock)
         @safe nothrow
     {
-        this.builder = TransactionBuilder(&KeyUnlocker, tx, index, lock);
+        this(lock);
+        this.attach(tx, index);
     }
 
     /// Convenience constructor that calls `this.attach(Output, Hash)`
     public this (in Output utxo, in Hash hash) @safe nothrow
     {
-        this.builder = TransactionBuilder(&KeyUnlocker, utxo, hash);
-    }
-}
-
-///
-public struct TransactionBuilder
-{
-    /// Define Unlocker function to sign the inputs
-    public alias Unlocker = Unlock function (in Transaction tx, in OutputRef out_ref)
-        @safe nothrow;
-
-    /***************************************************************************
-
-        Construct a new transaction builder with the provided refund address
-
-        Params:
-            unlocker = The function to use for unlocking
-            refundMe = The address to receive the funds by default.
-            lock = the lock to use in place of an address
-            tx = The transaction to attach to. If the `index` overload is used,
-                 only the specified `index` will be attached, and it will be
-                 the refund address. Otherwise, the first output is used.
-            index = Index of the sole output to use from the transaction.
-
-    ***************************************************************************/
-
-    public this (Unlocker unlocker, in PublicKey refundMe) @safe pure nothrow
-    {
-        this.unlocker = unlocker;
-        this.leftover = Output(Amount(0), refundMe);
-    }
-
-    /// Ditto
-    public this (Unlocker unlocker, in Lock lock) @safe pure nothrow
-    {
-        this.unlocker = unlocker;
-        this.leftover = Output(Amount(0), lock);
-    }
-
-    /// Ditto
-    public this (Unlocker unlocker, const Transaction tx) @safe nothrow
-    {
-        this(unlocker, tx.outputs[0].lock);
-        this.attach(tx);
-    }
-
-    /// Ditto
-    public this (Unlocker unlocker, const Transaction tx, uint index) @safe nothrow
-    {
-        this(unlocker, tx.outputs[index].lock);
-        this.attach(tx, index);
-    }
-
-    /// Ditto
-    public this (Unlocker unlocker, const Transaction tx, uint index, in Lock lock)
-        @safe nothrow
-    {
-        this(unlocker, lock);
-        this.attach(tx, index);
-    }
-
-    /// Convenience constructor that calls `this.attach(Output, Hash)`
-    public this (Unlocker unlocker, in Output utxo, in Hash hash) @safe nothrow
-    {
-        this(unlocker, utxo.address);
+        this(utxo.address);
         this.attach(utxo, hash);
     }
 
@@ -241,7 +190,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) attach (const Transaction tx)
+    public auto attach (const Transaction tx)
         @safe nothrow return
     {
         this.inputs ~= iota(tx.outputs.length)
@@ -253,7 +202,7 @@ public struct TransactionBuilder
     }
 
     /// Ditto
-    public ref typeof(this) attach (const Transaction tx, uint index)
+    public auto attach (const Transaction tx, uint index)
         @safe nothrow return
     {
         return this.attach(tx.outputs[index], Input(tx, index).utxo);
@@ -272,7 +221,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) attach (in Output utxo, in Hash hash, Amount freeze_fee = 10_000.coins)
+    public auto attach (in Output utxo, in Hash hash, Amount freeze_fee = 10_000.coins)
         @safe pure nothrow return
     {
         this.inputs ~= OutputRef(utxo, hash);
@@ -298,7 +247,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) attach (RNG) (scope RNG rng)
+    public auto attach (RNG) (scope RNG rng)
         @safe pure nothrow return
     {
         alias ET = ElementType!RNG;
@@ -318,22 +267,45 @@ public struct TransactionBuilder
         return this;
     }
 
+    /// Define Unlocker function to sign the inputs
+    public alias Unlocker = Unlock function (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow;
+
     /***************************************************************************
 
-        Sets the unlocker function to sign the inputs
+        Sets the unlocker function for script locks
 
         Params:
-            unlocker = function to sign the inputs of the transaction
+            unlocker = function to unlock the input lock
 
         Returns:
             A reference to `this` to allow for chaining
 
     ***************************************************************************/
 
-    public ref typeof(this) unlockSigner (Unlocker unlocker) return scope
+    public auto scriptUnlocker (Unlocker script_unlocker) return scope
         @safe nothrow @nogc pure
     {
-        this.unlocker = unlocker;
+        this.script_unlocker = script_unlocker;
+        return this;
+    }
+
+    /***************************************************************************
+
+        Sets the unlocker function for key locks
+
+        Params:
+            unlocker = function to unlock the input lock
+
+        Returns:
+            A reference to `this` to allow for chaining
+
+    ***************************************************************************/
+
+    public auto keyUnlocker (Unlocker key_unlocker) return scope
+        @safe nothrow @nogc pure
+    {
+        this.key_unlocker = key_unlocker;
         return this;
     }
 
@@ -347,13 +319,19 @@ public struct TransactionBuilder
         return Unlock(toPushOpcode(pair[]));
     }
 
+    public static Unlock scriptUnlock (Unlock unlock) (in Transaction tx, in OutputRef out_ref)
+        @safe nothrow
+    {
+        return unlock;
+    }
+
     /***************************************************************************
 
         Set the payload used by the Transaction
 
     ***************************************************************************/
 
-    public ref typeof(this) payload (ubyte[] data) return scope
+    public auto payload (ubyte[] data) return scope
         @safe nothrow @nogc pure
     {
         this.data.payload = data;
@@ -367,7 +345,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) lock (in Height height) return scope
+    public auto lock (in Height height) return scope
         @safe nothrow @nogc pure
     {
         this.data.lock_height = height;
@@ -382,7 +360,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) feeRate (in Amount fee_rate) return scope
+    public auto feeRate (in Amount fee_rate) return scope
         @safe nothrow @nogc pure
     {
         this.fee_rate = fee_rate;
@@ -408,7 +386,6 @@ public struct TransactionBuilder
         in OutputType outputs_type = OutputType.Payment, uint unlock_age = 0,
         Amount freeze_fee = 10_000.coins) @safe nothrow
     {
-        assert(this.unlocker !is null, "unlocker not defined");
         assert(this.inputs.length, "Cannot sign input-less transaction");
         assert(this.data.outputs.length || this.leftover.value > Amount(0),
                "Output-less transactions are not valid");
@@ -442,7 +419,23 @@ public struct TransactionBuilder
 
         // Sign all inputs using unlocker now we have transaction outputs updated
         foreach (idx, ref in_; this.inputs)
-            this.data.inputs[idx].unlock = this.unlocker(this.data, in_);
+        {
+            switch (in_.output.lock.type)
+            {
+                case (LockType.Key):
+                    assert(this.key_unlocker !is null,
+                        "key_unlocker is required to unlock this input");
+                    this.data.inputs[idx].unlock = this.key_unlocker(this.data, in_);
+                    break;
+                case (LockType.Script):
+                    assert(this.script_unlocker !is null,
+                        "script_unlocker is required to unlock this input");
+                    this.data.inputs[idx].unlock = this.script_unlocker(this.data, in_);
+                    break;
+                default:
+                    assert(0, "Not yet implemented");
+            }
+        }
 
         // Reset ready for next time
         this.inputs = null;
@@ -469,7 +462,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) refund (in PublicKey toward)
+    public auto refund (in PublicKey toward)
         return @safe nothrow
     {
         assert(this.inputs.length > 0);
@@ -500,7 +493,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) draw (KeyRange) (Amount amount, scope KeyRange toward)
+    public auto draw (KeyRange) (Amount amount, scope KeyRange toward)
         return
     {
         static assert (isInputRange!KeyRange);
@@ -537,7 +530,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) split (KeyRange) (scope KeyRange toward) return
+    public auto split (KeyRange) (scope KeyRange toward) return
     {
         static assert (isInputRange!KeyRange);
         static assert (is(ElementType!KeyRange : PublicKey)
@@ -583,7 +576,7 @@ public struct TransactionBuilder
 
     ***************************************************************************/
 
-    public ref typeof(this) deduct (Amount amount) @safe nothrow
+    public auto deduct (Amount amount) @safe nothrow
         return
     {
         if (!this.leftover.value.sub(amount))
@@ -592,34 +585,52 @@ public struct TransactionBuilder
         return this;
     }
 
-    /// The actual function that will sign the inputs
-    private Unlocker unlocker;
+    /// The unlocker when lock type is script
+    protected Unlocker script_unlocker;
+
+    /// The unlocker when lock type is key
+    protected Unlocker key_unlocker;
 
     /// Any refund less than this amount will not create a refund output but be
     /// left to be included as fees.
-    private const MinRefundAmount = Amount(500_000);
+    protected const MinRefundAmount = Amount(500_000);
 
     /// Refund output for the transaction
-    private Output leftover;
+    protected Output leftover;
 
     /// fee per byte rate to be paid for the tx
-    private auto fee_rate = ConsensusConfig.init.min_fee;
+    protected auto fee_rate = ConsensusConfig.init.min_fee;
 
     /// Stores the inputs to consume until `sign` is called
-    private OutputRef[] inputs;
+    protected OutputRef[] inputs;
 
     /// Transactions to be built and returned
-    private Transaction data;
+    protected Transaction data;
 
 
     /// Calculate the minimum fees based on the size of the transaction
-    private Amount minFees () nothrow @safe
+    protected Amount minFees () nothrow @safe
     {
         // Sum the size of all inputs after signing with unlocker
         auto tx_size = this.data.payload.length;
         this.inputs.each!((OutputRef input)
         {
-            tx_size += Input(input.hash, this.unlocker(this.data, input), 0).sizeInBytes;
+            // The transaction is only used in unlocker to generate a Hash so we can use empty tx
+            switch (input.output.lock.type)
+            {
+                case (LockType.Key):
+                    assert(this.key_unlocker !is null,
+                        "key_unlocker is required to unlock this input with lock type key");
+                    tx_size += Input(input.hash, this.key_unlocker(Transaction.init, input), 0).sizeInBytes;
+                    break;
+                case (LockType.Script):
+                    assert(this.script_unlocker !is null,
+                        "script_unlocker is required to unlock this input with lock type script");
+                    tx_size += Input(input.hash, this.script_unlocker(Transaction.init, input), 0).sizeInBytes;
+                    break;
+                default:
+                    assert(0, "Not implemented yet");
+            }
         });
         this.data.outputs.each!((output)
         {
@@ -656,7 +667,7 @@ unittest
     immutable Number = GenesisBlock.payments.front.outputs.length;
     assert(Number == 8);
 
-    const tx = TxBuilder(GenesisBlock.payments.front)
+    const tx = new TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -687,7 +698,7 @@ unittest
     immutable Number = GenesisBlock.payments.front.outputs.length * 2;
     assert(Number == 16);
 
-    const resTx1 = TxBuilder(GenesisBlock.payments.front)
+    const resTx1 = new TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -709,7 +720,7 @@ unittest
 
     // Test with multi input keys
     // Split into 32 outputs
-    const resTx2 = TxBuilder(resTx1)
+    const resTx2 = new TxBuilder(resTx1)
         .split(iota(Number * 2).map!(_ => KeyPair.random().address))
         .sign();
 
@@ -731,7 +742,7 @@ unittest
     immutable Number = 3;
     auto fee_rate = Amount(700);
 
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = new TxBuilder(GenesisBlock.payments.front)
         .split(WK.Keys.byRange.map!(k => k.address).take(Number))
         .sign();
 
@@ -755,7 +766,7 @@ unittest
 /// Test with one output key
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = new TxBuilder(GenesisBlock.payments.front)
         .split([WK.Keys.A.address])
         .sign();
 
@@ -772,7 +783,7 @@ unittest
 unittest
 {
     immutable Number = 3;
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = new TxBuilder(GenesisBlock.payments.front)
         // Refund needs to be called first as it resets the outputs
         .refund(WK.Keys.Z.address)
         .draw(Amount(100_000_000_0000_000L), WK.Keys.byRange.map!(k => k.address).take(Number))
@@ -807,7 +818,7 @@ unittest
     // The hash is incorrect (it's not a proper UTXO hash)
     // but TxBuilder only care about strictly monotonic hashes
     auto tup_rng = outs[].zip(outs[].map!(o => o.hashFull()));
-    auto result = TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
+    auto result = new TxBuilder(WK.Keys.F.address).attach(tup_rng).sign();
 
     auto fees = fee_rate * result.sizeInBytes;
     Amount total;
@@ -833,7 +844,7 @@ unittest
 /// Test with unfrozen remainder
 unittest
 {
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = new TxBuilder(GenesisBlock.payments.front)
         .draw(Amount.UnitPerCoin * 50_000, WK.Keys.byRange.map!(k => k.address).take(3))
         .sign(OutputType.Freeze, 0, 10_000.coins);
 
@@ -855,7 +866,7 @@ unittest
 {
     auto fee_rate = Amount(900);    // Using higher than min fee rate
     const freezeAmount = 50_000.coins;
-    const result = TxBuilder(GenesisBlock.payments.front)
+    const result = new TxBuilder(GenesisBlock.payments.front)
         .feeRate(fee_rate)
         .draw(freezeAmount, WK.Keys.byRange.map!(k => k.address).takeExactly(1))
         .sign(OutputType.Freeze, 0, 10_000.coins);

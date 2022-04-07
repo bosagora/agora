@@ -593,7 +593,7 @@ Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
     }
 
     Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()),
+         genesisSpendable().take(2).map!(txb => txb.keyUnlocker(&unlocker).sign()),
         WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys));
 
     auto validators = BitMask(6);

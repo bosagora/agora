@@ -18,6 +18,7 @@ version (unittest):
 
 import agora.test.Base;
 import core.thread;
+import agora.utils.TxBuilder;
 
 /// test node banning after postTransaction fails a number of times
 unittest
@@ -60,7 +61,7 @@ unittest
 
          foreach (idx; 0 .. count)
          {
-             txes = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+             txes = last_txs.map!(tx => new TxBuilder(tx).sign()).array();
              // keep track of last tx's to chain them to
              last_txs = txes[$ - 8 .. $];
              all_txs ~= txes;

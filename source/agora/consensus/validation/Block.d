@@ -32,6 +32,7 @@ import agora.utils.PrettyPrinter;
 import VEn = agora.consensus.validation.Enrollment;
 import VTx = agora.consensus.validation.Transaction;
 import agora.utils.Log;
+import agora.utils.TxBuilder;
 
 import std.algorithm;
 
@@ -637,7 +638,7 @@ unittest
     prev_txs.each!(tx => utxos.put(tx));  // these will be spent
 
     auto prev_block = block;
-    block = block.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
+    block = block.makeNewTestBlock(prev_txs.map!(tx => new TxBuilder(tx).sign()));
     block.assertValid(engine, prev_block.header.height, prev_block.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
 
@@ -703,7 +704,7 @@ unittest
     // we stopped validation due to a double-spend
     assert(used_set.length == double_spend.length - 1);
 
-    block = GenesisBlock.makeNewTestBlock(prev_txs.map!(tx => TxBuilder(tx).sign()));
+    block = GenesisBlock.makeNewTestBlock(prev_txs.map!(tx => new TxBuilder(tx).sign()));
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
 
@@ -720,7 +721,7 @@ unittest
     const last_root = block.header.merkle_root;
 
     block = GenesisBlock.makeNewTestBlock(prev_txs.enumerate.map!(en =>
-        TxBuilder(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
+        new TxBuilder(en.value).split(WK.Keys.byRange().take(en.index + 1).map!(k => k.address)).sign()));
 
     block.assertValid(engine, GenesisBlock.header.height, GenesisBlock.header.hashFull(),
         findUTXO, Enrollment.MinValidatorCount, checker, findGenesisEnrollments, toDelegate(utGetPenaltyDeposit));
@@ -756,6 +757,8 @@ unittest
     foreach (ref tx; GenesisBlock.txs)
         utxo_set.put(tx);
 
+    KeyPair keypair = KeyPair.random();
+
     auto txs_1 = genesisSpendable().map!(txb => txb.sign()).array();
 
     auto block1 = makeNewTestBlock(GenesisBlock, txs_1);
@@ -765,7 +768,6 @@ unittest
     foreach (ref tx; txs_1)
         utxo_set.put(tx);
 
-    KeyPair keypair = KeyPair.random();
     Transaction[] txs_2;
     foreach (idx, pre_tx; txs_1)
     {

@@ -316,7 +316,7 @@ unittest
 
 // Uses a random nonce when signing (non-determenistic signature),
 // and defaults to LockType.Key
-private static Unlock WKUnlocker (in Transaction tx, in OutputRef out_ref)
+public static Unlock WKUnlocker (in Transaction tx, in OutputRef out_ref)
     @safe nothrow
 {
     import agora.script.Signature : getChallenge;
@@ -328,9 +328,6 @@ private static Unlock WKUnlocker (in Transaction tx, in OutputRef out_ref)
 
     return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
 }
-
-///
-public alias TxBuilder = StaticTransactionBuilder!WKUnlocker;
 
 /***************************************************************************
 
@@ -353,7 +350,8 @@ public auto spendable (const ref Block block) @safe pure nothrow
 {
     return block.txs
         .filter!(tx => tx.isPayment)
-        .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder(tx, cast(uint)idx)))
+        .map!(tx => iota(tx.outputs.length).map!(idx =>
+            new TxBuilder(tx, cast(uint)idx).keyUnlocker(&WKUnlocker)))
         .joiner();
 }
 

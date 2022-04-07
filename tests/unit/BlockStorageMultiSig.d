@@ -27,8 +27,8 @@ import agora.crypto.Hash;
 import agora.crypto.Schnorr;
 import agora.crypto.ECC;
 import agora.utils.Test;
+import agora.utils.TxBuilder;
 import agora.utils.PrettyPrinter;
-
 import std.algorithm;
 import std.file;
 import std.path;
@@ -67,7 +67,7 @@ private void main ()
         storage.saveBlock(block);
         // Prepare transactions for the next block
         txs = txs
-            .map!(tx => TxBuilder(tx).refund(WK.Keys[h + 1].address).sign())
+            .map!(tx => new TxBuilder(tx).keyUnlocker(&agora.utils.Test.WKUnlocker).refund(WK.Keys[h + 1].address).sign())
             .array();
         prev_block = block;
     }

@@ -21,6 +21,7 @@ import agora.consensus.data.Block;
 import agora.consensus.data.genesis.Test;
 import agora.consensus.data.Transaction;
 import agora.utils.Test;
+import agora.utils.TxBuilder;
 
 import std.algorithm;
 import std.file;
@@ -54,7 +55,7 @@ private void main ()
         blocks ~= block;
         // Prepare transactions for the next block
         txs = txs
-            .map!(tx => TxBuilder(tx).refund(WK.Keys[block_idx + 1].address).sign())
+            .map!(tx => new TxBuilder(tx).keyUnlocker(&agora.utils.Test.WKUnlocker).refund(WK.Keys[block_idx + 1].address).sign())
             .array();
     }
 
