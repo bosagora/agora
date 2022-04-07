@@ -954,6 +954,7 @@ public class FullNode : API
     /// GET: /node_info
     public override NodeInfo getNodeInfo () @safe
     {
+        mixin(TracyZoneLogger!("ctx", "api_getNodeInfo"));
         this.recordReq("node_info");
         return this.network.getNetworkInfo();
     }
@@ -974,6 +975,8 @@ public class FullNode : API
     {
         this.recordReq("transaction");
         this.tx_stats.increaseMetricBy!"agora_transactions_received_total"(1);
+
+        mixin(TracyZoneLogger!("ctx", "api_postTransaction"));
 
         // return early if we already have this tx
         if (this.hasTransactionHash(hashFull(tx)))
@@ -1054,6 +1057,8 @@ public class FullNode : API
     {
         this.recordReq("postEnrollment");
 
+        mixin(TracyZoneLogger!("ctx", "api_postEnrollment"));
+
         // Ignore enrollments targeting a previous Height
         if (avail_height <= this.ledger.height())
         {
@@ -1097,6 +1102,9 @@ public class FullNode : API
     public override Enrollment getEnrollment (in Hash enroll_hash) @safe
     {
         this.recordReq("getEnrollment");
+
+        mixin(TracyZoneLogger!("ctx", "api_getEnrollment"));
+
         return this.enroll_man.enroll_pool.getEnrollment(enroll_hash);
     }
 
@@ -1105,6 +1113,8 @@ public class FullNode : API
     {
         this.recordReq("postPreimage");
         log.trace("Received Preimage: {}", prettify(preimage));
+
+        mixin(TracyZoneLogger!("ctx", "api_postPreimage"));
 
         if (this.ledger.addPreimage(preimage))
         {
@@ -1120,6 +1130,8 @@ public class FullNode : API
     public override PreImageInfo[] getPreimages (Set!Hash enroll_keys = Set!Hash.init) @safe
     {
         this.recordReq("preimages");
+
+        mixin(TracyZoneLogger!("ctx", "api_getPreimages"));
 
         // if enroll_keys is empty, then all preimages should be returned
         if (enroll_keys.empty())

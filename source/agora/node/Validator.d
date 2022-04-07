@@ -482,6 +482,7 @@ public class Validator : FullNode, API
     public override void postEnvelope (SCPEnvelope envelope) @safe
     {
         this.recordReq("postEnvelope");
+        mixin(TracyZoneLogger!("ctx", "api_postEnvelope"));
         this.nominator.receiveEnvelope(envelope);
     }
 
@@ -500,6 +501,7 @@ public class Validator : FullNode, API
     public override void postBlockSignature (ValidatorBlockSig block_sig) @safe
     {
         this.recordReq("postBlockSignature");
+        mixin(TracyZoneLogger!("ctx", "api_postBlockSignature"));
         const new_header = this.nominator.receiveBlockSignature(block_sig);
         if (new_header != BlockHeader.init)
         {

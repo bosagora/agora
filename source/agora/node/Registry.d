@@ -242,6 +242,7 @@ public class NameRegistry: NameRegistryAPI
     /// Implementation of `NameRegistryAPI.postValidator`
     public override void postValidator (RegistryPayloadData data, Signature sig)
     {
+        mixin(TracyZoneLogger!("ctx", "api_postValidator"));
         ensure(this.zones[ZoneIndex.Validator].type != ZoneType.caching,
             "Couldn't register, server is not authoritative for the zone");
 
@@ -307,6 +308,7 @@ public class NameRegistry: NameRegistryAPI
     /// Implementation of `NameRegistryAPI.postFlashNode`
     public override void postFlashNode (RegistryPayloadData data, Signature sig, KnownChannel channel)
     {
+        mixin(TracyZoneLogger!("ctx", "api_postFlashNode"));
         ensure(this.zones[ZoneIndex.Flash].type != ZoneType.caching,
             "Couldn't register, server is not authoritative for the zone");
 
@@ -357,6 +359,7 @@ public class NameRegistry: NameRegistryAPI
         bool tcp = false)
         @safe
     {
+        mixin(TracyZoneLogger!("ctx", "api_answerQuestions(DNS)"));
         Message reply;
         reply.header.RCODE = Header.RCode.FormatError;
 
