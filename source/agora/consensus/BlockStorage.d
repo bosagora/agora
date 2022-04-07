@@ -1051,7 +1051,7 @@ private void testStorage (IBlockStorage storage)
     {
         while (--count)
         {
-            txs = last_txs.length ? last_txs.map!(tx => TxBuilder(tx).sign()).array()
+            txs = last_txs.length ? last_txs.map!(tx => new TxBuilder(tx).sign()).array()
                 : genesisSpendable().map!(txb => txb.sign()).array();
             last_block = makeNewTestBlock(blocks[$ - 1], txs);
             last_block.updateSignature(

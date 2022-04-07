@@ -569,30 +569,28 @@ boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Paymen
 boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>,
 boa1xzgenes5...gm67(59,500,000)<Payment>, boa1xzgenes5...gm67(59,500,000)<Payment>
 ====================================================
-Height: 1, Prev: 0x8365...3175, Root: 0xb434...e22f, Enrollments: []
+Height: 1, Prev: 0x8365...3175, Root: 0x5381...9484, Enrollments: []
 Signature: 0x000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78000000000000000000016f605ea9638d7bff58d2c0cc2467c18e38b36367be78,
 Validators: 4/6 !(1, 4),
 Pre-images: [0x4f7f...5563, 0x2026...6d96, 0xcd81...26c3, 0xe703...5571, 0x8c7e...0cf7, 0x1592...afd1],
 Transactions: 2
-Inputs (1): 0xb75a...9257:0x9e8b...81b6
-Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
-Inputs (1): 0x840b...b279:0x9e8b...81b6
-Outputs (1): boa1xzgenes5...gm67(59,499,999.9,920,9)<Payment>
+Inputs (2): 0x0d7a...ef6b:0x9e8b...81b6, 0x2601...2777:0x9e8b...81b6
+Outputs (2): boa1xza007gl...9g93(150)<Payment>, boa1xrc00kar...9lkl(500)<Payment>
+Inputs (1): 0x5831...01ba:0x9e8b...81b6
+Outputs (1): boa1xza007gl...9g93(123)<Payment>
 ====================================================
 `;
     import agora.utils.Test : genesisSpendable;
     import agora.consensus.data.Block;
 
-    // need reproducible unlocks for test (signing generates unique nonces)
-    import agora.script.Lock;
-    import agora.utils.Test;
-    static Unlock unlocker (in Transaction, in OutputRef) @safe nothrow
-    {
-        return Unlock.init;
-    }
+    // need reproducible unlocks for test (signing generates unique nonces) so use script lock
+    import agora.crypto.Hash;
+    import agora.utils.Test : WK;
 
     Block second_block = makeNewBlock(GenesisBlock,
-        genesisSpendable().take(2).map!(txb => txb.unlockSigner(&unlocker).sign()),
+        only(Transaction([ Input("1".hashFull()), Input("2".hashFull()) ],
+            [ Output(150.coins, WK.Keys.A.address), Output(500.coins, WK.Keys.C.address) ]),
+            Transaction([ Input("3".hashFull()) ], [ Output(123.coins, WK.Keys.A.address) ])),
         WK.PreImages.at(GenesisBlock.header.height + 1, genesis_validator_keys));
 
     auto validators = BitMask(6);

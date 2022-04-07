@@ -1183,7 +1183,7 @@ public class TestAPIManager
     public Transaction sendTransaction (scope RemoteAPI!TestAPI client)
     {
         auto utxo_pairs = client.getSpendables(1.coins);
-        auto tx = TxBuilder(utxo_pairs[0].utxo.output.address) // refund
+        auto tx = new TxBuilder(utxo_pairs[0].utxo.output.address) // refund
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash))).sign();
         auto result = client.postTransaction(tx);
         assert(result.status == TransactionResult.status.Accepted);
@@ -1215,7 +1215,7 @@ public class TestAPIManager
         assert(expected.mul(keys.length));
         auto utxo_pairs = first_client.getSpendables(expected);
 
-        return TxBuilder(utxo_pairs[0].utxo.output.address) // refund
+        return new TxBuilder(utxo_pairs[0].utxo.output.address) // refund
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
             .draw(Amount.MinFreezeAmount, keys) // draw min freeze to enroll for each
             .sign(OutputType.Freeze);

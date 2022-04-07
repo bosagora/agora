@@ -149,7 +149,7 @@ public int genTxProcess (string[] args, ref string[] outputs,
         writefln("%s transactions sent to %s.\nTransactions:",
             op.count, op.address);
         txs.each!(tx => writeln(prettify(tx)));
-        txs = txs.map!(txb => TxBuilder(txb).sign()).array();
+        txs = txs.map!(tx => new TxBuilder(tx).sign()).array();
     }
 
     if (op.dump)

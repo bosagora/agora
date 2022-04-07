@@ -54,7 +54,7 @@ private void main ()
         blocks ~= block;
         // Prepare transactions for the next block
         txs = txs
-            .map!(tx => TxBuilder(tx).refund(WK.Keys[block_idx + 1].address).sign())
+            .map!(tx => new TxBuilder(tx).refund(WK.Keys[block_idx + 1].address).sign())
             .array();
     }
 

@@ -56,10 +56,9 @@ unittest
         ~ [ubyte(OP.VERIFY_LOCK_HEIGHT)]
         ~ [ubyte(32)] ~ WK.Keys.Genesis.address[] ~ [ubyte(OP.CHECK_SIG)]);
 
-    auto lock_txs = block_5.txs
-        .filter!(tx => tx.isPayment)
+    auto lock_txs = block_5.payments
         .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx, lock)))
+        .map!(idx => new TxBuilder(tx, cast(uint)idx, lock)))
         .joiner().map!(txb => txb.sign());
 
     lock_txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));
@@ -69,18 +68,21 @@ unittest
 
     const lock_height_2 = Height(2);
     auto unlock_height_2 = block_6.spendable()
-        .map!(txb => txb.unlockSigner(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis))
+        .map!(txb => txb.scriptUnlocker(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis))
             .lock(lock_height_2).sign());
+
+    // unlock height 2 rejected
+    unlock_height_2.each!(tx => nodes.each!(node =>
+        assert(node.postTransaction(tx).status == TransactionResult.Status.Rejected)));
 
     const lock_height_3 = Height(3);
     auto unlock_height_3 = block_6.spendable()
-        .map!(txb => txb.unlockSigner(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis))
+        .map!(txb => txb.scriptUnlocker(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis))
             .lock(lock_height_3).sign()).array;
 
-    // txs with unlock height 2 should be rejected by the lock script
-    unlock_height_2.each!(tx => nodes.each!(node => node.postTransaction(tx)));
     // unlock height 3 accepted
-    unlock_height_3.each!(tx => nodes.each!(node => node.postTransaction(tx)));
+    unlock_height_3.each!(tx => nodes.each!(node =>
+        assert(node.postTransaction(tx).status != TransactionResult.Status.Rejected)));
     network.expectHeightAndPreImg(Height(7), network.blocks[0].header);
 
     const block_7 = node_1.getBlocksFrom(7, 1)[0];
@@ -120,7 +122,7 @@ unittest
 
     auto split_up = txs
         .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx))).array;
+            .map!(idx => new TxBuilder(tx, cast(uint)idx))).array;
 
     // these parts are similar to the tests in UnlockAge.d
     auto txs_0 = split_up[0].map!(txb => txb.sign()).array;
@@ -152,13 +154,13 @@ unittest
     // however the transaction lock specifically requires unlock age 3.
     const uint UnlockAge_2 = 2;
     auto age_2_txs = iota(cast(uint)txs[3].outputs.length)
-        .map!(idx => TxBuilder(txs[3], idx).unlockSigner(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis)))
+        .map!(idx => new TxBuilder(txs[3], idx).scriptUnlocker(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis)))
         .map!(t => t.sign(OutputType.Payment, UnlockAge_2))
         .array();
 
     const uint UnlockAge_3 = 3;
     auto age_3_txs = iota(cast(uint)txs[3].outputs.length)
-        .map!(idx => TxBuilder(txs[3], idx).unlockSigner(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis)))
+        .map!(idx => new TxBuilder(txs[3], idx).scriptUnlocker(&TxBuilder.signWithSpecificKey!(WK.Keys.Genesis)))
         .map!(t => t.sign(OutputType.Payment, UnlockAge_3))
         .array();
 
@@ -210,7 +212,7 @@ unittest
 
     auto split_up = txs
         .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx))).array;
+            .map!(idx => new TxBuilder(tx, cast(uint)idx))).array;
 
     auto txs_0 = split_up[0].map!(txb => txb.sign()).array;
 
@@ -223,14 +225,14 @@ unittest
 
     // using IF branch
     auto true_a_txs = iota(cast(uint)txs[3].outputs.length)
-        .map!(idx => TxBuilder(txs[3], idx)
-            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_a, [ubyte(OP.TRUE)])).sign())
+        .map!(idx => new TxBuilder(txs[3], idx)
+            .scriptUnlocker(&TxBuilder.signWithSpecificKey!(kp_a, [ubyte(OP.TRUE)])).sign())
         .array();
 
     // ditto, but different key-pair
     auto true_b_txs = iota(cast(uint)txs[3].outputs.length)
-        .map!(idx => TxBuilder(txs[3], idx)
-            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_b, [ubyte(OP.TRUE)])).sign())
+        .map!(idx => new TxBuilder(txs[3], idx)
+            .scriptUnlocker(&TxBuilder.signWithSpecificKey!(kp_b, [ubyte(OP.TRUE)])).sign())
         .array();
 
     // We don't want to rely on gossip before we set time for nominate or we will not know
@@ -245,14 +247,14 @@ unittest
 
     // using ELSE branch
     auto false_a_txs = iota(cast(uint)txs[4].outputs.length)
-        .map!(idx => TxBuilder(txs[4], idx)
-            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_a, [ubyte(OP.FALSE)])).sign())
+        .map!(idx => new TxBuilder(txs[4], idx)
+            .scriptUnlocker(&TxBuilder.signWithSpecificKey!(kp_a, [ubyte(OP.FALSE)])).sign())
         .array();
 
     // ditto, but different key-pair
     auto false_b_txs = iota(cast(uint)txs[4].outputs.length)
-        .map!(idx => TxBuilder(txs[4], idx)
-            .unlockSigner(&TxBuilder.signWithSpecificKey!(kp_b, [ubyte(OP.FALSE)])).sign())
+        .map!(idx => new TxBuilder(txs[4], idx)
+            .scriptUnlocker(&TxBuilder.signWithSpecificKey!(kp_b, [ubyte(OP.FALSE)])).sign())
         .array();
 
     false_a_txs.each!(tx => nodes.each!(node => node.postTransaction(tx)));

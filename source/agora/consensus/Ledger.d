@@ -852,7 +852,7 @@ public class ValidatingLedger : NodeLedger
             return last_txs;
         }
 
-        last_txs = last_txs.map!(tx => TxBuilder(tx).sign()).array();
+        last_txs = last_txs.map!(tx => new TxBuilder(tx).sign()).array();
         last_txs.each!(tx => assert(this.acceptTransaction(tx) is null));
         this.forceCreateBlock();
         return last_txs;
@@ -1279,7 +1279,7 @@ unittest
 
     // Generate a block with data stored transactions
     txs = txs.enumerate()
-        .map!(en => TxBuilder(en.value)
+        .map!(en => new TxBuilder(en.value)
               .deduct(data_fee)
               .payload(data)
               .sign())
@@ -1301,7 +1301,7 @@ unittest
 
     // Generate a block to reuse transactions used for data storage
     txs = txs.enumerate()
-        .map!(en => TxBuilder(en.value)
+        .map!(en => new TxBuilder(en.value)
               .refund(WK.Keys[en.index].address)
               .sign())
               .array;
@@ -1326,7 +1326,7 @@ unittest
     Transaction[] genTransactions (Transaction[] txs)
     {
         return txs.enumerate()
-            .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address)
+            .map!(en => new TxBuilder(en.value).refund(WK.Keys[en.index].address)
                 .sign())
             .array;
     }
@@ -1351,12 +1351,12 @@ unittest
 
     // generate a block with only freezing transactions
     auto new_txs = txs[0 .. 4].enumerate()
-        .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address)
+        .map!(en => new TxBuilder(en.value).refund(WK.Keys[en.index].address)
             .sign(OutputType.Freeze)).array;
     new_txs ~= txs[4 .. 7].enumerate()
-        .map!(en => TxBuilder(en.value).refund(WK.Keys[en.index].address).sign())
+        .map!(en => new TxBuilder(en.value).refund(WK.Keys[en.index].address).sign())
         .array;
-    new_txs ~= TxBuilder(txs[$ - 1]).split(WK.Keys[0].address.repeat(8)).sign();
+    new_txs ~= new TxBuilder(txs[$ - 1]).split(WK.Keys[0].address.repeat(8)).sign();
     new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
     ledger.forceCreateBlock();
     assert(ledger.height() == 2);
@@ -1370,7 +1370,7 @@ unittest
     ];
 
     new_txs = iota(new_txs[$ - 1].outputs.length).enumerate
-        .map!(en => TxBuilder(new_txs[$ - 1], cast(uint)en.index)
+        .map!(en => new TxBuilder(new_txs[$ - 1], cast(uint)en.index)
             .refund(WK.Keys[en.index].address).sign())
         .array;
     new_txs.each!(tx => assert(ledger.acceptTransaction(tx) is null));
@@ -1667,7 +1667,7 @@ unittest
     ledger.simulatePreimages(Height(params.ValidatorCycle));
 
     auto freeze_tx = GenesisBlock.txs.find!(tx => tx.isFreeze).front();
-    auto melting_tx = TxBuilder(freeze_tx, 0).sign();
+    auto melting_tx = new TxBuilder(freeze_tx, 0).sign();
 
     // enrolled stake can't be spent
     assert(ledger.acceptTransaction(melting_tx) !is null);
@@ -1687,7 +1687,7 @@ unittest
     assert(ledger.acceptTransaction(freeze_tx) is null);
     ledger.forceCreateBlock();
 
-    auto melting_tx = TxBuilder(freeze_tx, 0).sign();
+    auto melting_tx = new TxBuilder(freeze_tx, 0).sign();
     assert(ledger.acceptTransaction(melting_tx) is null);
 
     ConsensusData data;
@@ -1837,7 +1837,7 @@ unittest
         Height(5), &ledger.peekUTXO, &ledger.getPenaltyDeposit));
     assert(ledger.enrollment_manager.enroll_pool.hasEnrollment(stake, Height(5)));
 
-    auto melting_tx = TxBuilder(GenesisBlock.txs[1], 1).sign();
+    auto melting_tx = new TxBuilder(GenesisBlock.txs[1], 1).sign();
     assert(ledger.acceptTransaction(melting_tx) is null);
 
     ledger.forceCreateBlock();

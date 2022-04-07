@@ -42,7 +42,7 @@ import agora.crypto.Key;
 import agora.crypto.Schnorr;
 import agora.script.Lock;
 import agora.serialization.Serializer;
-public import agora.utils.TxBuilder;
+import agora.utils.TxBuilder;
 public import agora.utils.Utility : retryFor;
 
 import std.algorithm;
@@ -314,6 +314,59 @@ unittest
     assert(WK.PreImages.at(Height(1), only_node2) == preimages_height_1);
 }
 
+///
+public class TxBuilder : TransactionBuilder
+{
+    public this (in PublicKey refundMe) @safe pure nothrow
+    {
+        super(refundMe);
+    }
+
+    /// Ditto
+    public this (in Lock lock) @safe pure nothrow
+    {
+        super(lock);
+    }
+
+    /// Ditto
+    public this (const Transaction tx) @safe nothrow
+    {
+        super(tx);
+    }
+
+    /// Ditto
+    public this (const Transaction tx, uint index) @safe nothrow
+    {
+        super(tx, index);
+    }
+
+    /// Ditto
+    public this (const Transaction tx, uint index, in Lock lock) @safe nothrow
+    {
+        super(tx, index, lock);
+    }
+
+    /// Convenience constructor that calls `this.attach(Output, Hash)`
+    public this (in Output utxo, in Hash hash) @safe nothrow
+    {
+        super(utxo, hash);
+    }
+
+    override Unlock unlocker (in Transaction tx, in OutputRef out_ref) @safe nothrow
+    {
+        import agora.script.Signature : getChallenge;
+
+        assert(out_ref.output.lock.type == LockType.Key,
+            "This unlocker can only be used for LockType.Key");
+        auto ownerKP = WK.Keys[out_ref.output.address];
+        assert(ownerKP !is KeyPair.init,
+               "Address not found in Well-Known keypairs: "
+               ~ out_ref.output.address.toString());
+
+        return genKeyUnlock(ownerKP.sign(tx.getChallenge()));
+    }
+}
+
 /***************************************************************************
 
     Takes a block object and filters the payment outputs
@@ -335,7 +388,8 @@ public auto spendable (const ref Block block) @safe pure nothrow
 {
     return block.txs
         .filter!(tx => tx.isPayment)
-        .map!(tx => iota(tx.outputs.length).map!(idx => TxBuilder(tx, cast(uint)idx)))
+        .map!(tx => iota(tx.outputs.length).map!(idx =>
+            new TxBuilder(tx, cast(uint)idx).refund(WK.Keys.ME.address)))
         .joiner();
 }
 

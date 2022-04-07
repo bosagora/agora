@@ -41,7 +41,7 @@ unittest
 
     auto split_up = txs
         .map!(tx => iota(tx.outputs.length)
-            .map!(idx => TxBuilder(tx, cast(uint)idx))).array;
+            .map!(idx => new TxBuilder(tx, cast(uint)idx))).array;
 
     // if `unlock_age` is 3 then UTXO at height `1` which unlocks at height `2`
     // will be spendable by this input at height `2 + 3 = 5`.

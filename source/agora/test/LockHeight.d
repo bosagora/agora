@@ -40,11 +40,11 @@ unittest
 
     const Height UnlockHeight_2 = Height(2);
     auto unlock_2_txs = txs.map!(
-        tx => TxBuilder(tx).lock(UnlockHeight_2).sign(OutputType.Payment)).array();
+        tx => new TxBuilder(tx).lock(UnlockHeight_2).sign(OutputType.Payment)).array();
 
     const Height UnlockHeight_3 = Height(3);
     auto unlock_3_txs = txs.map!(
-        tx => TxBuilder(tx).lock(UnlockHeight_3).sign(OutputType.Payment)).array();
+        tx => new TxBuilder(tx).lock(UnlockHeight_3).sign(OutputType.Payment)).array();
 
     assert(unlock_2_txs != unlock_3_txs);
 

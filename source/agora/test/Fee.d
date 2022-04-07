@@ -44,7 +44,7 @@ unittest
 
         // create and send tx to all nodes
         network.postAndEnsureTxInPool(
-            TxBuilder(WK.Keys.AAA.address)
+            new TxBuilder(WK.Keys.AAA.address)
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
             .deduct(1.coins).sign());
 
@@ -188,7 +188,7 @@ unittest
 
         // create and send tx to all nodes
         network.postAndEnsureTxInPool(
-            TxBuilder(WK.Keys.AAA.address)
+            new TxBuilder(WK.Keys.AAA.address)
             .attach(utxo_pairs.map!(p => tuple(p.utxo.output, p.hash)))
             .deduct(1.coins).sign());
 
