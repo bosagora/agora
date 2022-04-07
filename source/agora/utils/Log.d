@@ -644,3 +644,26 @@ public void setVibeLogLevel (LogLevel level) @safe
         break;
     }
 }
+
+version (Have_tracyd)
+{
+    public import tracyd;
+    import std.format : format;
+    template TracyZoneLogger(string ctx, alias name)
+    {
+        const char[] TracyZoneLogger = q{
+            mixin TracyCZoneN!("%s", "%s", true);
+            scope (exit) {
+                () @trusted { TracyCZoneEnd(%s); } ();
+            }
+        }.format(ctx, name, ctx);
+    }
+}
+else
+{
+    template TracyZoneLogger(string ctx, string name)
+    {
+        // mixin(q{{}});
+        const char[] TracyZoneLogger = "{}";
+    }
+}
