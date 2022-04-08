@@ -57,6 +57,8 @@ jobs:
           mv -v build/agora-client build/agora-client-${{ github.event.release.tag_name }}+${{ matrix.triple }}
           dub build --skip-registry=all --compiler=${DC} -c config-dumper
           mv -v build/agora-config-dumper  build/agora-config-dumper-${{ github.event.release.tag_name }}+${{ matrix.triple }}
+          dub build --skip-registry=all --compiler=${DC} -c traced-server
+          mv -v build/agora-traced build/agora-traced-${{ github.event.release.tag_name }}+${{ matrix.triple }}
 
       - name: 'Upload temporary binaries'
         uses: actions/upload-artifact@v2
