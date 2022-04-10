@@ -77,22 +77,10 @@ public final class VibeNetworkManager : NetworkManager
     {
         const timeout = this.config.node.timeout;
         if (url.schema == "agora")
-        {
-            auto owner_validator = cast (agora.api.Validator.API) this.owner_node;
-
-            return owner_validator ?
-                new RPCClient!(agora.api.Validator.API)(
+            return new RPCClient!(agora.api.Validator.API)(
                 url.host, url.port,
                 /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
-                owner_validator)
-                :
-                new RPCClient!(agora.api.Validator.API)(
-                url.host, url.port,
-                /* Disabled, we have our own method: */ 0.seconds, 1,
-                timeout, timeout, timeout, 3 /* Hard coded max tcp connections*/,
-                this.owner_node);
-        }
+                timeout, timeout, timeout);
 
         if (url.schema.startsWith("http"))
             return new RestInterfaceClient!(agora.api.Validator.API)(
