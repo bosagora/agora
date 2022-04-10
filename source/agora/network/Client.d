@@ -712,36 +712,11 @@ public class NetworkClient
     {
         import std.range;
 
-        if (this.tryMergeRPC(address, api))
-            return true;
-
         if (address != Address.init || this.connections.length == 0)
         {
             this.connections ~= ConnectionInfo(address, api);
             return true;
         }
         return false;
-    }
-
-    /// Try to merge an incoming RPC connection to an existing one if possible
-    public bool tryMergeRPC (in Address address, API api)
-    {
-        import std.typecons;
-        import agora.network.RPC;
-
-        alias ValidatorClient = RPCClient!(agora.api.Validator.API);
-
-        auto incoming_peer = cast(ValidatorClient) api;
-        if (incoming_peer is null)
-            return false;
-
-        auto range = this.connections
-            .map!(c => tuple!("address", "api")(c.address, cast(ValidatorClient) c.api))
-            .filter!(conn => conn.api !is null);
-        if (range.empty)
-            return false;
-        assert(range.front.address != Address.init);
-        range.front.api.merge(incoming_peer);
-        return true;
     }
 }

@@ -30,6 +30,7 @@ import dtext.format.Formatter;
 
 import vibe.core.net;
 import vibe.core.connectionpool;
+import vibe.core.core : runTask;
 import vibe.core.sync;
 import vibe.http.server : RejectConnectionPredicate;
 
@@ -118,6 +119,19 @@ struct ProxyProtocol
     }
 }
 
+/// A RPC packet
+private struct Packet
+{
+    /// Sequence id
+    public ulong seq_id;
+
+    /// response bit
+    public bool is_response;
+
+    /// requested method
+    public Hash method;
+}
+
 /// Ditto
 public class RPCClient (API) : API
 {
@@ -141,8 +155,40 @@ public class RPCClient (API) : API
     /// Config instance for this client
     private RPCConfig config;
 
-    /// Pool of connections to the host
-    private ConnectionPool!RPCConnection pool;
+    /// Connection to the host
+    private TCPConnection conn;
+
+    /// Write lock on connection
+    private TaskMutex wlock;
+
+    /// Read lock on connection
+    private TaskMutex rlock;
+
+    /// Local sequence id
+    private uint seq_id;
+
+    /// Control structure for Fibers blocked on this connection
+    private class Waiting
+    {
+        /// The event that the blocked fiber will be waiting on
+        public LocalManualEvent event;
+
+        /// Response packet that we get
+        public Packet res;
+
+        /// Callback to invoke when response packet is received
+        public void delegate () @safe on_packet_received;
+
+        public this (LocalManualEvent event,
+            void delegate () @safe on_packet_received)
+        {
+            this.event = event;
+            this.on_packet_received = on_packet_received;
+        }
+    }
+
+    /// List of Fibers waiting for a Response from this Connection
+    private Waiting[size_t] waiting_list;
 
     /// Logger for this client
     private Logger log;
@@ -169,39 +215,19 @@ public class RPCClient (API) : API
 
     ***************************************************************************/
 
-    public this (ThisEndAPI) (string host, ushort port,
-                 Duration retry_delay, uint max_retries,
-                 Duration ctimeout, Duration rtimeout, Duration wtimeout,
-                 uint concurrency, ThisEndAPI impl)
-        @trusted
+    public this (string host, ushort port, Duration retry_delay, uint max_retries,
+                 Duration ctimeout, Duration rtimeout, Duration wtimeout) @trusted
     {
-        const RPCConfig conf = {
-            host:               host,
-            port:               port,
-
-            retry_delay:        retry_delay,
-            max_retries:        max_retries,
-
-            connection_timeout: ctimeout,
-            read_timeout:       rtimeout,
-            write_timeout:      wtimeout,
-            concurrency:        concurrency,
-        };
-        this(conf, impl);
-    }
-
-    /// Ditto
-    public this (ThisEndAPI) (const RPCConfig config, ThisEndAPI impl) @trusted
-    {
-        this.config = config;
+        this.config = RPCConfig(host, port, max_retries,
+            ctimeout, rtimeout, wtimeout, retry_delay);
+        this.wlock = new TaskMutex();
+        this.rlock = new TaskMutex();
         this.log = Log.lookup(
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
-        this.pool = new ConnectionPool!RPCConnection(
-            () => this.connect(impl), this.config.concurrency);
     }
 
-    /// Returns: A new `RPCConnection` using `impl` as listener
-    private RPCConnection connect (ThisAPIImpl) (ThisAPIImpl impl) @safe
+    /// Returns: A new `TCPConnection`
+    private TCPConnection connect () @safe
     {
         ensure(this.config != RPCConfig.init, "Can not connect on unidentified client");
         uint attempts;
@@ -224,15 +250,7 @@ public class RPCClient (API) : API
                 conn.readTimeout = this.config.read_timeout;
 
                 if (conn.connected())
-                {
-                    static import vibe.core.core;
-                    auto rpc_conn = new RPCConnection(conn);
-                    vibe.core.core.runTask({
-                        rpc_conn.rlock.lock();
-                        rpc_conn.startListening(impl);
-                    });
-                    return rpc_conn;
-                }
+                    return conn;
             }
             catch (Exception e) {}
             attempts++;
@@ -242,13 +260,6 @@ public class RPCClient (API) : API
         assert(0);
     }
 
-    /// Ditto
-    public this (ThisEndAPI) (RPCConnection conn, ThisEndAPI impl) @trusted
-    {
-        this(RPCConfig.init, impl);
-        assert(this.pool.add(conn));
-    }
-
     /// Implementation of the API's functions
     static foreach (member; __traits(allMembers, API))
         static foreach (ovrld; __traits(getOverloads, API, member))
@@ -256,74 +267,99 @@ public class RPCClient (API) : API
             mixin(q{
                 override ReturnType!(ovrld) } ~ member ~ q{ (Parameters!ovrld params)
                 {
-                    scope conn = this.pool.lockConnection();
-                    scope (failure)
+                    ubyte[1024] buffer = void;
+                    scope DeserializeDg reader = (size_t size) @safe
                     {
-                        conn.close();
-                        this.pool.remove(conn);
-                    }
-                    ubyte[512] tmp = void;
-                    Hash method = this.lookup[ovrld.mangleof];
-                    // Send the method type
+                        ensure(size < buffer.length, "Out of bound read");
+                        this.conn.read(buffer[0 .. size]);
+                        return buffer[0 .. size];
+                    };
 
-                    conn.wlock.lock();
-                    conn.write(serializeFull(method));
-                    // List of parameters
-                    foreach (ref p; params)
-                        conn.write(serializeFull(p));
-                    conn.flush();
-                    conn.wlock.unlock();
+                    Packet packet;
+                    packet.seq_id = this.seq_id++;
+                    packet.method = this.lookup[ovrld.mangleof];
 
-                    scope DeserializeDg dg = (size_t size)
-                        {
-                            if (size >= tmp.length)
-                            {
-                                this.log.warn("{}: Read size {} is too large for buffer size {}, closing connection",
-                                         __FUNCTION__, size, tmp.length);
-                                ensure(0, "{}: Out of bound read: {} >= {}", __FUNCTION__, size, tmp.length);
-                            }
-                            conn.read(tmp[0 .. size]);
-                            return tmp[0 .. size];
-                        };
-
-                    ensure(conn.rlock.lock(this.config.read_timeout), "Operation timed out");
-                    scope (exit)
+                    // Acquire the write lock and send the packet
                     {
-                        conn.rlock.unlock();
-                        conn.rcond.notify();
+                        this.wlock.lock();
+                        scope (exit) this.wlock.unlock();
+                        if (!this.conn.connected())
+                            this.conn = this.connect();
+
+                        this.conn.write(serializeFull(packet));
+                        // List of parameters
+                        foreach (ref p; params)
+                            this.conn.write(serializeFull(p));
+                        this.conn.flush();
                     }
-                    ensure(conn.connected(), "Connection closed");
-                    conn.readTimeout = this.config.read_timeout;
+
                     static if (!is(typeof(return) == void))
                     {
-                        version (all)
+                        scope (exit) this.waiting_list.remove(packet.seq_id);
+                        ReturnType!(ovrld)[] response;
+                        auto woke_up = 0;
+                        auto start = MonoTime.currTime;
+                        Waiting waiting;
+                        // Attempt to acquire the read lock, if we cant; register ourself
+                        // as a `waiter` and wait for the Fiber that has the read lock to signal
+                        // us when it receives the response we are waiting for
+                        while (!this.rlock.tryLock())
                         {
-                            auto retval = deserializeFull!(typeof(return))(dg);
-                            this.log.trace("[CLIENT] {}: Returning {}", __FUNCTION__, retval);
-                            return retval;
+                            if (waiting is null)
+                            {
+                                waiting = new Waiting(createManualEvent(), () {
+                                    auto val = deserializeFull!(ReturnType!(ovrld))(reader);
+                                    response ~= val;
+                                });
+                                this.waiting_list[packet.seq_id] = waiting;
+                            }
+
+                            ensure(waiting.event.wait(start + this.config.read_timeout
+                                - MonoTime.currTime, woke_up) > woke_up++, "Request timed out");
+
+                            // reader fiber read the response and stored it for us
+                            if (waiting.res.is_response)
+                            {
+                                ensure(waiting.res.method == packet.method, "Method mismatch");
+                                ensure(response.length == 1, "Error while reading response");
+                                return response[0];
+                            }
                         }
-                        else
-                            return deserializeFull!(typeof(return))(dg);
+
+                        // got the rlock
+                        // keep reading response packets and waking up the fibers waiting for them
+                        {
+                            scope (success)
+                                // wake up one of the waiters to get the rlock and start reading
+                                if (this.waiting_list.length > 0)
+                                     this.waiting_list.byValue.front.event.emit();
+                            scope (exit) this.rlock.unlock();
+                            scope (failure) this.conn.close();
+
+                            ensure(this.conn.connected(), "Connection dropped");
+
+                            while (true)
+                            {
+                                auto any_response = deserializeFull!Packet(reader);
+                                ensure(any_response.is_response, "Unexpected request on client socket");
+
+                                if (any_response.seq_id == packet.seq_id)
+                                {
+                                    ensure(any_response.method == packet.method, "Method mismatch");
+                                    return deserializeFull!(ReturnType!(ovrld))(reader);
+                                }
+                                else if (auto waiter = any_response.seq_id in this.waiting_list)
+                                {
+                                    (*waiter).res = any_response;
+                                    (*waiter).on_packet_received();
+                                    (*waiter).event.emit();
+                                }
+                            }
+                        }
                     }
                 }
             });
         }
-
-    ///
-    bool addConnection (RPCConnection conn) nothrow
-    {
-        return this.pool.add(conn);
-    }
-
-    ///
-    void merge (RPCClient!API rhs)
-    {
-        if (this.config == RPCConfig.init)
-            this.config = rhs.config;
-        rhs.pool.removeUnused((RPCConnection conn) @trusted nothrow {
-            this.addConnection(conn);
-        });
-    }
 }
 
 /// Aggregate configuration options for `RPCClient`
@@ -414,52 +450,19 @@ public struct RPCConfig
     ***************************************************************************/
 
     public Duration retry_delay  = 1.seconds;
-
-    ///
-    public uint concurrency = 3;
 }
 
-///
-private class RPCConnection
+/// A TCPConnection that can be shared across Tasks
+private class SharedTCPConnection
 {
-    ///
-    private TCPConnection conn;
+    private TCPConnection stream;
+    alias stream this;
+    private TaskMutex wmutex;
 
-    ///
-    public TaskMutex rlock;
-    public TaskMutex wlock;
-
-    ///
-    public TaskCondition rcond;
-
-    ///
-    alias conn this;
-
-    ///
-    this () @safe nothrow
+    this (TCPConnection stream) @safe nothrow
     {
-        this.rlock = new TaskMutex();
-        this.wlock = new TaskMutex();
-        this.rcond = new TaskCondition(this.rlock);
-    }
-
-    ///
-    this (TCPConnection conn) @safe nothrow
-    {
-        this.conn = conn;
-        this();
-    }
-
-    /// Assumes rlock is locked
-    void startListening (ThisEndAPI) (ThisEndAPI impl) @safe
-    {
-        scope (exit) {
-            this.conn.close();
-            this.rlock.unlock();
-        }
-        // Try to reuse the connection, if no requests arrive within a certain
-        // period then handleThrow() will throw and handle() will return false
-        while (this.conn.connected() && handle(impl, this, this.conn.readTimeout)) {}
+        this.stream = stream;
+        this.wmutex = new TaskMutex();
     }
 }
 
@@ -477,13 +480,13 @@ private class RPCConnection
       address = The address to bind to (netmask, e.g. `0.0.0.0` for all)
       port = The port to bind to
       proxy_protocol = The Proxy Protocol V1 is enabled
+      timeout = timeout for reading a response
       isBannedDg = Delegate for checking if sending peer is banned
 
 *******************************************************************************/
 
 public TCPListener listenRPC (API) (API impl, string address, ushort port, bool proxy_protocol,
-    Duration timeout, void delegate (agora.api.Validator.API api) @safe nothrow discoverFromClient,
-    RejectConnectionPredicate isBannedDg)
+    Duration timeout, RejectConnectionPredicate isBannedDg)
 {
     auto callback = (TCPConnection stream) @safe nothrow {
         NetworkAddress net_addr = stream.remoteAddress;
@@ -511,16 +514,8 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port, bool 
 
         try stream.readTimeout = timeout;
         catch (Exception e) assert(0);
-        auto conn = new RPCConnection(stream);
-        conn.rlock.lock();
-        try
-            discoverFromClient(new RPCClient!(agora.api.Validator.API)(conn, impl));
-        catch (Exception ex)
-        {
-            try log.trace("Exception caught while trying to create a client from incoming conn: {}", ex);
-            catch (Exception e) {}
-        }
-        conn.startListening(impl);
+        auto shared_conn = new SharedTCPConnection(stream);
+        while (shared_conn.connected() && handle(impl, shared_conn, shared_conn.readTimeout)) {}
     };
     return listenTCP(port, callback, address);
 }
@@ -536,10 +531,11 @@ public TCPListener listenRPC (API) (API impl, string address, ushort port, bool 
       API = The type of API that will handle the call
       api = The object that will handle the call
       stream = The TCP stream to read data from
+      timeout = timeout for reading a response
 
 *******************************************************************************/
 
-private bool handle (API) (API api, RPCConnection stream, Duration timeout) @trusted nothrow
+private bool handle (API) (API api, SharedTCPConnection stream, Duration timeout) @trusted nothrow
 {
     try
         handleThrow(api, stream, timeout);
@@ -570,11 +566,11 @@ private bool handle (API) (API api, RPCConnection stream, Duration timeout) @tru
       API = The type of API that will handle the call
       api = The object that will handle the call
       stream = The TCP stream to read data from
+      timeout = timeout for reading a response
 
 *******************************************************************************/
 
-private void handleThrow (API) (scope API api, RPCConnection stream, Duration timeout)
-    @trusted
+private void handleThrow (API) (scope API api, SharedTCPConnection stream, Duration timeout) @trusted
 {
     ubyte[1024] buffer = void;
     scope DeserializeDg reader = (size_t size) @safe
@@ -584,37 +580,14 @@ private void handleThrow (API) (scope API api, RPCConnection stream, Duration ti
         return buffer[0 .. size];
     };
 
-    immutable(string)* method;
-    Hash methodbin;
-    while (true)
-    {
-        ensure(stream.connected(), "Connection closed");
-        stream.readTimeout = 10.minutes;
-        methodbin = deserializeFull!Hash(reader);
-        // after the initial data arrives, reduce the timeout to the configured amount
-        stream.readTimeout = timeout;
-        if (methodbin == hashFull("response")) // a response
-        {
-            stream.wlock.lock(); // acquire the write lock so no new request can be sent while we are waiting to get the rlock back
-            stream.rcond.wait(); // wait for reader Fiber to signal us its completion
-            stream.wlock.unlock();
-        }
-        else
-        {
-            method = methodbin in RPCClient!(API).rlookup;
-            ensure(method !is null, format("[{}] Calling out of range method: {}",
-                    stream.peerAddress, methodbin));
-            break;
-        }
-    }
-
-    // Helper template for staticMap
-    Target convert (Target) ()
-    {
-        return deserializeFull!Target(reader);
-    }
-
+    stream.readTimeout = 10.minutes;
+    auto packet = deserializeFull!Packet(reader);
+    ensure(!packet.is_response, "Response on server socket");
     log.trace("[{} - {}] Handling a new request", stream.peerAddress, stream.localAddress);
+
+    auto method = packet.method in RPCClient!(API).rlookup;
+    ensure(method !is null, format("[{}] Calling out of range method: {}",
+            stream.peerAddress, packet.method));
 
     switch (*method)
     {
@@ -622,27 +595,37 @@ private void handleThrow (API) (scope API api, RPCConnection stream, Duration ti
         static foreach (ovrld; __traits(getOverloads, API, member))
         {
         case ovrld.mangleof:
-            enum CallMixin = "api." ~ member ~ "(staticMap!(convert, Parameters!ovrld));";
+            alias ArgTypes = staticMap!(Unqual, Parameters!ovrld);
+
+            // so that we can heap allocate the arguments explicitly
+            // and use them in the worker fiber
+            static class ArgsWrapper
+            {
+                ArgTypes args;
+            }
+
+            auto args_wrapper = new ArgsWrapper();
+            stream.readTimeout = timeout;
+            foreach (i, PT; ArgTypes)
+                args_wrapper.args[i] = deserializeFull!PT(reader);
+            enum CallMixin = "api." ~ member ~ "(args_wrapper.args);";
 
             log.trace("[SERVER] {} requested {}({})",
                       stream.peerAddress, member, (Parameters!ovrld).stringof);
 
-            // Call functions + return
-            stream.wlock.lock();
-            scope (exit) stream.wlock.unlock();
-            stream.write(serializeFull(hashFull("response")));
-            static if (is(ReturnType!ovrld == void))
-            {
-                mixin(CallMixin);
-                log.trace("[SERVER] Goodbye {}", methodbin);
-            }
-            else
-            {
-                mixin("auto foo = ", CallMixin);
-                log.trace("[SERVER] Returning {}", foo);
-                stream.write(serializeFull(foo));
-                log.trace("[SERVER] Done writing...");
-            }
+            runTask(() @safe nothrow {
+                try
+                {
+                    static if (is(ReturnType!ovrld == void))
+                        mixin(CallMixin);
+                    else
+                    {
+                        mixin("auto foo = ", CallMixin);
+                        packet.is_response = true;
+                        stream.write(serializeFull(packet) ~ serializeFull(foo));
+                    }
+                } catch (Exception e) {}
+            });
             return;
         }
     default:
