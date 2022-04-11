@@ -1445,8 +1445,8 @@ public class TestNetworkManager : NetworkManager
         auto tid = this.registry.locate!TestAPI(address.host);
         if (tid != typeof(tid).init)
             return new RemoteAPI!TestAPI(tid, this.config.node.timeout);
-        assert(0, format("Trying to access node at address '%s' from '%s' without first creating it",
-                         address, this.address));
+        throw (new Exception(
+            format!"Trying to access node at address '%s' from '%s' without first creating it"(address, this.address)));
     }
 
     ///
@@ -1456,8 +1456,8 @@ public class TestNetworkManager : NetworkManager
         auto tid = this.registry.locate!NameRegistryAPI(address.host);
         if (tid != typeof(tid).init)
             return new RemoteAPI!NameRegistryAPI(tid, this.config.node.timeout);
-        assert(0, "Trying to access name registry at address '" ~ address.toString() ~
-               "' without first creating it");
+        throw (new Exception(
+            format!"Trying to access name registry at address '%s' without first creating it"(address)));
     }
 
     /// Returns an instance of a DNSResolver
