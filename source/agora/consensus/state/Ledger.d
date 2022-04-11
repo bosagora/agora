@@ -760,7 +760,7 @@ public class Ledger
         {
             const validators = this.getValidators(block.header.height);
             if (validators.length != block.header.preimages.length)
-                return "Block: Number of preimages does not match active validators";
+                return "Block: Length of preimages array does not match active validators";
             foreach (idx, const ref hash; block.header.preimages)
             {
                 if (hash is Hash.init) // Slashed
