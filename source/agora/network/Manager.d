@@ -992,7 +992,7 @@ public class NetworkManager
 
     ***************************************************************************/
 
-    public void getMissingBlockSigs (Ledger ledger,
+    public void getMissingBlockSigs (NodeLedger ledger,
         scope ulong delegate(BlockHeader) @safe potentialExtraSigs,
         scope string delegate(BlockHeader) @safe acceptHeader) @safe nothrow
     {
@@ -1001,49 +1001,28 @@ public class NetworkManager
         import std.range;
         import std.typecons;
 
-        size_t[Height] signed_validators;
-
-        try
+        void doCatchUp ()
         {
-            auto start_height = ledger.getLastPaidHeight();
-            auto headers = ledger.getBlocksFrom(start_height).map!(block => block.header);
-
-            size_t enrolledValidators (Height height)
+            if (ledger.sig_missing_heights.empty)
             {
-                return headers.find!(
-                    (b, h) => b.height == h
-                )(height)[0].validators.count;
+                log.trace("No missing signature after last paid block {} and current ledger block {}",
+                    ledger.getLastPaidHeight(), ledger.height());
+                return;
             }
-
-            Set!ulong heightsMissingSigs ()
+            else
             {
-                signed_validators =
-                    headers.map!(header =>
-                        tuple(header.height,
-                            iota(0, enrolledValidators(header.height)).filter!(i =>
-                                header.validators[i] || header.preimages[i] is Hash.init).count() // Take into account the slashed validators
-                        )
-                    ).assocArray;
-
-                return Set!ulong.from(headers.map!(h => h.height).filter!(height => signed_validators[height] < enrolledValidators(height)));
-            }
-
-            void doCatchUp ()
-            {
-                auto missing_heights = heightsMissingSigs();
-                if (!missing_heights.empty)
+                log.trace("Missing signatures at heights {}", ledger.sig_missing_heights);
+                try
                 {
-                    log.trace("{}: detected missing signatures at heights {}", __FUNCTION__, missing_heights);
                     foreach (peer; this.peers)
                     {
-                        log.dbg("{}: peer: [ {}, {} ]", __FUNCTION__, peer.identity.key, peer.addresses);
-                        foreach (header; peer.getBlockHeaders(missing_heights))
+                        log.dbg("peer: [ {}, {} ]", peer.identity.key, peer.addresses);
+                        foreach (header; peer.getBlockHeaders(ledger.sig_missing_heights))
                         {
                             log.dbg("{}: check header: height {} validators {}", __FUNCTION__, header.height, header.validators);
-                            auto potential_sig_count = iota(enrolledValidators(header.height)).filter!(i =>
-                                header.validators[i] || header.preimages[i] is Hash.init).count()
-                                + potentialExtraSigs(header);
-                            if (potential_sig_count > signed_validators[header.height])
+                            auto potential_sig_count = header.validators.setCount + potentialExtraSigs(header);
+                            auto ledgerHeader = this.ledger.getBlocksFrom(header.height).front.header;
+                            if (potential_sig_count > ledgerHeader.validators.setCount)
                             {
                                 try
                                 {
@@ -1051,32 +1030,32 @@ public class NetworkManager
                                         log.dbg("{}: couldn't update header ({})", __FUNCTION__, header.height);
                                     else
                                     {
-                                        log.trace("{}: updated header ({}) signature: {} validators: {}",
-                                            __FUNCTION__, header.height, header.signature, header.validators);
-                                        missing_heights.remove(header.height);
+                                        log.trace("Updated header ({}) signature: {} validators: {}",
+                                            header.height, header.signature, header.validators);
+                                        auto storedHeader = this.ledger.getBlocksFrom(header.height).front.header;
+                                        if (storedHeader.validators.setCount == storedHeader.preimages.count!(p => p != Hash.init))
+                                            ledger.sig_missing_heights.remove(header.height.value);
                                     }
                                 }
                                 catch (Exception e)
                                 {
-                                    log.error("{}: Exception thrown updating block signature at height {}: {}",
-                                        __FUNCTION__, header.height, e.msg);
+                                    log.error("Exception thrown updating block signature at height {}: {}", header.height, e.msg);
                                 }
                             }
                         }
-                        if (missing_heights.empty)
+                        if (ledger.sig_missing_heights.empty)
                             break;
                     }
                 }
+                catch (Exception e)
+                {
+                    log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
+                }
             }
-
-            // Check last and recent_block_count blocks before last
-            doCatchUp();
-
         }
-        catch (Exception e)
-        {
-            log.error("getMissingBlockSigs: Exception thrown : {}", e.msg);
-        }
+
+        // Check for missing signatures in blocks since the last block that fees and rewards were paid out for
+        doCatchUp();
     }
 
     /// Shut down timers & dump the metadata
