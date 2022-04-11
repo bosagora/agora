@@ -91,6 +91,17 @@ public class NodeLedger : Ledger
 
     /***************************************************************************
 
+        Keep track of missing signatures since last paid out block in a set
+
+        We clear the missing heights from the Set if those heights have already
+        been included in a payout block.
+
+    ***************************************************************************/
+
+    public Set!ulong sig_missing_heights;
+
+    /***************************************************************************
+
         Constructor
 
         Params:
@@ -116,6 +127,8 @@ public class NodeLedger : Ledger
         this.pool = pool;
         this.enroll_man = enroll_man;
         this.frozen_utxos = new FrozenUTXOTracker(this);
+        this.sig_missing_heights = Set!ulong();
+
         super(params, database, storage, enroll_man.validator_set);
 
         // Rebuild tracker frozen UTXO set
@@ -141,6 +154,12 @@ public class NodeLedger : Ledger
             this.onAcceptedBlock(block, validators_changed);
         }
 
+        const lastPaid = this.getLastPaidHeight().value;
+        this.sig_missing_heights[].filter!(h => h <= lastPaid)
+            .each!(paid => this.sig_missing_heights.remove(paid));
+        if (!block.header.validators.setCount < block.header.preimages.count!(p => p != Hash.init))
+            this.sig_missing_heights.put(block.header.height);
+        log.trace("Block externalized with missing signatures: bitmask: {}", block.header.validators);
         return null;
     }
 
