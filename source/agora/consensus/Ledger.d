@@ -966,7 +966,7 @@ unittest
     scope ledger = new TestLedger(WK.Keys.NODE3);
     assert(ledger.height() == 0);
 
-    auto blocks = ledger.getBlocksFrom(Height(0)).take(10);
+    auto blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks[$ - 1] == ledger.params.Genesis);
 
     Transaction[] last_txs;
@@ -977,7 +977,7 @@ unittest
     }
 
     genBlockTransactions(2);
-    blocks = ledger.getBlocksFrom(Height(0)).take(10);
+    blocks = ledger.getBlocksFrom(Height(0)).take(10).array;
     assert(blocks[0] == ledger.params.Genesis);
     assert(blocks.length == 3);  // two blocks + genesis block
 
@@ -985,33 +985,33 @@ unittest
     genBlockTransactions(98);
     assert(ledger.height() == 100);
 
-    blocks = ledger.getBlocksFrom(Height(0)).takeExactly(10);
+    blocks = ledger.getBlocksFrom(Height(0)).takeExactly(10).array;
     assert(blocks[0] == ledger.params.Genesis);
     assert(blocks.length == 10);
 
     /// lower limit
-    blocks = ledger.getBlocksFrom(Height(0)).takeExactly(5);
+    blocks = ledger.getBlocksFrom(Height(0)).takeExactly(5).array;
     assert(blocks[0] == ledger.params.Genesis);
     assert(blocks.length == 5);
 
     /// different indices
-    blocks = ledger.getBlocksFrom(Height(1)).takeExactly(10);
+    blocks = ledger.getBlocksFrom(Height(1)).takeExactly(10).array;
     assert(blocks[0].header.height == 1);
     assert(blocks.length == 10);
 
-    blocks = ledger.getBlocksFrom(Height(50)).takeExactly(10);
+    blocks = ledger.getBlocksFrom(Height(50)).takeExactly(10).array;
     assert(blocks[0].header.height == 50);
     assert(blocks.length == 10);
 
-    blocks = ledger.getBlocksFrom(Height(95)).take(10);  // only 6 left from here (block 100 included)
+    blocks = ledger.getBlocksFrom(Height(95)).take(10).array;  // only 6 left from here (block 100 included)
     assert(blocks.front.header.height == 95);
     assert(blocks.walkLength() == 6);
 
-    blocks = ledger.getBlocksFrom(Height(99)).take(10);  // only 2 left from here (ditto)
+    blocks = ledger.getBlocksFrom(Height(99)).take(10).array;  // only 2 left from here (ditto)
     assert(blocks.front.header.height == 99);
     assert(blocks.walkLength() == 2);
 
-    blocks = ledger.getBlocksFrom(Height(100)).take(10);  // only 1 block available
+    blocks = ledger.getBlocksFrom(Height(100)).take(10).array;  // only 1 block available
     assert(blocks.front.header.height == 100);
     assert(blocks.walkLength() == 1);
 
@@ -1408,7 +1408,7 @@ unittest
     // create the last block of the cycle to make the `Enrollment`s enrolled
     new_txs = genGeneralBlock(new_txs);
     assert(ledger.height() == Height(20));
-    auto b20 = ledger.getBlocksFrom(Height(20))[0];
+    auto b20 = ledger.getBlocksFrom(Height(20)).front;
     assert(b20.header.enrollments.length == 4);
 
     // block 21
@@ -1558,7 +1558,7 @@ unittest
 
         assert(ledger.externalize(data) is null);
         assert(ledger.height() == blocks.length);
-        blocks ~= ledger.getBlocksFrom(Height(blocks.length))[0];
+        blocks ~= ledger.getBlocksFrom(Height(blocks.length)).front;
 
         auto cb_txs = blocks[$-1].txs.filter!(tx => tx.isCoinbase).array;
         if (height >= 2 * testPayoutPeriod && height % testPayoutPeriod == 0)
