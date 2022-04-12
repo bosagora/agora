@@ -8,7 +8,7 @@
     "clsx": "^1.1.0",
     "lodash": "^4.17.21",
     "node-gyp": "^7.1.2",
-    "node-sass": "^6.0.1",
+    "node-sass": "^7.0.0",
     "react": "^16.13.1",
     "react-custom-scrollbars": "^4.2.1",
     "react-customize-token-input": "^0.5.2",
