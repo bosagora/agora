@@ -462,6 +462,22 @@ public class Engine
                 stack.push(hash[]);
                 break;
 
+            case OP.HASH_SHA256:
+                import libsodium.crypto_hash_sha256;
+
+                if (stack.empty)
+                    return "HASH_SHA256 opcode requires an item on the stack";
+
+                const ubyte[] top = stack.pop();
+                ubyte[crypto_hash_sha256_BYTES] hash;
+                () @trusted {
+                    crypto_hash_sha256(&hash[0], &top[0], top.length);
+                } ();
+                if (!stack.canPush(hash))  // e.g. hash(1 byte) => 32 bytes
+                    return "Stack overflow while executing HASH_SHA256";
+                stack.push(hash);
+                break;
+
             case OP.CHECK_EQUAL:
                 if (stack.count() < 2)
                     return "CHECK_EQUAL opcode requires two items on the stack";
@@ -1190,6 +1206,23 @@ unittest
             ~ [ubyte(OP.CHECK_EQUAL)]),
         Unlock.init, Transaction.init, Input.init)
         is null);
+}
+
+/// OP.HASH_SHA256
+unittest
+{
+    scope engine = new Engine();
+    const tx = Transaction([Input.init], [Output.init]);
+
+    // sha256 hash of "abc"
+    ubyte[32] hash = [0xBA, 0x78, 0x16, 0xBF, 0x8F, 0x01, 0xCF, 0xEA, 0x41,
+    0x41, 0x40, 0xDE, 0x5D, 0xAE, 0x22, 0x23, 0xB0, 0x03, 0x61, 0xA3, 0x96,
+    0x17, 0x7A, 0x9C, 0xB4, 0x10, 0xFF, 0x61, 0xF2, 0x00, 0x15, 0xAD];
+    assert(engine.execute(
+        Lock(LockType.Script, [ubyte(OP.HASH_SHA256)] ~
+        toPushOpcode(hash) ~ [ubyte(OP.CHECK_EQUAL)]),
+        Unlock([ubyte(3), ubyte('a'), ubyte('b'), ubyte('c')]),
+        tx, Input.init) is null);
 }
 
 // OP.CHECK_EQUAL
