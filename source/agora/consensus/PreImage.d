@@ -570,11 +570,13 @@ public void getCycleSeed (in KeyPair pair, in uint validator_cycle, out Hash see
         seed = Hash(`0x53171235a501342219eabbd3cf021ae220e89af8a0a10341ccbf89740233f1549c05f48ccbc4461b8c433f43f8b4ef8c47f4015d1a4a44113c164d3141689d34`);
     else if (pair.address.toString == "boa1xzdlzl5znnssm3dlslqgrayrl4frdmh0s7dyqwgvkdqaqkf5994aw53cn58")
         seed = Hash(`0x4600086afc04e5650070e7288749d24d57e1f395f954f450e1e7dd30405e419499e59935742f8e7213dab598b8ec69a195e8ac80a196b5c10698c28c7fb688a8`);
+    else if (pair.address.toString == "boa1xrl00g8w67cx8ky2t5g6yfg08pkmy74p39697696y8ge24whwds4xzc8hpd")
+        seed = Hash(`0x188a896c846bbc442d78c034f8450debbbac7b841ce742b1f0bb4af782f923f3174607addadff88f7788aa2bd168ab5ec96caa01bdbfd09f5041f2e176235292`);
     else
     {
         auto cycle = PreImageCycle(pair.secret, 20, PreImageCycle.PreImageCount, Height(0));
         seed = cycle[seed_height];
-        writeln(format!"There's no seed for %s. The Hash of (Hash(`%s`) should be added."
+        writeln(format!"There's no test preimage seed for %s (Hash(`%s`) should be added."
                 (pair.address, seed));
     }
 }

@@ -1,6 +1,6 @@
 /*******************************************************************************
 
-    Contains networking tests with a variety of different validator node counts.
+    Contains networking tests with increased validator node counts.
 
     Copyright:
         Copyright (c) 2019-2021 BOSAGORA Foundation
@@ -31,47 +31,25 @@ void manyValidators (size_t validators)
     scope(failure) network.printLogs();
     network.waitForDiscovery();
 
-    // generate 18 blocks, 2 short of the enrollments expiring.
-    network.generateBlocks(Height(GenesisValidatorCycle - 2));
-
-    // make sure outsiders are up to date
-    network.expectHeight(iota(GenesisValidators, validators),
-        Height(GenesisValidatorCycle - 2));
-
     // prepare frozen outputs for the outsider validator to enroll
-    network.postAndEnsureTxInPool(network.freezeUTXO(iota(GenesisValidators, GenesisValidators + conf.outsider_validators)));
+    network.postAndEnsureTxInPool(
+        network.freezeUTXO(iota(GenesisValidators, GenesisValidators + conf.outsider_validators)));
 
-    // block 19
-    network.generateBlocks(Height(GenesisValidatorCycle - 1));
-
-    // make sure outsiders are up to date
-    network.expectHeight(iota(GenesisValidators, validators),
-        Height(GenesisValidatorCycle - 1));
-
-    // Now we enroll new validators and re-enroll the original validators
-    iota(validators).each!(idx => network.enroll(idx));
-
-    // Generate the last block of cycle with Genesis validators
-    network.generateBlocks(iota(GenesisValidators),
-        Height(GenesisValidatorCycle));
+    // generate 1 block.
+    network.generateBlocks(Height(1));
 
     // make sure outsiders are up to date
-    network.expectHeight(iota(GenesisValidators, validators),
-        Height(GenesisValidatorCycle));
+    network.expectHeight(iota(GenesisValidators, validators), Height(1));
 
-    // check all validators are enrolled at block 20 by counting active in next block height
-    network.clients.enumerate.each!((idx, node) =>
-        retryFor(node.countActive(Height(GenesisValidatorCycle + 1)) == validators, 5.seconds,
-            format("Node %s has validator count %s. Expected: %s",
-                idx, node.countActive(Height(GenesisValidatorCycle + 1)), validators)));
+    // Now we enroll new validators
+    iota(GenesisValidators, validators).each!(idx => network.enroll(idx));
 
-    // Wait for nodes to run a discovery task and update their required peers
-    Thread.sleep(3.seconds);
-    network.waitForDiscovery();
+    // generate next 2 blocks
+    network.generateBlocks(Height(3));
+    network.assertSameBlocks(iota(GenesisValidators, validators), Height(3));
 
-    // first validated block using all nodes
-    network.generateBlocks(iota(validators), Height(GenesisValidatorCycle + 1));
-    network.assertSameBlocks(Height(GenesisValidatorCycle + 1));
+    const block_3 = network.clients[0].getBlock(3);
+    assert(block_3.header.validators.count() == validators);
 }
 
 /// 10 nodes
@@ -80,17 +58,8 @@ unittest
     manyValidators(10);
 }
 
-// temporarily disabled until failures are resolved
-// see #1145
-version (none):
 /// 16 nodes
 unittest
 {
     manyValidators(16);
-}
-
-/// 32 nodes
-unittest
-{
-    manyValidators(32);
 }
