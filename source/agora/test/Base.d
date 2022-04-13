@@ -2105,7 +2105,7 @@ public struct TestConf
     public size_t outsider_validators = 0;
 
     /// whether to set up the peers in the config
-    public bool configure_network = true;
+    public bool configure_network = false;
 
     /***************************************************************************
 
@@ -2155,6 +2155,7 @@ public struct TestConf
         retry_delay: 300.msecs,
         timeout: 300.msecs,
         max_retries: 10,
+        network_discovery_interval: 1.seconds,
 
         // Always set to true, cannot be overriden, but also set here for clarity
         testing: true,

@@ -58,7 +58,10 @@ unittest
 unittest
 {
     // node #7 is the fullnode
-    TestConf conf = { full_nodes : 1 };
+
+    // A Validator can only initiate connection, thus gossip TXs, to a FullNode
+    // when FullNode address is expilicitly configured.
+    TestConf conf = { full_nodes : 1, configure_network : true };
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
