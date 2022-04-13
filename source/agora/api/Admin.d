@@ -46,6 +46,24 @@ public interface NodeControlAPI
 
     /***************************************************************************
 
+        Log in to the admin server
+
+        This is endpoint used only for checking the username and password in
+        HTTP basic authentication. 
+
+        API:
+            GET /login
+
+    ***************************************************************************/
+
+    @method(HTTPMethod.GET)
+    @resultSerializer!(RawStringSerializer.serialize,
+                      RawStringSerializer.deserialize,
+                      "application/json")()
+    public void login ();
+
+    /***************************************************************************
+
         Respond with QR code containing login information.
 
         Enter the name of the APP where the login information will be

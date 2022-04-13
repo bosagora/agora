@@ -55,6 +55,7 @@ import core.time : days;
     This will added by node management and monitoring interfaces.
 
     API:
+        GET /login : Log in to the admin server
         GET /loginQR : Respond with QR code containing login information.
         GET /encryptionKeyQR : Respond with QR code containing EncryptionKey.
 
@@ -117,6 +118,11 @@ public class AdminInterface : NodeControlAPI
         // but the Logger API doesn't expose this. It would also complicate
         // matters if we wanted to have multiple file outputs.
         configureLogger(config, !console.isNull() || !file.isNull());
+    }
+
+    // GET: /login
+    public override void login ()
+    {
     }
 
     /***************************************************************************
