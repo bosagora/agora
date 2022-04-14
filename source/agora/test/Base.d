@@ -2263,6 +2263,8 @@ public APIManager makeTestNetwork (APIManager : TestAPIManager = TestAPIManager)
     {
         InterfaceConfig conf =
         {
+            // See `addNewNode`, set to tcp since `agora://` is used in NodePair
+            type: InterfaceConfig.Type.tcp,
             address : address,
         };
 
