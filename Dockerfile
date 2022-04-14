@@ -6,6 +6,10 @@ ARG AGORA_VERSION="HEAD"
 ADD . /root/agora/
 WORKDIR /root/agora/talos/
 RUN if [ -z ${AGORA_STANDALONE+x} ]; then npm ci && npm run build; else mkdir -p build; fi
+WORKDIR /
+RUN wget https://github.com/wasmerio/wasmer/releases/download/2.1.1/wasmer-linux-musl-amd64.tar.gz
+RUN tar -zxvf wasmer-linux-musl-amd64.tar.gz
+RUN wasmer -V
 WORKDIR /root/agora/
 # Build Agora
 RUN AGORA_VERSION=${AGORA_VERSION} dub build --skip-registry=all --compiler=ldc2 ${DUB_OPTIONS}
@@ -20,6 +24,10 @@ RUN if [ -z ${AGORA_STANDALONE+x} ]; then dub build --skip-registry=all --compil
 # Uses edge as we need the same `ldc-runtime` as the LDC that compiled Agora,
 # and `bosagora/agora-builder:latest` uses edge.
 FROM alpine:3.15
+WORKDIR /
+RUN wget https://github.com/wasmerio/wasmer/releases/download/2.1.1/wasmer-linux-musl-amd64.tar.gz
+RUN tar -zxvf wasmer-linux-musl-amd64.tar.gz
+RUN wasmer -V
 # The following makes debugging Agora much easier on server
 # Since it's a tiny configuration file read by GDB at init, it won't affect release build
 COPY devel/dotgdbinit /root/.gdbinit

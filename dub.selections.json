@@ -25,6 +25,7 @@
 		"vibe-core": {"path":"submodules/vibe-core/"},
 		"vibe-d": {"path":"submodules/vibe.d/"},
 		"my-ip": {"path":"submodules/my-ip/"},
-		"tracyd": {"path":"submodules/tracyd/"}
+		"tracyd": {"path":"submodules/tracyd/"},
+		"wasmer": {"path":"submodules/wasmer-d/"}
 	}
 }
