@@ -224,7 +224,7 @@ public struct LoggerConfig
     public @Optional string file;
 
     /// Whether this logger should be additive or not
-    public bool additive;
+    public bool additive = true;
 
     /// Buffer size of the buffer output
     public size_t buffer_size = 16_384;
