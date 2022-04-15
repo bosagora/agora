@@ -99,7 +99,7 @@ unittest
                 && (!only(Height(19), Height(20)).canFind(this.ledger.height())
                     || data.enrolls.length == 3);
             if (!ok)
-                log.warn("{}: failed in test override", __FUNCTION__);
+                log.warn("failed in test override");
             return ok;
         }
     }

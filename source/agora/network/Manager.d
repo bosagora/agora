@@ -1019,7 +1019,7 @@ public class NetworkManager
                         log.dbg("peer: [ {}, {} ]", peer.identity.key, peer.addresses);
                         foreach (header; peer.getBlockHeaders(ledger.sig_missing_heights))
                         {
-                            log.dbg("{}: check header: height {} validators {}", __FUNCTION__, header.height, header.validators);
+                            log.dbg("check header: height {} validators {}", header.height, header.validators);
                             auto potential_sig_count = header.validators.setCount + potentialExtraSigs(header);
                             auto ledgerHeader = this.ledger.getBlocksFrom(header.height).front.header;
                             if (potential_sig_count > ledgerHeader.validators.setCount)
@@ -1027,7 +1027,7 @@ public class NetworkManager
                                 try
                                 {
                                     if (auto res = acceptHeader(header))
-                                        log.dbg("{}: couldn't update header ({})", __FUNCTION__, header.height);
+                                        log.dbg("couldn't update header ({})", header.height);
                                     else
                                     {
                                         log.trace("Updated header ({}) signature: {} validators: {}",

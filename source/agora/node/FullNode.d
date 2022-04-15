@@ -469,7 +469,7 @@ public class FullNode : API
 
     protected void startTaskTimer (in TimersIdx timer_id, in Duration interval) @trusted nothrow
     {
-        log.dbg("{}: re-arm timer index {}", __FUNCTION__, timer_id);
+        log.dbg("re-arm timer index {}", timer_id);
         if (!this.is_shutting_down)
             this.timers[timer_id].rearm(interval, false);
     }
@@ -540,7 +540,7 @@ public class FullNode : API
         {
             // TODO: Iff the node is the single validator for the network,
             // this should not be printed, or at least not be `warn`.
-            this.log.warn("{}: Could not perform catchup yet because we have no peer", __FUNCTION__);
+            this.log.warn("Could not perform catchup yet because we have no peer");
             return;
         }
 
@@ -550,18 +550,18 @@ public class FullNode : API
         }
         catch (Exception e)
         {
-            log.error("{}: Error sending updated block headers:{}", __FUNCTION__, e);
+            log.error("Error sending updated block headers:{}", e);
         }
 
         const Height expected = this.ledger.expectedHeight(this.clock.utcTime());
         if (expected < this.ledger.height)
-            this.log.warn("{}: Our current Ledger state is ahead of the expected height (current: {}, expected: {}",
-                __FUNCTION__, this.ledger.height, expected);
+            this.log.warn("Our current Ledger state is ahead of the expected height (current: {}, expected: {}",
+                this.ledger.height, expected);
         else if (expected > this.ledger.height)
         {
             const size_t missing = expected - this.ledger.height;
-            this.log.info("{}: Ledger out of sync, missing {} blocks (current height: {}, delay: {})",
-                          __FUNCTION__, missing, this.ledger.height, this.ledger.params.BlockInterval * missing);
+            this.log.info("Ledger out of sync, missing {} blocks (current height: {}, delay: {})",
+                          missing, this.ledger.height, this.ledger.params.BlockInterval * missing);
 
             this.network.getBlocksFrom(
                 this.ledger.height + 1,
@@ -613,7 +613,7 @@ public class FullNode : API
         // First we must validate the header
         if (auto err = this.ledger.validateBlockSignature(header))
         {
-            log.trace("{}: Received header is not valid: {}", __FUNCTION__, err);
+            log.trace("{}: Received header is not valid: {}", err);
             return err;
         }
         // Update stored header in ledger
@@ -667,30 +667,30 @@ public class FullNode : API
 
     protected string acceptBlock (in Block block) @trusted
     {
-        log.dbg("{}: height = {}", __FUNCTION__, block.header.height);
+        log.dbg("height = {}", block.header.height);
         auto old_validators = this.ledger.getValidators(block.header.height);
-        log.dbg("{}: old_validators = {}", __FUNCTION__, old_validators);
+        log.dbg("old_validators = {}", old_validators);
         // Attempt to add block to the ledger (it may be there by other means)
         if (auto fail_msg = this.ledger.acceptBlock(block))
         {
-            log.dbg("{}: failed to add block to ledger: {}", __FUNCTION__, fail_msg);
+            log.dbg("failed to add block to ledger: {}", fail_msg);
             return fail_msg;
         }
 
         this.recordBlockStats(block);
 
         auto validators = this.ledger.getValidators(block.header.height + 1);
-        log.dbg("{}: validators = {}", __FUNCTION__, validators);
+        log.dbg("validators = {}", validators);
         auto expired = setDifference(
             old_validators.map!(vi => vi.utxo),
             validators.map!(vi => vi.utxo));
 
-        log.dbg("{}: accepted block #{}, unwhitelist = {}",
-            __FUNCTION__, block.header.height, expired);
+        log.dbg("accepted block #{}, unwhitelist = {}",
+            block.header.height, expired);
         expired.each!(utxo => this.network.unwhitelist(utxo));
         // Just whitelist them all to be sure, no need for `setDifference`
-        log.dbg("{}: accepted block #{}, whitelist = {}",
-            __FUNCTION__, block.header.height, validators.map!(v => v.utxo));
+        log.dbg("accepted block #{}, whitelist = {}",
+            block.header.height, validators.map!(v => v.utxo));
         validators.each!(validator => this.network.whitelist(validator.utxo));
 
         // We return if height in ledger is reached for this block to prevent fetching again
@@ -1189,7 +1189,7 @@ public class FullNode : API
     protected void onAcceptedBlock (in Block block, bool validators_changed)
         @safe
     {
-        log.dbg("{}: height {}", __FUNCTION__, block.header.height);
+        log.dbg("height {}", block.header.height);
         this.pushBlock(block);
         this.registry.onAcceptedBlock(block, validators_changed);
         if (validators_changed)

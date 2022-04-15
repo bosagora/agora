@@ -266,7 +266,7 @@ extern(D):
     public void shutdown () @safe
     {
         this.is_shutting_down = true;
-        log.info("{}: Shutdown timers", __FUNCTION__);
+        log.info("Shutdown timers");
         this.timers[].chain(this.active_timers[]).each!((t)
         {
             if (t !is null)
@@ -530,15 +530,15 @@ extern(D):
         if (cur_time < next_nomination)
         {
             this.log.trace(
-                "{}: Too early to nominate (current: {}, next: {})",
-                    __FUNCTION__, cur_time, next_nomination);
+                "Too early to nominate (current: {}, next: {})",
+                    cur_time, next_nomination);
             return;
         }
 
         if (this.heighest_ballot_height >= slot_idx)
         {
-            this.log.trace("{}: Balloting already started for height {}" ~
-                " skipping new nomination", __FUNCTION__, slot_idx);
+            this.log.trace("Balloting already started for height {}" ~
+                " skipping new nomination", slot_idx);
             () @trusted
             {
                 foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
@@ -561,8 +561,8 @@ extern(D):
             .filter!(cand => cand.slot_idx == slot_idx).minElement!"a.score";
 
         if (prepared_candidate.score.hash != chosen.score.hash)
-            log.trace("{}: Nominating best value seen", __FUNCTION__);
-        log.info("{}: Nominating {} at {}", __FUNCTION__, chosen.data.prettify, cur_time);
+            log.trace("Nominating best value seen");
+        log.info("Nominating {} at {}", chosen.data.prettify, cur_time);
         this.nominate(slot_idx, chosen.data);
     }
 
@@ -598,8 +598,8 @@ extern(D):
     protected void nominate (ulong slot_idx, in ConsensusData next) @trusted
     {
         mixin(TracyZoneLogger!("ctx", "nom_nominate"));
-        log.info("{}(): Proposing tx set for slot {}, ledger is at height {}",
-            __FUNCTION__, slot_idx, this.ledger.lastBlock().header.height);
+        log.info("Proposing tx set for slot {}, ledger is at height {}",
+             slot_idx, this.ledger.lastBlock().header.height);
 
         const lastBlockHash = this.ledger.lastBlock.hashFull();
         if (prev_value_hash != lastBlockHash)
@@ -615,17 +615,17 @@ extern(D):
 
         if (this.scp.nominate(slot_idx, nextval, prev_value))
         {
-            log.info("{}(): Tx set triggered new nomination", __FUNCTION__);
+            log.info("Tx set triggered new nomination");
         }
         else
         {
-            log.info("{}(): Tx set didn't trigger new nomination", __FUNCTION__);
+            log.info("Tx set didn't trigger new nomination");
             const Duration halfBlockDuration = this.params.BlockInterval / 2;
             // We are half way through block interval time to externalize
             if (this.clock.utcTime() >= this.ledger.getExpectedBlockTime(this.ledger.height + 1) + halfBlockDuration)
             {
-                log.info("{}(): Ledger has height #{} expecting #{} as half interval has passed - Resending latest envelopes"
-                    , __FUNCTION__, this.ledger.height, this.ledger.expectedHeight(this.clock.utcTime()));
+                log.info(" Ledger has height #{} expecting #{} as half interval has passed - Resending latest envelopes"
+                    , this.ledger.height, this.ledger.expectedHeight(this.clock.utcTime()));
                 foreach (const ref env; this.scp.getLatestMessagesSend(slot_idx))
                     this.emitEnvelope(env);
                 this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
@@ -671,7 +671,7 @@ extern(D):
     public void receiveEnvelope (in SCPEnvelope envelope) @trusted
     {
         auto env_hash = envelope.hashFull();
-        log.dbg("{}: Received envelope with hash {}", __FUNCTION__, env_hash);
+        log.dbg("Received envelope with hash {}", env_hash);
         if (env_hash !in this.seen_envs)
         {
             auto copied = envelope.clone();
@@ -682,8 +682,8 @@ extern(D):
             if (this.pending_block == Block.init)
                 this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
             else
-                log.dbg("{}: We have a pending block #{} to externalize so do not process any more envelopes yet",
-                    __FUNCTION__, this.pending_block.header.height);
+                log.dbg("We have a pending block #{} to externalize so do not process any more envelopes yet",
+                    this.pending_block.header.height);
             this.seen_envs.put(env_hash);
         }
     }
@@ -704,8 +704,8 @@ extern(D):
         // Don't use `height - tolerance` as it could underflow
         if (envelope.statement.slotIndex <= last_block.header.height)
         {
-            log.trace("{}: Ignoring envelope with slot id {} as ledger is at height {}",
-                __FUNCTION__, envelope.statement.slotIndex, last_block.header.height.value);
+            log.trace("Ignoring envelope with slot id {} as ledger is at height {}",
+                envelope.statement.slotIndex, last_block.header.height.value);
             return;  // slot was already externalized
         }
 
@@ -713,54 +713,54 @@ extern(D):
         // If the envelope is too early then trigger catchup task
         if (env_height > last_block.header.height + 1)
         {
-            log.dbg("{}: Envelope is for height {} but ledger is only at height {}.",
-                __FUNCTION__, env_height, last_block.header.height);
+            log.dbg("Envelope is for height {} but ledger is only at height {}.",
+                env_height, last_block.header.height);
             this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
         }
 
         // If the node is not enrolled at the height then return early
         if (!this.enroll_man.isEnrolled(env_height, &this.ledger.peekUTXO))
         {
-            log.dbg("{}: Skip this envelope as this node is not enrolled at height {}", __FUNCTION__, env_height);
+            log.dbg("Skip this envelope as this node is not enrolled at height {}", env_height);
             return;
         }
 
         Hash utxo = this.getNodeUTXO(envelope.statement.slotIndex, envelope.statement.nodeID);
         if (utxo == Hash.init)
         {
-            log.trace("{}: No UTXO for the nodeID {} at the slot {}",
-                __FUNCTION__, envelope.statement.nodeID, envelope.statement.slotIndex);
+            log.trace("No UTXO for the nodeID {} at the slot {}",
+                envelope.statement.nodeID, envelope.statement.slotIndex);
             return;
         }
 
         if (utxo == this.enroll_man.getEnrollmentKey)
         {
-            log.dbg("{}: Ignore this envelope as it is from this node", __FUNCTION__);
+            log.dbg("Ignore this envelope as it is from this node");
             return;
         }
 
         UTXO utxo_value;
         if (!this.ledger.peekUTXO(utxo, utxo_value))
         {
-            log.trace("{}: Couldn't find UTXO {} at height {} to validate envelope's signature",
-                __FUNCTION__, utxo, last_block.header.height);
+            log.trace("Couldn't find UTXO {} at height {} to validate envelope's signature",
+                utxo, last_block.header.height);
             return;
         }
         const PublicKey public_key = utxo_value.output.address;
         const Scalar challenge = SCPStatementHash(&envelope.statement).hashFull();
         if (!public_key.isValid())
         {
-            log.trace("{}: Invalid point from public_key {}", __FUNCTION__, public_key);
+            log.trace("Invalid point from public_key {}", public_key);
             return;
         }
         if (!verify(public_key, envelope.signature.toSignature(), challenge))
         {
             // If it fails signature verification, it might not originate from said key
-            log.trace("{}: Envelope failed signature verification for {}", __FUNCTION__, public_key);
+            log.trace("Envelope failed signature verification for {}", public_key);
             return;
         }
 
-        log.trace("{}: Received signed envelope: {}", __FUNCTION__, scpPrettify(&envelope, &this.getQSet));
+        log.trace("Received signed envelope: {}", scpPrettify(&envelope, &this.getQSet));
         if (envelope.statement.pledges.type_ == SCPStatementType.SCP_ST_NOMINATE)
         {
             // show some tolerance to early nominations
@@ -769,7 +769,7 @@ extern(D):
             // too early to nominate a new block
             if (this.clock.networkTime() + tolerance < this.ledger.getExpectedBlockTime(this.ledger.height() + 1))
             {
-                log.trace("{}: Ignoring early nomination for height {}", __FUNCTION__, envelope.statement.slotIndex);
+                log.trace("Ignoring early nomination for height {}", envelope.statement.slotIndex);
                 return;
             }
         }
@@ -803,7 +803,7 @@ extern(D):
             return;
 
         if (this.scp.receiveEnvelope(shared_env) != SCP.EnvelopeState.VALID)
-            log.trace("{}: SCP indicated invalid envelope: {}", __FUNCTION__, scpPrettify(&envelope, &this.getQSet));
+            log.trace("SCP indicated invalid envelope: {}", scpPrettify(&envelope, &this.getQSet));
         else
             this.emitEnvelope(shared_env.getEnvelope());
     }
@@ -887,8 +887,8 @@ extern(D):
     {
         mixin(TracyZoneLogger!("ctx", "nom_receiveBlockSignature"));
         const cur_height = this.ledger.height();
-        log.trace("{}: Received Signature {} for Validator with staked utxo {} for block {} at ledger height {}",
-            __FUNCTION__, block_sig.signature, block_sig.utxo, block_sig.height, cur_height);
+        log.trace("Received Signature {} for Validator with staked utxo {} for block {} at ledger height {}",
+            block_sig.signature, block_sig.utxo, block_sig.height, cur_height);
 
         if (block_sig.height == 0 || block_sig.height > cur_height + EarlySignatureThreshold)
             return BlockHeader.init; // We want the caller to ignore this signature
@@ -912,15 +912,15 @@ extern(D):
             && !block.header.validators[this.enroll_man.validator_set
                 .getValidators(block.header.height).map!(v => v.utxo()).countUntil(block_sig.utxo)])
         {
-            log.dbg("{}: Signature is for {} block #{}",
-                __FUNCTION__, pendingBlockSig ? "pending" : "ledger", block.header.height);
+            log.dbg("Signature is for {} block #{}",
+                pendingBlockSig ? "pending" : "ledger", block.header.height);
             if (pendingBlockSig)
                 this.updateMultiSignature(this.pending_block.header);
             else
             {
                 this.updateMultiSignature(block.header);
-                log.dbg("{}: mask now {} for block #{}",
-                    __FUNCTION__, block.header.validators, block.header.height);
+                log.dbg("mask now {} for block #{}",
+                    block.header.validators, block.header.height);
                 this.ledger.updateBlockMultiSig(block.header);
                 return block.header;
             }
@@ -994,17 +994,17 @@ extern(D):
             {
                 if (block.header.validators.percentage > 50)
                 {
-                    log.info("{}: Ready to externalize block #{} to the ledger", __FUNCTION__, block.header.height);
+                    log.info("Ready to externalize block #{} to the ledger", block.header.height);
                     auto time_to_sig_majority = (this.clock.networkTime() -
                         this.ledger.getExpectedBlockTime(block.header.height)).total!"seconds";
                     this.slot_stat.setMetricTo!"time_to_sig_majority"(time_to_sig_majority, assumeWontThrow(block.header.height.toString()));
                     this.verifyBlock(block);
-                    log.info("{}: Externalized block #{} to the ledger", __FUNCTION__, block.header.height);
+                    log.info("Externalized block #{} to the ledger", block.header.height);
                 }
                 else
                 {
-                    log.dbg("{}: Will not yet externalize block #{} as we only have {} / {} signatures",
-                        __FUNCTION__, block.header.height, block.header.validators.setCount,
+                    log.dbg("Will not yet externalize block #{} as we only have {} / {} signatures",
+                        block.header.height, block.header.validators.setCount,
                         block.header.validators.count);
                     this.armTaskTimer(TimersIdx.Catchup, CatchupTaskDelay);
                     return;
@@ -1014,7 +1014,7 @@ extern(D):
         }
         catch (Exception exc)
         {
-            log.warn("{}: Exception thrown: {}", __FUNCTION__, exc);
+            log.warn("Exception thrown: {}", exc);
         }
     }
 
@@ -1023,8 +1023,8 @@ extern(D):
     {
         if (this.pending_block.header.height > 0 && this.pending_block.header.height <= height)
         {
-            log.info("{}: Reset pending block #{} as height {} is already externalized",
-                __FUNCTION__, this.pending_block.header.height, height);
+            log.info("Reset pending block #{} as height {} is already externalized",
+                this.pending_block.header.height, height);
             this.pending_block = Block.init;
             // Reset the nomination timer
             this.round_timeout = this.nomination_interval;
@@ -1033,8 +1033,8 @@ extern(D):
             this.armTaskTimer(TimersIdx.Envelope, EnvTaskDelay);
         }
         else
-            log.trace("{}: Pending block #{} is higher than block #{} added to ledger so do not reset",
-                __FUNCTION__, this.pending_block.header.height, height);
+            log.trace("Pending block #{} is higher than block #{} added to ledger so do not reset",
+                this.pending_block.header.height, height);
     }
 
     /// function for verifying the block which can be overriden in byzantine unit tests
@@ -1077,7 +1077,7 @@ extern(D):
 
         if (header.height !in this.slot_sigs)
         {
-            log.trace("{}: No signatures in memory at height {}", __FUNCTION__, header.height);
+            log.trace("No signatures in memory at height {}", header.height);
             return;
         }
         const signed = header.validators; // store before updating
@@ -1095,15 +1095,15 @@ extern(D):
                 validator_mask[idx] = true;
                 const sig = block_sigs[val.utxo()];
                 sigs_to_add ~= sig;
-                log.trace("{}: Adding missing signature for {} at height {}",
-                    __FUNCTION__, val.address, header.height);
+                log.trace("Adding missing signature for {} at height {}",
+                    val.address, header.height);
                 this.gossipBlockSignature(ValidatorBlockSig(header.height, val.utxo(), sig.R));
             }
         }
         header.updateSignature(multiSigCombine(sigs_to_add), validator_mask);
         if (header.validators != signed)
-            log.trace("{}: Updated: block {}: signed {} => {}",
-                __FUNCTION__, header.height, signed, header.validators);
+            log.trace("Updated: block {}: signed {} => {}",
+                header.height, signed, header.validators);
         this.checkExternalize();
         return;
     }
@@ -1146,8 +1146,8 @@ extern(D):
 
     public void selfSignBlock (ref BlockHeader header) @safe
     {
-        log.trace("{}: ADD BLOCK SIG at height {} for this node {}",
-            __FUNCTION__, header.height, this.kp.address);
+        log.trace("ADD BLOCK SIG at height {} for this node {}",
+            header.height, this.kp.address);
         this.slot_sigs[header.height][this.enroll_man.getEnrollmentKey()] = this.signBlock(header);
         this.updateMultiSignature(header);
     }
@@ -1327,11 +1327,11 @@ extern(D):
         auto time_to_ext = (this.clock.networkTime() - this.ledger.getExpectedBlockTime(height)).total!"seconds";
         this.slot_stat.setMetricTo!"time_to_ext"(time_to_ext, assumeWontThrow(Height(slot_idx).toString()));
         const Height last_height = this.ledger.height();
-        log.trace("{}: attempt to add slot id {} to ledger at height {}", __FUNCTION__, height, last_height);
+        log.trace("attempt to add slot id {} to ledger at height {}", height, last_height);
         if (height != last_height + 1)
         {
-            log.trace("{}: Will not externalize envelope with slot id {} as ledger is at height {}",
-                __FUNCTION__, height, last_height);
+            log.trace("Will not externalize envelope with slot id {} as ledger is at height {}",
+                height, last_height);
             return;  // slot was already externalized or envelope is too new
         }
         ConsensusData data = void;
@@ -1339,18 +1339,18 @@ extern(D):
             data = deserializeFull!ConsensusData(value[]);
         catch (Exception exc)
         {
-            log.fatal("{}: Deserialization of C++ Value failed: {}", __FUNCTION__, exc);
+            log.fatal("Deserialization of C++ Value failed: {}", exc);
             assert(0, exc.message);
         }
 
-        log.info("{}: Externalizing consensus data set at {}: {}", __FUNCTION__, height, prettify(data));
+        log.info("Externalizing consensus data set at {}", height, prettify(data));
         try
         {
             Transaction[] externalized_tx_set;
             if (auto fail_reason = this.ledger.getValidTXSet(data, externalized_tx_set))
             {
                 log.info("{}: Missing TXs while externalizing at Height {}: {}",
-                    __FUNCTION__, height, prettify(data));
+                    height, prettify(data));
                 return;
             }
 
@@ -1366,7 +1366,7 @@ extern(D):
         }
         catch (Exception exc)
         {
-            log.fatal("{}: Externalization of SCP data failed: {}", __FUNCTION__, exc);
+            log.fatal("Externalization of SCP data failed: {}", exc);
             assert(0, exc.message);
         }
         this.initial_missing_validators = [];
@@ -1410,7 +1410,7 @@ extern(D):
             copy = envelope.serializeFull.deserializeFull!SCPEnvelope();
         catch (Exception e)
             assert(0);
-        log.trace("{}: {} to peers {}", __FUNCTION__, scpPrettify(&copy, &this.getQSet),
+        log.trace("{} to peers {}", scpPrettify(&copy, &this.getQSet),
             this.network.validators().map!(p => p.identity().key));
         this.network.validators().each!(v => v.sendEnvelope(copy));
     }
@@ -1678,7 +1678,7 @@ extern(D):
         auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 8;
         this.round_timeout = base * val_multipler * roundNumber;
         const timeout = milliseconds(round_timeout.total!"msecs".to!long);
-        log.dbg("{}: roundNumber {} timeout = {} msecs", __FUNCTION__, roundNumber, timeout);
+        log.dbg("roundNumber {} timeout = {} msecs", roundNumber, timeout);
         return timeout;
     }
 }

@@ -47,7 +47,7 @@ private extern(C++) class DoesNotExternalizeBlockNominator : Nominator
         {
             if (this.ledger.height == 0)
             {
-                log.trace("{}: Do not externalize block 1 to test periodic catchup of blocks", __FUNCTION__);
+                log.trace("Do not externalize block 1 to test periodic catchup of blocks");
                 return;
             }
             super.checkExternalize();
@@ -62,7 +62,7 @@ private extern(C++) class DoesNotExternalizeBlockNominator : Nominator
     {
         if (block_sig.height == 2)
         {
-            log.trace("{}: Ignore signatures for block 2 to test signature catchup", __FUNCTION__);
+            log.trace("Ignore signatures for block 2 to test signature catchup");
             return BlockHeader.init;
         }
         return super.receiveBlockSignature(block_sig);
