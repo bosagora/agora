@@ -391,7 +391,7 @@ public class Ledger
         const next = this.height() + 1;
         if (this.isCoinbaseBlock(next) && this.isRelatedRewardBlock(header.height, next))
         {
-            log.info("{}: Reset cached coinbase for height {}", __FUNCTION__, header.height);
+            log.info("Reset cached coinbase for height {}", header.height);
             cached_coinbase = CachedCoinbase.init;
         }
     }

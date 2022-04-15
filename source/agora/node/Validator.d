@@ -400,7 +400,7 @@ public class Validator : FullNode, API
 
     protected override string acceptBlock (in Block block) @trusted
     {
-        log.dbg("{}: height = {}", __FUNCTION__, block.header.height);
+        log.dbg("height = {}", block.header.height);
         if (auto fail_msg = super.acceptBlock(block))
             return fail_msg;
 
@@ -441,7 +441,7 @@ public class Validator : FullNode, API
         // First we must validate the header
         if (auto err = this.ledger.validateBlockSignature(header))
         {
-            log.trace("{}: Received header is not valid: {}", __FUNCTION__, err);
+            log.trace("Received header is not valid: {}", err);
             return err;
         }
 
@@ -656,7 +656,7 @@ public class Validator : FullNode, API
     protected override void onAcceptedBlock (in Block block,
         bool validators_changed) @safe
     {
-        log.dbg("{}: height {}", __FUNCTION__, block.header.height);
+        log.dbg("height {}", block.header.height);
         assert(block.header.height >= this.last_shuffle_height);
 
         // block received either via externalize or getBlocksFrom(),
@@ -732,8 +732,8 @@ public class Validator : FullNode, API
         mixin(TracyZoneLogger!("ctx", "val_revealPreimage"));
         const height = this.ledger.height();
         const expected_height = this.ledger.expectedHeight(this.clock.utcTime());
-        log.dbg("{}: ledger height = {}, expected height = {} ",
-            __FUNCTION__, height, expected_height);
+        log.dbg("ledger height = {}, expected height = {} ",
+            height, expected_height);
 
         PreImageInfo preimage;
         if (this.getNextPreimage(preimage))

@@ -261,8 +261,8 @@ private extern(C++) class EvenBlockHeightSignerNominator : Nominator
         if (header.height % 2 == 0)
             return super.selfSignBlock(header);
         else
-            log.warn("{}: Only signing even blocks so skip signing at height {}",
-                __FUNCTION__, header.height);
+            log.warn("Only signing even blocks so skip signing at height {}",
+                header.height);
     }
 }
 
