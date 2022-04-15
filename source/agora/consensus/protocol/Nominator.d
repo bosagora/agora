@@ -1089,7 +1089,8 @@ extern(D):
         {
             if (header.validators[idx]) // in the header already
                 validator_mask[idx] = true;
-            else if (val.utxo() in block_sigs) // We have the missing signature
+            else if (val.utxo() in block_sigs
+                && header.preimages[idx] != Hash.init) // We have the missing signature and it is not slashed
             {
                 validator_mask[idx] = true;
                 const sig = block_sigs[val.utxo()];
