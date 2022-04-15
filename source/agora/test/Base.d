@@ -714,11 +714,29 @@ public class TestAPIManager
         static assert (isInputRange!Idxs);
 
         this.setTimeFor(height);
-        foreach (idx; clients_idxs)
-            retryFor(clients[idx].getBlockHeight() == height, timeout,
-                format("Node %s (%s) has block height %s. Expected: %s",
-                    idx, this.nodes[idx].address, clients[idx].getBlockHeight(), height),
-                file, line);
+        auto attempt = 0;
+        const halfTimeout = timeout / 2;
+
+        void waitForNodesToReachHeight ()
+        {
+            attempt++;
+            foreach (idx; clients_idxs)
+                retryFor(clients[idx].getBlockHeight() == height, halfTimeout,
+                    format("Attempt %s: Node %s (%s) has block height %s. Expected: %s after total timeout %s",
+                        attempt, idx, this.nodes[idx].address, clients[idx].getBlockHeight(), height, attempt * halfTimeout),
+                        file, line);
+        }
+
+        try
+        {
+            waitForNodesToReachHeight();
+        }
+        catch (Throwable err)
+        {
+            // Try again with time set half way through block time
+            this.setTimeFor(height, this.test_conf.consensus.block_interval / 2);
+            waitForNodesToReachHeight();
+        }
     }
 
     /***************************************************************************
@@ -809,24 +827,24 @@ public class TestAPIManager
         net time clock offset of each node.
 
         Params:
-            new_time = the new clock time
+            height = block height time is set for
+            plus_duration = advance the clock by this duration to simulate the
+                clock advancing through the block interval time
 
     ***************************************************************************/
 
-    public void setTimeFor (Height height)
+    public void setTimeFor (Height height, Duration plus_duration = 0.seconds)
     {
         this.setTimeFor(this.nodes, height);
     }
 
     /// Ditto
-    public void setTimeFor (Pairs)(Pairs pairs, Height height)
+    public void setTimeFor (Pairs)(Pairs pairs, Height height, Duration plus_duration = 0.seconds)
     {
         static assert (isInputRange!Pairs);
 
-        // set time to half way through block as normally time would move forward
         const exp_time = this.test_start_time +
-            this.test_conf.consensus.block_interval * height +
-            this.test_conf.consensus.block_interval / 2;
+            this.test_conf.consensus.block_interval * height + plus_duration;
         // We also need to set the registry time, because otherwise their Ledger
         // will reject new blocks as they exceed tolerance.
         // Note that this relies on the time moving forward only.
