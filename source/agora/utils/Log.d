@@ -251,6 +251,9 @@ public void configureLogger (in LoggerConfig settings, bool clear)
     if (settings.buffer_size)
         log.buffer(new char[](settings.buffer_size));
 
+    // Use the calling function name for the logger origin
+    log.setOption(Dtext.LogOption.FunctionOrigin, true, true);
+
 	// if console/file/syslog is specifically set, don't inherit other
     // appenders (unless we have been specifically asked to be additive)
     log.setOption(Dtext.LogOption.Additive, settings.additive ||
