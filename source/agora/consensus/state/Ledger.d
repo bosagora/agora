@@ -891,11 +891,18 @@ public class Ledger
             }
 
             const pi = header.preimages[idx];
-            // TODO: Currently we consider that validators slashed at this height
-            // can sign the block (e.g. they have a space in the bit field),
-            // however without their pre-image they can't sign the block.
-            if (pi is Hash.init)
-                continue;
+            if (pi is Hash.init)    // This is a validator that did not reveal preimage before block reached consensus
+            {
+                if (!header.validators[idx])
+                    continue; // This is a slashed validator so can not sign
+                else
+                {
+                    // We can not accept this header including a signature for a slashed validator
+                    log.error("Block#{}: Header is not consistent. The signature at index {} is included for slashed validator {}",
+                        header.height, idx, validator.address);
+                    return "Block: Signature included for slashed validator";
+                }
+            }
 
             sum_K = sum_K + K;
             sum_s = sum_s + Scalar(pi);
