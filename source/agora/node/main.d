@@ -230,7 +230,26 @@ private SigHandlerT getSignalHandler () @safe pure nothrow @nogc
             }
             catch (Exception exc)
             {
-                printf("Exception thrown while stopping an HTTP listener: %.*s\n",
+                printf("Exception thrown while stopping a HTTP listener: %.*s\n",
+                       cast(int) exc.msg.length, exc.msg.ptr);
+                debug {
+                    scope (failure) assert(0);
+                    writeln("========================================");
+                    writeln("Full stack trace: ", exc);
+                }
+            }
+        }
+
+        foreach (ref l; listeners.tcp)
+        {
+            try
+            {
+                l.stopListening();
+                l = typeof(l).init;
+            }
+            catch (Exception exc)
+            {
+                printf("Exception thrown while stopping a TCP listener: %.*s\n",
                        cast(int) exc.msg.length, exc.msg.ptr);
                 debug {
                     scope (failure) assert(0);
