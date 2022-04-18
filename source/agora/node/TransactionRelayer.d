@@ -122,9 +122,6 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     private ITimer[] timers;
 
     ///
-    private bool start_timers;
-
-    ///
     version (unittest) public MemoryUTXOSet utxo_set;
 
 
@@ -145,7 +142,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
     ***************************************************************************/
 
     public this (TransactionPool pool, immutable Config config, PeerRange delegate () @safe nothrow clients,
-          ITaskManager taskman, Clock clock, GetFeeRateDg getTxFeeRate, bool start_timers = true)
+          ITaskManager taskman, Clock clock, GetFeeRateDg getTxFeeRate)
     {
         this.pool = pool;
         this.config = config;
@@ -155,19 +152,15 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         this.getTxFeeRate = getTxFeeRate;
         this.txs = new RedBlackTree!(TxHolder, TxHolder.cmpFeeLess, true)();
         this.log = Logger(__MODULE__);
-        this.start_timers = start_timers;
     }
 
     /// Called during node startup.
     public void start ()
     {
-        if (this.start_timers)
-        {
-            // if relay_tx_interval == 0, then we immediately relay the transaction
-            if (this.config.node.relay_tx_interval != 0.seconds)
-                this.timers ~= this.taskman.setTimer(config.node.relay_tx_interval, &this.relayTransactions, Periodic.Yes);
-            this.timers ~= this.taskman.setTimer(1.minutes, &this.cleanRelayQueue, Periodic.Yes);
-        }
+        // if relay_tx_interval == 0, then we immediately relay the transaction
+        if (this.config.node.relay_tx_interval != 0.seconds)
+            this.timers ~= this.taskman.setTimer(config.node.relay_tx_interval, &this.relayTransactions, Periodic.Yes);
+        this.timers ~= this.taskman.setTimer(1.minutes, &this.cleanRelayQueue, Periodic.Yes);
     }
 
     /// Called during node shutdown.
@@ -379,7 +372,7 @@ public class TransactionRelayerFeeImp : TransactionRelayer
         };
 
         this(new TransactionPool(cacheDB), config, toDelegate(noclients), null,
-             new MockClock(TimePoint.init), wrapper, false);
+             new MockClock(TimePoint.init), wrapper);
     }
 
     /***************************************************************************
