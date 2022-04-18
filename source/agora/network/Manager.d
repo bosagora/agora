@@ -633,38 +633,33 @@ public class NetworkManager
                 if (key == this.config.validator.key_pair.address)
                     continue;
 
-                taskman.runTask(
-                () nothrow {
-                    // https://github.com/bosagora/agora/issues/2197
-                    const ckey = key;
-                    try
-                    {
-                        this.registry.getValidatorInternal(ckey,
-                            (in Message msg) @trusted {
-                                if (msg.header.RCODE != Header.RCode.NoError)
-                                {
-                                    log.warn("Could not find mapping in registry for key {}", ckey);
-                                    return;
-                                }
-
-                                foreach (rr; msg.answers)
-                                {
-                                    if (rr.type != TYPE.URI)
-                                    {
-                                        log.warn("Registry returned non-URI record ({}), ignoring",
-                                            rr.type);
-                                        continue;
-                                    }
-
-                                    this.addAddress(rr.rdata.uri.target);
-                                }
+                try
+                {
+                    this.registry.getValidatorInternal(key,
+                        (in Message msg) @trusted {
+                            if (msg.header.RCODE != Header.RCode.NoError)
+                            {
+                                log.warn("Could not find mapping in registry for key {}", key);
+                                return;
                             }
-                        );
-                    }
-                    catch (Exception exc)
-                        log.error("Exception happened while looking up address for {}: {}",
-                                  ckey, exc);
-                });
+
+                            foreach (rr; msg.answers)
+                            {
+                                if (rr.type != TYPE.URI)
+                                {
+                                    log.warn("Registry returned non-URI record ({}), ignoring",
+                                        rr.type);
+                                    continue;
+                                }
+
+                                this.addAddress(rr.rdata.uri.target);
+                            }
+                        }
+                    );
+                }
+                catch (Exception exc)
+                    log.error("Exception happened while looking up address for {}: {}",
+                                key, exc);
             }
         }
 
