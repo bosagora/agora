@@ -188,8 +188,7 @@ public class NetworkClient
         this.exception = new Exception(
             format("Request failure after %s attempts", max_retries));
         // Create and stop timer immediately
-        this.gossip_timer = this.taskman.setTimer(GossipDelay, &this.gossipTask, Periodic.No);
-        this.gossip_timer.stop();
+        this.gossip_timer = this.taskman.createTimer(&this.gossipTask);
     }
 
     /// Shut down the gossiping timer
