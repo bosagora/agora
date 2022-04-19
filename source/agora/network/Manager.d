@@ -78,7 +78,7 @@ public class NetworkManager
 
         /// Called when we've connected and determined if this is
         /// a FullNode / Validator
-        public alias OnHandshakeComplete = void delegate (
+        public alias OnHandshakeComplete = bool delegate (
             in Address, agora.api.Validator.API, in Hash, in PublicKey);
         /// Ditto
         private OnHandshakeComplete onHandshakeComplete;
@@ -206,19 +206,25 @@ public class NetworkManager
                         }
                     }
 
-                    this.onHandshakeComplete(this.address, this.api, id.utxo, id.key);
+                    if(!this.onHandshakeComplete(this.address, this.api, id.utxo, id.key))
+                        this.api.shutdown();
+
                     return;
                 }
                 catch (Exception ex)
                 {
                     if (!this.onFailedRequest(this.address))
+                    {
+                        this.api.shutdown();
                         return;
+                    }
 
                     // else try again
                     this.outer.taskman.wait(this.outer.config.node.retry_delay);
                 }
             }
             // failed to connect, try to ban (if not whitelisted)
+            this.api.shutdown();
             this.outer.banman.ban(address);
         }
     }
@@ -316,7 +322,8 @@ public class NetworkManager
     }
 
     /// Called after a node's handshake is complete
-    private void onHandshakeComplete (
+    /// returns true when a client is added for the peer
+    private bool onHandshakeComplete (
         in Address address, agora.api.Validator.API api,
         in Hash utxo, in PublicKey key)
     {
@@ -342,7 +349,7 @@ public class NetworkManager
                 if (prev.identity.utxo !is Hash.init)
                 {
                     if (utxo != prev.identity.utxo)
-                        return; // Drop it
+                        return false; // Drop it
                 }
                 else if (utxo !is Hash.init)
                 {
@@ -350,14 +357,14 @@ public class NetworkManager
                     this.required_peers.remove(utxo);
                 }
                 prev.merge(address, api);
-                return; // All done
+                return true; // All done
             }
         }
 
         if (utxo !is Hash.init)
             this.required_peers.remove(utxo);
         else if (this.peerLimitReached())
-            return;
+            return false;
 
         auto client = new NetworkClient(this.taskman, this.banman,
             this.config.node.retry_delay, this.config.node.max_retries);
@@ -384,6 +391,8 @@ public class NetworkManager
             auto node_info = client.getNodeInfo();
             this.addAddresses(node_info.addresses);
         }
+
+        return true;
     }
 
     /***************************************************************************

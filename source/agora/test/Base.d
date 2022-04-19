@@ -1457,12 +1457,26 @@ public class TestNetworkManager : NetworkManager
         this.address = address;
     }
 
+    private class TestAPIClient(T) : RemoteAPI!(T)
+    {
+        this (geod24.LocalRest.Listener!T api, Duration timeout = 5.seconds)
+        {
+            super(api, timeout);
+        }
+
+        public override void shutdown ()
+        {
+            // Local endpoint doesn't need a shutdown
+            return;
+        }
+    }
+
     ///
     protected final override TestAPI makeClient (Address address)
     {
         auto tid = this.registry.locate!TestAPI(address.host);
         if (tid != typeof(tid).init)
-            return new RemoteAPI!TestAPI(tid, this.config.node.timeout);
+            return new TestAPIClient!TestAPI(tid, this.config.node.timeout);
         throw (new Exception(
             format!"Trying to access node at address '%s' from '%s' without first creating it"(address, this.address)));
     }
@@ -1519,6 +1533,8 @@ public class TestNetworkManager : NetworkManager
         assert(0, "Not supported");
     }
 }
+
+import geod24.LocalRest : noCommand;
 
 /*******************************************************************************
 
@@ -1701,6 +1717,9 @@ public interface TestAPI : API
     ***************************************************************************/
 
     public Amount getPenaltyDeposit (Hash utxo);
+
+    @noCommand
+    public void shutdown ();
 }
 
 /// Return type for `TestAPI.getUTXOs`
@@ -1982,6 +2001,11 @@ public class TestFullNode : FullNode, TestAPI
     {
         assert(0);
     }
+
+    public override void shutdown ()
+    {
+        super.shutdown();
+    }
 }
 
 /// A Validator which also implements test routines in TestAPI
@@ -2054,6 +2078,11 @@ public class TestValidatorNode : Validator, TestAPI
                 this.ledger.getUTXOFinder(), rand_seed, this.quorum_params);
         }
         return quorums;
+    }
+
+    public override void shutdown ()
+    {
+        super.shutdown();
     }
 }
 

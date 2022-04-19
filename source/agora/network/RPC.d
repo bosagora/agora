@@ -118,6 +118,17 @@ struct ProxyProtocol
     }
 }
 
+/// Methods marked with this attribute will not be treated as RPC endpoint
+package struct NoRPCRouteAttribute {}
+
+/// Ditto
+@property NoRPCRouteAttribute noRPCRoute()
+{
+	if (!__ctfe)
+        assert(0, "noRPCRoute must be used as an attribute");
+    return NoRPCRouteAttribute.init;
+}
+
 /// A RPC packet
 private struct Packet
 {
@@ -225,6 +236,17 @@ public class RPCClient (API) : API
             format("{}.{}.{}", __MODULE__, this.config.host, this.config.port));
     }
 
+    ~this ()
+    {
+        this.conn.close();
+    }
+
+    /// Close connection to the peer
+    public override void shutdown () @safe nothrow
+    {
+        this.conn.close();
+    }
+
     /// Returns: A new `TCPConnection`
     private TCPConnection connect () @safe
     {
@@ -261,104 +283,109 @@ public class RPCClient (API) : API
 
     /// Implementation of the API's functions
     static foreach (member; __traits(allMembers, API))
+    {
         static foreach (ovrld; __traits(getOverloads, API, member))
         {
-            mixin(q{
-                override ReturnType!(ovrld) } ~ member ~ q{ (Parameters!ovrld params)
-                {
-                    ubyte[1024] buffer = void;
-                    scope DeserializeDg reader = (size_t size) @safe
+            static if (!hasUDA!(ovrld, NoRPCRouteAttribute))
+            {
+                mixin(q{
+                    override ReturnType!(ovrld) } ~ member ~ q{ (Parameters!ovrld params)
                     {
-                        ensure(size < buffer.length, "Out of bound read");
-                        this.conn.read(buffer[0 .. size]);
-                        return buffer[0 .. size];
-                    };
-
-                    Packet packet;
-                    packet.seq_id = this.seq_id++;
-                    packet.method = this.lookup[ovrld.mangleof];
-
-                    // Acquire the write lock and send the packet
-                    {
-                        this.wlock.lock();
-                        scope (exit) this.wlock.unlock();
-                        if (!this.conn.connected())
-                            this.conn = this.connect();
-
-                        this.conn.write(serializeFull(packet));
-                        // List of parameters
-                        foreach (ref p; params)
-                            this.conn.write(serializeFull(p));
-                        this.conn.flush();
-                    }
-
-                    static if (!is(typeof(return) == void))
-                    {
-                        scope (exit) this.waiting_list.remove(packet.seq_id);
-                        ReturnType!(ovrld)[] response;
-                        auto woke_up = 0;
-                        auto start = MonoTime.currTime;
-                        Waiting waiting;
-                        // Attempt to acquire the read lock, if we cant; register ourself
-                        // as a `waiter` and wait for the Fiber that has the read lock to signal
-                        // us when it receives the response we are waiting for
-                        while (!this.rlock.tryLock())
+                        ubyte[1024] buffer = void;
+                        scope DeserializeDg reader = (size_t size) @safe
                         {
-                            if (waiting is null)
-                            {
-                                waiting = new Waiting(createManualEvent(), () {
-                                    auto val = deserializeFull!(ReturnType!(ovrld))(reader);
-                                    response ~= val;
-                                });
-                                this.waiting_list[packet.seq_id] = waiting;
-                            }
+                            ensure(size < buffer.length, "Out of bound read");
+                            this.conn.read(buffer[0 .. size]);
+                            return buffer[0 .. size];
+                        };
 
-                            ensure(waiting.event.wait(start + this.config.read_timeout
-                                - MonoTime.currTime, woke_up) > woke_up++, "Request timed out");
+                        Packet packet;
+                        packet.seq_id = this.seq_id++;
+                        packet.method = this.lookup[ovrld.mangleof];
 
-                            // reader fiber read the response and stored it for us
-                            if (waiting.res.is_response)
-                            {
-                                ensure(waiting.res.method == packet.method, "Method mismatch");
-                                ensure(response.length == 1, "Error while reading response");
-                                return response[0];
-                            }
+                        // Acquire the write lock and send the packet
+                        {
+                            this.wlock.lock();
+                            scope (exit) this.wlock.unlock();
+                            if (!this.conn.connected())
+                                this.conn = this.connect();
+
+                            this.conn.write(serializeFull(packet));
+                            // List of parameters
+                            foreach (ref p; params)
+                                this.conn.write(serializeFull(p));
+                            this.conn.flush();
                         }
 
-                        // got the rlock
-                        // keep reading response packets and waking up the fibers waiting for them
+                        static if (!is(typeof(return) == void))
                         {
-                            scope (success)
-                                // wake up one of the waiters to get the rlock and start reading
-                                if (this.waiting_list.length > 0)
-                                     this.waiting_list.byValue.front.event.emit();
-                            scope (exit) this.rlock.unlock();
-                            scope (failure) this.conn.close();
-
-                            ensure(this.conn.connected(), "Connection dropped");
-
-                            while (true)
+                            scope (exit) this.waiting_list.remove(packet.seq_id);
+                            ReturnType!(ovrld)[] response;
+                            auto woke_up = 0;
+                            auto start = MonoTime.currTime;
+                            Waiting waiting;
+                            // Attempt to acquire the read lock, if we cant; register ourself
+                            // as a `waiter` and wait for the Fiber that has the read lock to signal
+                            // us when it receives the response we are waiting for
+                            while (!this.rlock.tryLock())
                             {
-                                auto any_response = deserializeFull!Packet(reader);
-                                ensure(any_response.is_response, "Unexpected request on client socket");
-
-                                if (any_response.seq_id == packet.seq_id)
+                                if (waiting is null)
                                 {
-                                    ensure(any_response.method == packet.method, "Method mismatch");
-                                    return deserializeFull!(ReturnType!(ovrld))(reader);
+                                    waiting = new Waiting(createManualEvent(), () {
+                                        auto val = deserializeFull!(ReturnType!(ovrld))(reader);
+                                        response ~= val;
+                                    });
+                                    this.waiting_list[packet.seq_id] = waiting;
                                 }
-                                else if (auto waiter = any_response.seq_id in this.waiting_list)
+
+                                ensure(waiting.event.wait(start + this.config.read_timeout
+                                    - MonoTime.currTime, woke_up) > woke_up++, "Request timed out");
+
+                                // reader fiber read the response and stored it for us
+                                if (waiting.res.is_response)
                                 {
-                                    (*waiter).res = any_response;
-                                    (*waiter).on_packet_received();
-                                    (*waiter).event.emit();
+                                    ensure(waiting.res.method == packet.method, "Method mismatch");
+                                    ensure(response.length == 1, "Error while reading response");
+                                    return response[0];
+                                }
+                            }
+
+                            // got the rlock
+                            // keep reading response packets and waking up the fibers waiting for them
+                            {
+                                scope (success)
+                                    // wake up one of the waiters to get the rlock and start reading
+                                    if (this.waiting_list.length > 0)
+                                        this.waiting_list.byValue.front.event.emit();
+                                scope (exit) this.rlock.unlock();
+                                scope (failure) this.conn.close();
+
+                                ensure(this.conn.connected(), "Connection dropped");
+
+                                while (true)
+                                {
+                                    auto any_response = deserializeFull!Packet(reader);
+                                    ensure(any_response.is_response, "Unexpected request on client socket");
+
+                                    if (any_response.seq_id == packet.seq_id)
+                                    {
+                                        ensure(any_response.method == packet.method, "Method mismatch");
+                                        return deserializeFull!(ReturnType!(ovrld))(reader);
+                                    }
+                                    else if (auto waiter = any_response.seq_id in this.waiting_list)
+                                    {
+                                        (*waiter).res = any_response;
+                                        (*waiter).on_packet_received();
+                                        (*waiter).event.emit();
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         }
+    }
 }
 
 /// Aggregate configuration options for `RPCClient`
