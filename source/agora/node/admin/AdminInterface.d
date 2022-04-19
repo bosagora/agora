@@ -143,7 +143,7 @@ public class AdminInterface : NodeControlAPI
 
     ***************************************************************************/
 
-    public override string loginQR (out string contentType, out string vary)
+    public override string validator (out string contentType, out string vary)
     {
         // The randomly generated temporary KeyPair
         KeyPair temp_kp = KeyPair.random();
@@ -162,9 +162,9 @@ public class AdminInterface : NodeControlAPI
         login_info.voter_card.signature =
             this.key_pair.sign(login_info.voter_card);
 
-        contentType = "image/svg+xml";
+        contentType = "application/json";
         vary = "Accept-Encoding";
-        return this.createQRcode(login_info);
+        return serializeToJsonString(login_info);
     }
 
     /***************************************************************************
@@ -176,7 +176,7 @@ public class AdminInterface : NodeControlAPI
 
     ***************************************************************************/
 
-    public override string encryptionKeyQR (
+    public override string encryptionkey (
         string app, ulong height, out string contentType, out string vary)
     {
         // Gets the pre-image of the requested height.
@@ -193,9 +193,9 @@ public class AdminInterface : NodeControlAPI
         );
         encryptionKey.signature = this.key_pair.secret.sign(encryptionKey);
 
-        contentType = "image/svg+xml";
+        contentType = "application/json";
         vary = "Accept-Encoding";
-        return this.createQRcode(encryptionKey);
+        return serializeToJsonString(encryptionKey);
     }
 
     /***************************************************************************
