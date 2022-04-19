@@ -48,7 +48,7 @@ private struct SendTxOption
     public string key;
 
     /// The address key to send the output
-    public string address;
+    public string dest;
 
     /// The amount to spend
     public ulong amount;
@@ -79,7 +79,7 @@ private struct SendTxOption
 
             "dest|d",
               "The address key to send the output",
-              &this.address,
+              &this.dest,
 
             "key|k",
               "The seed used to sign the new transaction",
@@ -163,7 +163,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
         isValid = false;
     }
 
-    if (op.address.length == 0)
+    if (op.dest.length == 0)
     {
         if (isValid) printSendTxHelp(outputs);
         outputs ~= "Address is not entered.[--dest]";
@@ -184,7 +184,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
     auto key_pair = KeyPair.fromSeed(SecretKey.fromString(op.key));
 
     Transaction tx = Transaction([Input(Hash.fromString(op.txhash), op.index)],
-        [Output(Amount(op.amount), PublicKey.fromString(op.address))]);
+        [Output(Amount(op.amount), PublicKey.fromString(op.dest))]);
 
     auto signature = key_pair.sign(tx.getChallenge());
     tx.inputs[0].unlock = genKeyUnlock(signature);
@@ -194,6 +194,7 @@ public int sendTxProcess (string[] args, ref string[] outputs, APIMaker api_make
         outputs ~= format("txhash = %s", op.txhash);
         outputs ~= format("index = %s", op.index);
         outputs ~= format("amount = %s", op.amount);
+        outputs ~= format("dest = %s", op.dest);
         outputs ~= format("address = %s", op.address);
         outputs ~= format("key = %s", op.key);
         outputs ~= format("hash of new transaction = %s", hashFull(tx).toString);
