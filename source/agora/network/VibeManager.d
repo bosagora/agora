@@ -59,6 +59,21 @@ shared static this ()
 /// And implementation of `agora.network.Manager : NetworkManager` using Vibe.d
 public final class VibeNetworkManager : NetworkManager
 {
+    /// A stub class for overriding `shutdown` for the REST client
+    private class ValidatorRestClient : RestInterfaceClient!(agora.api.Validator.API)
+    {
+        this (RestInterfaceSettings settings)
+        {
+            super(settings);
+        }
+
+        public override void shutdown ()
+        {
+            // REST client doesn't need a shutdown
+            return;
+        }
+    }
+
     /// Construct an instance of this object
     public this (in Config config, ManagedDatabase cache, ITaskManager taskman,
                  Clock clock, agora.api.FullNode.API owner_node, Ledger ledger)
@@ -83,8 +98,7 @@ public final class VibeNetworkManager : NetworkManager
                 timeout, timeout, timeout);
 
         if (url.schema.startsWith("http"))
-            return new RestInterfaceClient!(agora.api.Validator.API)(
-                this.makeRestInterfaceSettings(url));
+            return new ValidatorRestClient(this.makeRestInterfaceSettings(url));
 
         assert(0, "Unknown agora schema: " ~ url.toString());
     }

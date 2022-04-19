@@ -24,6 +24,7 @@ import agora.consensus.data.PreImageInfo;
 import agora.consensus.data.Transaction;
 import agora.consensus.data.ValidatorInfo;
 import agora.crypto.Key;
+import agora.network.RPC : noRPCRoute;
 
 import vibe.data.serialization;
 import vibe.http.common;
@@ -429,4 +430,9 @@ public interface API
     ***************************************************************************/
 
     public WrappedConsensusParams getConsensusParams ();
+
+    /// Shutdown the node and its connections to other peers
+    @noRPCRoute
+    @noRoute
+    public void shutdown ();
 }

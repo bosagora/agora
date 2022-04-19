@@ -195,6 +195,13 @@ public class NetworkClient
     public void shutdown () @safe nothrow
     {
         this.gossip_timer.stop();
+        foreach (conn; this.connections)
+        {
+            try
+                conn.api.shutdown();
+            catch (Exception ex)
+                log.dbg("Connection ({}) failed to close, continuing: {}", conn.address, ex);
+        }
     }
 
     /// For gossiping we don't want to block the calling fiber, so we use
@@ -654,6 +661,7 @@ public class NetworkClient
                 {
                     try
                     {
+                        conn.api.shutdown();
                         this.connections = this.connections.remove!(c => c == conn);
                         this.connections_version++;
                         log.warn("Removing banned address {} while performing {}, addresses left: {}",

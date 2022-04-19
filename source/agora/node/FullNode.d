@@ -708,7 +708,7 @@ public class FullNode : API
 
     ***************************************************************************/
 
-    public void shutdown () @safe
+    public override void shutdown () @safe
     {
         this.is_shutting_down = true;
         log.info("Shutting down..");
