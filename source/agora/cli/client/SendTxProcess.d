@@ -250,7 +250,7 @@ unittest
     string[] args =
         [
             "sendtx",
-            "--address=localhost:2826",
+            "--address=agora://localhost:2826",
             format("--txhash=%s", txhash),
             format("--index=%d", index),
             format("--amount=%d", amount),

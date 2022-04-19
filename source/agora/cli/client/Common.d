@@ -17,13 +17,14 @@
 module agora.client.Common;
 
 import agora.api.FullNode;
+import agora.common.Types : Address;
 
 import configy.Read;
 
 import std.getopt;
 
 /// Delegate used to create a client
-public alias APIMaker = API delegate (string address);
+public alias APIMaker = API delegate (Address address);
 
 /// Shared command line arguments
 public struct ClientCLIArgs
@@ -35,7 +36,7 @@ public struct ClientCLIArgs
     public alias base this;
 
     /// Address of node, including protocol and port, if necessary
-    public string address;
+    public Address address;
 
     ///
     public GetoptResult parse (ref string[] args, bool passThrough = true)
@@ -43,6 +44,12 @@ public struct ClientCLIArgs
         auto intermediate = this.base.parse(args);
         if (intermediate.helpWanted)
             return intermediate;
+
+        void parseUrlAddress (string option, string value)
+        {
+            assert(option == "address");
+            this.address = Address(value);
+        }
 
         return getopt(
             args,
@@ -53,7 +60,7 @@ public struct ClientCLIArgs
 
             config.required, "address",
               "Address of a node to send to (including protocol and optionally the port if non-standard)",
-              &this.address,
+              &parseUrlAddress,
         );
     }
 }
