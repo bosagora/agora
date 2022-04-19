@@ -895,35 +895,36 @@ public class NetworkManager
                 return Height(ulong.max);
         }
 
-        foreach (node, peer_height; this.peers.map!(node => tuple(node, getHeight(node))))
+        this.peers.each!((NetworkClient node)
         {
-            if (peer_height == ulong.max || height > peer_height)
-                continue;  // this node does not have newer blocks than us
-
-            log.info("Retrieving blocks [{}..{}] from {}..",
-                height, peer_height, node.addresses);
-            const MaxBlocks = 1024;
-            auto blocks = node.getBlocksFrom(height, MaxBlocks);
-            if (blocks.length == 0)
-                continue;
-
-            log.info("Received blocks [{}..{}]",
-                blocks[0].header.height, blocks[$ - 1].header.height);
-
-            try
+            auto peer_height = getHeight(node);
+            if (peer_height != ulong.max && peer_height >= height)
             {
-                // update the height with the latest accepted height
-                const new_height = onReceivedBlocks(blocks);
-                if (new_height >= height)
-                    height = new_height + 1;
+                log.info("Retrieving blocks [{}..{}] from {}..",
+                    height, peer_height, node.addresses);
+                const MaxBlocks = 1024;
+                auto blocks = node.getBlocksFrom(height, MaxBlocks);
+                if (blocks.length > 0)
+                {
+                    log.info("Received blocks [{}..{}]",
+                        blocks[0].header.height, blocks[$ - 1].header.height);
+
+                    try
+                    {
+                        // update the height with the latest accepted height
+                        const new_height = onReceivedBlocks(blocks);
+                        if (new_height >= height)
+                            height = new_height + 1;
+                    }
+                    catch (Exception ex)
+                    {
+                        // @BUG: Ledger routines should be marked nothrow,
+                        // or else storage issues should be handled differently.
+                        log.error("Error in onReceivedBlocks(): {}", ex);
+                    }
+                }
             }
-            catch (Exception ex)
-            {
-                // @BUG: Ledger routines should be marked nothrow,
-                // or else storage issues should be handled differently.
-                log.error("Error in onReceivedBlocks(): {}", ex);
-            }
-        }
+        });
     }
 
     /***************************************************************************
