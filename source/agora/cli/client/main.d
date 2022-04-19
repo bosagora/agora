@@ -16,14 +16,18 @@ module agora.client.main;
 import agora.api.FullNode;
 import agora.client.GenTxProcess;
 import agora.client.SendTxProcess;
+import agora.common.Types : Address;
+import agora.network.RPC;
 
 import vibe.core.core;
 import vibe.web.rest;
 
 import configy.Read;
 
+import std.algorithm;
 import std.getopt;
 import std.stdio;
+import core.time;
 
 /// Application entry point
 private int main (string[] args)
@@ -47,15 +51,28 @@ int runProcess (string[] args, ref string[] outputs)
         return 1;
     }
 
+    API makeClient (Address address)
+    {
+        if (address.schema == "agora")
+            return new RPCClient!(API)(
+                address.host, address.port,
+                0.seconds, 1, 5.seconds, 5.seconds, 5.seconds);
+
+        if (address.schema.startsWith("http"))
+            return new RestInterfaceClient!(API)(address);
+
+        assert(0, "Unsupported address schema");
+    }
+
     switch (args[0])
     {
         case "sendtx":
             return sendTxProcess(args, outputs, (address) {
-                return new RestInterfaceClient!API(address);
+                return makeClient(address);
             });
         case "gentx":
             return genTxProcess(args, outputs, (address) {
-                return new RestInterfaceClient!API(address);
+                return makeClient(address);
             });
         default:
             outputs ~= "Invalid command: '" ~ args[0] ~ "'";

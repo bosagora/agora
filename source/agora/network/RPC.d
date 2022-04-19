@@ -19,7 +19,6 @@
 
 module agora.network.RPC;
 
-static import agora.api.Validator;
 import agora.common.Ensure;
 import agora.common.Types;
 import agora.crypto.Hash;

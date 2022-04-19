@@ -68,7 +68,6 @@
                 "source/agora/consensus/Quorum.d",
                 "source/agora/network/Client.d",
                 "source/agora/network/Manager.d",
-                "source/agora/network/RPC.d",
                 "source/agora/network/VibeManager.d",
                 "source/agora/api/Registry.d",
                 "source/agora/node/*",
