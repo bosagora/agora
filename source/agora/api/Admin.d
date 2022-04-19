@@ -83,8 +83,8 @@ public interface NodeControlAPI
     @method(HTTPMethod.GET)
     @resultSerializer!(RawStringSerializer.serialize,
                        RawStringSerializer.deserialize,
-                       "image/svg+xml")()
-    public string loginQR (@viaHeader("Content-Type") out string contentType,
+                       "application/json")()
+    public string validator (@viaHeader("Content-Type") out string contentType,
                            @viaHeader("Vary") out string vary);
 
     /***************************************************************************
@@ -99,8 +99,8 @@ public interface NodeControlAPI
     @method(HTTPMethod.GET)
     @resultSerializer!(RawStringSerializer.serialize,
                        RawStringSerializer.deserialize,
-                       "image/svg+xml")()
-    public string encryptionKeyQR (string app, ulong height,
+                       "application/json")()
+    public string encryptionkey (string app, ulong height,
                                    @viaHeader("Content-Type") out string contentType,
                                    @viaHeader("Vary") out string vary);
 }
