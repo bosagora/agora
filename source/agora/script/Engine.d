@@ -686,7 +686,7 @@ public class Engine
     private bool hasScriptFailed (/*in*/ ref Stack stack) // peek() is not const
         pure nothrow @safe
     {
-        return stack.empty() || stack.peek() != TrueValue;
+        return stack.count() != 1 || stack.peek() != TrueValue;
     }
 
     /***************************************************************************
@@ -1580,7 +1580,7 @@ unittest
     // 3 of 5: ok when sigs are in the same order
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+              [ubyte(OP.PUSH_NUM_3)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(32)] ~ kp3.address[]
@@ -1596,7 +1596,7 @@ unittest
     // 3 of 5: fails when sigs are in the wrong order
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+              [ubyte(OP.PUSH_NUM_3)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(32)] ~ kp3.address[]
@@ -1648,7 +1648,7 @@ unittest
     // ditto but with VERIFY_MULTI_SIG
     assert(engine.execute(
         Lock(LockType.Script,
-              [ubyte(OP.PUSH_NUM_2)]  // number of sigs
+              [ubyte(OP.PUSH_NUM_3)]  // number of sigs
             ~ [ubyte(32)] ~ kp1.address[]
             ~ [ubyte(32)] ~ kp2.address[]
             ~ [ubyte(32)] ~ kp3.address[]
@@ -2035,7 +2035,7 @@ unittest
             ubyte(42).repeat(65).array.toPushOpcode
             ~ ubyte(42).repeat(65).array.toPushOpcode
             ~ [ubyte(OP.CHECK_EQUAL)]),
-        Unlock(unlock[]), tx, Input.init)
+        Unlock([]), tx, Input.init)
         is null);
 
     Script bad_key_unlock = createUnlockP2PKH(sig.signature, sig.sig_hash, KeyPair.random.address);
@@ -2180,7 +2180,7 @@ unittest
     const tx = Transaction([Input.init], [Output.init]);
     const StackMaxItemSize = 512;
     assert(engine.execute(
-        Lock(LockType.Script, [ubyte(1), ubyte(42)] ~ [ubyte(OP.TRUE)]),
+        Lock(LockType.Script, [ubyte(1), ubyte(42)] ~ [ubyte(OP.DUP)] ~ [ubyte(OP.CHECK_EQUAL)]),
         Unlock.init, tx, Input.init)
         is null);
 
@@ -2252,7 +2252,7 @@ unittest
     // will fit, pops TestStackMaxItemSize and pushes 64 bytes
     assert(engine.execute(
         Lock(LockType.Script, MaxItemPush.repeat(MaxPushes).joiner.array
-            ~ [ubyte(OP.HASH), ubyte(OP.TRUE)]),
+            ~ ubyte(OP.VERIFY_EQUAL).repeat(MaxPushes / 2).array ~ [ubyte(OP.TRUE)]),
         Unlock.init, tx, Input.init)
         is null);
 
