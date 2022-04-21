@@ -68,9 +68,8 @@ public class NameRegistry: NameRegistryAPI
     /// Indexes for `zones`
     private enum ZoneIndex
     {
-        Realm = 0,
-        Validator = 1,
-        Flash = 2,
+        Validator = 0,
+        Flash = 1,
     }
 
     /// Zones of the registry
@@ -125,8 +124,6 @@ public class NameRegistry: NameRegistryAPI
         this.flash = Domain.fromSafeString("flash." ~ realm.toString());
 
         this.zones = [
-            ZoneData("realm", this.realm,
-                this.config.realm, cache_db, log, taskman, network),
             ZoneData("validator", this.validators,
                 this.config.validators, cache_db, log, taskman, network),
             ZoneData("flash",  this.flash,
@@ -475,6 +472,11 @@ public class NameRegistry: NameRegistryAPI
     auto findZone (Domain name, bool matches = true) @safe
     {
         mixin(TracyZoneLogger!("ctx", "reg_findZone"));
+
+        // TODO will enable this after seeding is implemented
+        // if (this.realm == name && matches)
+        //     return &this.seed_...;
+
         foreach (i, const ref zone; this.zones)
             if (zone.root == name)
                 return matches ?
