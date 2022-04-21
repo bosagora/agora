@@ -42,6 +42,7 @@ import std.conv;
 import std.datetime;
 import std.format;
 import std.range;
+import std.random : randomSample;
 import std.socket : InternetAddress, Internet6Address;
 import std.string;
 
@@ -105,6 +106,15 @@ public class NameRegistry: NameRegistryAPI
     /// Registry is in testing mode and allows loopback addresses
     private bool testing;
 
+    /// Validator records round-robined on every block accept
+    private ResourceRecord[] seed_records;
+
+    /// Seed list update timer
+    private ITimer seed_refresh_timer;
+
+    /// Maximum number of RRs to be included in Seed answer
+    private immutable int SEED_LIMIT = 10;
+
     ///
     public this (Domain realm, RegistryConfig config, NodeLedger ledger,
         ManagedDatabase cache_db, ITaskManager taskman, NetworkManager network,
@@ -131,13 +141,18 @@ public class NameRegistry: NameRegistryAPI
         ];
 
         Utils.getCollectorRegistry().addCollector(&this.collectStats);
+
+        this.seed_refresh_timer = taskman.createTimer(&updateSeedList);
     }
 
     public void start ()
     {
         this.client = this.zones[0].netman.makeRegistryClient();
+
         foreach (ref zone; this.zones)
             zone.start();
+
+        this.seed_refresh_timer.rearm(this.config.seed_refresh, true);
     }
 
     /***************************************************************************
@@ -333,6 +348,45 @@ public class NameRegistry: NameRegistryAPI
         this.zones[ZoneIndex.Flash].updateSOA();
     }
 
+    /// Timer handler for periodic seed list update
+    private void updateSeedList () @safe
+    {
+        this.seed_records = this.zones[ZoneIndex.Validator].get(PublicKey.init, QTYPE.A);
+        this.seed_records ~= this.zones[ZoneIndex.Validator].get(PublicKey.init, QTYPE.AAAA);
+
+        this.seed_records = this.seed_records.randomSample(
+            (this.seed_records.length > SEED_LIMIT) ? SEED_LIMIT : this.seed_records.length
+        ).array;
+    }
+
+    /***************************************************************************
+
+         Answer seed record with well distributed validator nodes constructed
+         on every accepted block
+
+         Returns:
+          A code corresponding to the result of the query.
+          `Header.RCode.Refused` is returned for the following conditions;
+            - Query type is not A or AAAA
+
+    ***************************************************************************/
+
+    public Header.RCode answer_seed (in Question q, ref Message reply,
+        string _ = null) @safe
+    {
+        log.info("Answering for seed request to realm {}", this.seed_records.length);
+        reply.header.AA = (this.zones[ZoneIndex.Validator].type != ZoneType.caching);
+        reply.header.RA = (this.zones[ZoneIndex.Validator].type == ZoneType.caching);
+
+        if (q.qtype == QTYPE.A || q.qtype == QTYPE.AAAA)
+        {
+            reply.answers = this.seed_records;
+            return Header.RCode.NoError;
+        }
+
+        return Header.RCode.Refused;
+    }
+
     /***************************************************************************
 
         Accepts a DNS message and returns an answer to it.
@@ -473,9 +527,8 @@ public class NameRegistry: NameRegistryAPI
     {
         mixin(TracyZoneLogger!("ctx", "reg_findZone"));
 
-        // TODO will enable this after seeding is implemented
-        // if (this.realm == name && matches)
-        //     return &this.seed_...;
+        if (this.realm == name && matches)
+            return &this.answer_seed;
 
         foreach (i, const ref zone; this.zones)
             if (zone.root == name)
@@ -506,6 +559,7 @@ public class NameRegistry: NameRegistryAPI
     public void onAcceptedBlock (in Block, bool validators_changed)
         @safe
     {
+        log.info("On Accepted block");
         ZoneType validator_type = this.zones[ZoneIndex.Validator].type;
 
         if (this.zones[ZoneIndex.Validator].type == ZoneType.primary)
@@ -1485,11 +1539,18 @@ private struct ZoneData
         if (results.empty)
             return null;
 
-        const dname = Domain.fromString(format("%s.%s", public_key, this.root.value));
+        Domain dname = Domain.init;
+        if (public_key != PublicKey.init)
+            dname = Domain.fromString(format("%s.%s", public_key, this.root.value));
+
         return results.map!((r) {
             const type = to!TYPE(r["type"].as!ushort);
             const ttl =  r["ttl"].as!uint;
             const address = r["address"].as!string;
+            if (public_key == PublicKey.init)
+                dname = Domain.fromString(format("%s.%s", r["pubkey"].as!string,
+                    this.root.value));
+
             switch (type)
             {
                 case TYPE.A:

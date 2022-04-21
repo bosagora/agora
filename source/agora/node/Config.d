@@ -500,6 +500,9 @@ public struct RegistryConfig
     /// The 'flash' zone
     public immutable(ZoneConfig) flash;
 
+    /// Registry seeding refresh interval
+    public Duration seed_refresh = 10.minutes;
+
     /// Validate the semantic of the user-provided configuration
     public void validate () const scope @safe
     {
