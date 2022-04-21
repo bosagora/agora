@@ -333,6 +333,11 @@ registry:
   # Note that ports < 1024 are privileged ports and might require root powers
   port: 53
 
+  # DNS query to Realm zone returns randomly picked well distributed Validator nodes
+  # this list updated on timely basis, this field configure period of these updates
+  seed_refresh:
+    minutes: 10
+
   ## The fields below define 3 SOA records, one for each zone required by the network.
   ##
   ## Those can typically be left empty, except for the primary server of the zone.
