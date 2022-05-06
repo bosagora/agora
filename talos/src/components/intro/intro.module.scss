@@ -121,7 +121,7 @@
       background-image: url(/assets/img/main_background.svg);
       @include back-img(inherit, right top, no-repeat);
       display: flex;
-      justify-content: end;
+      justify-content: flex-end;
 
       @media (min-width: $minMediaMD) {
         width: 50%;
