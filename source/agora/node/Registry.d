@@ -813,6 +813,9 @@ private struct ZoneData
     /// Query for getting records with matching QTYPE
     private string query_records_get_typed;
 
+    /// Query for getting all records matching QTYPE
+    private string query_records_get_all_typed;
+
     /// Query for getting registry utxo
     private string query_utxo_get;
 
@@ -913,6 +916,9 @@ private struct ZoneData
 
         this.query_records_get_typed = format("SELECT address, type, ttl " ~
             "FROM registry_%s_addresses WHERE pubkey = ? AND type = ?", zone_name);
+
+        this.query_records_get_all_typed = format("SELECT pubkey, address, type, ttl " ~
+            "FROM registry_%s_addresses WHERE type = ?", zone_name);
 
         this.query_utxo_get = format("SELECT sequence, utxo " ~
             "FROM registry_%s_utxo WHERE pubkey = ?", zone_name);
@@ -1452,11 +1458,19 @@ private struct ZoneData
 
     ***************************************************************************/
 
-    public ResourceRecord[] get (PublicKey public_key, QTYPE type = QTYPE.ALL) @trusted
+    public ResourceRecord[] get (PublicKey public_key = PublicKey.init,
+        QTYPE type = QTYPE.ALL) @trusted
     {
-        auto results = (type == QTYPE.ALL) ?
-            this.db.execute(this.query_records_get, public_key)
-            : this.db.execute(this.query_records_get_typed, public_key, type.to!ushort);
+        ResultRange results;
+
+        if (type == QTYPE.ALL && public_key != PublicKey.init)
+            results = this.db.execute(this.query_records_get, public_key);
+        else
+        {
+           results = (public_key != PublicKey.init) ?
+                this.db.execute(this.query_records_get_typed, public_key, type.to!ushort)
+                : this.db.execute(this.query_records_get_all_typed, type.to!ushort);
+        }
 
         if (results.empty && type != QTYPE.CNAME)
         {
