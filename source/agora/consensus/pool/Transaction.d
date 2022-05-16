@@ -48,18 +48,11 @@ version (unittest)
 
     Initialize the logger and the transaction pool
 
-    Transaction pool initialization  should only be done once per process,
-    but `loggerCallback` uses `log` which is a TLS variable that might not
-    be initialized if `loggerCallback` was to be called immediately.
+    Transaction pool initialization  should only be done once per process.
 
 *******************************************************************************/
 
 mixin AddLogger!();
-
-static this ()
-{
-    TransactionPool.initialize();
-}
 
 /// A delegate type to select one of the double spent TXs
 public alias DoubleSpentSelector = size_t delegate(Transaction[] txs);
@@ -67,26 +60,6 @@ public alias DoubleSpentSelector = size_t delegate(Transaction[] txs);
 /// A transaction pool that is serializable to disk, backed by SQLite
 public class TransactionPool
 {
-    /***************************************************************************
-
-        Initialization function
-
-        Must be called once per process (not per thread!),
-        before the class can be used.
-
-    ***************************************************************************/
-
-    public static void initialize ()
-    {
-        static import core.atomic;
-        static shared bool initialized;
-        if (core.atomic.cas(&initialized, false, true))
-        {
-            .config(SQLITE_CONFIG_MULTITHREAD);
-            .config(SQLITE_CONFIG_LOG, &loggerCallback, null);
-        }
-    }
-
     /// SQLite db instance
     private ManagedDatabase db;
 
@@ -635,23 +608,6 @@ public class TransactionPool
     version (unittest) public bool spending (in Hash utxo) @safe nothrow
     {
         return !!(utxo in this.spenders);
-    }
-
-    /***************************************************************************
-
-        Callback used
-
-        Params:
-            arg = unused (null)
-            code = the error code
-            msg = the error message
-
-    ***************************************************************************/
-
-    private static extern(C) void loggerCallback (void *arg, int code,
-        const(char)* msg) nothrow
-    {
-        log.error("SQLite error: ({}) {}", code, msg.fromStringz);
     }
 
     /***************************************************************************

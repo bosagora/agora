@@ -16,13 +16,25 @@
 
 module agora.common.ManagedDatabase;
 
+import agora.utils.Log;
+
 import d2sqlite3.database;
 import d2sqlite3.sqlite3;
+import d2sqlite3.library;
 
 import std.conv : emplace;
+import std.string;
 
 import core.stdc.stdio : printf;
 import core.stdc.stdlib : free, malloc;
+
+mixin AddLogger!();
+
+shared static this ()
+{
+    .config(SQLITE_CONFIG_MULTITHREAD);
+    .config(SQLITE_CONFIG_LOG, &ManagedDatabase.loggerCallback, null);
+}
 
 /// Ditto
 public class ManagedDatabase
@@ -88,5 +100,22 @@ public class ManagedDatabase
     public Database* getDatabase () pure nothrow @safe @nogc
     {
         return this.database;
+    }
+
+    /***************************************************************************
+
+        Callback used
+
+        Params:
+            arg = unused (null)
+            code = the error code
+            msg = the error message
+
+    ***************************************************************************/
+
+    private static extern(C) void loggerCallback (void *arg, int code,
+        const(char)* msg) nothrow
+    {
+        log.error("SQLite error: ({}) {}", code, msg.fromStringz);
     }
 }
