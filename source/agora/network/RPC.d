@@ -483,13 +483,14 @@ private class SharedTCPConnection
 {
     private TCPConnection stream;
     alias stream this;
-    private TaskMutex wmutex;
+    public TaskMutex wmutex;
 
     this (TCPConnection stream) @safe nothrow
     {
         this.stream = stream;
         this.wmutex = new TaskMutex();
     }
+
 }
 
 /*******************************************************************************
@@ -648,6 +649,8 @@ private void handleThrow (API) (scope API api, SharedTCPConnection stream, Durat
                     {
                         mixin("auto foo = ", CallMixin);
                         packet.is_response = true;
+                        stream.wmutex.lock();
+                        scope (exit) stream.wmutex.unlock();
                         stream.write(serializeFull(packet) ~ serializeFull(foo));
                     }
                 } catch (Exception e) {}
