@@ -16,9 +16,9 @@ name: GeoIP
 on:
   workflow_dispatch:
   schedule:
-    # Minute (1), Hour (0), day of the month (1), month (any), day of the week (any)
+    # Minute (1), Hour (0), day of the month (1), month (any), day of the week (Sunday)
     # https://crontab.guru/
-    - cron: "1 0 1 * *"
+    - cron: "1 0 1 * 0" # Weekly at 00:01 every Sunday
 
 jobs:
   main:
