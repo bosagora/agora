@@ -18,7 +18,7 @@ on:
   schedule:
     # Minute (1), Hour (0), day of the month (1), month (any), day of the week (Sunday)
     # https://crontab.guru/
-    - cron: "1 0 1 * 0" # Weekly at 00:01 every Sunday
+    - cron: "5 7 * * 2" # Weekly at 07:05 every Tuesday
 
 jobs:
   main:
