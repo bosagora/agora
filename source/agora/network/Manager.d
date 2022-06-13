@@ -302,10 +302,6 @@ public class NetworkManager
 
         // add the IP seeds
         this.addAddresses(Set!Address.from(config.network));
-
-        // add the DNS seeds
-        if (config.dns_seeds.length > 0)
-            this.addAddresses(resolveDNSSeeds(config.dns_seeds, this.log));
     }
 
     ///
@@ -1262,61 +1258,6 @@ public class NetworkManager
         new ConnectionTask(Address.init, api, &onHandshakeComplete,
                            (in Address _) { return false; }).start();
     }
-}
-
-/*******************************************************************************
-
-    Resolves IPs out of a list of DNS seeds
-
-    Params:
-        addresses = the set of DNS seeds
-
-    Returns:
-        The resolved set of IPs
-
-*******************************************************************************/
-
-private Set!Address resolveDNSSeeds (in string[] dns_seeds, ref Logger log)
-{
-    import std.conv;
-    import std.string;
-    import std.socket : getAddressInfo, AddressFamily, ProtocolType;
-
-    Set!Address resolved_ips;
-
-    foreach (host; dns_seeds)
-    try
-    {
-        log.info("DNS: contacting seed '{}'..", host);
-        foreach (addr_info; getAddressInfo(host))
-        {
-            log.trace("DNS: checking address {}", addr_info);
-            if (addr_info.family != AddressFamily.INET &&
-                addr_info.family != AddressFamily.INET6)
-            {
-                log.trace("DNS: rejected non-IP family {}", addr_info.family);
-                continue;
-            }
-
-            // we only support TCP for now
-            if (addr_info.protocol != ProtocolType.TCP)
-            {
-                log.trace("DNS: rejected non-TCP node {}", addr_info);
-                continue;
-            }
-
-            // if the port is set to zero, assume default Boa schema
-            auto ip = "agora://" ~ addr_info.address.to!string;
-            log.info("DNS: accepted IP {}", ip);
-            resolved_ips.put(Address(ip));
-        }
-    }
-    catch (Exception ex)
-    {
-        log.error("Error contacting DNS seed: {}", ex.message);
-    }
-
-    return resolved_ips;
 }
 
 /// A range over the list of peers that can be invalidated
