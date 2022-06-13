@@ -357,7 +357,6 @@ private Nullable!Config makeTestNetConfig (AgoraCLIArgs cmdln)
             admin: config.admin,
             registry: config.registry,
             network: config.network,
-            dns_seeds: config.dns_seeds,
             logging: config.logging,
             event_handlers: config.event_handlers,
         };

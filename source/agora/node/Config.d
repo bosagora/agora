@@ -105,10 +105,6 @@ public struct Config
     /// The list of IPs for use with network discovery
     public @Optional immutable Address[] network;
 
-    /// The list of DNS FQDN seeds for use with network discovery
-    @Name("dns")
-    public @Optional immutable string[] dns_seeds;
-
     /// Logging config
     @Key("name")
     public immutable(LoggerConfig)[] logging = [ {
