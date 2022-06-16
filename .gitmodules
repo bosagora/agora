@@ -64,3 +64,6 @@
 [submodule "tracyd"]
 	path = submodules/tracyd
 	url = https://github.com/bosagora/tracyd.git
+[submodule "talos"]
+	path = talos
+	url = https://github.com/bosagora/talos.git
