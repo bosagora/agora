@@ -54,7 +54,7 @@
 	url = https://github.com/bosagora/serialization.git
 [submodule "config"]
 	path = submodules/configy
-	url = https://github.com/bosagora/configy.git
+	url = https://github.com/dlang-community/configy.git
 [submodule "dtext"]
 	path = submodules/dtext
 	url = https://github.com/bosagora/dtext.git
