@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Class ValidatingLedger</title>
+		<link rel="stylesheet" type="text/css" href="../../../styles/ddox.css"/>
+		<link rel="stylesheet" href="../../../prettify/prettify.css" type="text/css"/>
+		<script type="text/javascript" src="../../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../../scripts/ddox.js">/**/</script>
+	</head>
+	<body onload="setupDdox();">
+		<nav id="main-nav">
+			<noscript>
+				<p style="color: red">The search functionality needs JavaScript enabled</p>
+			</noscript>
+			<div id="symbolSearchPane" style="display: none">
+				<form action="#" method="GET">
+					<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/>
+				</form>
+				<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../../";
+$('#symbolSearchPane').show();</script>
+			</div>
+			<ul class="tree-view">
+				<li class="tree-view ">
+					<div class="package ">agora
+					</div>
+			<ul class="tree-view">
+				<li class="tree-view collapsed">
+					<div class="package ">api
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/api/Admin.html">Admin</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/api/FullNode.html">FullNode</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/api/Handlers.html">Handlers</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/api/Registry.html">Registry</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/api/Validator.html">Validator</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">common
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/Amount.html">Amount</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/BanManager.html">BanManager</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/BitMask.html">BitMask</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/DNS.html">DNS</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/Ensure.html">Ensure</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/FileBasedLock.html">FileBasedLock</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/ManagedDatabase.html">ManagedDatabase</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/Set.html">Set</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/Task.html">Task</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/Types.html">Types</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/common/VibeTask.html">VibeTask</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view ">
+					<div class="package ">consensus
+					</div>
+			<ul class="tree-view">
+				<li class="tree-view collapsed">
+					<div class="package ">data
+					</div>
+			<ul class="tree-view">
+				<li class="tree-view collapsed">
+					<div class="package ">
+						<a href="../../../agora/consensus/data/genesis.html">genesis</a>
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/genesis/Coinnet.html">Coinnet</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/genesis/Test.html">Test</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/Block.html">Block</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/Enrollment.html">Enrollment</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/Params.html">Params</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/PreImageInfo.html">PreImageInfo</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/Transaction.html">Transaction</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/UTXO.html">UTXO</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/ValidatorBlockSig.html">ValidatorBlockSig</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/data/ValidatorInfo.html">ValidatorInfo</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">pool
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/pool/Enrollment.html">Enrollment</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/pool/Transaction.html">Transaction</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">protocol
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/protocol/Config.html">Config</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/protocol/Data.html">Data</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/protocol/EnvelopeStore.html">EnvelopeStore</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/protocol/Nominator.html">Nominator</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">state
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/state/Ledger.html">Ledger</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/state/UTXOCache.html">UTXOCache</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/state/UTXODB.html">UTXODB</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/state/UTXOSet.html">UTXOSet</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/state/ValidatorSet.html">ValidatorSet</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">
+						<a href="../../../agora/consensus/validation.html">validation</a>
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/validation/Block.html">Block</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/validation/Enrollment.html">Enrollment</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/validation/PreImage.html">PreImage</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/validation/Transaction.html">Transaction</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/BlockStorage.html">BlockStorage</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/EnrollmentManager.html">EnrollmentManager</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/Fee.html">Fee</a>
+					</div>
+				</li>
+				<li>
+					<div class="module selected">
+						<a href="../../../agora/consensus/Ledger.html">Ledger</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/PreImage.html">PreImage</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/Quorum.html">Quorum</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/consensus/Reward.html">Reward</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">crypto
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/crypto/Bech32.html">Bech32</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/crypto/Crc16.html">Crc16</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/crypto/Key.html">Key</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">flash
+					</div>
+			<ul class="tree-view">
+				<li class="tree-view collapsed">
+					<div class="package ">api
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/api/FlashAPI.html">FlashAPI</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/api/FlashControlAPI.html">FlashControlAPI</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/api/FlashListenerAPI.html">FlashListenerAPI</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Channel.html">Channel</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Config.html">Config</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/ErrorCode.html">ErrorCode</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Invoice.html">Invoice</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Network.html">Network</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Node.html">Node</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/OnionPacket.html">OnionPacket</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Route.html">Route</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Scripts.html">Scripts</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/Types.html">Types</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/flash/UpdateSigner.html">UpdateSigner</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">network
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/network/Client.html">Client</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/network/Clock.html">Clock</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/network/DNSResolver.html">DNSResolver</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/network/Manager.html">Manager</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/network/RPC.html">RPC</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/network/VibeManager.html">VibeManager</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">node
+					</div>
+			<ul class="tree-view">
+				<li class="tree-view collapsed">
+					<div class="package ">admin
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/admin/AdminInterface.html">AdminInterface</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/admin/Setup.html">Setup</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/Config.html">Config</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/FullNode.html">FullNode</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/main.html">main</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/Registry.html">Registry</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/Runner.html">Runner</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/TransactionRelayer.html">TransactionRelayer</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/node/Validator.html">Validator</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">script
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/Engine.html">Engine</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/Lock.html">Lock</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/Opcodes.html">Opcodes</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/ScopeCondition.html">ScopeCondition</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/Script.html">Script</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/Signature.html">Signature</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/script/Stack.html">Stack</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">stats
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/App.html">App</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Block.html">Block</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Collector.html">Collector</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/CollectorRegistry.html">CollectorRegistry</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/EndpointReq.html">EndpointReq</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Registry.html">Registry</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Slot.html">Slot</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/StatFormatter.html">StatFormatter</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Stats.html">Stats</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Tx.html">Tx</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Utils.html">Utils</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/stats/Validator.html">Validator</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">test
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/API.html">API</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/BanManager.html">BanManager</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Base.html">Base</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/BlockRewards.html">BlockRewards</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/BlockTimeConsensus.html">BlockTimeConsensus</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Byzantine.html">Byzantine</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Crypto.html">Crypto</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/DNS.html">DNS</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/EmptyBlocks.html">EmptyBlocks</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/EnrollDifferentUTXOs.html">EnrollDifferentUTXOs</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/EnrollmentManager.html">EnrollmentManager</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Fee.html">Fee</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Flash.html">Flash</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/FutureEnrollment.html">FutureEnrollment</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/GenesisBlock.html">GenesisBlock</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/GossipProtocol.html">GossipProtocol</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/InvalidBlockSigByzantine.html">InvalidBlockSigByzantine</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Ledger.html">Ledger</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/LocalTransactions.html">LocalTransactions</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/LockHeight.html">LockHeight</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/ManyBlocks.html">ManyBlocks</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/ManyValidators.html">ManyValidators</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/MissingPreImageDetection.html">MissingPreImageDetection</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/MultiRoundConsensus.html">MultiRoundConsensus</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/NameRegistry.html">NameRegistry</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/NetworkClient.html">NetworkClient</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/NetworkDiscovery.html">NetworkDiscovery</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/NetworkManager.html">NetworkManager</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/NominatingCatchup.html">NominatingCatchup</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/PeriodicCatchup.html">PeriodicCatchup</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/PostTransactionResult.html">PostTransactionResult</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/PreImageNoFlood.html">PreImageNoFlood</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/PreimageSharing.html">PreimageSharing</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Quorum.html">Quorum</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/QuorumPreimage.html">QuorumPreimage</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/QuorumShuffle.html">QuorumShuffle</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Restart.html">Restart</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/RestoreSCPState.html">RestoreSCPState</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/RestoreSlashingInfo.html">RestoreSlashingInfo</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Script.html">Script</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Simple.html">Simple</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/SlashingMisbehavingValidator.html">SlashingMisbehavingValidator</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/TimeBlockInterval.html">TimeBlockInterval</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/TimeDrift.html">TimeDrift</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/Timeout.html">Timeout</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/TransactionReplacement.html">TransactionReplacement</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/UnlockAge.html">UnlockAge</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/ValidatorCleanRestart.html">ValidatorCleanRestart</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/ValidatorCount.html">ValidatorCount</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/ValidatorRecurringEnrollment.html">ValidatorRecurringEnrollment</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/test/VariableBlockSize.html">VariableBlockSize</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">utils
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/Backoff.html">Backoff</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/InetUtils.html">InetUtils</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/Log.html">Log</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/PrettyPrinter.html">PrettyPrinter</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/SCPPrettyPrinter.html">SCPPrettyPrinter</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/Test.html">Test</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/TxBuilder.html">TxBuilder</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/Utility.html">Utility</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/WellKnownKeys.html">WellKnownKeys</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../agora/utils/Workarounds.html">Workarounds</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">mmdb
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../mmdb/MaxMindDB.html">MaxMindDB</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">scpd
+					</div>
+			<ul class="tree-view">
+				<li class="tree-view collapsed">
+					<div class="package ">quorum
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/quorum/QuorumIntersectionChecker.html">QuorumIntersectionChecker</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/quorum/QuorumTracker.html">QuorumTracker</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">scp
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/BallotProtocol.html">BallotProtocol</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/LocalNode.html">LocalNode</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/NominationProtocol.html">NominationProtocol</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/QuorumSetUtils.html">QuorumSetUtils</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/SCP.html">SCP</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/SCPDriver.html">SCPDriver</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/Slot.html">Slot</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/scp/Utils.html">Utils</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">tests
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/tests/GlueTypes.html">GlueTypes</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/tests/LayoutTest.html">LayoutTest</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/tests/SizeTest.html">SizeTest</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li class="tree-view collapsed">
+					<div class="package ">types
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/types/Stellar_SCP.html">Stellar_SCP</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/types/Stellar_types.html">Stellar_types</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/types/Utils.html">Utils</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/types/XDRBase.html">XDRBase</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../../scpd/Cpp.html">Cpp</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+			</ul>
+		</nav>
+		<div id="main-contents">
+			<h1>Class ValidatingLedger</h1><p>A ledger that participate in the consensus protocol
+</p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">class</span> <span class="typ">ValidatingLedger</span>
+			<br>&nbsp;&nbsp;: <a href="../../../agora/consensus/Ledger/node_ledger.html"><span class="typ">NodeLedger</span></a>
+			<span class="pun">;</span>
+					</div>
+				</code>
+			</div>
+			<section><p>This ledger is held by validators, as they need to do additional bookkeeping
+    when e.g. proposing transactions.
+</p>
+</section>
+
+			<section><h2>Constructors</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.this.html" class="public">
+								<code>this</code>
+							</a>
+							<span class="tableEntryAnnotation">(params, database, storage, enroll_man, pool, onAcceptedBlock)</span>
+						</td>
+						<td>See parent class
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Fields</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Type</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.nominated_tx_sets.html" class="public"><code>nominated_tx_sets</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><span class="pln">geod24<wbr/></span><span class="pun">.</span><span class="pln">bitblob<wbr/></span><span class="pun">.</span><span class="typ">BitBlob</span>!(64L)<span class="pun">[]</span><span class="pun">[</span><span class="pln">geod24<wbr/></span><span class="pun">.</span><span class="pln">bitblob<wbr/></span><span class="pun">.</span><span class="typ">BitBlob</span>!(64L)<span class="pun">]</span></code></td><td>Nominated TX sets
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.params.html" class="public inherited"><code>params</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">immutable</span><span class="pun">(</span><a href="../../../agora/consensus/data/Params/consensus_params.html"><span class="typ">ConsensusParams</span></a><span class="pun">)</span></code></td><td>Consensus-critical constants used by this Ledger
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.sig_missing_heights.html" class="public inherited"><code>sig_missing_heights</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/common/Set/set.html"><span class="typ">Set</span></a>!(ulong)</code></td><td>Keep track of missing signatures since last paid out block in a set
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.cached_coinbase.html" class="protected inherited"><code>cached_coinbase</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.cached_coinbase.html"><span class="typ">Ledger<wbr/></span><span class="pun">.<wbr/></span><span class="typ">CachedCoinbase</span></a></code></td><td>Cache for Coinbase tx to be used during payout height
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.engine.html" class="protected inherited"><code>engine</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/script/Engine/engine.html"><span class="typ">Engine</span></a></code></td><td>Script execution engine
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.enroll_man.html" class="protected inherited"><code>enroll_man</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/EnrollmentManager/enrollment_manager.html"><span class="typ">EnrollmentManager</span></a></code></td><td>Enrollment manager
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.fee_man.html" class="protected inherited"><code>fee_man</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/Fee/fee_manager.html"><span class="typ">FeeManager</span></a></code></td><td>The checker of transaction data payload
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.frozen_utxos.html" class="protected inherited"><code>frozen_utxos</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/state/Ledger/utxo_tracker.html"><span class="typ">UTXOTracker</span></a></code></td><td>The list of frozen UTXOs known to this Ledger
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.last_block.html" class="protected inherited"><code>last_block</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/data/Block/block.html"><span class="typ">Block</span></a></code></td><td>The last block in the ledger
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.log.html" class="protected inherited"><code>log</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/utils/Log/logger.html"><span class="typ">Logger</span></a></code></td><td>Logger instance
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.on_accepted_block.html" class="protected inherited"><code>onAcceptedBlock</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">@safe</span> <span class="typ">void</span> <span class="kwd">delegate</span><span class="pun">(</span><span class="kwd">in</span> <span class="kwd">ref</span> <a href="../../../agora/consensus/data/Block/block.html"><span class="typ">Block</span></a><span class="pun">, </span><span class="typ">bool</span><span class="pun">)</span></code></td><td>A delegate to be called when a block was externalized (unless <code class="lang-d"><span class="kwd">null</span></code>)
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.pool.html" class="protected inherited"><code>pool</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/pool/Transaction/transaction_pool.html"><span class="typ">TransactionPool</span></a></code></td><td>Pool of transactions to pick from when generating blocks
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.rewards.html" class="protected inherited"><code>rewards</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/Reward/reward.html"><span class="typ">Reward</span></a></code></td><td>Block rewards calculator
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.state_db.html" class="protected inherited"><code>stateDB</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/common/ManagedDatabase/managed_database.html"><span class="typ">ManagedDatabase</span></a></code></td><td>The database in which the Ledger state is stored
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.storage.html" class="protected inherited"><code>storage</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/BlockStorage/i_block_storage.html"><span class="typ">IBlockStorage</span></a></code></td><td>data storage for all the blocks
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.unknown_txs.html" class="protected inherited"><code>unknown_txs</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/common/Set/set.html"><span class="typ">Set</span></a>!(geod24.bitblob.BitBlob!(64L).BitBlob)</code></td><td>Hashes of transactions the Ledger encountered but doesn't have in the pool
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.utxo_set.html" class="protected inherited"><code>utxo_set</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/state/UTXOCache/utxo_cache.html"><span class="typ">UTXOCache</span></a></code></td><td>UTXO set
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.validator_set.html" class="protected inherited"><code>validator_set</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><a href="../../../agora/consensus/state/ValidatorSet/validator_set.html"><span class="typ">ValidatorSet</span></a></code></td><td>The object controlling the validator set
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Methods</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.accept_block.html" class="public">
+								<code>acceptBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(block)</span>
+						</td>
+						<td>See <code class="lang-d"><span class="typ">Ledger<wbr/></span><span class="pun">.</span><span class="pln">acceptBlock</span></code>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.get_candidate_missing_validators.html" class="public">
+								<code>getCandidateMissingValidators</code>
+							</a>
+							<span class="tableEntryAnnotation">(height, findUTXO)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.get_candidate_transactions.html" class="public">
+								<code>getCandidateTransactions</code>
+							</a>
+							<span class="tableEntryAnnotation">(height, utxo_finder)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.get_valid_tx_set.html" class="public">
+								<code>getValidTXSet</code>
+							</a>
+							<span class="tableEntryAnnotation">(data, tx_set)</span>
+						</td>
+						<td>Get the valid TX set that <code class="lang-d"><a href="../../../agora/consensus/Ledger/validating_ledger.get_valid_tx_set.html#data"><span class="pln">data</span></a></code> is representing
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.is_valid_tx_set.html" class="public">
+								<code>isValidTXSet</code>
+							</a>
+							<span class="tableEntryAnnotation">(data)</span>
+						</td>
+						<td>Get the valid TX set that <code class="lang-d"><a href="../../../agora/consensus/Ledger/validating_ledger.is_valid_tx_set.html#data"><span class="pln">data</span></a></code> is representing
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.prepare_nominating_set.html" class="public">
+								<code>prepareNominatingSet</code>
+							</a>
+							<span class="tableEntryAnnotation">(data)</span>
+						</td>
+						<td>Collect up to a maximum number of transactions to nominate
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.validate_consensus_data.html" class="public">
+								<code>validateConsensusData</code>
+							</a>
+							<span class="tableEntryAnnotation">(data, initial_missing_validators)</span>
+						</td>
+						<td>Check whether the consensus data is valid.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/validating_ledger.validate_slashing_data.html" class="public">
+								<code>validateSlashingData</code>
+							</a>
+							<span class="tableEntryAnnotation">(height, data, initial_missing_validators)</span>
+						</td>
+						<td>Validate slashing data, including checking if the node is slef slashing
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.accept_transaction.html" class="public inherited">
+								<code>acceptTransaction</code>
+							</a>
+							<span class="tableEntryAnnotation">(tx, double_spent_threshold_pct, min_fee_pct)</span>
+						</td>
+						<td>Called when a new transaction is received.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.add_preimage.html" class="public inherited">
+								<code>addPreimage</code>
+							</a>
+							<span class="tableEntryAnnotation">(preimage)</span>
+						</td>
+						<td>Add a pre-image information to the validator data
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.build_block.html" class="public inherited">
+								<code>buildBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(txs, enrollments, missing_validators)</span>
+						</td>
+						<td>Create a new block based on the current previous block.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.expected_height.html" class="public inherited">
+								<code>expectedHeight</code>
+							</a>
+							<span class="tableEntryAnnotation">(utcTime)</span>
+						</td>
+						<td>Get the <code class="lang-d"><span class="typ">Height</span></code> this <code class="lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.html"><span class="typ">Ledger</span></a></code> should be at if fully synchronized
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_blocks.html" class="public inherited">
+								<code>getBlocks</code>
+							</a>
+							<span class="tableEntryAnnotation">(rng)</span>
+						</td>
+						<td>Get a range of blocks, starting from the provided block height.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_blocks_from.html" class="public inherited">
+								<code>getBlocksFrom</code>
+							</a>
+							<span class="tableEntryAnnotation">(start)</span>
+						</td>
+						<td>Get a range of blocks from <code class="lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.get_blocks_from.html#start"><span class="pln">start</span></a></code> to <code class="lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.height.html"><span class="typ">Ledger<wbr/></span><span class="pun">.</span><span class="pln">height</span></a></code>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_candidate_enrollments.html" class="public inherited">
+								<code>getCandidateEnrollments</code>
+							</a>
+							<span class="tableEntryAnnotation">(height, utxo_finder)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_double_spent_highest_fee.html" class="public inherited">
+								<code>getDoubleSpentHighestFee</code>
+							</a>
+							<span class="tableEntryAnnotation">(tx)</span>
+						</td>
+						<td>Returns the highest fee among all the transactions which would be
+        considered as a double spent, if <code class="lang-d"><a href="../../../agora/consensus/Ledger/node_ledger.get_double_spent_highest_fee.html#tx"><span class="pln">tx</span></a></code> transaction was in the transaction
+        pool.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_enrolled_utx_os.html" class="public inherited">
+								<code>getEnrolledUTXOs</code>
+							</a>
+							<span class="tableEntryAnnotation">(height)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_expected_block_time.html" class="public inherited">
+								<code>getExpectedBlockTime</code>
+							</a>
+							<span class="tableEntryAnnotation">(height)</span>
+						</td>
+						<td>Gets the expected block nomination time offset from Genesis start time.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_last_paid_height.html" class="public inherited">
+								<code>getLastPaidHeight</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>return the last paid out block before the current block
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_penalty_deposit.html" class="public inherited">
+								<code>getPenaltyDeposit</code>
+							</a>
+							<span class="tableEntryAnnotation">(utxo)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_stakes.html" class="public inherited">
+								<code>getStakes</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Get a set of all the stakes currently active at this height
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_transaction_by_hash.html" class="public inherited">
+								<code>getTransactionByHash</code>
+							</a>
+							<span class="tableEntryAnnotation">(hash)</span>
+						</td>
+						<td>Get a transaction from pool by hash
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_tx_fee_rate.html" class="public inherited">
+								<code>getTxFeeRate</code>
+							</a>
+							<span class="tableEntryAnnotation">(tx, rate)</span>
+						</td>
+						<td>Forwards to <code class="lang-d"><span class="typ">FeeManager<wbr/></span><span class="pun">.</span><span class="pln">getTxFeeRate</span></code>, using this Ledger's UTXO.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_tx_fee_rate.html" class="public inherited">
+								<code>getTxFeeRate</code>
+							</a>
+							<span class="tableEntryAnnotation">(tx_hash, rate)</span>
+						</td>
+						<td>Looks up transaction with hash <code class="lang-d"><a href="../../../agora/consensus/Ledger/node_ledger.get_tx_fee_rate.html#tx_hash"><span class="pln">tx_hash</span></a></code>, then forwards to
+        <code class="lang-d"><span class="typ">FeeManager<wbr/></span><span class="pun">.</span><span class="pln">getTxFeeRate</span></code>, using this Ledger's UTXO.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_unknown_tx_hashes.html" class="public inherited">
+								<code>getUnknownTXHashes</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Get a set of TX Hashes that Ledger is missing
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.get_unknown_t_xs_from_set.html" class="public inherited">
+								<code>getUnknownTXsFromSet</code>
+							</a>
+							<span class="tableEntryAnnotation">(hashes)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_utxo_finder.html" class="public inherited">
+								<code>getUTXOFinder</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Prepare tracking double-spent transactions and
+        return the UTXOFinder delegate
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_validators.html" class="public inherited">
+								<code>getValidators</code>
+							</a>
+							<span class="tableEntryAnnotation">(height, empty)</span>
+						</td>
+						<td>Expose the list of validators at a given height
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.has_majority_signature.html" class="public inherited">
+								<code>hasMajoritySignature</code>
+							</a>
+							<span class="tableEntryAnnotation">(header)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.height.html" class="public inherited">
+								<code>height</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Returns the height at which this <code class="lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.html"><span class="typ">Ledger</span></a></code> is currently at
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.is_acceptable_double_spent.html" class="public inherited">
+								<code>isAcceptableDoubleSpent</code>
+							</a>
+							<span class="tableEntryAnnotation">(tx, threshold_pct)</span>
+						</td>
+						<td>Checks whether the <code class="lang-d"><a href="../../../agora/consensus/Ledger/node_ledger.is_acceptable_double_spent.html#tx"><span class="pln">tx</span></a></code> is an acceptable double spend transaction.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.is_coinbase_block.html" class="public inherited">
+								<code>isCoinbaseBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(height)</span>
+						</td>
+						<td>Check if this is the <code class="lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.is_coinbase_block.html#height"><span class="pln">height</span></a></code> for payouts of a payout period
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.is_related_reward_block.html" class="public inherited">
+								<code>isRelatedRewardBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(reward_height, coinbase_height)</span>
+						</td>
+						<td>Check if block is related to given payout block
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.is_stake.html" class="public inherited">
+								<code>isStake</code>
+							</a>
+							<span class="tableEntryAnnotation">(hash, utxo)</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.last_block.html" class="public inherited">
+								<code>lastBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Returns a reference to the last block in the <code class="lang-d"><a href="../../../agora/consensus/state/Ledger/ledger.html"><span class="typ">Ledger</span></a></code>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.peek_utxo.html" class="public inherited">
+								<code>peekUTXO</code>
+							</a>
+							<span class="tableEntryAnnotation">(utxo, value)</span>
+						</td>
+						<td>Get an UTXO, no double-spend protection.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.update_block_multi_sig.html" class="public inherited">
+								<code>updateBlockMultiSig</code>
+							</a>
+							<span class="tableEntryAnnotation">(header)</span>
+						</td>
+						<td>Update the Schnorr multi-signature for an externalized block
+        in the Ledger.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.utxos.html" class="public inherited">
+								<code>utxos</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Expose an object that interacts with the UTXO set
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.validate_block.html" class="public inherited">
+								<code>validateBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(block)</span>
+						</td>
+						<td>Check whether the block is valid.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.validate_block_signature.html" class="public inherited">
+								<code>validateBlockSignature</code>
+							</a>
+							<span class="tableEntryAnnotation">(header)</span>
+						</td>
+						<td>Validate the signature of a block
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.validator_count.html" class="public inherited">
+								<code>validatorCount</code>
+							</a>
+							<span class="tableEntryAnnotation">(height)</span>
+						</td>
+						<td>Get the count of active validators at a given height.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.add_validated_block.html" class="protected inherited">
+								<code>addValidatedBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(block)</span>
+						</td>
+						<td>See Ledger.addValidatedBlock`
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.apply_slashing.html" class="protected inherited">
+								<code>applySlashing</code>
+							</a>
+							<span class="tableEntryAnnotation">(header)</span>
+						</td>
+						<td>Apply slashing to the current state
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.get_coinbase_tx.html" class="protected inherited">
+								<code>getCoinbaseTX</code>
+							</a>
+							<span class="tableEntryAnnotation">(height)</span>
+						</td>
+						<td>Create the <code class="lang-d"><span class="typ">Coinbase </span><span class="pln">transaction</span></code> for this payout block and append it
+        to the <code class="lang-d"><span class="pln">transaction set</span></code>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.handle_not_signed_by_majority.html" class="protected inherited">
+								<code>handleNotSignedByMajority</code>
+							</a>
+							<span class="tableEntryAnnotation">(header, validators)</span>
+						</td>
+						<td>Used to handle behaviour when less than half the validators have signed
+        the block. This is overridden in the <code class="lang-d"><span class="typ">ValidatingLedger</span></code>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.replay_stored_block.html" class="protected inherited">
+								<code>replayStoredBlock</code>
+							</a>
+							<span class="tableEntryAnnotation">(block)</span>
+						</td>
+						<td>Update the ledger state from a block which was read from storage
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.update_utxo_set.html" class="protected inherited">
+								<code>updateUTXOSet</code>
+							</a>
+							<span class="tableEntryAnnotation">(block)</span>
+						</td>
+						<td>See <code class="lang-d"><span class="typ">Ledger<wbr/></span><span class="pun">.</span><span class="pln">updateUTXOSet</span></code>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.update_validator_set.html" class="protected inherited">
+								<code>updateValidatorSet</code>
+							</a>
+							<span class="tableEntryAnnotation">(block)</span>
+						</td>
+						<td>See <code class="lang-d"><span class="typ">Ledger<wbr/></span><span class="pun">.</span><span class="pln">updateValidatorSet</span></code>
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Inner structs</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/state/Ledger/ledger.cached_coinbase.html" class="protected inherited">
+								<code>CachedCoinbase</code>
+							</a>
+						</td>
+						<td>Cache for Coinbase tx to be used during payout height
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Enums</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../../agora/consensus/Ledger/node_ledger.invalid_consensus_data_reason.html" class="public inherited">
+								<code>InvalidConsensusDataReason</code>
+							</a>
+						</td>
+						<td>Error message describing the reason of validation failure
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Example</h2>
+
+<pre class="code"><code class="lang-d"><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">NODE3</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">height</span><span class="pun">() == </span><span class="lit">0</span><span class="pun">);
+
+</span><span class="kwd">auto </span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">0</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">1</span><span class="pun">] == </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">Genesis</span><span class="pun">);
+
+</span><span class="typ">Transaction</span><span class="pun">[] </span><span class="pln">last_txs</span><span class="pun">;
+</span><span class="typ">void </span><span class="pln">genBlockTransactions </span><span class="pun">(</span><span class="pln">size_t count</span><span class="pun">)
+{
+    </span><span class="kwd">foreach </span><span class="pun">(</span><span class="pln">_</span><span class="pun">; </span><span class="lit">0 </span><span class="pun">.. </span><span class="pln">count</span><span class="pun">)
+        </span><span class="pln">last_txs </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">makeTestBlock</span><span class="pun">(</span><span class="pln">last_txs</span><span class="pun">);
+}
+
+</span><span class="pln">genBlockTransactions</span><span class="pun">(</span><span class="lit">2</span><span class="pun">);
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">0</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">Genesis</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">3</span><span class="pun">);  </span><span class="com">// two blocks + genesis block
+
+/// now generate 98 more blocks to make it 100 + genesis block (101 total)
+</span><span class="pln">genBlockTransactions</span><span class="pun">(</span><span class="lit">98</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">height</span><span class="pun">() == </span><span class="lit">100</span><span class="pun">);
+
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">0</span><span class="pun">))<wbr/>.</span><span class="pln">takeExactly</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">Genesis</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">10</span><span class="pun">);
+
+</span><span class="com">/// lower limit
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">0</span><span class="pun">))<wbr/>.</span><span class="pln">takeExactly</span><span class="pun">(</span><span class="lit">5</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">Genesis</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">5</span><span class="pun">);
+
+</span><span class="com">/// different indices
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">1</span><span class="pun">))<wbr/>.</span><span class="pln">takeExactly</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]<wbr/>.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height </span><span class="pun">== </span><span class="lit">1</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">10</span><span class="pun">);
+
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">50</span><span class="pun">))<wbr/>.</span><span class="pln">takeExactly</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]<wbr/>.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height </span><span class="pun">== </span><span class="lit">50</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">10</span><span class="pun">);
+
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">95</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;  </span><span class="com">// only 6 left from here (block 100 included)
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">front<wbr/></span><span class="pun">.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height </span><span class="pun">== </span><span class="lit">95</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">walkLength</span><span class="pun">() == </span><span class="lit">6</span><span class="pun">);
+
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">99</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;  </span><span class="com">// only 2 left from here (ditto)
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">front<wbr/></span><span class="pun">.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height </span><span class="pun">== </span><span class="lit">99</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">walkLength</span><span class="pun">() == </span><span class="lit">2</span><span class="pun">);
+
+</span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">100</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;  </span><span class="com">// only 1 block available
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">front<wbr/></span><span class="pun">.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height </span><span class="pun">== </span><span class="lit">100</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">walkLength</span><span class="pun">() == </span><span class="lit">1</span><span class="pun">);
+
+</span><span class="com">// over the limit =&gt; return up to the highest block
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">0</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">1000</span><span class="pun">)<wbr/>.</span><span class="pln">walkLength</span><span class="pun">() == </span><span class="lit">101</span><span class="pun">);
+
+</span><span class="com">// higher index than available =&gt; return nothing
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">1000</span><span class="pun">))<wbr/>.</span><span class="pln">take</span><span class="pun">(</span><span class="lit">10</span><span class="pun">)<wbr/>.</span><span class="pln">walkLength</span><span class="pun">() == </span><span class="lit">0</span><span class="pun">);
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+<p>basic block verification
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">genesis_validator_keys</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]);
+
+</span><span class="typ">Block </span><span class="pln">invalid_block</span><span class="pun">;  </span><span class="com">// default-initialized should be invalid
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">acceptBlock</span><span class="pun">(</span><span class="pln">invalid_block</span><span class="pun">));
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+</section>
+<section><h2>Situation</h2>
+<p>Ledger is constructed with blocks present in storage
+</p>
+</section>
+<section><h2>Expectation</h2>
+<p>The UTXOSet is populated with all up-to-date UTXOs
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import <a href="../../../agora/consensus/data/genesis/Test.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">consensus<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">genesis<wbr/></span><span class="pun">.</span><span class="typ">Test</span></a><span class="pun">;
+
+</span><span class="kwd">const</span><span class="pun">(</span><span class="typ">Block</span><span class="pun">)[] </span><span class="pln">blocks </span><span class="pun">= [
+    </span><span class="typ">GenesisBlock</span><span class="pun">,
+    </span><span class="pln">makeNewTestBlock</span><span class="pun">(</span><span class="typ">GenesisBlock</span><span class="pun">, </span><span class="typ">GenesisBlock<wbr/></span><span class="pun">.</span><span class="pln">spendable</span><span class="pun">()<wbr/>.</span><span class="pln">map</span><span class="pun">!(</span><span class="pln">txb </span><span class="pun">=&gt; </span><span class="pln">txb<wbr/></span><span class="pun">.</span><span class="pln">sign</span><span class="pun">()))
+];
+</span><span class="com">// Make 3 more blocks to put in storage
+</span><span class="kwd">foreach </span><span class="pun">(</span><span class="pln">idx</span><span class="pun">; </span><span class="lit">2 </span><span class="pun">.. </span><span class="lit">5</span><span class="pun">)
+{
+    </span><span class="pln">blocks </span><span class="pun">~= </span><span class="pln">makeNewTestBlock</span><span class="pun">(
+        </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">1</span><span class="pun">],
+        </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">1</span><span class="pun">]<wbr/>.</span><span class="pln">spendable</span><span class="pun">()<wbr/>.</span><span class="pln">map</span><span class="pun">!(</span><span class="pln">txb </span><span class="pun">=&gt; </span><span class="pln">txb<wbr/></span><span class="pun">.</span><span class="pln">sign</span><span class="pun">()));
+}
+
+</span><span class="com">// And provide it to the ledger
+</span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">genesis_validator_keys</span><span class="pun">[</span><span class="lit">0</span><span class="pun">], </span><span class="pln">blocks</span><span class="pun">);
+
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">length
+       </span><span class="pun">== </span><span class="com">/* Genesis, Frozen */ </span><span class="lit">12 </span><span class="pun">+ </span><span class="lit">8 </span><span class="com">/* Block #1 Payments*/</span><span class="pun">);
+
+</span><span class="com">// Ensure that all previously-generated outputs are in the UTXO set
+</span><span class="pun">{
+    </span><span class="kwd">auto </span><span class="pln">findUTXO </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getUTXOFinder</span><span class="pun">();
+    </span><span class="pln">UTXO utxo</span><span class="pun">;
+    </span><span class="kwd">assert</span><span class="pun">(
+        </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">1</span><span class="pun">]<wbr/>.</span><span class="pln">txs<wbr/></span><span class="pun">.</span><span class="pln">all</span><span class="pun">!(
+            </span><span class="pln">tx </span><span class="pun">=&gt; </span><span class="pln">iota</span><span class="pun">(</span><span class="pln">tx<wbr/></span><span class="pun">.</span><span class="pln">outputs<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">)<wbr/>.</span><span class="pln">all</span><span class="pun">!(
+                (</span><span class="pln">idx</span><span class="pun">) {
+                    </span><span class="kwd">return </span><span class="pln">findUTXO</span><span class="pun">(</span><span class="pln">UTXO<wbr/></span><span class="pun">.</span><span class="pln">getHash</span><span class="pun">(</span><span class="pln">tx<wbr/></span><span class="pun">.</span><span class="pln">hashFull</span><span class="pun">(), </span><span class="pln">idx</span><span class="pun">), </span><span class="pln">utxo</span><span class="pun">) &amp;&amp;
+                        </span><span class="pln">utxo<wbr/></span><span class="pun">.</span><span class="pln">output </span><span class="pun">== </span><span class="pln">tx<wbr/></span><span class="pun">.</span><span class="pln">outputs</span><span class="pun">[</span><span class="pln">idx</span><span class="pun">];
+                }
+            )
+        )
+    );
+}
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+<p>test enrollments in the genesis block
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">exception </span><span class="pun">: </span><span class="pln">assertThrown</span><span class="pun">;
+
+</span><span class="com">// Default test genesis block has 6 validators
+</span><span class="pun">{
+    </span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">1</span><span class="pun">))<wbr/>.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">6</span><span class="pun">);
+}
+
+</span><span class="com">// One block before `ValidatorCycle`, validator is still active
+</span><span class="pun">{
+    </span><span class="kwd">const </span><span class="typ">ValidatorCycle </span><span class="pun">= </span><span class="lit">20</span><span class="pun">;
+    </span><span class="kwd">auto <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)(</span><span class="typ">ValidatorCycle</span><span class="pun">);
+    </span><span class="kwd">const </span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">genBlocksToIndex</span><span class="pun">(</span><span class="typ">ValidatorCycle </span><span class="pun">- </span><span class="lit">1</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, </span><span class="pln">blocks</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="typ">Hash</span><span class="pun">[] </span><span class="pln">keys</span><span class="pun">;
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="typ">ValidatorCycle</span><span class="pun">))<wbr/>.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">6</span><span class="pun">);
+}
+
+</span><span class="com">// Past `ValidatorCycle`, validator is inactive
+</span><span class="pun">{
+    </span><span class="kwd">const </span><span class="typ">ValidatorCycle </span><span class="pun">= </span><span class="lit">20</span><span class="pun">;
+    </span><span class="kwd">auto <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)(</span><span class="typ">ValidatorCycle</span><span class="pun">);
+    </span><span class="kwd">const </span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">genBlocksToIndex</span><span class="pun">(</span><span class="typ">ValidatorCycle</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="com">// Enrollment: Insufficient number of active validators
+    </span><span class="kwd">auto </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, </span><span class="pln">blocks</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="pln">assertThrown</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="typ">ValidatorCycle </span><span class="pun">+ </span><span class="lit">1</span><span class="pun">)));
+}
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+<p>test atomicity of adding blocks and rolling back
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">conv</span><span class="pun">;
+</span><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">exception </span><span class="pun">: </span><span class="pln">assertThrown</span><span class="pun">;
+</span><span class="kwd">import </span><span class="pln">core<wbr/></span><span class="pun">.</span><span class="pln">stdc<wbr/></span><span class="pun">.</span><span class="pln">time </span><span class="pun">: </span><span class="pln">time</span><span class="pun">;
+
+</span><span class="kwd">static class </span><span class="typ">ThrowingLedger </span><span class="pun">: </span><span class="typ">Ledger
+</span><span class="pun">{
+    </span><span class="typ">bool </span><span class="pln">throw_in_update_utxo</span><span class="pun">;
+    </span><span class="typ">bool </span><span class="pln">throw_in_update_validators</span><span class="pun">;
+
+    </span><span class="kwd">public this </span><span class="pun">(</span><span class="typ">KeyPair </span><span class="pln">kp</span><span class="pun">, </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">Block</span><span class="pun">)[] </span><span class="pln">blocks</span><span class="pun">, </span><span class="kwd">immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">) <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">)
+    {
+        </span><span class="kwd">auto <a href="../../../agora/consensus/state/Ledger/ledger.state_db.html"></span><span class="pln">stateDB</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">ManagedDatabase</span><span class="pun">(</span><span class="str">":memory:"</span><span class="pun">);
+        </span><span class="typ">ValidatorConfig </span><span class="pln">vconf </span><span class="pun">= </span><span class="typ">ValidatorConfig</span><span class="pun">(</span><span class="kwd">true</span><span class="pun">, </span><span class="pln">kp</span><span class="pun">);
+        </span><span class="kwd">super</span><span class="pun">(<a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">,
+            <a href="../../../agora/consensus/state/Ledger/ledger.state_db.html"></span><span class="pln">stateDB</span></a><span class="pun">,
+            </span><span class="kwd">new </span><span class="typ">MemBlockStorage</span><span class="pun">(</span><span class="pln">blocks</span><span class="pun">),
+            </span><span class="kwd">new </span><span class="typ">ValidatorSet</span><span class="pun">(<a href="../../../agora/consensus/state/Ledger/ledger.state_db.html"></span><span class="pln">stateDB</span></a><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">));
+    }
+
+    </span><span class="com">///
+    </span><span class="kwd">protected override </span><span class="typ">void <a href="../../../agora/consensus/state/Ledger/ledger.replay_stored_block.html"></span><span class="pln">replayStoredBlock</span></a><span class="pln"> </span><span class="pun">(</span><span class="kwd">in </span><span class="typ">Block </span><span class="pln">block</span><span class="pun">) </span><span class="kwd">@safe
+    </span><span class="pun">{
+        </span><span class="kwd">if </span><span class="pun">(</span><span class="pln">block<wbr/></span><span class="pun">.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height </span><span class="pun">&gt; </span><span class="lit">0</span><span class="pun">)
+            </span><span class="kwd">this<wbr/></span><span class="pun">.</span><span class="pln">simulatePreimages</span><span class="pun">(</span><span class="pln">block<wbr/></span><span class="pun">.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height</span><span class="pun">);
+        </span><span class="kwd">super<wbr/></span><span class="pun">.</span><span class="pln">replayStoredBlock</span><span class="pun">(</span><span class="pln">block</span><span class="pun">);
+    }
+
+    </span><span class="kwd">override </span><span class="typ">void <a href="../../../agora/consensus/Ledger/node_ledger.update_utxo_set.html"></span><span class="pln">updateUTXOSet</span></a><span class="pln"> </span><span class="pun">(</span><span class="kwd">in </span><span class="typ">Block </span><span class="pln">block</span><span class="pun">) </span><span class="kwd">@safe
+    </span><span class="pun">{
+        </span><span class="kwd">super<wbr/></span><span class="pun">.</span><span class="pln">updateUTXOSet</span><span class="pun">(</span><span class="pln">block</span><span class="pun">);
+        </span><span class="kwd">if </span><span class="pun">(</span><span class="kwd">this<wbr/></span><span class="pun">.</span><span class="pln">throw_in_update_utxo</span><span class="pun">)
+            </span><span class="kwd">throw new </span><span class="typ">Exception</span><span class="pun">(</span><span class="str">""</span><span class="pun">);
+    }
+
+    </span><span class="kwd">override </span><span class="typ">void <a href="../../../agora/consensus/Ledger/node_ledger.update_validator_set.html"></span><span class="pln">updateValidatorSet</span></a><span class="pln"> </span><span class="pun">(</span><span class="kwd">in </span><span class="typ">Block </span><span class="pln">block</span><span class="pun">) </span><span class="kwd">@safe
+    </span><span class="pun">{
+        </span><span class="kwd">super<wbr/></span><span class="pun">.</span><span class="pln">updateValidatorSet</span><span class="pun">(</span><span class="pln">block</span><span class="pun">);
+        </span><span class="kwd">if </span><span class="pun">(</span><span class="kwd">this<wbr/></span><span class="pun">.</span><span class="pln">throw_in_update_validators</span><span class="pun">)
+            </span><span class="kwd">throw new </span><span class="typ">Exception</span><span class="pun">(</span><span class="str">""</span><span class="pun">);
+    }
+
+    </span><span class="com">/// Expose the UTXO set to this module
+    </span><span class="kwd">@property public </span><span class="typ">UTXOCache </span><span class="pln">utxo_set </span><span class="pun">() </span><span class="kwd">@safe pure nothrow @nogc
+    </span><span class="pun">{
+        </span><span class="kwd">return super<wbr/></span><span class="pun">.</span><span class="pln">utxo_set</span><span class="pun">;
+    }
+}
+
+</span><span class="kwd">const <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)();
+
+</span><span class="com">// throws in updateUTXOSet() =&gt; rollback() called, UTXO set reverted,
+// Validator set was not modified
+</span><span class="pun">{
+    </span><span class="kwd">const </span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">genBlocksToIndex</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle </span><span class="pun">+ </span><span class="lit">1</span><span class="pun">);  </span><span class="com">// +1 for genesis
+
+    </span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">ThrowingLedger</span><span class="pun">(
+        </span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, </span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">takeExactly</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">), <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">))<wbr/>.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">6</span><span class="pun">);
+    </span><span class="kwd">auto <a href="../../../agora/consensus/state/Ledger/ledger.utxos.html"></span><span class="pln">utxos</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">getUTXOs</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="typ">Genesis<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">8</span><span class="pun">);
+    </span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">each</span><span class="pun">!(</span><span class="pln">utxo </span><span class="pun">=&gt; </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxo<wbr/></span><span class="pun">.</span><span class="pln">unlock_height </span><span class="pun">== </span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">));
+
+    </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">throw_in_update_utxo </span><span class="pun">= </span><span class="kwd">true</span><span class="pun">;
+    </span><span class="kwd">auto </span><span class="pln">next_block </span><span class="pun">= </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">1</span><span class="pun">];
+    </span><span class="pln">assertThrown</span><span class="pun">!</span><span class="typ">Exception</span><span class="pun">(</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">acceptBlock</span><span class="pun">(</span><span class="pln">next_block</span><span class="pun">) </span><span class="kwd">is null</span><span class="pun">));
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">lastBlock</span><span class="pun">() == </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">2</span><span class="pun">]);  </span><span class="com">// not updated
+    <a href="../../../agora/consensus/state/Ledger/ledger.utxos.html"></span><span class="pln">utxos</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">getUTXOs</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="typ">Genesis<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">8</span><span class="pun">);
+    </span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">each</span><span class="pun">!(</span><span class="pln">utxo </span><span class="pun">=&gt; </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxo<wbr/></span><span class="pun">.</span><span class="pln">unlock_height </span><span class="pun">== </span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">));  </span><span class="com">// reverted
+    // not updated
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">))<wbr/>.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">6</span><span class="pun">);
+}
+
+</span><span class="com">// throws in updateValidatorSet() =&gt; rollback() called, UTXO set and
+// Validator set reverted
+</span><span class="pun">{
+    </span><span class="kwd">const </span><span class="pln">blocks </span><span class="pun">= </span><span class="pln">genBlocksToIndex</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">21</span><span class="pun">);  </span><span class="com">// +1 for genesis
+
+    </span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">ThrowingLedger</span><span class="pun">(
+        </span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, </span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">takeExactly</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">), <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">))<wbr/>.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">6</span><span class="pun">);
+    </span><span class="kwd">auto <a href="../../../agora/consensus/state/Ledger/ledger.utxos.html"></span><span class="pln">utxos</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">getUTXOs</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="typ">Genesis<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">8</span><span class="pun">);
+    </span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">each</span><span class="pun">!(</span><span class="pln">utxo </span><span class="pun">=&gt; </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxo<wbr/></span><span class="pun">.</span><span class="pln">unlock_height </span><span class="pun">== </span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">));
+
+    </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">throw_in_update_validators </span><span class="pun">= </span><span class="kwd">true</span><span class="pun">;
+    </span><span class="kwd">auto </span><span class="pln">next_block </span><span class="pun">= </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">1</span><span class="pun">];
+    </span><span class="pln">assertThrown</span><span class="pun">!</span><span class="typ">Exception</span><span class="pun">(</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">acceptBlock</span><span class="pun">(</span><span class="pln">next_block</span><span class="pun">) </span><span class="kwd">is null</span><span class="pun">));
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">lastBlock</span><span class="pun">() == </span><span class="pln">blocks</span><span class="pun">[$ - </span><span class="lit">2</span><span class="pun">]);  </span><span class="com">// not updated
+    <a href="../../../agora/consensus/state/Ledger/ledger.utxos.html"></span><span class="pln">utxos</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">getUTXOs</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="typ">Genesis<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">8</span><span class="pun">);
+    </span><span class="pln">utxos<wbr/></span><span class="pun">.</span><span class="pln">each</span><span class="pun">!(</span><span class="pln">utxo </span><span class="pun">=&gt; </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">utxo<wbr/></span><span class="pun">.</span><span class="pln">unlock_height </span><span class="pun">== </span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">));  </span><span class="com">// reverted
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">lastBlock</span><span class="pun">()<wbr/>.</span><span class="pln">header<wbr/></span><span class="pun">.</span><span class="pln">height</span><span class="pun">)<wbr/>.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">6</span><span class="pun">);
+}
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+<p>throw if the gen block in block storage is different to the configured one
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import <a href="../../../agora/consensus/data/genesis/Test.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">consensus<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">genesis<wbr/></span><span class="pun">.</span><span class="typ">Test</span></a><span class="pun">;
+</span><span class="kwd">import <a href="../../../agora/consensus/data/genesis/Coinnet.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">consensus<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">genesis<wbr/></span><span class="pun">.</span><span class="typ">Coinnet</span></a><span class="pln"> </span><span class="pun">: </span><span class="typ">CoinGenesis </span><span class="pun">= </span><span class="typ">GenesisBlock</span><span class="pun">;
+
+</span><span class="com">// ConsensusParams is instantiated by default with the test genesis block
+</span><span class="kwd">immutable <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)(</span><span class="typ">CoinGenesis</span><span class="pun">, </span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="typ">CommonsBudget<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">);
+
+</span><span class="kwd">try
+</span><span class="pun">{
+    </span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, [</span><span class="typ">GenesisBlock</span><span class="pun">], <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="lit">0</span><span class="pun">);
+}
+</span><span class="kwd">catch </span><span class="pun">(</span><span class="typ">Exception </span><span class="pln">ex</span><span class="pun">)
+{
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ex<wbr/></span><span class="pun">.</span><span class="pln">message </span><span class="pun">==
+           </span><span class="str">"Genesis block loaded from disk " </span><span class="pun">~
+           </span><span class="str">"(0x8365f069fe37ee02f2c4dc6ad816702088fab5fc875c3c67b01f82c285aa" </span><span class="pun">~
+           </span><span class="str">"2d90b605f57e068139eba1f20ce20578d712f75be4d8568c8f3a7a34604e72aa3175) "</span><span class="pun">~
+           </span><span class="str">"is different from the one in the config file " </span><span class="pun">~
+           </span><span class="str">"(0x70c39bda1082ff0715afecd942650bca1773ce4a2fe83fc206234141b8c0e" </span><span class="pun">~
+           </span><span class="str">"a5199c5c46f1705c48cb717bea633e5d5c3b6dba08e4fc9e1aa28b09e3bf268eaaa)"</span><span class="pun">);
+}
+
+</span><span class="kwd">immutable </span><span class="pln">good_params </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)();
+</span><span class="com">// will not fail
+</span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, [</span><span class="typ">GenesisBlock</span><span class="pun">], </span><span class="pln">good_params</span><span class="pun">);
+</span><span class="com">// Neither will the default
+</span><span class="kwd">scope </span><span class="pln">other_ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, [</span><span class="typ">GenesisBlock</span><span class="pun">]);
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+<p>Testing accumulated fees paid to Commons Budget and non slashed Validators
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import <a href="../../../agora/consensus/data/genesis/Test.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">consensus<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">genesis<wbr/></span><span class="pun">.</span><span class="typ">Test</span></a><span class="pun">;
+</span><span class="kwd">import <a href="../../../agora/consensus/PreImage.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">consensus<wbr/></span><span class="pun">.</span><span class="typ">PreImage</span></a><span class="pun">;
+</span><span class="kwd">import <a href="../../../agora/utils/WellKnownKeys.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">utils<wbr/></span><span class="pun">.</span><span class="typ">WellKnownKeys</span></a><span class="pln"> </span><span class="pun">: </span><span class="typ">CommonsBudget</span><span class="pun">;
+
+</span><span class="kwd">const </span><span class="pln">testPayoutPeriod </span><span class="pun">= </span><span class="lit">5</span><span class="pun">;
+</span><span class="typ">ConsensusConfig </span><span class="pln">config </span><span class="pun">= { </span><span class="pln">validator_cycle</span><span class="pun">: </span><span class="lit">20</span><span class="pun">, </span><span class="pln">payout_period</span><span class="pun">: </span><span class="pln">testPayoutPeriod </span><span class="pun">};
+</span><span class="kwd">auto <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)(</span><span class="typ">GenesisBlock</span><span class="pun">,
+    </span><span class="typ">CommonsBudget<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">, </span><span class="pln">config</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">PayoutPeriod </span><span class="pun">== </span><span class="pln">testPayoutPeriod</span><span class="pun">);
+</span><span class="kwd">const</span><span class="pun">(</span><span class="typ">Block</span><span class="pun">)[] </span><span class="pln">blocks </span><span class="pun">= [ </span><span class="typ">GenesisBlock </span><span class="pun">];
+</span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">genesis_validator_keys</span><span class="pun">[</span><span class="lit">0</span><span class="pun">], </span><span class="pln">blocks</span><span class="pun">, <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+
+</span><span class="com">// Add preimages for all validators (except for two of them) till end of cycle
+</span><span class="typ">uint</span><span class="pun">[] </span><span class="pln">skip_indexes </span><span class="pun">= [ </span><span class="lit">2</span><span class="pun">, </span><span class="lit">5 </span><span class="pun">];
+
+</span><span class="kwd">auto </span><span class="pln">validators </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getValidators</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="lit">1</span><span class="pun">));
+</span><span class="pln">UTXO</span><span class="pun">[] </span><span class="pln">mpv_stakes</span><span class="pun">;
+</span><span class="kwd">foreach </span><span class="pun">(</span><span class="pln">skip</span><span class="pun">; </span><span class="pln">skip_indexes</span><span class="pun">)
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">peekUTXO</span><span class="pun">(</span><span class="pln">validators</span><span class="pun">[</span><span class="pln">skip</span><span class="pun">]<wbr/>.</span><span class="pln">utxo</span><span class="pun">, </span><span class="pln">mpv_stakes</span><span class="pun">[(++</span><span class="pln">mpv_stakes<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">) - </span><span class="lit">1</span><span class="pun">]));
+
+</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">simulatePreimages</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">ValidatorCycle</span><span class="pun">), </span><span class="pln">skip_indexes</span><span class="pun">);
+
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">BlockInterval<wbr/></span><span class="pun">.</span><span class="pln">total</span><span class="pun">!</span><span class="str">"seconds" </span><span class="pun">== </span><span class="lit">600</span><span class="pun">);
+</span><span class="typ">Amount </span><span class="pln">allocated_validator_rewards </span><span class="pun">= </span><span class="typ">Amount<wbr/></span><span class="pun">.</span><span class="typ">UnitPerCoin </span><span class="pun">* </span><span class="lit">27 </span><span class="pun">* (</span><span class="lit">600 </span><span class="pun">/ </span><span class="lit">5</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">allocated_validator_rewards </span><span class="pun">== </span><span class="lit">3_240<wbr/></span><span class="pun">.</span><span class="pln">coins</span><span class="pun">);
+</span><span class="typ">Amount </span><span class="pln">commons_reward </span><span class="pun">= </span><span class="typ">Amount<wbr/></span><span class="pun">.</span><span class="typ">UnitPerCoin </span><span class="pun">* </span><span class="lit">50 </span><span class="pun">* (</span><span class="lit">600 </span><span class="pun">/ </span><span class="lit">5</span><span class="pun">);
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">commons_reward </span><span class="pun">== </span><span class="lit">6_000<wbr/></span><span class="pun">.</span><span class="pln">coins</span><span class="pun">);
+</span><span class="typ">Amount </span><span class="pln">total_rewards </span><span class="pun">= (</span><span class="pln">allocated_validator_rewards </span><span class="pun">+ </span><span class="pln">commons_reward</span><span class="pun">) * </span><span class="pln">testPayoutPeriod</span><span class="pun">;
+
+</span><span class="kwd">auto </span><span class="pln">tx_set_fees </span><span class="pun">= </span><span class="typ">Amount</span><span class="pun">(</span><span class="lit">0</span><span class="pun">);
+</span><span class="kwd">auto </span><span class="pln">total_fees </span><span class="pun">= </span><span class="typ">Amount</span><span class="pun">(</span><span class="lit">0</span><span class="pun">);
+</span><span class="typ">Amount</span><span class="pun">[] </span><span class="pln">next_payout_total</span><span class="pun">;
+</span><span class="com">// Create blocks from height 1 to 11 (only block 5 and 10 should have a coinbase tx)
+</span><span class="kwd">foreach </span><span class="pun">(<a href="../../../agora/consensus/state/Ledger/ledger.height.html"></span><span class="pln">height</span></a><span class="pun">; </span><span class="lit">1</span><span class="pun">..</span><span class="lit">11</span><span class="pun">)
+{
+    </span><span class="kwd">auto </span><span class="pln">txs </span><span class="pun">= </span><span class="pln">blocks</span><span class="pun">[$-</span><span class="lit">1</span><span class="pun">]<wbr/>.</span><span class="pln">spendable<wbr/></span><span class="pun">.</span><span class="pln">map</span><span class="pun">!(</span><span class="pln">txb </span><span class="pun">=&gt; </span><span class="pln">txb<wbr/></span><span class="pun">.</span><span class="pln">sign</span><span class="pun">())<wbr/>.</span><span class="pln">array</span><span class="pun">();
+    </span><span class="pln">txs<wbr/></span><span class="pun">.</span><span class="pln">each</span><span class="pun">!(</span><span class="pln">tx </span><span class="pun">=&gt; </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">acceptTransaction</span><span class="pun">(</span><span class="pln">tx</span><span class="pun">) </span><span class="kwd">is null</span><span class="pun">));
+    </span><span class="pln">tx_set_fees </span><span class="pun">= </span><span class="pln">txs<wbr/></span><span class="pun">.</span><span class="pln">map</span><span class="pun">!(</span><span class="pln">tx </span><span class="pun">=&gt; </span><span class="pln">tx<wbr/></span><span class="pun">.</span><span class="pln">getFee</span><span class="pun">(&amp;</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">utxo_set<wbr/></span><span class="pun">.</span><span class="pln">peekUTXO</span><span class="pun">, &amp;</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getPenaltyDeposit</span><span class="pun">))<wbr/>.</span><span class="pln">reduce</span><span class="pun">!((</span><span class="pln">a</span><span class="pun">,</span><span class="pln">b</span><span class="pun">) =&gt; </span><span class="pln">a </span><span class="pun">+ </span><span class="pln">b</span><span class="pun">);
+
+    </span><span class="com">// Add the fees for this height
+    </span><span class="pln">total_fees </span><span class="pun">+= </span><span class="pln">tx_set_fees</span><span class="pun">;
+
+    </span><span class="kwd">auto </span><span class="pln">data </span><span class="pun">= </span><span class="typ">ConsensusData<wbr/></span><span class="pun">.</span><span class="pln">init</span><span class="pun">;
+    </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">prepareNominatingSet</span><span class="pun">(</span><span class="pln">data</span><span class="pun">);
+
+    </span><span class="com">// Do some Coinbase tests with the data tx_set
+    </span><span class="kwd">if </span><span class="pun">(<a href="../../../agora/consensus/state/Ledger/ledger.height.html"></span><span class="pln">height</span></a><span class="pln"> </span><span class="pun">&gt;= </span><span class="lit">2 </span><span class="pun">* </span><span class="pln">testPayoutPeriod </span><span class="pun">&amp;&amp; <a href="../../../agora/consensus/state/Ledger/ledger.height.html"></span><span class="pln">height</span></a><span class="pln"> </span><span class="pun">% </span><span class="pln">testPayoutPeriod </span><span class="pun">== </span><span class="lit">0</span><span class="pun">)
+    {
+        </span><span class="com">// Remove the coinbase TX
+        </span><span class="kwd">auto </span><span class="pln">tx_set </span><span class="pun">= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">nominated_tx_sets</span><span class="pun">[</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">tx_set</span><span class="pun">][</span><span class="lit">0 </span><span class="pun">.. $ - </span><span class="lit">1</span><span class="pun">];
+        </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">nominated_tx_sets</span><span class="pun">[</span><span class="pln">tx_set<wbr/></span><span class="pun">.</span><span class="pln">hashFull</span><span class="pun">] = </span><span class="pln">tx_set</span><span class="pun">;
+        </span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">tx_set </span><span class="pun">= </span><span class="pln">tx_set<wbr/></span><span class="pun">.</span><span class="pln">hashFull</span><span class="pun">;
+        </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">validateConsensusData</span><span class="pun">(</span><span class="pln">data</span><span class="pun">, </span><span class="pln">skip_indexes</span><span class="pun">) == </span><span class="str">"Missing matching Coinbase transaction"</span><span class="pun">);
+        </span><span class="com">// Add different hash to tx_set
+        </span><span class="pln">tx_set </span><span class="pun">~= </span><span class="str">"Not Coinbase tx"<wbr/></span><span class="pun">.</span><span class="pln">hashFull</span><span class="pun">();
+        </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">nominated_tx_sets</span><span class="pun">[</span><span class="pln">tx_set<wbr/></span><span class="pun">.</span><span class="pln">hashFull</span><span class="pun">] = </span><span class="pln">tx_set</span><span class="pun">;
+        </span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">tx_set </span><span class="pun">= </span><span class="pln">tx_set<wbr/></span><span class="pun">.</span><span class="pln">hashFull</span><span class="pun">;
+        </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">validateConsensusData</span><span class="pun">(</span><span class="pln">data</span><span class="pun">, </span><span class="pln">skip_indexes</span><span class="pun">) == </span><span class="str">"Missing matching Coinbase transaction"</span><span class="pun">);
+    }
+
+    </span><span class="com">// Now externalize the block
+    </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">prepareNominatingSet</span><span class="pun">(</span><span class="pln">data</span><span class="pun">);
+
+    </span><span class="pln">total_fees </span><span class="pun">+= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">params<wbr/></span><span class="pun">.</span><span class="typ">SlashPenaltyAmount </span><span class="pun">* </span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">missing_validators<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">;
+    </span><span class="kwd">if </span><span class="pun">(<a href="../../../agora/consensus/state/Ledger/ledger.height.html"></span><span class="pln">height</span></a><span class="pln"> </span><span class="pun">% </span><span class="pln">testPayoutPeriod </span><span class="pun">== </span><span class="lit">0</span><span class="pun">)
+    {
+        </span><span class="pln">next_payout_total </span><span class="pun">~= </span><span class="pln">total_fees </span><span class="pun">+ </span><span class="pln">total_rewards</span><span class="pun">;
+        </span><span class="pln">total_fees </span><span class="pun">= </span><span class="typ">Amount</span><span class="pun">(</span><span class="lit">0</span><span class="pun">);
+    }
+
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">externalize</span><span class="pun">(</span><span class="pln">data</span><span class="pun">) </span><span class="kwd">is null</span><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">height</span><span class="pun">() == </span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">);
+    </span><span class="pln">blocks </span><span class="pun">~= </span><span class="pln">ledger<wbr/></span><span class="pun">.</span><span class="pln">getBlocksFrom</span><span class="pun">(</span><span class="typ">Height</span><span class="pun">(</span><span class="pln">blocks<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">))<wbr/>.</span><span class="pln">front</span><span class="pun">;
+
+    </span><span class="kwd">auto </span><span class="pln">cb_txs </span><span class="pun">= </span><span class="pln">blocks</span><span class="pun">[$-</span><span class="lit">1</span><span class="pun">]<wbr/>.</span><span class="pln">txs<wbr/></span><span class="pun">.</span><span class="pln">filter</span><span class="pun">!(</span><span class="pln">tx </span><span class="pun">=&gt; </span><span class="pln">tx<wbr/></span><span class="pun">.</span><span class="pln">isCoinbase</span><span class="pun">)<wbr/>.</span><span class="pln">array</span><span class="pun">;
+    </span><span class="kwd">if </span><span class="pun">(<a href="../../../agora/consensus/state/Ledger/ledger.height.html"></span><span class="pln">height</span></a><span class="pln"> </span><span class="pun">&gt;= </span><span class="lit">2 </span><span class="pun">* </span><span class="pln">testPayoutPeriod </span><span class="pun">&amp;&amp; <a href="../../../agora/consensus/state/Ledger/ledger.height.html"></span><span class="pln">height</span></a><span class="pln"> </span><span class="pun">% </span><span class="pln">testPayoutPeriod </span><span class="pun">== </span><span class="lit">0</span><span class="pun">)
+    {
+        </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">cb_txs<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">1</span><span class="pun">);
+        </span><span class="com">// Payout block should pay the CommonsBudget + all validators (excluding slashed validators)
+        </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">cb_txs</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]<wbr/>.</span><span class="pln">outputs<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">1 </span><span class="pun">+ </span><span class="pln">genesis_validator_keys<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">- </span><span class="pln">skip_indexes<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">);
+        </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">cb_txs</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]<wbr/>.</span><span class="pln">outputs<wbr/></span><span class="pun">.</span><span class="pln">map</span><span class="pun">!(</span><span class="pln">o </span><span class="pun">=&gt; </span><span class="pln">o<wbr/></span><span class="pun">.</span><span class="pln">value</span><span class="pun">)<wbr/>.</span><span class="pln">reduce</span><span class="pun">!((</span><span class="pln">a</span><span class="pun">,</span><span class="pln">b</span><span class="pun">) =&gt; </span><span class="pln">a </span><span class="pun">+ </span><span class="pln">b</span><span class="pun">) == </span><span class="pln">next_payout_total</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]);
+        </span><span class="pln">next_payout_total </span><span class="pun">= </span><span class="pln">next_payout_total</span><span class="pun">[</span><span class="lit">1 </span><span class="pun">.. $];
+        </span><span class="com">// Slashed validators should never be paid
+        </span><span class="pln">mpv_stakes<wbr/></span><span class="pun">.</span><span class="pln">each</span><span class="pun">!((</span><span class="pln">mpv_stake</span><span class="pun">)
+        {
+            </span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">cb_txs</span><span class="pun">[</span><span class="lit">0</span><span class="pun">]<wbr/>.</span><span class="pln">outputs<wbr/></span><span class="pun">.</span><span class="pln">filter</span><span class="pun">!(</span><span class="pln">output </span><span class="pun">=&gt; </span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">address </span><span class="pun">==
+                </span><span class="pln">mpv_stake<wbr/></span><span class="pun">.</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">address</span><span class="pun">)<wbr/>.</span><span class="pln">array<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">0</span><span class="pun">);
+        });
+    }
+    </span><span class="kwd">else
+        assert</span><span class="pun">(</span><span class="pln">cb_txs<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">== </span><span class="lit">0</span><span class="pun">);
+}
+</span></code></pre>
+</section>
+<section><h2>Example</h2>
+<p>throw if the gen block in block storage is for a different chain id
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import <a href="../../../agora/consensus/data/genesis/Test.html"></span><span class="pln">agora<wbr/></span><span class="pun">.</span><span class="pln">consensus<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">genesis<wbr/></span><span class="pun">.</span><span class="typ">Test</span></a><span class="pun">;
+
+</span><span class="kwd">immutable <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pln"> </span><span class="pun">= </span><span class="kwd">new immutable</span><span class="pun">(</span><span class="typ">ConsensusParams</span><span class="pun">)();
+</span><span class="kwd">try
+</span><span class="pun">{
+    </span><span class="pln">setHashMagic</span><span class="pun">(</span><span class="lit">0x44</span><span class="pun">); </span><span class="com">// Test GenesisBlock is signed for ChainID=0
+    </span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, [</span><span class="typ">GenesisBlock</span><span class="pun">], <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+    </span><span class="kwd">assert</span><span class="pun">(</span><span class="lit">0</span><span class="pun">);
+} </span><span class="kwd">catch </span><span class="pun">(</span><span class="typ">Exception </span><span class="pln">ex</span><span class="pun">) {}
+
+</span><span class="pln">setHashMagic</span><span class="pun">(</span><span class="lit">0</span><span class="pun">); </span><span class="com">// should work just fine
+</span><span class="kwd">scope </span><span class="pln">ledger </span><span class="pun">= </span><span class="kwd">new </span><span class="typ">TestLedger</span><span class="pun">(</span><span class="pln">WK<wbr/></span><span class="pun">.</span><span class="typ">Keys<wbr/></span><span class="pun">.</span><span class="pln">A</span><span class="pun">, [</span><span class="typ">GenesisBlock</span><span class="pun">], <a href="../../../agora/consensus/state/Ledger/ledger.params.html"></span><span class="pln">params</span></a><span class="pun">);
+</span></code></pre>
+</section>
+
+			<footer>
+				<table class="license-info">
+					<tr>
+						<th>Authors</th>
+						<td>
+							
+						</td>
+					</tr>
+					<tr>
+						<th>Copyright</th>
+						<td>
+							<p>Copyright (c) 2019-2021 BOSAGORA Foundation
+        All rights reserved.
+</p>
+
+						</td>
+					</tr>
+					<tr>
+						<th>License</th>
+						<td>
+							<p>MIT License. See LICENSE for details.
+</p>
+
+						</td>
+					</tr>
+				</table>
+				<p class="faint">Generated using the DDOX documentation generator</p>
+			</footer>
+		</div>
+	</body>
+</html>
