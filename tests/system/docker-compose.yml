@@ -13,6 +13,8 @@ services:
   node-2:
     image: "agora:latest"
     env_file: environment.sh
+    dns:
+      - node-0
     ports:
       - "4002:2826"
     volumes:
@@ -23,6 +25,8 @@ services:
   node-3:
     image: "agora:latest"
     env_file: environment.sh
+    dns:
+      - node-0
     ports:
       - "4003:3826"
     volumes:
@@ -33,6 +37,8 @@ services:
   node-4:
     image: "agora:latest"
     env_file: environment.sh
+    dns:
+      - node-0
     ports:
       - "4004:4826"
     volumes:
@@ -43,6 +49,8 @@ services:
   node-5:
     image: "agora:latest"
     env_file: environment.sh
+    dns:
+      - node-0
     ports:
       - "4005:5826"
     volumes:
@@ -53,6 +61,8 @@ services:
   node-6:
     image: "agora:latest"
     env_file: environment.sh
+    dns:
+      - node-0
     ports:
       - "4006:6826"
     volumes:
@@ -74,6 +84,8 @@ services:
   node-0:
     image: "agora:latest"
     env_file: environment.sh
+    dns:
+      - node-0
     ports:
       - "4000:1826"
     volumes:
@@ -84,6 +96,8 @@ services:
   # faucet
   faucet:
     image: "bosagora/faucet:latest"
+    dns:
+      - node-0
     depends_on:
       - node-0
       - node-2
