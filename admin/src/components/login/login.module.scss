@@ -1,0 +1,276 @@
+@import "base.scss";
+
+.login {
+  display: flex;
+  position: relative;
+  background-color: $color-white;
+  z-index: 4;
+
+  @media (min-width: $minMediaXS) {
+    &:not(.hidden) {
+      @include animation-name(showFrame);
+      @include animation-duration($animateEl);
+      @include animation-fill-mode(forwards);
+    }
+
+    &.hidden {
+      @include animation-name(hideFrame);
+      @include animation-duration($animateEl);
+      @include animation-fill-mode(forwards);
+    }
+  }
+
+  @media (max-width: $maxMediaXS) {
+    &:not(.hidden) {
+      @include animation-name(showDownPreviewFrame);
+      @include animation-duration($animateSteps);
+      @include animation-fill-mode(forwards);
+      @include animation-timing-function(ease);
+
+      .loginInner {
+        .container_sideTop {
+          @include animation-name(slideUpPreviewMainBanner);
+          @include animation-duration(1.3s);
+          @include animation-fill-mode(forwards);
+          @include animation-timing-function(ease);
+        }
+
+        .container_sideBottom {
+          .container_secondTitle {
+            @include animation-name(slideUpPreviewTitle);
+            @include animation-duration(1.3s);
+            @include animation-fill-mode(forwards);
+            @include animation-timing-function(ease);
+          }
+
+          .container_content {
+            @include animation-name(slideUpPreviewText);
+            @include animation-duration(1.3s);
+            @include animation-fill-mode(forwards);
+            @include animation-timing-function(ease);
+          }
+
+          .container_nextButton {
+            @include animation-name(slideUpPreviewButton);
+            @include animation-duration(1.3s);
+            @include animation-fill-mode(forwards);
+            @include animation-timing-function(ease);
+          }
+        }
+      }
+    }
+
+    &.hidden {
+      position: fixed;
+      bottom: 0px;
+      left: 0px;
+      z-index: 5;
+      @include animation-name(hideUpPreviewFrame);
+      @include animation-duration($animateSteps);
+      @include animation-fill-mode(forwards);
+      @include animation-timing-function(ease);
+
+      .loginInner {
+        .container_sideBottom {
+          .container_secondTitle {
+            @include animation-name(slideDownOnHidePreviewTitle);
+            @include animation-duration(1s);
+            @include animation-fill-mode(forwards);
+            @include animation-timing-function(ease);
+          }
+
+          .container_content {
+            @include animation-name(slideDownOnHidePreviewText);
+            @include animation-duration(1s);
+            @include animation-fill-mode(forwards);
+            @include animation-timing-function(ease);
+          }
+
+          .container_nextButton {
+            @include animation-name(slideDownOnHidePreviewButton);
+            @include animation-duration(1s);
+            @include animation-fill-mode(forwards);
+            @include animation-timing-function(ease);
+          }
+        }
+      }
+    }
+  }
+
+  .loginInner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    //height: 100vh;
+    //justify-content: center;
+
+    @media (min-width: $minMediaMD) {
+      min-width: 1200px;
+    }
+
+    @media (max-width: $maxMediaXS) {
+      display: block;
+      min-height: 100vh;
+      min-width: 100%;
+    }
+
+    .container_top {
+      background-image: url(/assets/img/main_background.svg);
+      @include back-img(cover, right top, no-repeat);
+      display: flex;
+      align-items: center;
+
+      //height : 300px;
+      //width: 100%;
+
+      @media (min-width: $minMediaMD) {
+        width: 100%;
+        //min-height: 770px;
+        height: 300px;
+      }
+
+      @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+        width: 100%;
+        //min-height: 770px;
+        height: 270px;
+        //width: 400px;
+        //min-height: 100vh;
+      }
+
+      @media (max-width: $maxMediaXS) {
+        width: 100%;
+        height: 300px;
+        //height: auto;
+        //min-height: auto;
+        //display: block;
+        background-image: url(/assets/img/index-back.svg);
+        @include back-img(cover, left bottom, no-repeat);
+      }
+
+      .topContainer {
+        width: 100%;
+        height: 100%;
+        //min-height: 400px;
+        //max-width: 720px;
+        position: relative;
+        padding: 0px 60px;
+
+        @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+          padding: 0px 30px;
+        }
+
+        @media (max-width: $maxMediaXS) {
+          padding: 0px 30px;
+          //min-height: 460px;
+          //@include transition(min-height 0.2s);
+        }
+      }
+
+      .container_mainTitle {
+        padding-top: 70px;
+        color: $color-white;
+
+        @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+          padding-top: 70px;
+        }
+
+        @media (max-width: $maxMediaXS) {
+          padding-top: 60px;
+        }
+      }
+
+      .container_logo {
+        position: absolute;
+        bottom: 50%;
+        right: 60px;
+        transform: translate(0, 50%);
+        @include font(2.4rem, 1, $color-white, null, null);
+
+        @media (max-width: $maxMediaXS) {
+          right: 36px;
+          bottom: 20px;
+          transform: translate(0, 0);
+          @include font(1.67rem, 1, $color-white, null, null);
+        }
+      }
+    }
+
+    .container_bottom {
+      @media (min-width: $minMediaMD) {
+        width: 100%;
+        height: 100%;
+        min-height: 770px;
+      }
+
+      @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+        width: 100%;
+      }
+
+      @media (max-width: $maxMediaXS) {
+        width: 100%;
+        height: auto;
+        min-height: auto;
+      }
+
+      .bottomContainer {
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+        padding: 100px 100px 100px 100px;
+        //max-width: 720px;
+        //position: relative;
+        //padding: 0px 83px 0px 100px;
+
+        @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+          padding: 50px 40px 50px 40px;
+        }
+
+        @media (max-width: $maxMediaXS) {
+          padding: 48px 36px;
+        }
+
+        .container_userId {
+          width: 500px;
+          height: 100px;
+          text-align: center;
+
+          @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+            width: 400px;
+          }
+
+          @media (max-width: $maxMediaXS) {
+            width: 300px;
+          }
+        }
+        .container_password {
+          width: 500px;
+          height: 100px;
+          text-align: center;
+
+          @media (max-width: $maxMediaMD) and (min-width: $minMediaXS) {
+            width: 400px;
+          }
+
+          @media (max-width: $maxMediaXS) {
+            width: 300px;
+          }
+        }
+
+        .container_loginMessage {
+          margin-top: 30px;
+        }
+
+        .container_loginButton {
+          margin-top: 30px;
+          color: $color-white;
+          .link {
+            width: 100%;
+            height: 100%;
+            color: $color-white;
+          }
+        }
+      }
+    }
+  }
+}

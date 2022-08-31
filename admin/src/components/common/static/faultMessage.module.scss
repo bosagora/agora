@@ -1,0 +1,13 @@
+@import "../../../base";
+
+.message {
+  @include font(1.5rem, 1.5, $color-negative, normal, null);
+
+  & + .message {
+    margin-top: 20px;
+
+    @media (max-width: $maxMediaXS) {
+      margin-top: 23px;
+    }
+  }
+}

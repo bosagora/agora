@@ -1,0 +1,325 @@
+@import "./mixins.scss";
+
+@keyframes showFrame {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hideFrame {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes showDownPreviewFrame {
+  0% {
+    @include transform(translateY(-100vh));
+  }
+
+  100% {
+    @include transform(translateY(0vh));
+  }
+}
+
+@keyframes slideUpPreviewMainBanner {
+  0% {
+    @include transform(translateY(-70px))
+  }
+
+  45% {
+    @include transform(translateY(-70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpPreviewTitle {
+  0% {
+    @include transform(translateY(-70px))
+  }
+
+  40% {
+    @include transform(translateY(-70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpPreviewText {
+  0% {
+    @include transform(translateY(-70px))
+  }
+
+  35% {
+    @include transform(translateY(-70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpPreviewButton {
+  0% {
+    @include transform(translateY(-70px))
+  }
+
+  30% {
+    @include transform(translateY(-70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes hideUpPreviewFrame {
+  0% {
+    @include transform(translateY(0px));
+  }
+
+  100% {
+    @include transform(translateY(-100vh));
+  }
+}
+
+@keyframes slideDownOnHidePreviewTitle {
+  0% {
+    @include transform(translateY(0px))
+  }
+
+  40% {
+    @include transform(translateY(70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideDownOnHidePreviewText {
+  0% {
+    @include transform(translateY(0px))
+  }
+
+  30% {
+    @include transform(translateY(70px))
+  }
+
+  50% {
+    @include transform(translateY(70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideDownOnHidePreviewButton {
+  0% {
+    @include transform(translateY(0px))
+  }
+
+  20% {
+    @include transform(translateY(70px))
+  }
+
+  40% {
+    @include transform(translateY(70px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes showUpStepsFrame {
+  0% {
+    @include transform(translateY(100vh))
+  }
+
+  100% {
+    @include transform(translateY(0vh))
+  }
+}
+
+@keyframes hideDownStepsFrame {
+  0% {
+    @include transform(translateY(0vh))
+  }
+
+  100% {
+    @include transform(translateY(100vh))
+  }
+}
+
+@keyframes showPrev {
+  from {
+    left: -100%;
+  }
+
+  to {
+    left: 0%;
+  }
+}
+
+@keyframes showNext {
+  from {
+    left: 100%;
+  }
+
+  to {
+    left: 0%;
+  }
+}
+
+@keyframes hideNext {
+  from {
+    @include transform(translateX(0%))
+  }
+
+  to {
+    @include transform(translateX(-100%))
+  }
+}
+
+@keyframes hidePrev {
+  from {
+    @include transform(translateX(0%))
+  }
+
+  to {
+    @include transform(translateX(100%))
+  }
+}
+
+@keyframes slideUpOnViewTitle {
+  0% {
+    @include transform(translateY(100px))
+  }
+
+  20% {
+    @include transform(translateY(100px))
+  }
+
+  70% {
+    @include transform(translateY(0px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpOnViewDescription {
+  0% {
+    @include transform(translateY(100px))
+  }
+
+  25% {
+    @include transform(translateY(100px))
+  }
+
+  90% {
+    @include transform(translateY(0px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpOnViewStepsMenu {
+  0% {
+    @include transform(translateY(100px))
+  }
+
+  30% {
+    @include transform(translateY(100px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpOnViewInner {
+  0% {
+    @include transform(translateY(400px))
+  }
+
+  30% {
+    @include transform(translateY(400px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes slideUpOnViewInnerButtons {
+  0% {
+    @include transform(translateY(66px))
+  }
+
+  66% {
+    @include transform(translateY(66px))
+  }
+
+  100% {
+    @include transform(translateY(0px))
+  }
+}
+
+@keyframes loaderBackAnimation {
+  0% {
+    @include transform(scale(1));
+  }
+
+  15% {
+    @include transform(scale(1));
+  }
+
+  40% {
+    @include transform(scale(1.5));
+  }
+
+  65% {
+    @include transform(scale(1));
+  }
+
+  100% {
+    @include transform(scale(1));
+  }
+}
+
+@keyframes loaderDotAnimation {
+  0% {
+    @include transform(scale(1));
+  }
+
+  20% {
+    @include transform(scale(1.5));
+  }
+
+  50% {
+    @include transform(scale(0.7));
+  }
+
+  100% {
+    @include transform(scale(1));
+  }
+}
