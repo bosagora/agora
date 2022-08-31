@@ -1017,16 +1017,7 @@ private struct ZoneData
         // Initialize common fields
         this.db.execute(query_addr_create);
         this.soa_ttl = 90;
-    }
 
-    /***************************************************************************
-
-        Start the zone
-
-    ***************************************************************************/
-
-    public void start ()
-    {
         if (this.type == ZoneType.primary)
         {
             foreach (ns_cname; this.config.nameservers)
@@ -1040,7 +1031,7 @@ private struct ZoneData
             this.soa = this.config.fromConfig(this.root);
         }
         else if (this.type == ZoneType.secondary
-                || this.type == ZoneType.caching)
+            || this.type == ZoneType.caching)
         {
             // DNS resolver is used to get SOA RR and performing AXFR
             auto peer_addrs = this.config.query_servers.map!(
@@ -1064,6 +1055,20 @@ private struct ZoneData
             // Initialize timing fields with defaults in-case we couldn't reach
             // any primary to get our initial SOA record
             this.soa = SOA(Domain.init, Domain.init, 0, 540, 10, 6000, 120);
+        }
+    }
+
+    /***************************************************************************
+
+        Start the zone
+
+    ***************************************************************************/
+
+    public void start ()
+    {
+        if (this.type == ZoneType.secondary
+            || this.type == ZoneType.caching)
+        {
             this.soa_update_timer = this.taskman.setTimer(0.seconds, &this.updateSOA);
         }
     }
