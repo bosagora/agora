@@ -30,12 +30,11 @@ import core.thread;
 unittest
 {
     TestConf conf = {
-        recurring_enrollment : false,
         outsider_validators : 2,
     };
-    conf.node.max_listeners = 8;
     conf.node.network_discovery_interval = 2.seconds;
     conf.node.retry_delay = 250.msecs;
+    conf.consensus.quorum_threshold = 60;
     auto network = makeTestNetwork!TestAPIManager(conf);
     network.start();
     scope(exit) network.shutdown();
@@ -65,22 +64,22 @@ unittest
 
     enum quorums_1 = [
         // 0
-        QuorumConfig(4, [0, 1, 3, 4, 5]),
+        QuorumConfig(3, [0, 1, 3, 4, 5]),
 
         // 1
-        QuorumConfig(4, [0, 1, 2, 3, 4]),
+        QuorumConfig(3, [0, 1, 2, 3, 4]),
 
         // 2
-        QuorumConfig(4, [0, 2, 3, 4, 5]),
+        QuorumConfig(3, [0, 2, 3, 4, 5]),
 
         // 3
-        QuorumConfig(4, [0, 1, 2, 3, 5]),
+        QuorumConfig(3, [0, 1, 2, 3, 5]),
 
         // 4
-        QuorumConfig(4, [0, 1, 2, 4, 5]),
+        QuorumConfig(3, [0, 1, 2, 4, 5]),
 
         // 5
-        QuorumConfig(4, [0, 2, 3, 4, 5]),
+        QuorumConfig(3, [0, 2, 3, 4, 5]),
 
         QuorumConfig.init,
         QuorumConfig.init,
@@ -105,43 +104,44 @@ unittest
         Height(GenesisValidatorCycle - 1));
 
     // Now we enroll new validators and re-enroll the original validators
-    iota(validators).each!(idx => network.enroll(idx));
+    iota(GenesisValidators, validators).each!(idx => network.enroll(idx));
 
      // Generate the last block of cycle with Genesis validators
     network.generateBlocks(iota(GenesisValidators),
         Height(GenesisValidatorCycle));
 
+    // Make sure we have all enrolled in block 20
+    auto block20 = nodes.front.getBlock(Height(GenesisValidatorCycle));
+    assert(block20.header.enrollments.length == validators);
+
     // make sure outsiders are up to date
     network.expectHeight(iota(GenesisValidators, validators),
         Height(GenesisValidatorCycle));
-    // Wait for nodes to run a discovery task and update their required peers
-    Thread.sleep(3.seconds);
-    network.waitForDiscovery();
 
     enum quorums_2 = [
         // 0
-        QuorumConfig(5, [0, 1, 3, 4, 6, 7]),
+        QuorumConfig(4, [0, 1, 3, 4, 6, 7]),
 
         // 1
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 2
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 3
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 4
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 5
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 6
-        QuorumConfig(5, [0, 1, 2, 3, 4, 5]),
+        QuorumConfig(4, [0, 1, 2, 3, 4, 5]),
 
         // 7
-        QuorumConfig(5, [0, 1, 3, 4, 5, 7]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 7]),
     ];
 
     static assert(quorums_1 != quorums_2);
@@ -154,46 +154,40 @@ unittest
                     idx, node.getQuorumConfig(), quorums_2[idx])));
     }
 
-    // create 19 more blocks with all validators (1 short of end of 2nd cycle)
-    network.generateBlocks(iota(validators),
-        Height((2 * GenesisValidatorCycle) - 1));
-
-    // Re-enroll
-    iota(validators).each!(idx => network.enroll(iota(validators), idx));
-
-    // TODO: re enable - temp to enable PRs to test with rest of tests
-    version (none)
-    {
-    // Generate the last block of cycle with Genesis validators
-    network.generateBlocks(iota(validators),
-        Height(2 * GenesisValidatorCycle));
+    // create 20 more blocks with all validators
+    iota(Height(GenesisValidatorCycle + 1), Height(2 * GenesisValidatorCycle + 1))
+        .each!((Height h)
+        {
+            network.sendTransaction(nodes.front);
+            network.expectHeightAndPreImg(iota(validators), h, block20.header.enrollments);
+        });
 
     // these changed compared to quorums_2 due to the new enrollments
     // which use a different preimage
     enum quorums_3 = [
         // 0
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 1
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 2
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 3
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 4
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 5
-        QuorumConfig(5, [0, 1, 3, 4, 5, 6]),
+        QuorumConfig(4, [0, 1, 3, 4, 5, 6]),
 
         // 6
-        QuorumConfig(5, [1, 2, 3, 4, 5, 6]),
+        QuorumConfig(4, [1, 2, 3, 4, 5, 6]),
 
         // 7
-        QuorumConfig(5, [0, 1, 4, 5, 6, 7]),
+        QuorumConfig(4, [0, 1, 4, 5, 6, 7]),
     ];
 
     static assert(quorums_2 != quorums_3);
@@ -204,6 +198,5 @@ unittest
             retryFor(node.getQuorumConfig() == quorums_3[idx], 5.seconds,
                 format("Node %s has quorum config %s. Expected quorums_3: %s",
                     idx, node.getQuorumConfig(), quorums_3[idx])));
-    }
     }
 }

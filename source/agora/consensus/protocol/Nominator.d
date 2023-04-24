@@ -1622,6 +1622,9 @@ extern(D):
 
         if (callback is null || timeout == 0)
             return;
+        log.dbg("{}: block {} slot idx {} timeout = {} msecs for {}",
+            __FUNCTION__, this.ledger.height() + 1, slot_idx, timeout,
+            type == 0 ? "NOMINATION_TIMER" : "BALLOT_PROTOCOL_TIMER" );
         this.active_timers[type] = this.taskman.setTimer(
             timeout.msecs, { callCPPDelegate(callback); });
     }
@@ -1639,7 +1642,7 @@ extern(D):
         if (Height(slot_idx) > this.heighest_ballot_height)
         {
             this.heighest_ballot_height = Height(slot_idx);
-            log.info("Balloting started for slot idx {}", slot_idx);
+            log.info("{}: Balloting started for slot idx {}", __FUNCTION__, slot_idx);
             auto time_to_ballot = (this.clock.networkTime() -
                 this.ledger.getExpectedBlockTime(this.heighest_ballot_height)).total!"seconds";
             this.slot_stat.setMetricTo!"time_to_ballot"(time_to_ballot, assumeWontThrow(Height(slot_idx).toString()));
@@ -1678,7 +1681,7 @@ extern(D):
         auto val_multipler = 1 + this.ledger.validatorCount(this.ledger.height()) / 8;
         this.round_timeout = base * val_multipler * roundNumber;
         const timeout = milliseconds(round_timeout.total!"msecs".to!long);
-        log.dbg("roundNumber {} timeout = {} msecs", roundNumber, timeout);
+        log.dbg("block {} roundNumber {} timeout = {} msecs", this.ledger.height() + 1, roundNumber, timeout);
         return timeout;
     }
 }
